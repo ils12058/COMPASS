@@ -1,5 +1,5 @@
 // FORM-REQ-1: the editor mirrors the backend's F5 submission rules. Drafts stay incomplete,
-// choose "Prefer not to specify" is gone for new answers, and a pending correction only answers for
+// "Prefer not to specify" is gone, and a pending correction only answers for
 // the fields it named. Every record here is a synthetic fixture.
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -26,7 +26,6 @@ import {
   indigenousOptions,
   occupationOptions,
   parentLifeOptions,
-  parentStatusCategoryOptions,
   pwdOptions,
   religionOptions,
   transportationFrequencyOptions,
@@ -104,7 +103,6 @@ function completeDraft(overrides = {}) {
       { kind: "CURRENT", region_psgc_code: "010000000", city_municipality_psgc_code: "0100101000" },
     ],
     family_members: [parent("FATHER"), parent("MOTHER")],
-    parent_status_category: "MARRIED",
     parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
     guardian_name: "Synthetic Guardian",
     guardian_relationship: "Aunt",
@@ -173,9 +171,6 @@ function completeDraft(overrides = {}) {
 const withFather = (patch) => completeDraft({
   family_members: completeDraft().family_members.map((member) => member.kind === "FATHER" ? { ...member, ...patch } : member),
 });
-const withSupport = (patch) => completeDraft({
-  support_profile: { ...supportProfile, ...patch },
-});
 const issuesIn = (draft, section) =>
   getInventorySubmissionIssues(draft, programIds).filter((issue) => issue.section === section);
 const targetsIn = (draft, section) => issuesIn(draft, section).map((issue) => [issue.targetId, issue.message]);
@@ -186,41 +181,7 @@ test("a complete F5 form has nothing left to answer", () => {
   assert.deepEqual(getInventorySubmissionIssues(completeDraft(), programIds), []);
 });
 
-// --- "Prefer not to specify" is gone for new answers ---------------------------------
-
-test("each choice that used to offer Prefer not to specify is refused at submission only", () => {
-  const cases = [
-    ["civil status", completeDraft({ civil_status_category: "NOT_SPECIFIED" }), "inventory-civil-status"],
-    ["current religion", completeDraft({ current_religion_category: "NOT_SPECIFIED" }), "inventory-current-religion-category"],
-    ["occupation", withFather({ occupation_category: "NOT_SPECIFIED" }), "inventory-family-father-occupation-category"],
-    ["annual income", withFather({ annual_income_status: "NOT_SPECIFIED" }), "inventory-family-father-income-status"],
-    ["parent status", completeDraft({ parent_status_category: "NOT_SPECIFIED" }), "inventory-parent-status-category"],
-    ["transportation frequency", completeDraft({ transportation_entries: [{ mode: "BUS", frequency_category: "NOT_SPECIFIED" }] }), "inventory-transport-bus-frequency-category"],
-    ["4Ps", withSupport({ four_ps_status: "NOT_SPECIFIED" }), "inventory-four-ps"],
-    ["Indigenous Peoples", withSupport({ indigenous_peoples_status: "NOT_SPECIFIED" }), "inventory-indigenous-peoples"],
-    ["PWD", completeDraft({ pwd_status: "NOT_SPECIFIED" }), "inventory-pwd-status"],
-    ["mother life status", withSupport({ mother_life_status: "NOT_SPECIFIED" }), "inventory-mother-life-status"],
-    ["father life status", withSupport({ father_life_status: "NOT_SPECIFIED" }), "inventory-father-life-status"],
-  ];
-  for (const [label, draft, targetId] of cases) {
-    const submission = getInventorySubmissionIssues(draft, programIds);
-    const issue = submission.find((item) => item.targetId === targetId);
-    assert.ok(issue, `${label}: submission names the answer`);
-    assert.doesNotMatch(issue.message, /NOT_SPECIFIED|_/, `${label}: the message reads as words`);
-    assert.ok(!getInventoryDraftIssues(draft).some((item) => item.targetId === targetId), `${label}: a draft still saves`);
-  }
-});
-
-test("a saved Prefer-not-to-specify current location must be replaced at submission", () => {
-  const draft = completeDraft({
-    geographic_locations: [{ kind: "CURRENT", not_specified: true }, { kind: "PERMANENT", not_specified: true }],
-  });
-  assert.deepEqual(targetsIn(draft, "personal"), [
-    ["inventory-current-region", "Choose your current region."],
-    ["inventory-current-city", "Choose your current city or municipality."],
-  ]);
-  assert.deepEqual(getInventoryDraftIssues(draft), []);
-});
+// --- "Prefer not to specify" is gone -------------------------------------------------
 
 test("the truthful replacements are accepted at submission", () => {
   const truthful = completeDraft({
@@ -238,12 +199,11 @@ test("the truthful replacements are accepted at submission", () => {
   assert.deepEqual(getInventorySubmissionIssues(unknownIncome, programIds), []);
 });
 
-test("the form never offers Prefer not to specify, and stored answers keep their label", () => {
+test("the form never offers Prefer not to specify and keeps truthful unknown answers", () => {
   for (const options of [
     civilStatusOptions,
     religionOptions,
     occupationOptions,
-    parentStatusCategoryOptions,
     transportationFrequencyOptions,
     annualIncomeOptions,
     parentLifeOptions,
@@ -251,14 +211,13 @@ test("the form never offers Prefer not to specify, and stored answers keep their
     indigenousOptions,
     pwdOptions,
   ]) {
-    assert.ok(!options.some(([value]) => value === "NOT_SPECIFIED"));
+    assert.ok(!options.some(([, label]) => label === "Prefer not to specify"));
   }
   assert.deepEqual(fourPsOptions.map(([value]) => value), ["BENEFICIARY", "NOT_BENEFICIARY", "NOT_SURE"]);
   assert.deepEqual(indigenousOptions.map(([value]) => value), ["MEMBER", "NOT_MEMBER"]);
   assert.deepEqual(pwdOptions.map(([value]) => value), ["PWD", "NON_PWD"]);
   assert.deepEqual(parentLifeOptions.map(([, label]) => label), ["Living", "Deceased", "Unknown"]);
   assert.deepEqual(annualIncomeOptions.map(([, label]) => label), ["Reported", "None", "Unknown"]);
-  assert.equal(enumLabel("NOT_SPECIFIED"), "Prefer not to specify");
   assert.equal(enumLabel("NOT_SURE"), "Not sure");
   assert.equal(enumLabel("UNKNOWN"), "Unknown");
 });

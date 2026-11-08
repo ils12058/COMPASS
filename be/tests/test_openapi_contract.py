@@ -1282,7 +1282,6 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SupportIndicatorResponse",
         "StudentReference",
         "AcademicYearReference",
-        "ParentStatusCategoryValue",
         "OccupationCategoryValue",
         "AnnualIncomeStatusValue",
         "GeographicLocationKindValue",
@@ -1539,7 +1538,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "civil_status_category",
         "current_religion_category",
         "pwd_status",
-        "parent_status_category",
+        "parent_statuses",
         "support_profile",
         "geographic_locations",
     } <= set(inventory_payload)
@@ -1565,7 +1564,6 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     location = schemas["GeographicLocationPayload"]["properties"]
     assert {
         "kind",
-        "not_specified",
         "region_psgc_code",
         "region_name_snapshot",
         "province_psgc_code",
@@ -1699,18 +1697,17 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "/PopulationReconciliation"
     )
     assert "submitted_inventory_count" in schemas["ProgramColumn"]["required"]
+    assert {"program_id", "code", "college", "campus"} <= set(schemas["ProgramColumn"]["required"])
     assert "access_scope_note" in schemas["Methodology"]["required"]
-    assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD", "NOT_SPECIFIED"]
+    assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD"]
     assert schemas["FourPsStatusValue"]["enum"] == [
         "BENEFICIARY",
         "NOT_BENEFICIARY",
         "NOT_SURE",
-        "NOT_SPECIFIED",
     ]
     assert schemas["IndigenousPeoplesStatusValue"]["enum"] == [
         "MEMBER",
         "NOT_MEMBER",
-        "NOT_SPECIFIED",
     ]
     assert "UNKNOWN" in schemas["ParentLifeStatusValue"]["enum"]
     assert "UNKNOWN" in schemas["AnnualIncomeStatusValue"]["enum"]

@@ -135,7 +135,6 @@ def test_psgc_outage_does_not_block_inventory_draft_save_but_blocks_submission(m
     values["geographic_locations"] = [
         {
             "kind": "CURRENT",
-            "not_specified": False,
             "region_psgc_code": "0500000000",
             "region_name_snapshot": "Unverified Region",
             "province_psgc_code": "0501600000",
@@ -235,7 +234,6 @@ def test_inventory_submission_validates_hierarchy_and_canonicalizes_psgc_names(m
     values["geographic_locations"] = [
         {
             "kind": "CURRENT",
-            "not_specified": False,
             "region_psgc_code": "0500000000",
             "region_name_snapshot": "Tampered Region",
             "province_psgc_code": "0501600000",
@@ -247,7 +245,6 @@ def test_inventory_submission_validates_hierarchy_and_canonicalizes_psgc_names(m
         },
         {
             "kind": "PERMANENT",
-            "not_specified": False,
             "region_psgc_code": "1300000000",
             "region_name_snapshot": "Wrong NCR",
             "province_psgc_code": "",
@@ -296,7 +293,6 @@ def test_inventory_submission_rejects_psgc_hierarchy_mismatch_and_stays_draft(mo
     values["geographic_locations"] = [
         {
             "kind": "CURRENT",
-            "not_specified": False,
             "region_psgc_code": "0500000000",
             "region_name_snapshot": "Bicol Region",
             "province_psgc_code": "0501600000",
@@ -324,44 +320,6 @@ def test_inventory_submission_rejects_psgc_hierarchy_mismatch_and_stays_draft(mo
     assert get_current_inventory_status(student).status == InventoryStatus.DRAFT
 
 
-@pytest.mark.django_db
-def test_not_specified_current_geography_is_rejected_at_submission_without_psgc_lookup(monkeypatch):
-    sync_policy()
-    admin = make_user("psgc-skip-admin@example.edu", "IT_ADMIN")
-    student = make_user("psgc-skip-student@example.edu", "STUDENT")
-    configure_year(admin)
-    program = configure_program()
-    ensure_current_inventory(student=student, context=context(student))
-    values = minimum_normalized_inventory_values(program_id=program.pk)
-    values["geographic_locations"] = [
-        {
-            "kind": "CURRENT",
-            "not_specified": True,
-            "region_psgc_code": "",
-            "region_name_snapshot": "",
-            "province_psgc_code": "",
-            "province_name_snapshot": "",
-            "city_municipality_psgc_code": "",
-            "city_municipality_name_snapshot": "",
-            "barangay_psgc_code": "",
-            "barangay_name_snapshot": "",
-        }
-    ]
-    replace_current_inventory(student=student, values=values)
-
-    def fail_if_called(cls):
-        raise AssertionError("PSGC must not be constructed for not_specified geography")
-
-    monkeypatch.setattr(
-        inventory_services.PSGCClient,
-        "from_settings",
-        classmethod(fail_if_called),
-    )
-
-    with pytest.raises(InvalidInventoryInput, match="Choose your current region"):
-        submit_current_inventory(student=student, context=context(student))
-
-
 @pytest.mark.django_db(transaction=True)
 def test_psgc_verification_runs_before_inventory_locks_are_taken(monkeypatch):
     import threading
@@ -380,7 +338,6 @@ def test_psgc_verification_runs_before_inventory_locks_are_taken(monkeypatch):
     values["geographic_locations"] = [
         {
             "kind": "CURRENT",
-            "not_specified": False,
             "region_psgc_code": "1300000000",
             "region_name_snapshot": "Draft NCR",
             "province_psgc_code": "",

@@ -116,7 +116,7 @@ class InventoryStatus(StrEnum):
 
 class CombinedParentIncomeStatus(StrEnum):
     REPORTED = "REPORTED"
-    NOT_SPECIFIED = "NOT_SPECIFIED"
+    UNKNOWN = "UNKNOWN"
 
 
 class ParentIncomeBand(StrEnum):
@@ -128,7 +128,7 @@ class ParentIncomeBand(StrEnum):
     UPPER_MIDDLE_INCOME = "UPPER_MIDDLE_INCOME"
     UPPER_INCOME = "UPPER_INCOME"
     RICH = "RICH"
-    NOT_SPECIFIED = "NOT_SPECIFIED"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,11 +168,8 @@ def combine_parent_annual_income(
     mother_amount: Decimal | None,
 ) -> CombinedParentIncome:
     pairs = ((father_status, father_amount), (mother_status, mother_amount))
-    if any(
-        status in {AnnualIncomeStatus.NOT_SPECIFIED, AnnualIncomeStatus.UNKNOWN}
-        for status, _ in pairs
-    ):
-        return CombinedParentIncome(CombinedParentIncomeStatus.NOT_SPECIFIED, None)
+    if any(status == AnnualIncomeStatus.UNKNOWN for status, _ in pairs):
+        return CombinedParentIncome(CombinedParentIncomeStatus.UNKNOWN, None)
 
     total = Decimal("0")
     for status, amount in pairs:
@@ -187,8 +184,8 @@ def combine_parent_annual_income(
 
 
 def classify_parent_annual_income(combined: CombinedParentIncome) -> ParentIncomeBand:
-    if combined.status == CombinedParentIncomeStatus.NOT_SPECIFIED or combined.amount is None:
-        return ParentIncomeBand.NOT_SPECIFIED
+    if combined.status == CombinedParentIncomeStatus.UNKNOWN or combined.amount is None:
+        return ParentIncomeBand.UNKNOWN
     amount = combined.amount
     if amount == 0:
         return ParentIncomeBand.NONE
@@ -306,7 +303,6 @@ SCALAR_FIELDS = (
     "current_religion",
     "current_religion_category",
     "parent_statuses",
-    "parent_status_category",
     "guardian_name",
     "guardian_relationship",
     "guardian_address",
@@ -597,8 +593,6 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
                 raise InvalidInventoryInput(
                     "civil_status detail is required when category is OTHER."
                 )
-        elif civil == CivilStatusCategory.NOT_SPECIFIED:
-            normalized["civil_status"] = ""
         else:
             normalized["civil_status"] = _choice_label(CivilStatusCategory, civil)
 
@@ -611,8 +605,6 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
                 raise InvalidInventoryInput(
                     "current_religion detail is required when category is OTHER."
                 )
-        elif religion == CurrentReligionCategory.NOT_SPECIFIED:
-            normalized["current_religion"] = ""
         else:
             normalized["current_religion"] = _choice_label(CurrentReligionCategory, religion)
 
@@ -625,13 +617,6 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
             raise InvalidInventoryInput(
                 "physical_disadvantage detail is required when pwd_status is PWD."
             )
-        if pwd_status == PWDStatus.NOT_SPECIFIED:
-            normalized["physical_disadvantage"] = ""
-
-    parent_status = normalized.get("parent_status_category")
-    if parent_status is not None:
-        normalized["parent_status_category"] = str(parent_status)
-
     return normalized
 
 
@@ -661,7 +646,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
                     )
             elif status == AnnualIncomeStatus.NONE:
                 row["annual_income_previous_year"] = Decimal("0")
-            elif status in {AnnualIncomeStatus.NOT_SPECIFIED, AnnualIncomeStatus.UNKNOWN}:
+            elif status == AnnualIncomeStatus.UNKNOWN:
                 row["annual_income_previous_year"] = None
 
         occupation_category = row.get("occupation_category")
@@ -677,10 +662,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
                 raise InvalidInventoryInput(
                     "occupation detail is required when occupation_category is OTHER."
                 )
-            if occupation_category in {
-                OccupationCategory.NONE,
-                OccupationCategory.NOT_SPECIFIED,
-            }:
+            if occupation_category == OccupationCategory.NONE:
                 row["occupation"] = ""
 
         normalized.append(row)
@@ -756,9 +738,7 @@ def _normalize_geographic_rows(rows: object) -> list[dict[str, object]]:
         if kind not in GeographicLocationKind.values or kind in seen:
             raise InvalidInventoryInput("Geographic location kind must be unique and supported.")
         seen.add(kind)
-        not_specified = bool(row.get("not_specified", False))
         row["kind"] = kind
-        row["not_specified"] = not_specified
         field_pairs = (
             ("region_psgc_code", "region_name_snapshot", "Region"),
             ("province_psgc_code", "province_name_snapshot", "Province"),
@@ -769,24 +749,15 @@ def _normalize_geographic_rows(rows: object) -> list[dict[str, object]]:
             ),
             ("barangay_psgc_code", "barangay_name_snapshot", "Barangay"),
         )
-        if not_specified:
-            for code_field, name_field, _ in field_pairs:
-                if str(row.get(code_field, "")).strip() or str(row.get(name_field, "")).strip():
-                    raise InvalidInventoryInput(
-                        "A not-specified geographic location cannot contain PSGC values."
-                    )
-                row[code_field] = ""
-                row[name_field] = ""
-        else:
-            for code_field, name_field, label in field_pairs:
-                code, name = _pair(
-                    str(row.get(code_field, "")),
-                    str(row.get(name_field, "")),
-                    label,
-                    required=label in {"Region", "City/Municipality"},
-                )
-                row[code_field] = code
-                row[name_field] = name
+        for code_field, name_field, label in field_pairs:
+            code, name = _pair(
+                str(row.get(code_field, "")),
+                str(row.get(name_field, "")),
+                label,
+                required=label in {"Region", "City/Municipality"},
+            )
+            row[code_field] = code
+            row[name_field] = name
         normalized.append(row)
     return normalized
 
@@ -810,8 +781,6 @@ def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
                         "frequency detail is required when frequency_category is OTHER."
                     )
                 row["frequency"] = detail
-            elif category == TransportationFrequencyCategory.NOT_SPECIFIED:
-                row["frequency"] = ""
             else:
                 row["frequency"] = _choice_label(TransportationFrequencyCategory, category)
         fare = row.get("fare")
@@ -951,7 +920,6 @@ def _validate_draft_consistency(item: StudentInventory, content) -> None:
         )
 
 
-_NOT_SPECIFIED = "NOT_SPECIFIED"
 _ABSENT_LIFE_STATUSES = {ParentLifeStatus.DECEASED, ParentLifeStatus.UNKNOWN}
 
 
@@ -960,9 +928,7 @@ def _blank(value: object) -> bool:
 
 
 def _missing_choice(value: object) -> bool:
-    """A choice is answered only when it names a real option a new submission may give."""
-
-    return _blank(value) or str(value) == _NOT_SPECIFIED
+    return _blank(value)
 
 
 def _is_none_answer(value: object) -> bool:
@@ -1124,20 +1090,15 @@ def _submission_requirements(
         ),
         None,
     )
-    if current_location is None or current_location.not_specified:
+    if current_location is None:
         requirements.append(
             (
-                "geographic_locations.CURRENT.not_specified",
+                "geographic_locations.CURRENT.region_psgc_code",
                 "Choose your current region and city or municipality.",
             )
         )
 
     # Page 1 — family and support.
-    require_choice(
-        "parent_status_category",
-        "Choose your parents' marital status.",
-        item.parent_status_category,
-    )
     if not item.parent_statuses:
         requirements.append(
             ("parent_statuses", "Tick at least one circumstance that applies to your parents.")
@@ -1460,7 +1421,6 @@ def _validate_submission(
             "current_religion": content.current_religion,
             "pwd_status": item.pwd_status,
             "physical_disadvantage": content.physical_disadvantage,
-            "parent_status_category": item.parent_status_category,
         }
     )
     for field in (
@@ -1475,7 +1435,6 @@ def _validate_submission(
             [
                 {
                     "kind": row.kind,
-                    "not_specified": row.not_specified,
                     "region_psgc_code": row.region_psgc_code,
                     "region_name_snapshot": row.region_name_snapshot,
                     "province_psgc_code": row.province_psgc_code,
@@ -1720,8 +1679,7 @@ def _resolve_geography(rows) -> dict[_GeographyKey, _ResolvedGeographyNames]:
     Outbound PSGC HTTP must never run while an Inventory, Student, or Program row is locked.
     """
 
-    specified = [row for row in rows if not row.not_specified]
-    if not specified:
+    if not rows:
         return {}
 
     try:
@@ -1738,7 +1696,7 @@ def _resolve_geography(rows) -> dict[_GeographyKey, _ResolvedGeographyNames]:
     resolved: dict[_GeographyKey, _ResolvedGeographyNames] = {}
 
     try:
-        for row in specified:
+        for row in rows:
             key = _geography_key(row)
             _kind, region_code, province_code, city_code, barangay_code = key
 
@@ -1796,7 +1754,7 @@ def _apply_resolved_geography(
     item: StudentInventory,
     resolved: dict[_GeographyKey, _ResolvedGeographyNames],
 ) -> None:
-    rows = [row for row in item.geographic_locations.all() if not row.not_specified]
+    rows = list(item.geographic_locations.all())
     if {_geography_key(row) for row in rows} != set(resolved):
         raise InventoryConflict(
             "The Inventory locations changed while they were being verified. Submit again."

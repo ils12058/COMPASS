@@ -243,7 +243,7 @@ export const inventoryCorrectionTargets = {
     scope: "answers",
     hintHost: "inventory-current-location",
   }),
-  "personal.permanent_location": answer(personal, "Location details", "Permanent location details", "inventory-permanent-location-choice", {
+  "personal.permanent_location": answer(personal, "Location details", "Permanent location details", "inventory-permanent-region", {
     scope: "answers",
     hintHost: "inventory-permanent-location",
     condition: permanentLocationAdded,
@@ -253,8 +253,7 @@ export const inventoryCorrectionTargets = {
   ...familyTargets("father", "Father"),
   ...familyTargets("mother", "Mother"),
   ...familyTargets("spouse", "Spouse"),
-  "family.parent_status_category": answer(family, "Parent status", "Current parent-status category", "inventory-parent-status-category"),
-  "family.parent_statuses": answer(family, "Parent status", "Additional parent circumstances", "inventory-parent-statuses"),
+  "family.parent_statuses": answer(family, "Parent status", "Parent circumstances", "inventory-parent-statuses"),
   "family.guardian_name": answer(family, "Guardian and emergency contact", "Guardian name", "inventory-guardian-name"),
   "family.guardian_relationship": answer(family, "Guardian and emergency contact", "Relationship with guardian", "inventory-guardian-relationship"),
   "family.guardian_address": answer(family, "Guardian and emergency contact", "Guardian address", "inventory-guardian-address"),

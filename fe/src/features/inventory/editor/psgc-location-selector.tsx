@@ -30,22 +30,13 @@ export function PSGCLocationSelector({
   const prefix = `inventory-${kind.toLowerCase()}`;
   const errorFor = (targetId: string) =>
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
-  // The current location is required, so it is always entered directly; only the optional
-  // permanent location still asks how the Student wants to provide it.
-  const choiceError = permanent ? errorFor(`${prefix}-location-choice`) : undefined;
   const blockReview = useInventoryReview(`${prefix}-location`);
-  const choiceReview = useInventoryReview(`${prefix}-location-choice`);
   const addReview = useInventoryReview(`${prefix}-location-add`);
   // The current location's review hint lives on this whole block; the region select is where the
   // Student is taken, so it also points at the hint.
   const regionReview = useInventoryReview(`${prefix}-region`);
   const regionError = errorFor(`${prefix}-region`);
   const cityError = errorFor(`${prefix}-city`);
-  const mode = !location
-    ? ""
-    : location.not_specified
-      ? "not_specified"
-      : "specified";
   const regions = useReferenceDataListPSGCRegions({ query: { retry: false } });
   const provinces = useReferenceDataListPSGCProvinces(
     { region_code: location?.region_psgc_code ?? "" },
@@ -75,26 +66,11 @@ export function PSGCLocationSelector({
   const cityItems = cities.data?.data.items ?? [];
   const barangayItems = barangays.data?.data.items ?? [];
 
-  function chooseMode(nextMode: string) {
-    if (nextMode === "") {
-      onChange(undefined);
-      return;
-    }
-    if (nextMode === "not_specified") {
-      onChange({ kind, not_specified: true });
-      return;
-    }
-    if (nextMode === "specified") {
-      onChange({ kind, not_specified: false });
-    }
-  }
-
   function chooseRegion(code: string) {
     const selected = regionItems.find((item) => item.code === code);
     if (!selected) return;
     onChange({
       kind,
-      not_specified: false,
       region_psgc_code: selected.code,
       region_name_snapshot: selected.name,
     });
@@ -118,7 +94,6 @@ export function PSGCLocationSelector({
     onChange({
       ...location,
       kind,
-      not_specified: false,
       province_psgc_code: selected.code,
       province_name_snapshot: selected.name,
       city_municipality_psgc_code: undefined,
@@ -134,7 +109,6 @@ export function PSGCLocationSelector({
     onChange({
       ...location,
       kind,
-      not_specified: false,
       city_municipality_psgc_code: selected.code,
       city_municipality_name_snapshot: selected.name,
       barangay_psgc_code: undefined,
@@ -147,7 +121,6 @@ export function PSGCLocationSelector({
     onChange({
       ...location,
       kind,
-      not_specified: false,
       barangay_psgc_code: selected?.code,
       barangay_name_snapshot: selected?.name,
     });
@@ -184,44 +157,18 @@ export function PSGCLocationSelector({
         ) : null}
       </div>
 
-      {!permanent ? (
-        location?.not_specified ? (
-          <InventoryNotice tone="warning" role="status">
-            Your saved answer “Prefer not to specify” is no longer accepted. Choose your current
-            region and city or municipality.
-          </InventoryNotice>
-        ) : null
-      ) : location ? (
-        <div className="max-w-xl">
-          <Label htmlFor={`${prefix}-location-choice`}>
-            How would you like to provide this location?
-          </Label>
-          <Select
-            id={`${prefix}-location-choice`}
-            className="mt-2"
-            value={mode}
-            aria-invalid={choiceError ? true : undefined}
-            aria-describedby={[choiceReview.describedBy, choiceError ? `${prefix}-location-choice-error` : undefined].filter(Boolean).join(" ") || undefined}
-            onChange={(event) => chooseMode(event.target.value)}
-          >
-            <option value="">Choose how to provide this location</option>
-            <option value="specified">Select location details</option>
-            <option value="not_specified">Prefer not to specify</option>
-          </Select>
-          {choiceError ? <p id={`${prefix}-location-choice-error`} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{choiceError}</p> : null}
-        </div>
-      ) : (
+      {permanent && !location ? (
         <Button
           id={`${prefix}-location-add`}
           variant="secondary"
           aria-describedby={addReview.describedBy}
-          onClick={() => onChange({ kind, not_specified: true })}
+          onClick={() => onChange({ kind })}
         >
           Add permanent location details
         </Button>
-      )}
+      ) : null}
 
-      {!permanent || mode === "specified" ? (
+      {!permanent || location ? (
         <>
           {hasLookupFailure ? (
             <InventoryNotice tone="warning" role="status">
@@ -347,10 +294,6 @@ export function PSGCLocationSelector({
                     : ""}
           </p>
         </>
-      ) : mode === "not_specified" ? (
-        <p className="text-sm text-muted">
-          Your response will be recorded as “Prefer not to specify.”
-        </p>
       ) : null}
     </section>
   );

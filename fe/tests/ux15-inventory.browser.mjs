@@ -16,9 +16,9 @@ function fixture({ incomplete = false, submitted = false } = {}) {
     correction_pending: false, latest_correction: null, submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, first_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, last_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null,
     full_name: "Synthetic Student", student_number: "SYNTHETIC-01", sex: incomplete ? null : "FEMALE", date_of_birth: "2005-01-15",
     civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000",
-    geographic_locations: [{ kind: "CURRENT", not_specified: true }], parent_status_category: "MARRIED",
+    geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }], parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
     support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
-    family_members: [{ kind: "FATHER", occupation_category: "FARMER", annual_income_status: "NOT_SPECIFIED" }, { kind: "MOTHER", occupation_category: "NONE", annual_income_status: "NONE" }],
+    family_members: [{ kind: "FATHER", occupation_category: "FARMER", annual_income_status: "UNKNOWN" }, { kind: "MOTHER", occupation_category: "NONE", annual_income_status: "NONE" }],
     living_arrangement: "OWN_HOUSE", pwd_status: "NON_PWD", year_level: 2, siblings: [], organization_memberships: [], transportation_entries: [],
   };
   const state = { writes: [], submissions: 0, failSave: false, holdSave: null, holdSubmit: null };

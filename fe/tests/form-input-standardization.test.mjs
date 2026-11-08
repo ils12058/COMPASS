@@ -221,16 +221,16 @@ test("a Reported income must be greater than ₱0 before saving or submitting", 
   assert.deepEqual(getInventoryDraftIssues({ ...baseDraft, family_members: [income("FATHER", "REPORTED", "150000.50")] }), []);
 });
 
-test("None and Not specified stay distinct from zero and from a missing answer", () => {
+test("None and Unknown stay distinct from zero and from a missing answer", () => {
   const draft = {
     ...baseDraft,
-    family_members: [income("FATHER", "NONE", "0.00"), income("MOTHER", "NOT_SPECIFIED", null), income("SPOUSE", "REPORTED", "98000")],
+    family_members: [income("FATHER", "NONE", "0.00"), income("MOTHER", "UNKNOWN", null), income("SPOUSE", "REPORTED", "98000")],
   };
   assert.deepEqual(getInventoryDraftIssues(draft), []);
   const normalized = normalizeInventoryPayload(draft).family_members;
   assert.deepEqual(normalized.map((member) => [member.kind, member.annual_income_status, member.annual_income_previous_year]), [
     ["FATHER", "NONE", null],
-    ["MOTHER", "NOT_SPECIFIED", null],
+    ["MOTHER", "UNKNOWN", null],
     ["SPOUSE", "REPORTED", "98000"],
   ]);
   const missing = getInventorySubmissionIssues({ ...baseDraft, family_members: [{ kind: "FATHER", occupation_category: "FARMER" }] }, undefined);

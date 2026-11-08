@@ -13,20 +13,17 @@ class FourPsStatus(models.TextChoices):
     BENEFICIARY = "BENEFICIARY", "4Ps household beneficiary"
     NOT_BENEFICIARY = "NOT_BENEFICIARY", "Not a 4Ps household beneficiary"
     NOT_SURE = "NOT_SURE", "Not sure"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class IndigenousPeoplesStatus(models.TextChoices):
     MEMBER = "MEMBER", "Indigenous Peoples member"
     NOT_MEMBER = "NOT_MEMBER", "Not an Indigenous Peoples member"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class ParentLifeStatus(models.TextChoices):
     LIVING = "LIVING", "Living"
     DECEASED = "DECEASED", "Deceased"
     UNKNOWN = "UNKNOWN", "Unknown"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class StudentSupportProfile(models.Model):

@@ -21,8 +21,6 @@ from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from .filenames import safe_report_filename_part
 from .services import (
     HISTORICAL_ALIGNMENT_NOTE,
-    LEGACY_KEY,
-    LEGACY_LABEL,
     PARENT_INCOME_LEGEND_NOTE,
     PLACEMENT_PRECEDENCE_NOTE,
     ReportAccessScope,
@@ -48,8 +46,6 @@ MAX_CROSS_TAB_PROGRAMS = 5
 # Tables with at most this many body rows are kept on one page. Longer tables may break between
 # complete rows and repeat their column headers on the next page.
 SHORT_TABLE_ROWS = 18
-
-UNCLASSIFIED_GROUP_CODE = "Unclassified / Legacy"
 
 # Presentation order and print titles. Canonical section keys and data are unchanged.
 SECTION_SPECS = {
@@ -117,7 +113,6 @@ class _Program:
     code: str
     name: str
     total: int
-    is_legacy: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +121,6 @@ class _Group:
     name: str
     campus: str
     programs: tuple[_Program, ...]
-    is_unclassified: bool
 
     @property
     def total(self) -> int:
@@ -245,14 +239,16 @@ def _programs(raw_columns: object, population: int) -> list[_Program]:
         if not key or key in seen:
             raise _unavailable("Program-column identity is inconsistent.")
         seen.add(key)
-        is_legacy = bool(column.get("is_legacy"))
+        code = str(column.get("code") or "").strip()
+        name = str(column.get("name") or "").strip()
+        if not code or not name:
+            raise _unavailable("Program-column identity is incomplete.")
         programs.append(
             _Program(
                 key=key,
-                code=str(column.get("code") or "").strip(),
-                name=str(column.get("name") or "").strip() or LEGACY_LABEL,
+                code=code,
+                name=name,
                 total=_require_count(column.get("submitted_inventory_count"), "Program population"),
-                is_legacy=is_legacy,
             )
         )
     if sum(program.total for program in programs) != population:
@@ -267,21 +263,13 @@ def _groups(raw_columns: object, programs: list[_Program]) -> list[_Group]:
 
     by_key = {program.key: program for program in programs}
     ordered: dict[str, dict[str, object]] = {}
-    unclassified: list[_Program] = []
     for raw in _require_list(raw_columns, "Program columns"):
         column = _require_dict(raw, "Program column")
         program = by_key[str(column["key"])]
-        college = column.get("college")
-        if program.is_legacy or college is None:
-            unclassified.append(program)
-            continue
-        college = _require_dict(college, "Program College")
-        campus = column.get("campus")
-        campus_name = campus_code = ""
-        if campus is not None:
-            campus = _require_dict(campus, "Program Campus")
-            campus_name = str(campus.get("name") or "").strip()
-            campus_code = str(campus.get("code") or "").strip()
+        college = _require_dict(column.get("college"), "Program College")
+        campus = _require_dict(column.get("campus"), "Program Campus")
+        campus_name = str(campus.get("name") or "").strip()
+        campus_code = str(campus.get("code") or "").strip()
         group = ordered.setdefault(
             str(college.get("id")),
             {
@@ -308,20 +296,9 @@ def _groups(raw_columns: object, programs: list[_Program]) -> list[_Group]:
             name=str(item["name"]),
             campus=str(item["campus"]),
             programs=tuple(item["programs"]),
-            is_unclassified=False,
         )
         for item in ordered.values()
     ]
-    if unclassified:
-        groups.append(
-            _Group(
-                code=UNCLASSIFIED_GROUP_CODE,
-                name="Inventories without a recorded Program",
-                campus="",
-                programs=tuple(unclassified),
-                is_unclassified=True,
-            )
-        )
     return groups
 
 
@@ -363,10 +340,11 @@ def _section_rows(
             program_sums[key] += count
         row_sum += total
         rows.append({**row, "lookup": lookup})
-    if row_sum != population:
+    multi_response = section_key == "parent_family_status"
+    if not multi_response and row_sum != population:
         raise _unavailable(f"{section_key} rows do not sum to the profile population.")
     for program in programs:
-        if program_sums[program.key] != program.total:
+        if not multi_response and program_sums[program.key] != program.total:
             raise _unavailable(f"{section_key} counts do not reconcile to the Program population.")
     return rows
 
@@ -403,12 +381,6 @@ def _row_label(section_key: str, row: dict[str, object], *, with_province: bool)
     if section_key == "city_municipality" and with_province and row.get("province_name"):
         return f"{label}, {row['province_name']}"
     return label
-
-
-def _is_printed_overall(row: dict[str, object]) -> bool:
-    # Every controlled response is printed, even at zero, so the full option set is visible.
-    # Not recorded / legacy is not a response option and is printed only when it occurs.
-    return str(row["key"]) != LEGACY_KEY or int(row["total_count"]) > 0
 
 
 def _income_bracket_rows() -> list[dict[str, object]]:
@@ -769,7 +741,7 @@ def _college_summary_table(groups: list[_Group], population: int) -> dict[str, o
         rows.append(
             _row(
                 [
-                    _cell(group.code if group.is_unclassified else f"{group.code} — {group.name}"),
+                    _cell(f"{group.code} — {group.name}"),
                     _cell(group.campus or "—"),
                     _cell(_count_text(len(group.programs)), numeric=True),
                     _cell(_count_text(group.total), numeric=True),
@@ -799,13 +771,7 @@ def _college_summary_table(groups: list[_Group], population: int) -> dict[str, o
             _column("% of Population", "15%", numeric=True),
         ],
         rows=rows,
-        notes=[
-            "Colleges are taken from the Program recorded on each Inventory. Inventories without "
-            "a recorded Program are listed as Unclassified / Legacy and are not attributed to a "
-            "College."
-        ]
-        if any(group.is_unclassified for group in groups)
-        else [],
+        notes=[],
     )
 
 
@@ -852,15 +818,7 @@ def _methodology(
                 "Ages are listed individually, without overlapping groups."
             ),
         },
-        {
-            "term": "Not specified and legacy values",
-            "text": (
-                "Not specified means the Student chose that response. Not recorded / legacy means "
-                "the structured value is missing, usually because an older Inventory predates "
-                "structured capture; it is never treated as a Student response. A Not recorded / "
-                "legacy row is printed only when at least one Inventory lacks the value."
-            ),
-        },
+        {"term": "Parent family status", "text": "Students may tick more than one."},
         {
             "term": "Residence",
             "text": (
@@ -897,8 +855,6 @@ def _overall_table(
     is_geography = section_key == "city_municipality"
     body: list[dict[str, object]] = []
     for row in rows:
-        if not _is_printed_overall(row):
-            continue
         cells = [_cell(_row_label(section_key, row, with_province=False))]
         if is_geography:
             cells.append(_cell(row.get("province_name") or "—"))
@@ -940,14 +896,11 @@ def _overall_table(
         ),
         columns=columns,
         rows=body,
+        notes=["Students may tick more than one."] if section_key == "parent_family_status" else [],
     )
 
 
 def _group_population_note(group: _Group) -> str:
-    if group.is_unclassified:
-        return (
-            f"Population: Inventories without a recorded Program (n = {_count_text(group.total)})"
-        )
     if len(group.programs) == 1:
         return (
             f"College population: n = {_count_text(group.total)} "
@@ -980,7 +933,7 @@ def _cross_tab_table(
     columns = [_column(category_header, f"{category_width}%")]
     columns.extend(
         _column(
-            "Inventories" if program.is_legacy else program.code or program.name,
+            program.code,
             numeric_width,
             numeric=True,
         )
@@ -990,7 +943,7 @@ def _cross_tab_table(
         columns.append(_column(f"{group.code} Total", numeric_width, numeric=True))
     columns.append(
         _column(
-            "% of group" if group.is_unclassified else f"% of {group.code}",
+            f"% of {group.code}",
             numeric_width,
             numeric=True,
         )
@@ -1127,11 +1080,7 @@ def _program_population_table(groups: list[_Group], population: int) -> dict[str
                 _row(
                     [
                         _cell(group.code),
-                        _cell(
-                            "No Program recorded"
-                            if program.is_legacy
-                            else f"{program.code} — {program.name}"
-                        ),
+                        _cell(f"{program.code} — {program.name}"),
                         _cell(_count_text(program.total), numeric=True),
                         _cell(
                             _percentage_text(calculate_percentage(program.total, population)),
@@ -1214,45 +1163,35 @@ def _appendix_groups(
                     )
                 )
 
-        if group.is_unclassified:
-            heading = f"A{group_index}. Unclassified / Legacy — Inventories without a Program"
-            summary = f"Submitted Inventories: n = {_count_text(group.total)}"
+        heading = f"A{group_index}. {group.code} — {group.name}"
+        summary = " · ".join(
+            part
+            for part in (
+                group.campus,
+                f"Submitted Inventories: n = {_count_text(group.total)}",
+                "Programs: "
+                + "; ".join(
+                    f"{program.code} ({_count_text(program.total)})" for program in group.programs
+                ),
+            )
+            if part
+        )
+        if long_form:
             notes = [
-                "These submitted Inventories have no recorded Program, usually because they "
-                "predate structured Program capture. They remain in the profile population but "
-                "are not attributed to any College or Program."
+                f"{group.code} has {len(group.programs)} Programs, more than fit across an "
+                "A4 page, so each distribution prints as a College total followed by a "
+                "long-form table with one row per Program and category."
+            ]
+        elif len(group.programs) == 1:
+            notes = [
+                f"% of {group.code} uses the College population (n = "
+                f"{_count_text(group.total)}) as its denominator."
             ]
         else:
-            heading = f"A{group_index}. {group.code} — {group.name}"
-            summary = " · ".join(
-                part
-                for part in (
-                    group.campus,
-                    f"Submitted Inventories: n = {_count_text(group.total)}",
-                    "Programs: "
-                    + "; ".join(
-                        f"{program.code} ({_count_text(program.total)})"
-                        for program in group.programs
-                    ),
-                )
-                if part
-            )
-            if long_form:
-                notes = [
-                    f"{group.code} has {len(group.programs)} Programs, more than fit across an "
-                    "A4 page, so each distribution prints as a College total followed by a "
-                    "long-form table with one row per Program and category."
-                ]
-            elif len(group.programs) == 1:
-                notes = [
-                    f"% of {group.code} uses the College population (n = "
-                    f"{_count_text(group.total)}) as its denominator."
-                ]
-            else:
-                notes = [
-                    f"Program columns sum to the {group.code} Total; % of {group.code} uses the "
-                    f"College population (n = {_count_text(group.total)}) as its denominator."
-                ]
+            notes = [
+                f"Program columns sum to the {group.code} Total; % of {group.code} uses the "
+                f"College population (n = {_count_text(group.total)}) as its denominator."
+            ]
         notes.append("Categories with no responses in this group are not listed.")
         appendix.append(
             {
@@ -1311,8 +1250,8 @@ def _executive_summary(
     else:
         raise _unavailable("coverage mode is unsupported.")
 
-    recorded_colleges = sum(not group.is_unclassified for group in groups)
-    recorded_programs = sum(not program.is_legacy for program in programs)
+    recorded_colleges = len(groups)
+    recorded_programs = len(programs)
     rows = [
         _row(
             [
@@ -1340,11 +1279,6 @@ def _executive_summary(
                 ]
             )
         )
-        if any(group.is_unclassified for group in groups):
-            notes.append(
-                "Recorded classification totals exclude Unclassified / Legacy Inventories, "
-                "which are not assigned to a College or Program."
-            )
     return _table(
         title="Executive Summary",
         columns=[_column("Indicator", "30%"), _column("Value", "70%")],

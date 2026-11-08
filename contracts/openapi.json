@@ -1474,8 +1474,7 @@
         "enum": [
           "REPORTED",
           "NONE",
-          "UNKNOWN",
-          "NOT_SPECIFIED"
+          "UNKNOWN"
         ],
         "title": "AnnualIncomeStatusValue",
         "type": "string"
@@ -5944,8 +5943,7 @@
           "SINGLE",
           "MARRIED",
           "SOLO_PARENT",
-          "OTHER",
-          "NOT_SPECIFIED"
+          "OTHER"
         ],
         "title": "CivilStatusCategoryValue",
         "type": "string"
@@ -8776,16 +8774,6 @@
             "title": "Other Skills Hobbies",
             "type": "string"
           },
-          "parent_status_category": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ParentStatusCategoryValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "parent_statuses": {
             "items": {
               "$ref": "#/components/schemas/ParentStatusValue"
@@ -10160,8 +10148,7 @@
           "BAPTIST",
           "PMCC",
           "NONE",
-          "OTHER",
-          "NOT_SPECIFIED"
+          "OTHER"
         ],
         "title": "CurrentReligionCategoryValue",
         "type": "string"
@@ -14662,8 +14649,7 @@
         "enum": [
           "BENEFICIARY",
           "NOT_BENEFICIARY",
-          "NOT_SURE",
-          "NOT_SPECIFIED"
+          "NOT_SURE"
         ],
         "title": "FourPsStatusValue",
         "type": "string"
@@ -15032,15 +15018,8 @@
         "additionalProperties": false,
         "properties": {
           "city_municipality_psgc_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City Municipality Psgc Code"
+            "title": "City Municipality Psgc Code",
+            "type": "string"
           },
           "key": {
             "title": "Key",
@@ -15091,26 +15070,12 @@
             "title": "Province Psgc Code"
           },
           "region_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Region Name"
+            "title": "Region Name",
+            "type": "string"
           },
           "region_psgc_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Region Psgc Code"
+            "title": "Region Psgc Code",
+            "type": "string"
           },
           "total_count": {
             "title": "Total Count",
@@ -15197,11 +15162,6 @@
           },
           "kind": {
             "$ref": "#/components/schemas/GeographicLocationKindValue"
-          },
-          "not_specified": {
-            "default": false,
-            "title": "Not Specified",
-            "type": "boolean"
           },
           "province_name_snapshot": {
             "default": "",
@@ -21026,8 +20986,7 @@
       "IndigenousPeoplesStatusValue": {
         "enum": [
           "MEMBER",
-          "NOT_MEMBER",
-          "NOT_SPECIFIED"
+          "NOT_MEMBER"
         ],
         "title": "IndigenousPeoplesStatusValue",
         "type": "string"
@@ -21144,7 +21103,6 @@
           "family.spouse.languages_spoken",
           "family.spouse.religion_raised_with",
           "family.spouse.current_religion",
-          "family.parent_status_category",
           "family.parent_statuses",
           "family.guardian_name",
           "family.guardian_relationship",
@@ -21791,16 +21749,6 @@
             "default": "",
             "title": "Other Skills Hobbies",
             "type": "string"
-          },
-          "parent_status_category": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ParentStatusCategoryValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "parent_statuses": {
             "items": {
@@ -22539,16 +22487,6 @@
             "default": "",
             "title": "Other Skills Hobbies",
             "type": "string"
-          },
-          "parent_status_category": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ParentStatusCategoryValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "parent_statuses": {
             "items": {
@@ -24352,8 +24290,7 @@
           "SELF_EMPLOYED",
           "OFW",
           "NONE",
-          "OTHER",
-          "NOT_SPECIFIED"
+          "OTHER"
         ],
         "title": "OccupationCategoryValue",
         "type": "string"
@@ -24850,8 +24787,7 @@
       "PWDStatusValue": {
         "enum": [
           "PWD",
-          "NON_PWD",
-          "NOT_SPECIFIED"
+          "NON_PWD"
         ],
         "title": "PWDStatusValue",
         "type": "string"
@@ -24860,29 +24796,9 @@
         "enum": [
           "LIVING",
           "DECEASED",
-          "UNKNOWN",
-          "NOT_SPECIFIED"
+          "UNKNOWN"
         ],
         "title": "ParentLifeStatusValue",
-        "type": "string"
-      },
-      "ParentStatusCategoryValue": {
-        "enum": [
-          "MARRIED",
-          "ANNULLED",
-          "LEGALLY_SEPARATED",
-          "TEMPORARILY_SEPARATED",
-          "PERMANENTLY_SEPARATED",
-          "LIVING_TOGETHER",
-          "WIDOWED",
-          "MOTHER_WITH_OTHER_PARTNER",
-          "FATHER_WITH_OTHER_PARTNER",
-          "MOTHER_OFW",
-          "FATHER_OFW",
-          "OTHER",
-          "NOT_SPECIFIED"
-        ],
-        "title": "ParentStatusCategoryValue",
         "type": "string"
       },
       "ParentStatusValue": {
@@ -25568,39 +25484,14 @@
         "additionalProperties": false,
         "properties": {
           "campus": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/OrganizationReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/OrganizationReference"
           },
           "code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Code"
+            "title": "Code",
+            "type": "string"
           },
           "college": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/OrganizationReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "is_legacy": {
-            "title": "Is Legacy",
-            "type": "boolean"
+            "$ref": "#/components/schemas/OrganizationReference"
           },
           "key": {
             "title": "Key",
@@ -25611,16 +25502,9 @@
             "type": "string"
           },
           "program_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Program Id"
+            "format": "uuid",
+            "title": "Program Id",
+            "type": "string"
           },
           "submitted_inventory_count": {
             "title": "Submitted Inventory Count",
@@ -25634,8 +25518,7 @@
           "name",
           "submitted_inventory_count",
           "college",
-          "campus",
-          "is_legacy"
+          "campus"
         ],
         "title": "ProgramColumn",
         "type": "object"
@@ -31982,8 +31865,7 @@
           "SEVERAL_TIMES_A_WEEK",
           "WEEKLY",
           "OCCASIONAL",
-          "OTHER",
-          "NOT_SPECIFIED"
+          "OTHER"
         ],
         "title": "TransportationFrequencyCategoryValue",
         "type": "string"

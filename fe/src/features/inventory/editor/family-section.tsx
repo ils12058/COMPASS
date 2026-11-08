@@ -12,7 +12,6 @@ import {
   indigenousOptions,
   occupationOptions,
   parentLifeOptions,
-  parentStatusCategoryOptions,
   parentStatusOptions,
 } from "@/features/inventory/inventory-presentation";
 import { familyMemberTextLimits, inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
@@ -123,20 +122,10 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
       </FieldGroup>
 
       <FieldGroup legend="Parent status">
-        <div className="grid gap-5 @2xl/inventory:grid-cols-2">
-          <SelectField
-            id="inventory-parent-status-category"
-            error={errorFor("inventory-parent-status-category")}
-            label="Current parent-status category"
-            value={draft.parent_status_category}
-            options={parentStatusCategoryOptions}
-            onChange={(value) => onChange({ parent_status_category: value })}
-            required
-            hint="This answer describes your current situation."
-          />
+        <div className="max-w-3xl">
           <CheckboxGroupField
             id="inventory-parent-statuses"
-            legend="Additional parent circumstances"
+            legend="Parent circumstances"
             value={draft.parent_statuses}
             options={parentStatusOptions}
             onChange={(values) => onChange({ parent_statuses: values })}
@@ -313,9 +302,7 @@ function FamilyMemberFields({
   function changeOccupationCategory(value: OccupationCategoryValue | null) {
     onChange({
       occupation_category: value,
-      ...(value === OccupationCategoryValue.NONE || value === OccupationCategoryValue.NOT_SPECIFIED
-        ? { occupation: "" }
-        : {}),
+      ...(value === OccupationCategoryValue.NONE ? { occupation: "" } : {}),
     });
   }
 
@@ -360,8 +347,7 @@ function FamilyMemberFields({
           required={required}
         />
         {member.occupation_category &&
-        member.occupation_category !== OccupationCategoryValue.NONE &&
-        member.occupation_category !== OccupationCategoryValue.NOT_SPECIFIED ? (
+        member.occupation_category !== OccupationCategoryValue.NONE ? (
           <TextField
             id={`${prefix}-occupation`}
             label="Occupation details"

@@ -220,11 +220,11 @@ const student = { ...base, capabilities: [...base.capabilities, "inventory.view_
 const answers = {
   full_name: "Maria Santos", student_number: "TEST-01", sex: "FEMALE", date_of_birth: "2005-01-15",
   civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000",
-  geographic_locations: [{ kind: "CURRENT", not_specified: true }],
-  parent_status_category: "MARRIED",
+  geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }],
+  parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
   support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
   family_members: [
-    { kind: "FATHER", occupation_category: "FARMER", annual_income_status: "NOT_SPECIFIED", email_address: "father@example.test" },
+    { kind: "FATHER", occupation_category: "FARMER", annual_income_status: "UNKNOWN", email_address: "father@example.test" },
     { kind: "MOTHER", occupation_category: "NONE", annual_income_status: "NONE" },
   ],
   living_arrangement: "OWN_HOUSE", pwd_status: "NON_PWD", year_level: 2,

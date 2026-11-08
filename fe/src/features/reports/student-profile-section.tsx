@@ -7,7 +7,6 @@ import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { formatReportPercentage, reportProgramName, reportSection } from "@/features/reports/reports-shared";
 
 function programContext(program: ProgramColumn): string {
-  if (program.is_legacy) return "Legacy Program identity";
   return [
     program.college
       ? "College: " + program.college.code + " — " + program.college.name

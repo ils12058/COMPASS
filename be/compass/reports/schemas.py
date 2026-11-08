@@ -47,13 +47,12 @@ class ReportScopeResponse(StrictSchema):
 
 class ProgramColumn(StrictSchema):
     key: str
-    program_id: UUID | None
-    code: str | None
+    program_id: UUID
+    code: str
     name: str
     submitted_inventory_count: int
-    college: OrganizationReference | None
-    campus: OrganizationReference | None
-    is_legacy: bool
+    college: OrganizationReference
+    campus: OrganizationReference
 
 
 class ProgramCount(StrictSchema):
@@ -82,11 +81,11 @@ class DistributionSection(StrictSchema):
 
 
 class GeographicDistributionRow(DistributionRow):
-    city_municipality_psgc_code: str | None
+    city_municipality_psgc_code: str
     province_psgc_code: str | None
     province_name: str | None
-    region_psgc_code: str | None
-    region_name: str | None
+    region_psgc_code: str
+    region_name: str
 
 
 class GeographicDistributionSection(StrictSchema):

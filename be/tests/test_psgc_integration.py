@@ -170,19 +170,6 @@ def test_psgc_client_handles_pagination_and_cache_without_token_in_cache_key(mon
     assert "do-not-cache-this-token" not in service._cache_key("regions", {})
 
 
-def test_psgc_client_accepts_legacy_psgc_code_field():
-    item = client()._normalize_row(
-        {
-            "psgc_code": "0500000000",
-            "area_name": "Region V",
-            "geographic_level": "Reg",
-            "reg": 5,
-        }
-    )
-
-    assert (item.code, item.name) == ("0500000000", "Region V")
-
-
 def test_psgc_transport_and_invalid_payload_errors_are_sanitized(monkeypatch):
     service = client(token="super-secret-token")
 

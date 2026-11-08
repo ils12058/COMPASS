@@ -5,14 +5,11 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
-from django.utils import timezone
 
 from compass.inventory.correction_targets import InventoryCorrectionTarget as T
-from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     InvalidInventoryInput,
     ensure_current_inventory,
-    get_my_inventory_history_item,
     reopen_inventory_for_correction,
     replace_current_inventory,
     submit_current_inventory,
@@ -22,11 +19,9 @@ from compass.student_support.models import (
     IndigenousPeoplesStatus,
     ParentLifeStatus,
 )
-from tests.inventory_encryption_helpers import update_inventory_row
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 from tests.test_inventory_counselor_review import (
     affiliate,
-    auth_client,
     configure_year,
     context,
     make_head,
@@ -59,83 +54,6 @@ def make_draft(code: str) -> tuple[object, object]:
         values=minimum_normalized_inventory_values(program_id=program.pk),
     )
     return student, program
-
-
-# --- Change A: NOT_SPECIFIED is draft-only ---------------------------------------------------
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("path", "not_specified", "message"),
-    [
-        (("civil_status_category",), "NOT_SPECIFIED", "Choose your civil status."),
-        (("current_religion_category",), "NOT_SPECIFIED", "Choose your current religion."),
-        (("pwd_status",), "NOT_SPECIFIED", "Choose your PWD status."),
-        (("parent_status_category",), "NOT_SPECIFIED", "Choose your parents' marital status."),
-        (
-            ("family_members", 0, "occupation_category"),
-            "NOT_SPECIFIED",
-            "Choose your father's occupation.",
-        ),
-        (
-            ("family_members", 1, "annual_income_status"),
-            "NOT_SPECIFIED",
-            "Choose your mother's annual income.",
-        ),
-        (
-            ("transportation_entries", 0, "frequency_category"),
-            "NOT_SPECIFIED",
-            "Choose how often you use each selected mode",
-        ),
-        (
-            ("support_profile", "four_ps_status"),
-            "NOT_SPECIFIED",
-            "Choose your 4Ps status.",
-        ),
-        (
-            ("support_profile", "indigenous_peoples_status"),
-            "NOT_SPECIFIED",
-            "Choose whether you are an Indigenous Peoples member.",
-        ),
-        (
-            ("support_profile", "mother_life_status"),
-            "NOT_SPECIFIED",
-            "Choose whether your mother is living",
-        ),
-        (
-            ("support_profile", "father_life_status"),
-            "NOT_SPECIFIED",
-            "Choose whether your father is living",
-        ),
-    ],
-)
-def test_not_specified_is_saved_in_a_draft_but_rejected_at_first_submission(
-    path, not_specified, message
-):
-    student, program = make_draft("notspec")
-    values = minimum_normalized_inventory_values(program_id=program.pk)
-    if path[0] == "transportation_entries":
-        values["transportation_entries"] = [
-            {
-                "mode": "TRICYCLE",
-                "frequency_category": "DAILY",
-                "frequency": "Daily",
-                "fare": "10.00",
-            }
-        ]
-    set_path(values, path, not_specified)
-
-    # Drafts stay incomplete: saving never applies the submission rules.
-    item = replace_current_inventory(student=student, values=values)
-    if path == ("pwd_status",):
-        # A legacy draft can carry a detail snapshot while the category is NOT_SPECIFIED.
-        update_inventory_row(
-            StudentInventory.objects.filter(pk=item.pk),
-            physical_disadvantage="Legacy physical disadvantage detail",
-        )
-
-    with pytest.raises(InvalidInventoryInput, match=message):
-        submit_current_inventory(student=student, context=context(student))
 
 
 @pytest.mark.django_db
@@ -333,62 +251,6 @@ def test_a_none_accident_and_operation_answer_needs_no_effect():
     replace_current_inventory(student=student, values=values)
     submitted = submit_current_inventory(student=student, context=context(student))
     assert submitted.submitted_at is not None
-
-
-# --- Historical records and corrections ------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_legacy_not_specified_submission_still_reads_and_renders_its_pdf():
-    sync_policy()
-    admin = make_user("formreq-legacy-admin@example.edu", "IT_ADMIN")
-    student = make_user("formreq-legacy-student@example.edu", "STUDENT")
-    configure_year(admin)
-    _, _, program = make_org("LEGACY")
-    affiliate(student, program.college)
-    ensure_current_inventory(student=student, context=context(student))
-    values = minimum_normalized_inventory_values(program_id=program.pk)
-    values.update(
-        civil_status_category="NOT_SPECIFIED",
-        civil_status="",
-        current_religion_category="NOT_SPECIFIED",
-        current_religion="",
-        pwd_status="NOT_SPECIFIED",
-        physical_disadvantage="",
-        parent_status_category="NOT_SPECIFIED",
-    )
-    values["family_members"][0].update(
-        occupation_category="NOT_SPECIFIED", annual_income_status="NOT_SPECIFIED"
-    )
-    values["transportation_entries"] = [
-        {
-            "mode": "TRICYCLE",
-            "frequency_category": "NOT_SPECIFIED",
-            "frequency": "",
-            "fare": "10.00",
-        }
-    ]
-    values["support_profile"].update(
-        four_ps_status="NOT_SPECIFIED",
-        indigenous_peoples_status="NOT_SPECIFIED",
-        mother_life_status="NOT_SPECIFIED",
-        father_life_status="NOT_SPECIFIED",
-    )
-    item = replace_current_inventory(student=student, values=values)
-    StudentInventory.objects.filter(pk=item.pk).update(
-        submitted_at=timezone.now(), first_submitted_at=timezone.now()
-    )
-
-    historical = get_my_inventory_history_item(student=student, inventory_id=item.pk)
-    assert historical.civil_status_category == "NOT_SPECIFIED"
-    assert historical.current_religion_category == "NOT_SPECIFIED"
-    assert historical.pwd_status == "NOT_SPECIFIED"
-    assert historical.parent_status_category == "NOT_SPECIFIED"
-    assert historical.support_profile.four_ps_status == "NOT_SPECIFIED"
-
-    response = auth_client(student).get(f"/api/v1/inventory/me/{item.pk}/pdf")
-    assert response.status_code == 200
-    assert response.content.startswith(b"%PDF")
 
 
 @pytest.mark.django_db

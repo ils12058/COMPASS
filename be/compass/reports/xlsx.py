@@ -206,27 +206,21 @@ def _program_display_columns(program_columns: object) -> list[dict[str, object]]
         key = str(column["key"])
         code = str(column.get("code") or "").strip()
         name = str(column.get("name") or "").strip()
-        college = column.get("college")
-        campus = column.get("campus")
-        is_legacy = bool(column.get("is_legacy"))
-
-        college_dict = None if college is None else _require_dict(college, "Program College")
-        campus_dict = None if campus is None else _require_dict(campus, "Program Campus")
-
-        if is_legacy:
-            display_label = name or "Not recorded / legacy"
-        elif code:
-            display_label = code
-            if code_counts.get(code, 0) > 1:
-                context_codes = [
-                    str(parent.get("code") or "").strip()
-                    for parent in (college_dict, campus_dict)
-                    if parent is not None and str(parent.get("code") or "").strip()
-                ]
-                if context_codes:
-                    display_label = f"{code} ({' / '.join(context_codes)})"
-        else:
-            display_label = name or "Program"
+        if not code or not name:
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling Program-column identity is incomplete."
+            )
+        college_dict = _require_dict(column.get("college"), "Program College")
+        campus_dict = _require_dict(column.get("campus"), "Program Campus")
+        display_label = code
+        if code_counts.get(code, 0) > 1:
+            context_codes = [
+                str(parent.get("code") or "").strip()
+                for parent in (college_dict, campus_dict)
+                if str(parent.get("code") or "").strip()
+            ]
+            if context_codes:
+                display_label = f"{code} ({' / '.join(context_codes)})"
 
         submitted = column.get("submitted_inventory_count")
         if type(submitted) is not int or submitted < 0:
@@ -239,11 +233,10 @@ def _program_display_columns(program_columns: object) -> list[dict[str, object]]
                 "display_label": display_label,
                 "submitted_inventory_count": submitted,
                 "code": code,
-                "name": name or ("Not recorded / legacy" if is_legacy else "Program"),
-                "college": _organization_display(college_dict, "") if college_dict else "",
-                "campus": _organization_display(campus_dict, "") if campus_dict else "",
-                "is_legacy": is_legacy,
-                "college_id": str(college_dict["id"]) if college_dict else None,
+                "name": name,
+                "college": _organization_display(college_dict, ""),
+                "campus": _organization_display(campus_dict, ""),
+                "college_id": str(college_dict["id"]),
             }
         )
     return display_columns
@@ -637,11 +630,9 @@ def _build_summary_sheet(
 
     if population > 0:
         college_ids = {
-            str(program["college_id"])
-            for program in program_columns
-            if not program["is_legacy"] and program.get("college_id")
+            str(program["college_id"]) for program in program_columns if program.get("college_id")
         }
-        represented_programs = sum(not program["is_legacy"] for program in program_columns)
+        represented_programs = len(program_columns)
         _write_text(worksheet, row, 1, "Recorded Colleges represented", bold=True, wrap=True)
         _write_table_number(worksheet, row, 2, len(college_ids), number_format="#,##0")
         worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
@@ -717,7 +708,6 @@ def _build_summary_sheet(
         "Program Name",
         "College",
         "Campus",
-        "Legacy",
         "Submitted Inventories",
     ]
     _write_table_header(worksheet, row, legend_headers)
@@ -729,14 +719,13 @@ def _build_summary_sheet(
             program["name"],
             program["college"],
             program["campus"],
-            "Yes" if program["is_legacy"] else "No",
         ]
         for column, value in enumerate(values, start=1):
             _write_table_text(worksheet, row, column, value)
         _write_table_number(
             worksheet,
             row,
-            7,
+            6,
             int(program["submitted_inventory_count"]),
             number_format="#,##0",
         )
@@ -861,6 +850,13 @@ def _build_section_sheet(
         )
         if section_key == "parent_annual_income":
             _write_income_legend(worksheet, worksheet.max_row + 2)
+        if section_key == "parent_family_status":
+            _write_text(
+                worksheet,
+                worksheet.max_row + 2,
+                1,
+                "Students may tick more than one.",
+            )
 
     base_offset = 3 if is_geography else 1
     _set_capped_width(worksheet, 1, minimum=25, maximum=35)

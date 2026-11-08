@@ -61,7 +61,6 @@ from .models import (
     OccupationCategory,
     OrganizationScope,
     ParentStatus,
-    ParentStatusCategory,
     PostGraduationField,
     PWDStatus,
     Sex,
@@ -118,7 +117,6 @@ class CivilStatusCategoryValue(StrEnum):
     MARRIED = CivilStatusCategory.MARRIED
     SOLO_PARENT = CivilStatusCategory.SOLO_PARENT
     OTHER = CivilStatusCategory.OTHER
-    NOT_SPECIFIED = CivilStatusCategory.NOT_SPECIFIED
 
 
 class CurrentReligionCategoryValue(StrEnum):
@@ -135,49 +133,28 @@ class CurrentReligionCategoryValue(StrEnum):
     PMCC = CurrentReligionCategory.PMCC
     NONE = CurrentReligionCategory.NONE
     OTHER = CurrentReligionCategory.OTHER
-    NOT_SPECIFIED = CurrentReligionCategory.NOT_SPECIFIED
 
 
 class PWDStatusValue(StrEnum):
     PWD = PWDStatus.PWD
     NON_PWD = PWDStatus.NON_PWD
-    NOT_SPECIFIED = PWDStatus.NOT_SPECIFIED
 
 
 class ParentLifeStatusValue(StrEnum):
     LIVING = ParentLifeStatus.LIVING
     DECEASED = ParentLifeStatus.DECEASED
     UNKNOWN = ParentLifeStatus.UNKNOWN
-    NOT_SPECIFIED = ParentLifeStatus.NOT_SPECIFIED
 
 
 class FourPsStatusValue(StrEnum):
     BENEFICIARY = FourPsStatus.BENEFICIARY
     NOT_BENEFICIARY = FourPsStatus.NOT_BENEFICIARY
     NOT_SURE = FourPsStatus.NOT_SURE
-    NOT_SPECIFIED = FourPsStatus.NOT_SPECIFIED
 
 
 class IndigenousPeoplesStatusValue(StrEnum):
     MEMBER = IndigenousPeoplesStatus.MEMBER
     NOT_MEMBER = IndigenousPeoplesStatus.NOT_MEMBER
-    NOT_SPECIFIED = IndigenousPeoplesStatus.NOT_SPECIFIED
-
-
-class ParentStatusCategoryValue(StrEnum):
-    MARRIED = ParentStatusCategory.MARRIED
-    ANNULLED = ParentStatusCategory.ANNULLED
-    LEGALLY_SEPARATED = ParentStatusCategory.LEGALLY_SEPARATED
-    TEMPORARILY_SEPARATED = ParentStatusCategory.TEMPORARILY_SEPARATED
-    PERMANENTLY_SEPARATED = ParentStatusCategory.PERMANENTLY_SEPARATED
-    LIVING_TOGETHER = ParentStatusCategory.LIVING_TOGETHER
-    WIDOWED = ParentStatusCategory.WIDOWED
-    MOTHER_WITH_OTHER_PARTNER = ParentStatusCategory.MOTHER_WITH_OTHER_PARTNER
-    FATHER_WITH_OTHER_PARTNER = ParentStatusCategory.FATHER_WITH_OTHER_PARTNER
-    MOTHER_OFW = ParentStatusCategory.MOTHER_OFW
-    FATHER_OFW = ParentStatusCategory.FATHER_OFW
-    OTHER = ParentStatusCategory.OTHER
-    NOT_SPECIFIED = ParentStatusCategory.NOT_SPECIFIED
 
 
 class OccupationCategoryValue(StrEnum):
@@ -189,14 +166,12 @@ class OccupationCategoryValue(StrEnum):
     OFW = OccupationCategory.OFW
     NONE = OccupationCategory.NONE
     OTHER = OccupationCategory.OTHER
-    NOT_SPECIFIED = OccupationCategory.NOT_SPECIFIED
 
 
 class AnnualIncomeStatusValue(StrEnum):
     REPORTED = AnnualIncomeStatus.REPORTED
     NONE = AnnualIncomeStatus.NONE
     UNKNOWN = AnnualIncomeStatus.UNKNOWN
-    NOT_SPECIFIED = AnnualIncomeStatus.NOT_SPECIFIED
 
 
 class GeographicLocationKindValue(StrEnum):
@@ -210,7 +185,6 @@ class TransportationFrequencyCategoryValue(StrEnum):
     WEEKLY = TransportationFrequencyCategory.WEEKLY
     OCCASIONAL = TransportationFrequencyCategory.OCCASIONAL
     OTHER = TransportationFrequencyCategory.OTHER
-    NOT_SPECIFIED = TransportationFrequencyCategory.NOT_SPECIFIED
 
 
 class FamilyMemberKindValue(StrEnum):
@@ -374,7 +348,6 @@ class TransportationEntryPayload(StrictSchema):
 
 class GeographicLocationPayload(StrictSchema):
     kind: GeographicLocationKindValue
-    not_specified: bool = False
     region_psgc_code: str = ""
     region_name_snapshot: str = ""
     province_psgc_code: str = ""
@@ -413,7 +386,6 @@ class InventoryPayload(StrictSchema):
     current_religion: str = ""
     current_religion_category: CurrentReligionCategoryValue | None = None
     parent_statuses: list[ParentStatusValue] = Field(default_factory=list)
-    parent_status_category: ParentStatusCategoryValue | None = None
     family_members: list[FamilyMemberPayload] = Field(default_factory=list)
     guardian_name: str = ""
     guardian_relationship: str = ""
@@ -823,7 +795,6 @@ def _inventory(item) -> dict[str, object]:
         "current_religion",
         "current_religion_category",
         "parent_statuses",
-        "parent_status_category",
         "guardian_name",
         "guardian_relationship",
         "guardian_address",
@@ -914,7 +885,6 @@ def _inventory(item) -> dict[str, object]:
         "civil_status_category",
         "current_religion_category",
         "pwd_status",
-        "parent_status_category",
     ):
         data[field] = _optional_choice(data[field])
     data["family_members"] = _child_rows(
@@ -971,7 +941,6 @@ def _inventory(item) -> dict[str, object]:
         "geographic_locations",
         (
             "kind",
-            "not_specified",
             "region_psgc_code",
             "region_name_snapshot",
             "province_psgc_code",

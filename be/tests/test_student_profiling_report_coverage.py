@@ -19,7 +19,6 @@ from compass.reports import services as report_services
 from compass.reports.pdf import render_student_profiling_pdf
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
-    LEGACY_KEY,
     PLACEMENT_PRECEDENCE_NOTE,
     ReportAccessDenied,
     ReportAccessScope,
@@ -69,7 +68,10 @@ def test_geography_uses_city_psgc_identity_and_not_province_or_address_parsing()
     InventoryGeographicLocation.objects.create(
         inventory=second_item,
         kind=GeographicLocationKind.CURRENT,
-        not_specified=True,
+        region_psgc_code="1300000000",
+        region_name_snapshot="National Capital Region",
+        city_municipality_psgc_code="1380600000",
+        city_municipality_name_snapshot="City of Manila",
     )
 
     section = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
@@ -81,7 +83,7 @@ def test_geography_uses_city_psgc_identity_and_not_province_or_address_parsing()
     assert naga["label"] == "Naga City"
     assert naga["province_name"] == "Camarines Sur"
     assert not any(item["label"] == "Camarines Sur" for item in section["rows"])
-    assert report_row(section, "NOT_SPECIFIED")["total_count"] == 1
+    assert {item["label"] for item in section["rows"]} == {"Naga City", "City of Manila"}
 
 
 @pytest.mark.django_db
@@ -102,13 +104,6 @@ def test_parent_income_reuses_normalized_status_and_excludes_spouse():
         revision=revision,
         program=program,
     )
-    legacy_item = make_inventory(
-        student=make_user("income-legacy@example.edu"),
-        academic_year=year,
-        revision=revision,
-        program=program,
-    )
-
     first_item.family_members.filter(kind=FamilyMemberKind.FATHER).update(
         annual_income_status=AnnualIncomeStatus.REPORTED,
         annual_income_previous_year=Decimal("100000"),
@@ -125,11 +120,7 @@ def test_parent_income_reuses_normalized_status_and_excludes_spouse():
         annual_income_previous_year=Decimal("9999999"),
     )
     second_item.family_members.filter(kind=FamilyMemberKind.MOTHER).update(
-        annual_income_status=AnnualIncomeStatus.NOT_SPECIFIED,
-        annual_income_previous_year=None,
-    )
-    legacy_item.family_members.filter(kind=FamilyMemberKind.FATHER).update(
-        annual_income_status=None,
+        annual_income_status=AnnualIncomeStatus.UNKNOWN,
         annual_income_previous_year=None,
     )
 
@@ -137,9 +128,8 @@ def test_parent_income_reuses_normalized_status_and_excludes_spouse():
         "parent_annual_income"
     ]
     assert report_row(section, "POOR")["total_count"] == 1
-    assert report_row(section, "NOT_SPECIFIED")["total_count"] == 1
-    assert report_row(section, LEGACY_KEY)["total_count"] == 1
-    assert sum(item["total_count"] for item in section["rows"]) == section["denominator"] == 3
+    assert report_row(section, "UNKNOWN")["total_count"] == 1
+    assert sum(item["total_count"] for item in section["rows"]) == section["denominator"] == 2
 
 
 @pytest.mark.django_db

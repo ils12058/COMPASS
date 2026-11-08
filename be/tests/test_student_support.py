@@ -110,8 +110,8 @@ def make_inventory(
     submitted: bool = True,
     pwd_status: str | None = PWDStatus.NON_PWD,
     civil_status: str | None = CivilStatusCategory.SINGLE,
-    four_ps_status: str | None = FourPsStatus.NOT_SPECIFIED,
-    indigenous_peoples_status: str | None = IndigenousPeoplesStatus.NOT_SPECIFIED,
+    four_ps_status: str | None = FourPsStatus.NOT_BENEFICIARY,
+    indigenous_peoples_status: str | None = IndigenousPeoplesStatus.NOT_MEMBER,
     mother_life_status: str | None = ParentLifeStatus.LIVING,
     father_life_status: str | None = ParentLifeStatus.LIVING,
 ) -> StudentInventory:
@@ -371,7 +371,7 @@ def test_negative_and_unknown_states_create_no_positive_support_badges():
         four_ps_status=FourPsStatus.NOT_BENEFICIARY,
         indigenous_peoples_status=IndigenousPeoplesStatus.NOT_MEMBER,
         mother_life_status=ParentLifeStatus.LIVING,
-        father_life_status=ParentLifeStatus.NOT_SPECIFIED,
+        father_life_status=ParentLifeStatus.UNKNOWN,
     )
 
     response = auth_client(counselor).get(f"/api/v1/student-support/students/{student.pk}/context")
@@ -488,19 +488,6 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         "indigenous_peoples_status": None,
         "mother_life_status": None,
         "father_life_status": None,
-    }
-    replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="Choose your 4Ps status."):
-        submit_current_inventory(
-            student=student,
-            context=AuditContext.user(student),
-        )
-
-    values["support_profile"] = {
-        "four_ps_status": "NOT_SPECIFIED",
-        "indigenous_peoples_status": "NOT_SPECIFIED",
-        "mother_life_status": "NOT_SPECIFIED",
-        "father_life_status": "NOT_SPECIFIED",
     }
     replace_current_inventory(student=student, values=values)
     with pytest.raises(InvalidInventoryInput, match="Choose your 4Ps status."):

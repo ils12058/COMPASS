@@ -246,7 +246,6 @@ CIVIL_LABELS = {
     "MARRIED": "Married",
     "SOLO_PARENT": "Solo Parent",
     "OTHER": "Other",
-    "NOT_SPECIFIED": "Not specified",
 }
 RELIGION_LABELS = {
     "ROMAN_CATHOLIC": "Roman Catholic",
@@ -262,7 +261,6 @@ RELIGION_LABELS = {
     "PMCC": "PMCC",
     "NONE": "None",
     "OTHER": "Other",
-    "NOT_SPECIFIED": "Not specified",
 }
 
 
@@ -279,21 +277,19 @@ def consistency(row, payload, family):
             or payload["boarding_address"].strip()
         ):
             raise ValueError("Invalid boarding details")
-        # Nullable pre-normalization controls intentionally preserve legacy source answers.
+        # Nullable controls preserve partial draft answers.
         for category, detail, labels in (
             (row.civil_status_category, payload["civil_status"], CIVIL_LABELS),
             (row.current_religion_category, payload["current_religion"], RELIGION_LABELS),
         ):
             if category == "OTHER" and not detail.strip():
                 raise ValueError("Missing other detail")
-            if category == "NOT_SPECIFIED" and detail:
-                raise ValueError("Unexpected not-specified detail")
-            if category in labels and category not in {"OTHER", "NOT_SPECIFIED"}:
+            if category in labels and category != "OTHER":
                 if detail != labels[category]:
                     raise ValueError("Invalid normalized source snapshot")
         if row.pwd_status == "PWD" and not payload["physical_disadvantage"].strip():
             raise ValueError("Missing PWD detail")
-        if row.pwd_status in {"NON_PWD", "NOT_SPECIFIED"} and payload["physical_disadvantage"]:
+        if row.pwd_status == "NON_PWD" and payload["physical_disadvantage"]:
             raise ValueError("Unexpected PWD detail")
         # Submission-only completeness rules must not reject legitimate partial drafts.
         if row.submitted_at is not None:
@@ -306,7 +302,7 @@ def consistency(row, payload, family):
     elif family == "InventoryFamilyMember":
         if row.occupation_category == "OTHER" and not payload["occupation"].strip():
             raise ValueError("Missing occupation detail")
-        if row.occupation_category in {"NONE", "NOT_SPECIFIED"} and payload["occupation"]:
+        if row.occupation_category == "NONE" and payload["occupation"]:
             raise ValueError("Unexpected occupation detail")
     elif family == "InventoryTransportationEntry":
         if row.frequency_category == "OTHER" and not payload["frequency"].strip():
@@ -316,7 +312,6 @@ def consistency(row, payload, family):
             "SEVERAL_TIMES_A_WEEK": "Several times a week",
             "WEEKLY": "Weekly",
             "OCCASIONAL": "Occasional",
-            "NOT_SPECIFIED": "",
         }
         if (
             row.frequency_category in labels

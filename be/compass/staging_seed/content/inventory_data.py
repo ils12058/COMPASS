@@ -877,7 +877,6 @@ PROFILES: dict[str, InventoryProfile] = {
             "place_of_birth": "Daet, Camarines Norte",
             "birth_order_among_siblings": "Eldest of two",
             "parent_statuses": ["FATHER_OFW"],
-            "parent_status_category": "FATHER_OFW",
             "emergency_contact_name": "Mylene Samonte (mother)",
             "special_interest": "Marine life",
             "special_skills_talents": "Swimming; biology illustrations",
@@ -1049,7 +1048,6 @@ PROFILES: dict[str, InventoryProfile] = {
             "place_of_birth": "Daet, Camarines Norte",
             "birth_order_among_siblings": "Youngest of two",
             "parent_statuses": ["WIDOW_WIDOWER_LIVING_TOGETHER"],
-            "parent_status_category": "WIDOWED",
             "emergency_contact_name": "Rowena Alcantara (mother)",
             "special_interest": "Accounting and small-business bookkeeping",
             "special_skills_talents": "Accounting software; calligraphy",
@@ -1253,7 +1251,6 @@ def _sibling_rows(
 
 _CURRENT_LOCATION = {
     "kind": "CURRENT",
-    "not_specified": False,
     "region_psgc_code": "0500000000",
     "region_name_snapshot": "Bicol Region",
     "province_psgc_code": "0501600000",

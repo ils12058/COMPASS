@@ -23,8 +23,8 @@ function inventoryOptions() {
     id: "synthetic-inventory", academic_year: { id: "year", label: "2026–2027" }, status: "DRAFT", program: null,
     form_revision: { id: "revision", family_key: "individual_inventory", internal_schema_version: 1, official_code: "UCN-OP-GCO-01F5", official_revision: "1" },
     correction_pending: false, latest_correction: null, full_name: "Synthetic Student", student_number: "SYNTHETIC-01", sex: "FEMALE", date_of_birth: "2005-01-15",
-    civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000", geographic_locations: [{ kind: "CURRENT", not_specified: true }],
-    parent_status_category: "MARRIED", support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
+    civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000", geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }],
+    parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"], support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
     family_members: [], living_arrangement: "OWN_HOUSE", pwd_status: "NON_PWD", year_level: 2, siblings: [], organization_memberships: [], transportation_entries: [],
   };
   return { overrides: {

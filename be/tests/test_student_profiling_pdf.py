@@ -37,9 +37,6 @@ from compass.reports.pdf import (
 )
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
-    LEGACY_KEY,
-    LEGACY_LABEL,
-    LEGACY_PROGRAM_KEY,
     PLACEMENT_PRECEDENCE_NOTE,
     InvalidReportFilter,
     ReportAccessScope,
@@ -84,7 +81,7 @@ def _organization_reference(code: str, name: str) -> dict[str, object]:
     return {"id": uuid4(), "code": code, "name": name}
 
 
-# Canonical response categories per section, in canonical row order. LEGACY_KEY rows follow.
+# Canonical response categories per section, in canonical row order.
 SECTION_CATEGORIES = {
     "sex": [("MALE", "Male"), ("FEMALE", "Female")],
     "age": [("18", "18"), ("19", "19"), ("20", "20")],
@@ -93,34 +90,34 @@ SECTION_CATEGORIES = {
         ("MARRIED", "Married"),
         ("SOLO_PARENT", "Solo Parent"),
         ("OTHER", "Other"),
-        ("NOT_SPECIFIED", "Not specified"),
     ],
     "physical_disadvantage": [
         ("PWD", "PWD"),
         ("NON_PWD", "Non-PWD"),
-        ("NOT_SPECIFIED", "Not specified"),
     ],
     "current_religion": [
         ("ROMAN_CATHOLIC", "Roman Catholic"),
         ("BORN_AGAIN", "Born Again"),
-        ("NOT_SPECIFIED", "Not specified"),
     ],
     "mother_life_status": [
         ("LIVING", "Living"),
         ("DECEASED", "Deceased"),
-        ("NOT_SPECIFIED", "Not specified"),
+        ("UNKNOWN", "Unknown"),
     ],
     "father_life_status": [
         ("LIVING", "Living"),
         ("DECEASED", "Deceased"),
-        ("NOT_SPECIFIED", "Not specified"),
+        ("UNKNOWN", "Unknown"),
     ],
-    "parent_family_status": [("MARRIED", "Married"), ("WIDOWED", "Widowed")],
+    "parent_family_status": [
+        ("MARRIED_ANNULLED_LEGALLY_SEPARATED", "Married / Annulled / Legally Separated"),
+        ("WIDOW_WIDOWER_LIVING_TOGETHER", "Widow / Widower / Living Together"),
+    ],
     "parent_annual_income": [
         ("POOR", "Poor"),
         ("LOW_INCOME", "Low Income"),
         ("NONE", "None"),
-        ("NOT_SPECIFIED", "Not specified"),
+        ("UNKNOWN", "Unknown"),
     ],
     "mother_occupation": [("FARMER", "Farmer"), ("NONE", "None")],
     "father_occupation": [("FARMER", "Farmer"), ("LABORER", "Laborer")],
@@ -160,21 +157,15 @@ def _distribution(
     programs: list[dict[str, object]],
     population: int,
     *,
-    legacy_per_program: int = 0,
     extra: dict[str, object] | None = None,
 ) -> list[dict[str, object]]:
     counts: dict[str, dict[str, int]] = {key: {} for key, _ in categories}
-    counts[LEGACY_KEY] = {}
     for program in programs:
         total = int(program["submitted_inventory_count"])
-        legacy = min(legacy_per_program, total)
-        for (key, _), count in zip(
-            categories, _split(total - legacy, len(categories)), strict=True
-        ):
+        for (key, _), count in zip(categories, _split(total, len(categories)), strict=True):
             counts[key][str(program["key"])] = count
-        counts[LEGACY_KEY][str(program["key"])] = legacy
     rows = []
-    for key, label in [*categories, (LEGACY_KEY, LEGACY_LABEL)]:
+    for key, label in categories:
         program_counts = [
             {"program_key": str(program["key"]), "count": counts[key].get(str(program["key"]), 0)}
             for program in programs
@@ -205,16 +196,15 @@ def _geography(
     categories = [(f"CITY_MUNICIPALITY:{code}", name) for code, name in cities]
     rows = _distribution(categories, programs, population)
     geography_rows = []
-    for row, (code, _) in zip(rows, [*cities, (None, None)], strict=True):
-        is_city = code is not None
+    for row, (code, _) in zip(rows, cities, strict=True):
         geography_rows.append(
             {
                 **row,
                 "city_municipality_psgc_code": code,
-                "province_psgc_code": "0516000000" if is_city else None,
-                "province_name": "Synthetic Province" if is_city else None,
-                "region_psgc_code": "0500000000" if is_city else None,
-                "region_name": "Synthetic Region" if is_city else None,
+                "province_psgc_code": "0516000000",
+                "province_name": "Synthetic Province",
+                "region_psgc_code": "0500000000",
+                "region_name": "Synthetic Region",
             }
         )
     return geography_rows
@@ -226,8 +216,6 @@ def synthetic_report(
     submitted_count: int | None = None,
     mode: str = "CURRENT",
     colleges: list[tuple[str, int]] | None = None,
-    legacy_inventories: int = 0,
-    legacy_values_per_program: int = 0,
     city_count: int = 2,
     scope_colleges: list[str] | None = None,
     long_program_codes: bool = False,
@@ -242,17 +230,14 @@ def synthetic_report(
         colleges = [("CCMS", program_count)] if program_count else []
     total_programs = sum(count for _, count in colleges)
     if submitted_count is None:
-        submitted_count = max(total_programs, 1) + legacy_inventories
+        submitted_count = max(total_programs, 1)
     if submitted_count == 0:
         colleges = []
         total_programs = 0
-        legacy_inventories = 0
 
     campus = _organization_reference("MAIN", "Main Campus")
     programs: list[dict[str, object]] = []
-    assigned = (
-        _split(submitted_count - legacy_inventories, total_programs) if total_programs else []
-    )
+    assigned = _split(submitted_count, total_programs) if total_programs else []
     index = 0
     college_refs = {}
     for college_code, count in colleges:
@@ -271,35 +256,16 @@ def synthetic_report(
                     "submitted_inventory_count": assigned[index],
                     "college": college,
                     "campus": campus,
-                    "is_legacy": False,
                 }
             )
             index += 1
-    if legacy_inventories:
-        programs.append(
-            {
-                "key": LEGACY_PROGRAM_KEY,
-                "program_id": None,
-                "code": None,
-                "name": LEGACY_LABEL,
-                "submitted_inventory_count": legacy_inventories,
-                "college": None,
-                "campus": None,
-                "is_legacy": True,
-            }
-        )
 
     sections = {}
     for key in SECTION_LABELS:
         if key == "city_municipality":
             rows = _geography(programs, submitted_count, city_count)
         else:
-            rows = _distribution(
-                SECTION_CATEGORIES[key],
-                programs,
-                submitted_count,
-                legacy_per_program=legacy_values_per_program,
-            )
+            rows = _distribution(SECTION_CATEGORIES[key], programs, submitted_count)
         if submitted_count == 0 and key in ("age", "city_municipality"):
             rows = []
         sections[key] = {
@@ -346,9 +312,9 @@ def synthetic_report(
             "current_with_placement_count": submitted_count + 2,
             "current_without_placement_count": 1,
             "submitted_inventory_count": submitted_count,
-            "submitted_with_program_count": submitted_count - legacy_inventories,
-            "submitted_without_program_count": legacy_inventories,
-            "placement_program_match_count": submitted_count - legacy_inventories,
+            "submitted_with_program_count": submitted_count,
+            "submitted_without_program_count": 0,
+            "placement_program_match_count": submitted_count,
             "placement_program_mismatch_count": 0,
             "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
         }
@@ -358,8 +324,8 @@ def synthetic_report(
             "current_with_placement_count": None,
             "current_without_placement_count": None,
             "submitted_inventory_count": submitted_count,
-            "submitted_with_program_count": submitted_count - legacy_inventories,
-            "submitted_without_program_count": legacy_inventories,
+            "submitted_with_program_count": submitted_count,
+            "submitted_without_program_count": 0,
             "placement_program_match_count": None,
             "placement_program_mismatch_count": None,
             "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
@@ -679,7 +645,7 @@ def test_template_is_portrait_local_without_continuation_markers():
     assert good_moral.show_page_numbers is True
 
 
-def test_overall_tables_print_canonical_counts_total_row_and_omit_zero_legacy():
+def test_overall_tables_print_canonical_counts_and_total_row():
     report = synthetic_report(program_count=2, submitted_count=7)
     profile = profile_of(report)
     sex = profile["parts"][0]["tables"][0]
@@ -695,17 +661,21 @@ def test_overall_tables_print_canonical_counts_total_row_and_omit_zero_legacy():
     assert sex["population_note"] == "Population: submitted Individual Inventories (n = 7)"
     assert [column["label"] for column in sex["columns"]] == ["Sex", "Frequency", "Percentage"]
 
-    # Every controlled response prints, including zero rows; legacy appears only when it occurs.
+    # Every controlled response prints, including zero rows.
     civil = profile["parts"][0]["tables"][2]
     civil_labels = [cell_texts(row)[0] for row in civil["rows"]]
-    assert civil_labels == ["Single", "Married", "Solo Parent", "Other", "Not specified", "Total"]
-    assert LEGACY_LABEL not in civil_labels
+    assert civil_labels == ["Single", "Married", "Solo Parent", "Other", "Total"]
 
-    with_legacy = profile_of(
-        synthetic_report(program_count=2, submitted_count=8, legacy_values_per_program=1)
+    parent_status = next(
+        table
+        for part in profile["parts"]
+        for table in part["tables"]
+        if table["key"] == "parent_family_status"
     )
-    labels = [cell_texts(row)[0] for row in with_legacy["parts"][0]["tables"][2]["rows"]]
-    assert labels[-2:] == [LEGACY_LABEL, "Total"]
+    assert parent_status["notes"] == ["Students may tick more than one."]
+    assert {item["term"]: item["text"] for item in profile["methodology"]}[
+        "Parent family status"
+    ] == "Students may tick more than one."
 
 
 def test_geography_overall_table_keeps_province_and_region_context():
@@ -800,7 +770,6 @@ def test_multiple_colleges_reconcile_to_college_and_institution_totals():
     report = synthetic_report(
         colleges=[("CAS", 1), ("CCMS", 2), ("COED", 3)],
         submitted_count=30,
-        legacy_inventories=3,
     )
     profile = profile_of(report)
     summary_rows = [cell_texts(row) for row in profile["college_summary"]["rows"]]
@@ -808,7 +777,6 @@ def test_multiple_colleges_reconcile_to_college_and_institution_totals():
         "CAS — College of Synthetic CAS",
         "CCMS — College of Synthetic CCMS",
         "COED — College of Synthetic COED",
-        "Unclassified / Legacy",
         "Total",
     ]
     assert sum(int(row[3]) for row in summary_rows[:-1]) == int(summary_rows[-1][3]) == 30
@@ -816,7 +784,7 @@ def test_multiple_colleges_reconcile_to_college_and_institution_totals():
 
     by_college: dict[str, int] = {}
     for program in report["program_columns"]:
-        college = program["college"]["code"] if program["college"] else "Unclassified / Legacy"
+        college = program["college"]["code"]
         by_college[college] = by_college.get(college, 0) + int(program["submitted_inventory_count"])
     assert [
         group["heading"].split(". ", 1)[1].split(" — ")[0] for group in profile["appendix"]
@@ -824,7 +792,6 @@ def test_multiple_colleges_reconcile_to_college_and_institution_totals():
         "CAS",
         "CCMS",
         "COED",
-        "Unclassified / Legacy",
     ]
     for group in profile["appendix"]:
         code = group["heading"].split(". ", 1)[1].split(" — ")[0]
@@ -837,24 +804,6 @@ def test_multiple_colleges_reconcile_to_college_and_institution_totals():
     program_table = profile["program_population"]
     assert program_table["title"] == "Submitted Inventory Profile Population by College and Program"
     assert cell_texts(program_table["rows"][-1])[2:] == ["30", "100.00%"]
-    unclassified = [
-        row for row in program_table["rows"] if cell_texts(row)[0] == "Unclassified / Legacy"
-    ]
-    assert cell_texts(unclassified[0])[1:3] == ["No Program recorded", "3"]
-
-
-def test_unclassified_legacy_group_is_kept_and_not_attributed_to_a_college():
-    profile = profile_of(
-        synthetic_report(colleges=[("CCMS", 2)], submitted_count=12, legacy_inventories=4)
-    )
-    legacy = profile["appendix"][-1]
-    assert legacy["heading"].endswith("Unclassified / Legacy — Inventories without a Program")
-    table = legacy["tables"][0]
-    assert [column["label"] for column in table["columns"]] == ["Sex", "Inventories", "% of group"]
-    assert cell_texts(table["rows"][-1]) == ["Total", "4", "100.00%"]
-    assert table["population_note"] == (
-        "Population: Inventories without a recorded Program (n = 4)"
-    )
 
 
 def test_single_program_report_skips_redundant_appendix():
@@ -1247,12 +1196,7 @@ RENDER_SCENARIOS = {
         colleges=[("CCMS", 2)], submitted_count=150, city_count=70
     ),
     "historical": lambda: _historical(synthetic_report(colleges=[("CCMS", 2)], submitted_count=30)),
-    "legacy_unclassified": lambda: synthetic_report(
-        colleges=[("CCMS", 2)],
-        submitted_count=40,
-        legacy_inventories=5,
-        legacy_values_per_program=1,
-    ),
+    "parent_status_checklist": lambda: synthetic_report(colleges=[("CCMS", 2)], submitted_count=40),
     "narrow_scope": lambda: synthetic_report(
         colleges=[("CAS", 1), ("CCMS", 2)], submitted_count=24, scope_colleges=["CAS", "CCMS"]
     ),

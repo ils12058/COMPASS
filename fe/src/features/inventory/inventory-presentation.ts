@@ -15,7 +15,6 @@ import {
   OccupationCategoryValue,
   OrganizationScopeValue,
   ParentLifeStatusValue,
-  ParentStatusCategoryValue,
   ParentStatusValue,
   PostGraduationFieldValue,
   PWDStatusValue,
@@ -87,21 +86,6 @@ export const occupationOptions = [
   [OccupationCategoryValue.OFW, "Overseas Filipino worker"],
   [OccupationCategoryValue.NONE, "None"],
   [OccupationCategoryValue.OTHER, "Other"],
-] as const;
-
-export const parentStatusCategoryOptions = [
-  [ParentStatusCategoryValue.MARRIED, "Married"],
-  [ParentStatusCategoryValue.ANNULLED, "Annulled"],
-  [ParentStatusCategoryValue.LEGALLY_SEPARATED, "Legally separated"],
-  [ParentStatusCategoryValue.TEMPORARILY_SEPARATED, "Temporarily separated"],
-  [ParentStatusCategoryValue.PERMANENTLY_SEPARATED, "Permanently separated"],
-  [ParentStatusCategoryValue.LIVING_TOGETHER, "Living together"],
-  [ParentStatusCategoryValue.WIDOWED, "Widowed"],
-  [ParentStatusCategoryValue.MOTHER_WITH_OTHER_PARTNER, "Mother with other partner"],
-  [ParentStatusCategoryValue.FATHER_WITH_OTHER_PARTNER, "Father with other partner"],
-  [ParentStatusCategoryValue.MOTHER_OFW, "Mother works overseas"],
-  [ParentStatusCategoryValue.FATHER_OFW, "Father works overseas"],
-  [ParentStatusCategoryValue.OTHER, "Other"],
 ] as const;
 
 export const parentStatusOptions = [
@@ -229,12 +213,6 @@ export const organizationScopeOptions = [
   [OrganizationScopeValue.OUTSIDE_SCHOOL, "Outside the university"],
 ] as const;
 
-// Submitted Inventories may still record NOT_SPECIFIED from earlier years. It is no longer an
-// option on the form, but the stored answer must keep its meaning when it is displayed.
-const historicalChoiceLabels: Record<string, string> = {
-  NOT_SPECIFIED: "Prefer not to specify",
-};
-
 const enumPresentationLabels: Record<string, string> = {
   ...Object.fromEntries(
     [
@@ -244,7 +222,6 @@ const enumPresentationLabels: Record<string, string> = {
       familyKindOptions,
       annualIncomeOptions,
       occupationOptions,
-      parentStatusCategoryOptions,
       parentStatusOptions,
       parentLifeOptions,
       fourPsOptions,
@@ -263,7 +240,6 @@ const enumPresentationLabels: Record<string, string> = {
       organizationScopeOptions,
     ].flat(),
   ),
-  ...historicalChoiceLabels,
 };
 
 export function enumLabel(value: string | null | undefined): string {

@@ -52,16 +52,14 @@ function StructuredLocation({
 }: {
   location: NonNullable<ReadableInventory["geographic_locations"]>[number];
 }) {
-  const text = location.not_specified
-    ? "Prefer not to specify"
-    : [
-        location.barangay_name_snapshot,
-        location.city_municipality_name_snapshot,
-        location.province_name_snapshot,
-        location.region_name_snapshot,
-      ]
-        .filter(Boolean)
-        .join(", ") || "Not provided";
+  const text = [
+    location.barangay_name_snapshot,
+    location.city_municipality_name_snapshot,
+    location.province_name_snapshot,
+    location.region_name_snapshot,
+  ]
+    .filter(Boolean)
+    .join(", ") || "Not provided";
   return (
     <div className="border-b border-border/70 py-3">
       <dt className="text-xs font-semibold text-muted">
@@ -205,8 +203,7 @@ export function InventoryReadOnly({
             </section>
           ))}
           <ValueGrid>
-            <DefinitionValue label="Parent-status category" value={enumLabel(inventory.parent_status_category)} />
-            <DefinitionValue label="Additional parent circumstances" value={(inventory.parent_statuses ?? []).map(enumLabel).join(", ") || "Not provided"} />
+            <DefinitionValue label="Parent circumstances" value={(inventory.parent_statuses ?? []).map(enumLabel).join(", ") || "Not provided"} />
             <DefinitionValue label="Guardian" value={shown(inventory.guardian_name)} />
             <DefinitionValue label="Relationship with guardian" value={shown(inventory.guardian_relationship)} />
             <DefinitionValue label="Guardian address" value={shown(inventory.guardian_address)} />

@@ -20,7 +20,7 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     LivingArrangement,
     OccupationCategory,
-    ParentStatusCategory,
+    ParentStatus,
     PWDStatus,
     Sex,
     StudentInventory,
@@ -43,11 +43,6 @@ from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 from .policy import build_disclosure_warnings
-
-LEGACY_KEY = "NOT_RECORDED_LEGACY"
-LEGACY_LABEL = "Not recorded / legacy"
-LEGACY_PROGRAM_KEY = "legacy:not-recorded"
-NOT_SPECIFIED_KEY = "NOT_SPECIFIED"
 
 PROFILE_METHODOLOGY = (
     "Student profile statistics describe the Submitted Inventory Profile Population: submitted "
@@ -93,8 +88,7 @@ PARENT_INCOME_BAND_LABELS = {
     ParentIncomeBand.UPPER_INCOME: "Upper Income",
     ParentIncomeBand.RICH: "Rich",
     ParentIncomeBand.NONE: "None",
-    # The combined-income status intentionally folds UNKNOWN answers into this bucket.
-    ParentIncomeBand.NOT_SPECIFIED: "Not specified or unknown",
+    ParentIncomeBand.UNKNOWN: "Unknown",
 }
 
 
@@ -125,10 +119,9 @@ def parent_income_bracket_legend() -> list[tuple[str, str]]:
                 "Both parents reported no annual income (combined ₱0).",
             ),
             (
-                PARENT_INCOME_BAND_LABELS[ParentIncomeBand.NOT_SPECIFIED],
-                "At least one parent's annual income was marked Not specified or unknown.",
+                PARENT_INCOME_BAND_LABELS[ParentIncomeBand.UNKNOWN],
+                "At least one parent's annual income was marked Unknown.",
             ),
-            (LEGACY_LABEL, "Structured parent income is not available for the Inventory."),
         ]
     )
     return legend
@@ -446,7 +439,11 @@ def _profile_queryset(
 
 
 def _program_key(program_id: UUID | None) -> str:
-    return LEGACY_PROGRAM_KEY if program_id is None else f"program:{program_id}"
+    if program_id is None:
+        raise ReportConfigurationConflict(
+            "A submitted Individual Inventory is missing its required Program."
+        )
+    return f"program:{program_id}"
 
 
 def _program_columns(base_queryset) -> tuple[list[dict[str, object]], dict[str, int]]:
@@ -472,13 +469,9 @@ def _program_columns(base_queryset) -> tuple[list[dict[str, object]], dict[str, 
     )
     columns: list[dict[str, object]] = []
     totals: dict[str, int] = {}
-    legacy_total = 0
     for row in rows:
         program_id = row["program_id"]
         total = int(row["total"])
-        if program_id is None:
-            legacy_total += total
-            continue
         key = _program_key(program_id)
         totals[key] = total
         columns.append(
@@ -498,21 +491,6 @@ def _program_columns(base_queryset) -> tuple[list[dict[str, object]], dict[str, 
                     "code": row["program__college__campus__code"],
                     "name": row["program__college__campus__name"],
                 },
-                "is_legacy": False,
-            }
-        )
-    if legacy_total:
-        totals[LEGACY_PROGRAM_KEY] = legacy_total
-        columns.append(
-            {
-                "key": LEGACY_PROGRAM_KEY,
-                "program_id": None,
-                "code": None,
-                "name": LEGACY_LABEL,
-                "submitted_inventory_count": legacy_total,
-                "college": None,
-                "campus": None,
-                "is_legacy": True,
             }
         )
     return columns, totals
@@ -559,10 +537,13 @@ def _scalar_section(
     choice_pairs = list(choices)
     labels = {value: choice_label for value, choice_label in choice_pairs}
     counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
-    counts[LEGACY_KEY] = {}
     for result in base_queryset.values(field, "program_id").annotate(total=Count("id")):
         raw = result[field]
-        category = raw if raw in labels else LEGACY_KEY
+        if raw not in labels:
+            raise ReportConfigurationConflict(
+                f"A submitted Individual Inventory is missing required {field} data."
+            )
+        category = raw
         program_key = _program_key(result["program_id"])
         counts[category][program_key] = counts[category].get(program_key, 0) + int(result["total"])
     rows = [
@@ -575,15 +556,6 @@ def _scalar_section(
         )
         for value, choice_label in choice_pairs
     ]
-    rows.append(
-        _row(
-            key=LEGACY_KEY,
-            label=LEGACY_LABEL,
-            denominator=denominator,
-            counts=counts[LEGACY_KEY],
-            columns=columns,
-        )
-    )
     return {"key": key, "label": label, "denominator": denominator, "rows": rows}
 
 
@@ -595,21 +567,20 @@ def _age_section(
 ) -> dict[str, object]:
     counts: dict[str, dict[str, int]] = {}
     observed_ages: set[int] = set()
-    legacy_seen = False
     for result in base_queryset.values("date_of_birth", "submitted_at", "program_id"):
         dob = result["date_of_birth"]
         submitted_at = result["submitted_at"]
         if dob is None or submitted_at is None:
-            category = LEGACY_KEY
-            legacy_seen = True
-        else:
-            age = derive_age_on(date_of_birth=dob, on_date=institution_date(submitted_at))
-            if age < 0:
-                category = LEGACY_KEY
-                legacy_seen = True
-            else:
-                category = str(age)
-                observed_ages.add(age)
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing required age data."
+            )
+        age = derive_age_on(date_of_birth=dob, on_date=institution_date(submitted_at))
+        if age < 0:
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory contains invalid age data."
+            )
+        category = str(age)
+        observed_ages.add(age)
         program_key = _program_key(result["program_id"])
         bucket = counts.setdefault(category, {})
         bucket[program_key] = bucket.get(program_key, 0) + 1
@@ -623,16 +594,6 @@ def _age_section(
         )
         for age in sorted(observed_ages)
     ]
-    if legacy_seen:
-        rows.append(
-            _row(
-                key=LEGACY_KEY,
-                label=LEGACY_LABEL,
-                denominator=denominator,
-                counts=counts.get(LEGACY_KEY, {}),
-                columns=columns,
-            )
-        )
     return {
         "key": "age",
         "label": "Distribution of Students based on Age",
@@ -656,7 +617,6 @@ def _family_section(
     choice_pairs = list(choices)
     labels = {value: choice_label for value, choice_label in choice_pairs}
     counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
-    counts[LEGACY_KEY] = {}
     observed_by_program: dict[str, int] = {}
     child_rows = (
         InventoryFamilyMember.objects.filter(
@@ -671,12 +631,18 @@ def _family_section(
         total = int(result["total"])
         observed_by_program[program_key] = observed_by_program.get(program_key, 0) + total
         raw = result[field]
-        category = raw if raw in labels else LEGACY_KEY
+        if raw not in labels:
+            raise ReportConfigurationConflict(
+                f"A submitted Individual Inventory is missing required {field} data."
+            )
+        category = raw
         counts[category][program_key] = counts[category].get(program_key, 0) + total
     for program_key, base_total in program_totals.items():
         missing = base_total - observed_by_program.get(program_key, 0)
         if missing > 0:
-            counts[LEGACY_KEY][program_key] = counts[LEGACY_KEY].get(program_key, 0) + missing
+            raise ReportConfigurationConflict(
+                f"A submitted Individual Inventory is missing required {field} data."
+            )
     rows = [
         _row(
             key=value,
@@ -687,15 +653,6 @@ def _family_section(
         )
         for value, choice_label in choice_pairs
     ]
-    rows.append(
-        _row(
-            key=LEGACY_KEY,
-            label=LEGACY_LABEL,
-            denominator=denominator,
-            counts=counts[LEGACY_KEY],
-            columns=columns,
-        )
-    )
     return {"key": key, "label": label, "denominator": denominator, "rows": rows}
 
 
@@ -713,7 +670,6 @@ def _support_profile_section(
     choice_pairs = list(choices)
     labels = {value: choice_label for value, choice_label in choice_pairs}
     counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
-    counts[LEGACY_KEY] = {}
     observed_by_program: dict[str, int] = {}
 
     rows = (
@@ -728,13 +684,19 @@ def _support_profile_section(
         total = int(result["total"])
         observed_by_program[program_key] = observed_by_program.get(program_key, 0) + total
         raw = result[field]
-        category = raw if raw in labels else LEGACY_KEY
+        if raw not in labels:
+            raise ReportConfigurationConflict(
+                f"A submitted Individual Inventory is missing required {field} data."
+            )
+        category = raw
         counts[category][program_key] = counts[category].get(program_key, 0) + total
 
     for program_key, base_total in program_totals.items():
         missing = base_total - observed_by_program.get(program_key, 0)
         if missing > 0:
-            counts[LEGACY_KEY][program_key] = counts[LEGACY_KEY].get(program_key, 0) + missing
+            raise ReportConfigurationConflict(
+                f"A submitted Individual Inventory is missing required {field} data."
+            )
 
     rows_out = [
         _row(
@@ -746,16 +708,43 @@ def _support_profile_section(
         )
         for value, choice_label in choice_pairs
     ]
-    rows_out.append(
+    return {"key": key, "label": label, "denominator": denominator, "rows": rows_out}
+
+
+def _parent_status_section(
+    *,
+    base_queryset,
+    denominator: int,
+    columns: list[dict[str, object]],
+) -> dict[str, object]:
+    choice_pairs = list(ParentStatus.choices)
+    labels = {value: label for value, label in choice_pairs}
+    counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
+    for result in base_queryset.values("parent_statuses", "program_id"):
+        statuses = result["parent_statuses"]
+        if not statuses or any(status not in labels for status in statuses):
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing required parent status data."
+            )
+        program_key = _program_key(result["program_id"])
+        for status in set(statuses):
+            counts[status][program_key] = counts[status].get(program_key, 0) + 1
+    rows = [
         _row(
-            key=LEGACY_KEY,
-            label=LEGACY_LABEL,
+            key=value,
+            label=label,
             denominator=denominator,
-            counts=counts[LEGACY_KEY],
+            counts=counts[value],
             columns=columns,
         )
-    )
-    return {"key": key, "label": label, "denominator": denominator, "rows": rows_out}
+        for value, label in choice_pairs
+    ]
+    return {
+        "key": "parent_family_status",
+        "label": "Distribution of Students based on Parent Family Status",
+        "denominator": denominator,
+        "rows": rows,
+    }
 
 
 def _geography_section(
@@ -774,7 +763,6 @@ def _geography_section(
             kind=GeographicLocationKind.CURRENT,
         )
         .values(
-            "not_specified",
             "city_municipality_psgc_code",
             "city_municipality_name_snapshot",
             "province_psgc_code",
@@ -793,20 +781,7 @@ def _geography_section(
     for result in rows:
         program_key = _program_key(result["inventory__program_id"])
         observed_by_program[program_key] = observed_by_program.get(program_key, 0) + 1
-        if result["not_specified"]:
-            category = NOT_SPECIFIED_KEY
-            metadata.setdefault(
-                category,
-                {
-                    "label": "Not specified",
-                    "city_municipality_psgc_code": None,
-                    "province_psgc_code": None,
-                    "province_name": None,
-                    "region_psgc_code": None,
-                    "region_name": None,
-                },
-            )
-        elif result["city_municipality_psgc_code"] and result["city_municipality_name_snapshot"]:
+        if result["city_municipality_psgc_code"] and result["city_municipality_name_snapshot"]:
             code = result["city_municipality_psgc_code"]
             category = f"CITY_MUNICIPALITY:{code}"
             metadata.setdefault(
@@ -821,35 +796,16 @@ def _geography_section(
                 },
             )
         else:
-            category = LEGACY_KEY
-            metadata.setdefault(
-                category,
-                {
-                    "label": LEGACY_LABEL,
-                    "city_municipality_psgc_code": None,
-                    "province_psgc_code": None,
-                    "province_name": None,
-                    "region_psgc_code": None,
-                    "region_name": None,
-                },
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing its required current location."
             )
         bucket = counts.setdefault(category, {})
         bucket[program_key] = bucket.get(program_key, 0) + 1
     for program_key, base_total in program_totals.items():
         missing = base_total - observed_by_program.get(program_key, 0)
         if missing > 0:
-            bucket = counts.setdefault(LEGACY_KEY, {})
-            bucket[program_key] = bucket.get(program_key, 0) + missing
-            metadata.setdefault(
-                LEGACY_KEY,
-                {
-                    "label": LEGACY_LABEL,
-                    "city_municipality_psgc_code": None,
-                    "province_psgc_code": None,
-                    "province_name": None,
-                    "region_psgc_code": None,
-                    "region_name": None,
-                },
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing its required current location."
             )
 
     city_keys = sorted(
@@ -860,10 +816,6 @@ def _geography_section(
         ),
     )
     ordered_keys = city_keys
-    if NOT_SPECIFIED_KEY in counts:
-        ordered_keys.append(NOT_SPECIFIED_KEY)
-    if LEGACY_KEY in counts:
-        ordered_keys.append(LEGACY_KEY)
 
     report_rows: list[dict[str, object]] = []
     for category in ordered_keys:
@@ -923,29 +875,31 @@ def _income_section(
         ParentIncomeBand.UPPER_INCOME,
         ParentIncomeBand.RICH,
         ParentIncomeBand.NONE,
-        ParentIncomeBand.NOT_SPECIFIED,
+        ParentIncomeBand.UNKNOWN,
     ]
     labels = PARENT_INCOME_BAND_LABELS
     counts: dict[str, dict[str, int]] = {str(band): {} for band in ordered_bands}
-    counts[LEGACY_KEY] = {}
     for inventory_id, program_id in inventory_program.items():
         program_key = _program_key(program_id)
         pair = parents.get(inventory_id, {})
         father = pair.get(FamilyMemberKind.FATHER)
         mother = pair.get(FamilyMemberKind.MOTHER)
         if father is None or mother is None or father[0] is None or mother[0] is None:
-            category = LEGACY_KEY
-        else:
-            try:
-                combined = combine_parent_annual_income(
-                    father_status=father[0],
-                    father_amount=father[1],
-                    mother_status=mother[0],
-                    mother_amount=mother[1],
-                )
-                category = str(classify_parent_annual_income(combined))
-            except InvalidInventoryInput:
-                category = LEGACY_KEY
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing required parent income data."
+            )
+        try:
+            combined = combine_parent_annual_income(
+                father_status=father[0],
+                father_amount=father[1],
+                mother_status=mother[0],
+                mother_amount=mother[1],
+            )
+            category = str(classify_parent_annual_income(combined))
+        except InvalidInventoryInput as exc:
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory contains invalid parent income data."
+            ) from exc
         bucket = counts.setdefault(category, {})
         bucket[program_key] = bucket.get(program_key, 0) + 1
 
@@ -959,15 +913,6 @@ def _income_section(
         )
         for band in ordered_bands
     ]
-    report_rows.append(
-        _row(
-            key=LEGACY_KEY,
-            label=LEGACY_LABEL,
-            denominator=denominator,
-            counts=counts[LEGACY_KEY],
-            columns=columns,
-        )
-    )
     return {
         "key": "parent_annual_income",
         "label": "Distribution of Students based on Parent Annual Income",
@@ -1283,12 +1228,8 @@ def build_student_profiling_report(
             denominator=denominator,
             columns=columns,
         ),
-        "parent_family_status": _scalar_section(
+        "parent_family_status": _parent_status_section(
             base_queryset=base_queryset,
-            field="parent_status_category",
-            choices=ParentStatusCategory.choices,
-            key="parent_family_status",
-            label="Distribution of Students based on Parent Family Status",
             denominator=denominator,
             columns=columns,
         ),

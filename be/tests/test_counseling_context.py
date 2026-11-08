@@ -712,15 +712,15 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
         program=missing_program,
         year_level=1,
         submitted_at=now - timedelta(days=200),
-        pwd_status="NOT_SPECIFIED",
-        civil_status_category="NOT_SPECIFIED",
+        pwd_status="NON_PWD",
+        civil_status_category="SINGLE",
     )
     StudentSupportProfile.objects.create(
         inventory=historical,
         four_ps_status=FourPsStatus.BENEFICIARY,
-        indigenous_peoples_status=IndigenousPeoplesStatus.NOT_SPECIFIED,
-        mother_life_status=ParentLifeStatus.NOT_SPECIFIED,
-        father_life_status=ParentLifeStatus.NOT_SPECIFIED,
+        indigenous_peoples_status=IndigenousPeoplesStatus.NOT_MEMBER,
+        mother_life_status=ParentLifeStatus.UNKNOWN,
+        father_life_status=ParentLifeStatus.UNKNOWN,
     )
     missing_appointment = make_appointment(
         student=missing_student,

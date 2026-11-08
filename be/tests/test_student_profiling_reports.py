@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -29,7 +29,7 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     LivingArrangement,
     OccupationCategory,
-    ParentStatusCategory,
+    ParentStatus,
     PWDStatus,
     Sex,
     StudentInventory,
@@ -131,11 +131,11 @@ def make_inventory(
     submitted: bool = True,
     submitted_time=None,
     sex: str = Sex.MALE,
-    date_of_birth=None,
+    date_of_birth=date(2005, 1, 1),
     civil_status_category: str | None = CivilStatusCategory.SINGLE,
     religion: str | None = CurrentReligionCategory.ROMAN_CATHOLIC,
     physical: str | None = PWDStatus.NON_PWD,
-    parent_status: str | None = ParentStatusCategory.MARRIED,
+    parent_statuses: list[str] | None = None,
     living: str = LivingArrangement.OWN_HOUSE,
     with_parents: bool = True,
     with_location: bool = True,
@@ -159,7 +159,7 @@ def make_inventory(
         current_religion_category=religion,
         pwd_status=physical,
         physical_disadvantage="Private medical narrative",
-        parent_status_category=parent_status,
+        parent_statuses=parent_statuses or [ParentStatus.MARRIED_ANNULLED_LEGALLY_SEPARATED],
         living_arrangement=living,
         current_concerns="Private concern narrative",
         current_fears="Private fear narrative",
@@ -575,9 +575,5 @@ def test_parent_income_legend_is_derived_from_the_canonical_brackets():
         ("Upper Income", "₱1,577,808 through ₱2,626,680"),
         ("Rich", "Above ₱2,626,680"),
         ("None", "Both parents reported no annual income (combined ₱0)."),
-        (
-            "Not specified or unknown",
-            "At least one parent's annual income was marked Not specified or unknown.",
-        ),
-        ("Not recorded / legacy", "Structured parent income is not available for the Inventory."),
+        ("Unknown", "At least one parent's annual income was marked Unknown."),
     ]

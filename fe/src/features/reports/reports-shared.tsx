@@ -32,7 +32,6 @@ const REPORT_ERROR_COPY: Record<string, string> = {
 };
 
 export function reportProgramName(program: ProgramColumn): string {
-  if (program.is_legacy) return program.name;
   return (program.code ? program.code + " — " : "") + program.name;
 }
 

@@ -50,9 +50,7 @@ def population_profiles():
         if background == "pwd":
             base["physical_disadvantage"] = "Uses a mobility aid; accessible classroom routes help."
         if background == "deceased_parent":
-            base.update(
-                parent_status_category="WIDOWED", parent_statuses=["WIDOW_WIDOWER_LIVING_TOGETHER"]
-            )
+            base.update(parent_statuses=["WIDOW_WIDOWER_LIVING_TOGETHER"])
         if background == "guardian":
             base.update(
                 guardian_name=f"Teresa {p.last_name}",

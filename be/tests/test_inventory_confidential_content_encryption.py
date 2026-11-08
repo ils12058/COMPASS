@@ -392,7 +392,7 @@ def test_storage_ciphertext_only_and_normalized_columns_queryable(world):
     )
     assert item.transportation_entries.filter(frequency_category="OTHER", fare=10).exists()
     assert item.geographic_locations.filter(
-        kind="CURRENT", not_specified=False, city_municipality_psgc_code="1380600000"
+        kind="CURRENT", city_municipality_psgc_code="1380600000"
     ).exists()
 
 

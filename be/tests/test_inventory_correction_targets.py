@@ -155,7 +155,7 @@ def assert_no_target_or_reason(text, codes=CANONICAL):
 
 def test_catalog_is_unique_well_formed_and_never_positional():
     values = [target.value for target in T]
-    assert len(values) == len(set(values)) == 148
+    assert len(values) == len(set(values)) == 147
     assert {value for value in values if value.startswith("section.")} == EXPECTED_SECTIONS
     for value in values:
         # Lowercase dotted names only: no digits, row ids, answer values, or element ids.

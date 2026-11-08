@@ -96,7 +96,6 @@ class InventoryCorrectionTarget(StrEnum):
     FAMILY_SPOUSE_LANGUAGES_SPOKEN = "family.spouse.languages_spoken"
     FAMILY_SPOUSE_RELIGION_RAISED_WITH = "family.spouse.religion_raised_with"
     FAMILY_SPOUSE_CURRENT_RELIGION = "family.spouse.current_religion"
-    FAMILY_PARENT_STATUS_CATEGORY = "family.parent_status_category"
     FAMILY_PARENT_STATUSES = "family.parent_statuses"
     FAMILY_GUARDIAN_NAME = "family.guardian_name"
     FAMILY_GUARDIAN_RELATIONSHIP = "family.guardian_relationship"
@@ -220,7 +219,6 @@ _EDUCATION_FIELDS = ("school_attended_address", "inclusive_years", "awards_recei
 _ORGANIZATION_FIELDS = ("sort_order", "organization_name", "position_title")
 _TRANSPORTATION_FIELDS = ("frequency_category", "frequency", "fare")
 _LOCATION_FIELDS = (
-    "not_specified",
     "region_psgc_code",
     "region_name_snapshot",
     "province_psgc_code",
@@ -302,7 +300,6 @@ def _coverage() -> dict[InventoryCorrectionTarget, frozenset[str]]:
         for name, fields in _FAMILY_FIELDS.items():
             coverage[_T(f"family.{kind.lower()}.{name}")] = _keyed("family_members", kind, fields)
     for name in (
-        "parent_status_category",
         "parent_statuses",
         "guardian_name",
         "guardian_relationship",

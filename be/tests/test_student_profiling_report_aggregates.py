@@ -11,18 +11,15 @@ import compass.reports.services as profiling_report
 from compass.accounts.models import StudentLifecycleStatus
 from compass.inventory.models import (
     AnnualIncomeStatus,
-    CivilStatusCategory,
     CurrentReligionCategory,
     FamilyMemberKind,
-    ParentStatusCategory,
+    ParentStatus,
     PWDStatus,
     Sex,
 )
 from compass.organization.models import AcademicYear, Program
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
-    LEGACY_KEY,
-    LEGACY_LABEL,
     InvalidReportFilter,
     build_student_profiling_report,
 )
@@ -232,7 +229,7 @@ def test_profile_population_is_submitted_snapshot_not_current_lifecycle():
 
 
 @pytest.mark.django_db
-def test_dynamic_program_columns_include_legacy_and_no_hardcoded_sample_programs():
+def test_dynamic_program_columns_have_no_hardcoded_sample_programs():
     sync_policy()
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)
     revision = make_revision("program-columns")
@@ -251,19 +248,10 @@ def test_dynamic_program_columns_include_legacy_and_no_hardcoded_sample_programs
         program=beta,
         sex=Sex.FEMALE,
     )
-    make_inventory(
-        student=make_user("legacy-program@example.edu"),
-        academic_year=year,
-        revision=revision,
-        program=None,
-        year_level=None,
-    )
-
     report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert [column["name"] for column in report["program_columns"]] == [
         alpha.name,
         beta.name,
-        LEGACY_LABEL,
     ]
     for key in (Sex.MALE, Sex.FEMALE):
         item = report_row(report["sections"]["sex"], key)
@@ -296,65 +284,14 @@ def test_exact_age_uses_submission_date_and_no_twenty_plus_bucket():
         date_of_birth=birthday,
         submitted_time=submitted_at(2026, 8, 30),
     )
-    make_inventory(
-        student=make_user("age-unknown@example.edu"),
-        academic_year=year,
-        revision=revision,
-        program=program,
-        date_of_birth=None,
-    )
-
     age_rows = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
         "age"
     ]["rows"]
     assert [(item["key"], item["total_count"]) for item in age_rows] == [
         ("20", 1),
         ("21", 1),
-        (LEGACY_KEY, 1),
     ]
     assert all("Above" not in item["label"] for item in age_rows)
-
-
-@pytest.mark.django_db
-def test_not_specified_and_not_recorded_legacy_are_distinct():
-    sync_policy()
-    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
-    revision = make_revision("legacy-categories")
-    _, _, program = make_organization("LEG")
-    make_inventory(
-        student=make_user("explicit@example.edu"),
-        academic_year=year,
-        revision=revision,
-        program=program,
-        civil_status_category=CivilStatusCategory.NOT_SPECIFIED,
-        religion=CurrentReligionCategory.NOT_SPECIFIED,
-        physical=PWDStatus.NOT_SPECIFIED,
-        parent_status=ParentStatusCategory.NOT_SPECIFIED,
-    )
-    make_inventory(
-        student=make_user("legacy@example.edu"),
-        academic_year=year,
-        revision=revision,
-        program=program,
-        civil_status_category=None,
-        religion=None,
-        physical=None,
-        parent_status=None,
-        with_parents=False,
-        with_location=False,
-    )
-
-    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
-    for section_name in (
-        "civil_status",
-        "current_religion",
-        "physical_disadvantage",
-        "parent_family_status",
-    ):
-        section = report["sections"][section_name]
-        assert report_row(section, "NOT_SPECIFIED")["total_count"] == 1
-        assert report_row(section, LEGACY_KEY)["total_count"] == 1
-    assert "Nort specified" not in json.dumps(report, default=str)
 
 
 @pytest.mark.django_db
@@ -377,7 +314,7 @@ def test_parent_life_sections_have_independent_student_denominators():
     items[1].support_profile.save(
         update_fields=["mother_life_status", "father_life_status", "updated_at"]
     )
-    items[2].support_profile.father_life_status = ParentLifeStatus.NOT_SPECIFIED
+    items[2].support_profile.father_life_status = ParentLifeStatus.UNKNOWN
     items[2].support_profile.save(update_fields=["father_life_status", "updated_at"])
 
     report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
@@ -388,7 +325,7 @@ def test_parent_life_sections_have_independent_student_denominators():
     assert report_row(mother, ParentLifeStatus.DECEASED)["total_count"] == 1
     assert report_row(father, ParentLifeStatus.LIVING)["total_count"] == 1
     assert report_row(father, ParentLifeStatus.DECEASED)["total_count"] == 1
-    assert report_row(father, ParentLifeStatus.NOT_SPECIFIED)["total_count"] == 1
+    assert report_row(father, ParentLifeStatus.UNKNOWN)["total_count"] == 1
 
 
 @pytest.mark.django_db
@@ -472,7 +409,11 @@ def assert_report_reconciles(report: dict[str, object]) -> None:
     assert len(totals) == len(columns)
     for key, section in report["sections"].items():
         assert section["denominator"] == population, key
-        assert sum(row["total_count"] for row in section["rows"]) == population, key
+        multi_response = key == "parent_family_status"
+        if multi_response:
+            assert sum(row["total_count"] for row in section["rows"]) >= population, key
+        else:
+            assert sum(row["total_count"] for row in section["rows"]) == population, key
         program_sums = dict.fromkeys(totals, 0)
         for row in section["rows"]:
             counts = {item["program_key"]: item["count"] for item in row["program_counts"]}
@@ -483,7 +424,10 @@ def assert_report_reconciles(report: dict[str, object]) -> None:
             )
             for program_key, count in counts.items():
                 program_sums[program_key] += count
-        assert program_sums == totals, key
+        if multi_response:
+            assert all(program_sums[program_key] >= total for program_key, total in totals.items())
+        else:
+            assert program_sums == totals, key
     reconciliation = report["inventory_coverage"]["reconciliation"]
     assert reconciliation["profile_submitted_count"] == population
     assert (
@@ -498,7 +442,7 @@ def assert_report_reconciles(report: dict[str, object]) -> None:
 
 
 @pytest.mark.django_db
-def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy():
+def test_every_section_reconciles_across_colleges_campuses_and_programs():
     sync_policy()
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)
     revision = make_revision("reconcile-all")
@@ -510,13 +454,19 @@ def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy()
     _, college_b, program_b = make_organization("REC-B")
     variations = [
         {"program": program_a1, "sex": Sex.MALE},
-        {"program": program_a1, "sex": Sex.FEMALE, "civil_status_category": None},
-        {"program": program_a2, "religion": CurrentReligionCategory.NOT_SPECIFIED},
-        {"program": program_a2, "with_parents": False},
-        {"program": program_a3, "with_location": False, "physical": PWDStatus.PWD},
-        {"program": program_b, "parent_status": ParentStatusCategory.WIDOWED},
+        {"program": program_a1, "sex": Sex.FEMALE},
+        {"program": program_a2, "religion": CurrentReligionCategory.NONE},
+        {"program": program_a2, "parent_statuses": [ParentStatus.MOTHER_OFW]},
+        {"program": program_a3, "physical": PWDStatus.PWD},
+        {
+            "program": program_b,
+            "parent_statuses": [
+                ParentStatus.WIDOW_WIDOWER_LIVING_TOGETHER,
+                ParentStatus.FATHER_OFW,
+            ],
+        },
         {"program": program_b, "date_of_birth": datetime(2007, 1, 5).date()},
-        {"program": None, "year_level": None, "with_parents": False, "with_location": False},
+        {"program": program_b, "living": "WITH_RELATIVES"},
     ]
     for index, values in enumerate(variations):
         make_inventory(
@@ -538,7 +488,8 @@ def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy()
     assert_report_reconciles(report)
     by_key = {column["key"]: column for column in report["program_columns"]}
     assert by_key[f"program:{program_a3.pk}"]["submitted_inventory_count"] == 1
-    assert by_key[profiling_report.LEGACY_PROGRAM_KEY]["submitted_inventory_count"] == 1
+    parent_status = report["sections"]["parent_family_status"]
+    assert sum(row["total_count"] for row in parent_status["rows"]) > len(variations)
 
     for filters in (
         {"college_id": college_a.pk},
@@ -550,8 +501,6 @@ def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy()
             access_scope=GLOBAL_REPORT_ACCESS_SCOPE, **filters
         )
         assert_report_reconciles(filtered)
-        # College and Program filters never pull unclassified legacy Inventories into a College.
-        assert all(not column["is_legacy"] for column in filtered["program_columns"])
 
     scoped = build_student_profiling_report(
         access_scope=profiling_report.ReportAccessScope(
@@ -559,7 +508,7 @@ def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy()
         )
     )
     assert_report_reconciles(scoped)
-    assert scoped["report_context"]["submitted_inventory_count"] == 2
+    assert scoped["report_context"]["submitted_inventory_count"] == 3
 
 
 @pytest.mark.django_db
@@ -625,9 +574,9 @@ def test_age_uses_the_institutional_submission_date_not_the_utc_date():
         ((AnnualIncomeStatus.REPORTED, "2626681"), (AnnualIncomeStatus.NONE, "0"), "RICH"),
         ((AnnualIncomeStatus.NONE, "0"), (AnnualIncomeStatus.NONE, "0"), "NONE"),
         (
-            (AnnualIncomeStatus.NOT_SPECIFIED, None),
+            (AnnualIncomeStatus.UNKNOWN, None),
             (AnnualIncomeStatus.REPORTED, "50000"),
-            "NOT_SPECIFIED",
+            "UNKNOWN",
         ),
     ],
 )

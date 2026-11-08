@@ -89,7 +89,6 @@ _COMMON_BASE = {
     "religion_from_birth": "Roman Catholic",
     "current_religion_category": "ROMAN_CATHOLIC",
     "parent_statuses": ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
-    "parent_status_category": "MARRIED",
     "pwd_status": "NON_PWD",
     "physical_disadvantage": "None",
     "height": "165 cm",

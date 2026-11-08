@@ -532,7 +532,7 @@ def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(mon
 
 
 def test_section_sheets_end_with_population_total_outside_the_filter(monkeypatch):
-    report = synthetic_report(colleges=[("CCMS", 3)], submitted_count=11, legacy_inventories=2)
+    report = synthetic_report(colleges=[("CCMS", 3)], submitted_count=11)
     workbook = workbook_from_report(monkeypatch, report)
     programs = report["program_columns"]
 
@@ -558,13 +558,20 @@ def test_section_sheets_end_with_population_total_outside_the_filter(monkeypatch
             column_sum = sum(
                 worksheet.cell(row=row, column=column).value for row in range(2, 2 + data_rows)
             )
-            assert column_sum == program["submitted_inventory_count"]
+            if section_key == "parent_family_status":
+                assert column_sum >= program["submitted_inventory_count"]
+            else:
+                assert column_sum == program["submitted_inventory_count"]
 
     income = workbook["Parent Income"]
     income_values = [cell.value for row in income.iter_rows() for cell in row]
     assert "Parent Annual Income Brackets" in income_values
     assert "Below ₱131,484" in income_values
     assert "Above ₱2,626,680" in income_values
+    parent_status_values = [
+        cell.value for row in workbook["Parent Family"].iter_rows() for cell in row
+    ]
+    assert "Students may tick more than one." in parent_status_values
 
 
 def test_duplicate_program_codes_are_disambiguated_and_legend_keeps_identity(monkeypatch):
@@ -589,39 +596,10 @@ def test_duplicate_program_codes_are_disambiguated_and_legend_keeps_identity(mon
     assert second["name"] in values
 
 
-def test_legacy_program_column_is_retained(monkeypatch):
-    report = synthetic_report(program_count=2, submitted_count=6, legacy_inventories=2)
-    workbook = workbook_from_report(monkeypatch, report)
-    assert "Not recorded / legacy" in [cell.value for cell in workbook["Sex"][1]]
-    summary = workbook["Summary"]
-    legend_rows = [
-        [cell.value for cell in row]
-        for row in summary.iter_rows()
-        if row[0].value == "Not recorded / legacy"
-    ]
-    assert legend_rows[0][5:7] == ["Yes", 2]
-
-
 def test_geography_sheet_preserves_canonical_city_province_region_context(monkeypatch):
     report = synthetic_report(program_count=2, submitted_count=2)
     base_row = report["sections"]["city_municipality"]["rows"][0]
-    report["sections"]["city_municipality"]["rows"] = [
-        base_row,
-        {
-            **base_row,
-            "key": "NOT_SPECIFIED",
-            "label": "Not specified",
-            "province_name": None,
-            "region_name": None,
-        },
-        {
-            **base_row,
-            "key": "NOT_RECORDED_LEGACY",
-            "label": "Not recorded / legacy",
-            "province_name": None,
-            "region_name": None,
-        },
-    ]
+    report["sections"]["city_municipality"]["rows"] = [base_row]
 
     workbook = workbook_from_report(monkeypatch, report)
     worksheet = workbook["City Municipality"]
@@ -635,9 +613,6 @@ def test_geography_sheet_preserves_canonical_city_province_region_context(monkey
         "Synthetic Province",
         "Synthetic Region",
     ]
-    labels = [worksheet.cell(row=row, column=1).value for row in range(2, worksheet.max_row + 1)]
-    assert "Not specified" in labels
-    assert "Not recorded / legacy" in labels
 
 
 def test_empty_report_keeps_stable_sheet_structure_with_headers_only(monkeypatch):
@@ -760,12 +735,12 @@ def test_pdf_and_xlsx_present_identical_canonical_numbers_from_one_frozen_report
     plan = [
         (program_a1, Sex.MALE, CivilStatusCategory.SINGLE),
         (program_a1, Sex.FEMALE, CivilStatusCategory.SINGLE),
-        (program_a1, Sex.FEMALE, CivilStatusCategory.NOT_SPECIFIED),
+        (program_a1, Sex.FEMALE, CivilStatusCategory.SOLO_PARENT),
         (program_a2, Sex.MALE, CivilStatusCategory.MARRIED),
         (program_a2, Sex.MALE, CivilStatusCategory.SINGLE),
         (program_b, Sex.FEMALE, CivilStatusCategory.SINGLE),
-        (program_b, Sex.MALE, None),
-        (None, Sex.FEMALE, None),
+        (program_b, Sex.MALE, CivilStatusCategory.OTHER),
+        (program_b, Sex.FEMALE, CivilStatusCategory.MARRIED),
     ]
     for index, (program, sex, civil_status) in enumerate(plan):
         make_inventory(
@@ -776,7 +751,7 @@ def test_pdf_and_xlsx_present_identical_canonical_numbers_from_one_frozen_report
             sex=sex,
             civil_status_category=civil_status,
             date_of_birth=date(2007, 1, 1 + index),
-            with_location=index % 2 == 0,
+            with_location=True,
         )
 
     report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
@@ -802,9 +777,7 @@ def test_pdf_and_xlsx_present_identical_canonical_numbers_from_one_frozen_report
             cells = [cell["text"] for cell in row["cells"]]
             pdf_rows[cells[0]] = (int(cells[-2]), cells[-1])
         assert all(xlsx_rows[label] == value for label, value in pdf_rows.items()), section_key
-        # Only zero-count Not recorded / legacy rows are left out of the printed table.
-        for label in set(xlsx_rows) - set(pdf_rows):
-            assert label == "Not recorded / legacy" and xlsx_rows[label][0] == 0
+        assert set(xlsx_rows) == set(pdf_rows)
         footer = [cell.value for cell in worksheet[len(xlsx_rows) + 3]]
         pdf_total = [cell["text"] for cell in pdf_tables[section_key]["rows"][-1]["cells"]]
         assert footer[total_column - 1] == int(pdf_total[-2]) == len(plan)

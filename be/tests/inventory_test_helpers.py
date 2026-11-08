@@ -43,7 +43,6 @@ def minimum_normalized_inventory_values(
         "languages_most_fluent": "Filipino, English",
         "religion_from_birth": "Roman Catholic",
         "current_religion_category": "ROMAN_CATHOLIC",
-        "parent_status_category": "MARRIED",
         "parent_statuses": ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
         "guardian_name": "Synthetic Guardian",
         "guardian_relationship": "Parent",
@@ -166,7 +165,6 @@ def minimum_normalized_inventory_values(
         "geographic_locations": [
             {
                 "kind": "CURRENT",
-                "not_specified": False,
                 "region_psgc_code": "1300000000",
                 "region_name_snapshot": "National Capital Region",
                 "province_psgc_code": "",

@@ -11,7 +11,6 @@ import {
   OccupationCategoryValue,
   ParentLifeStatusValue,
   PostGraduationFieldValue,
-  PWDStatusValue,
   TransportationFrequencyCategoryValue,
   type FamilyMemberPayload,
   type ProgramSummary,
@@ -49,18 +48,13 @@ export function toInventoryPayload(inventory: InventoryResponse): InventoryPaylo
 export function normalizeInventoryPayload(payload: InventoryPayload): InventoryPayload {
   const next: InventoryPayload = {
     ...payload,
-    geographic_locations: (payload.geographic_locations ?? []).map((location) =>
-      location.not_specified
-        ? { kind: location.kind, not_specified: true }
-        : location,
-    ),
+    geographic_locations: payload.geographic_locations ?? [],
     family_members: (payload.family_members ?? []).map((member) => ({
       ...member,
       ...(member.annual_income_status === AnnualIncomeStatusValue.REPORTED
         ? {}
         : { annual_income_previous_year: null }),
-      ...(member.occupation_category === OccupationCategoryValue.NONE ||
-      member.occupation_category === OccupationCategoryValue.NOT_SPECIFIED
+      ...(member.occupation_category === OccupationCategoryValue.NONE
         ? { occupation: "" }
         : {}),
     })),
@@ -77,9 +71,6 @@ export function normalizeInventoryPayload(payload: InventoryPayload): InventoryP
   }
   if (next.current_religion_category !== CurrentReligionCategoryValue.OTHER) {
     next.current_religion = "";
-  }
-  if (next.pwd_status === PWDStatusValue.NOT_SPECIFIED) {
-    next.physical_disadvantage = "";
   }
   if (next.living_arrangement !== LivingArrangementValue.BOARDING_HOUSE) {
     next.boarding_exclusive = null;
@@ -229,7 +220,7 @@ export function getInventoryDraftIssues(
 }
 
 function isUnansweredChoice(value: string | null | undefined): boolean {
-  return isBlank(value) || value === "NOT_SPECIFIED";
+  return isBlank(value);
 }
 
 function isNoneAnswer(value: string | null | undefined): boolean {
@@ -340,21 +331,14 @@ export function getInventorySubmissionIssues(
   const currentLocation = (payload.geographic_locations ?? []).find(
     (location) => location.kind === GeographicLocationKindValue.CURRENT,
   );
-  const currentLocationUnanswered = !currentLocation || currentLocation.not_specified;
-  if (currentLocationUnanswered || !currentLocation.region_psgc_code) {
+  if (!currentLocation?.region_psgc_code) {
     add("personal", "inventory-current-region", "Choose your current region.");
   }
-  if (currentLocationUnanswered || !currentLocation.city_municipality_psgc_code) {
+  if (!currentLocation?.city_municipality_psgc_code) {
     add("personal", "inventory-current-city", "Choose your current city or municipality.");
   }
 
   // Page 1 — family and support.
-  requireChoice(
-    "family",
-    "inventory-parent-status-category",
-    payload.parent_status_category,
-    "Choose your parents' marital status.",
-  );
   if (!(payload.parent_statuses ?? []).length) {
     add("family", "inventory-parent-statuses", "Tick at least one circumstance that applies to your parents.");
   }

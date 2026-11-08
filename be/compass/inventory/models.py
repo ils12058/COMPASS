@@ -18,7 +18,6 @@ class CivilStatusCategory(models.TextChoices):
     MARRIED = "MARRIED", "Married"
     SOLO_PARENT = "SOLO_PARENT", "Solo Parent"
     OTHER = "OTHER", "Other"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class CurrentReligionCategory(models.TextChoices):
@@ -35,29 +34,11 @@ class CurrentReligionCategory(models.TextChoices):
     PMCC = "PMCC", "PMCC"
     NONE = "NONE", "None"
     OTHER = "OTHER", "Other"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class PWDStatus(models.TextChoices):
     PWD = "PWD", "PWD"
     NON_PWD = "NON_PWD", "Non-PWD"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
-
-
-class ParentStatusCategory(models.TextChoices):
-    MARRIED = "MARRIED", "Married"
-    ANNULLED = "ANNULLED", "Annulled"
-    LEGALLY_SEPARATED = "LEGALLY_SEPARATED", "Legally Separated"
-    TEMPORARILY_SEPARATED = "TEMPORARILY_SEPARATED", "Temporarily Separated"
-    PERMANENTLY_SEPARATED = "PERMANENTLY_SEPARATED", "Permanently Separated"
-    LIVING_TOGETHER = "LIVING_TOGETHER", "Living Together"
-    WIDOWED = "WIDOWED", "Widowed"
-    MOTHER_WITH_OTHER_PARTNER = "MOTHER_WITH_OTHER_PARTNER", "Mother with other partner"
-    FATHER_WITH_OTHER_PARTNER = "FATHER_WITH_OTHER_PARTNER", "Father with other partner"
-    MOTHER_OFW = "MOTHER_OFW", "Mother OFW"
-    FATHER_OFW = "FATHER_OFW", "Father OFW"
-    OTHER = "OTHER", "Other"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class OccupationCategory(models.TextChoices):
@@ -69,14 +50,12 @@ class OccupationCategory(models.TextChoices):
     OFW = "OFW", "OFW"
     NONE = "NONE", "None"
     OTHER = "OTHER", "Other"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class AnnualIncomeStatus(models.TextChoices):
     REPORTED = "REPORTED", "Reported"
     NONE = "NONE", "None"
     UNKNOWN = "UNKNOWN", "Unknown"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class GeographicLocationKind(models.TextChoices):
@@ -90,7 +69,6 @@ class TransportationFrequencyCategory(models.TextChoices):
     WEEKLY = "WEEKLY", "Weekly"
     OCCASIONAL = "OCCASIONAL", "Occasional"
     OTHER = "OTHER", "Other"
-    NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 
 class Sex(models.TextChoices):
@@ -260,12 +238,6 @@ class StudentInventory(models.Model):
     parent_statuses = ArrayField(
         models.CharField(max_length=48, choices=ParentStatus.choices),
         default=list,
-        blank=True,
-    )
-    parent_status_category = models.CharField(
-        max_length=40,
-        choices=ParentStatusCategory.choices,
-        null=True,
         blank=True,
     )
 
@@ -473,7 +445,6 @@ class InventoryGeographicLocation(models.Model):
         related_name="geographic_locations",
     )
     kind = models.CharField(max_length=16, choices=GeographicLocationKind.choices)
-    not_specified = models.BooleanField(default=False)
     region_psgc_code = models.CharField(max_length=32, blank=True, default="")
     region_name_snapshot = models.CharField(max_length=160, blank=True, default="")
     province_psgc_code = models.CharField(max_length=32, blank=True, default="")

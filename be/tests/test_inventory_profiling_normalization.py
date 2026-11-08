@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from django.apps import apps
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.audit.context import AuditContext
@@ -21,7 +20,7 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
     InventoryTransportationEntry,
     OccupationCategory,
-    ParentStatusCategory,
+    ParentStatus,
     PWDStatus,
     StudentInventory,
     TransportationFrequencyCategory,
@@ -34,14 +33,13 @@ from compass.inventory.services import (
     combine_parent_annual_income,
     derive_age_on,
     ensure_current_inventory,
-    get_my_inventory_history_item,
     replace_current_inventory,
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import Campus, College, Program
 from compass.student_support.models import ParentLifeStatus
-from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_row
+from tests.inventory_encryption_helpers import create_inventory_row
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 pytestmark = pytest.mark.usefixtures("inventory_psgc")
@@ -117,7 +115,7 @@ def test_civil_status_fixed_categories_normalize_text_snapshot(category, expecte
 
 
 @pytest.mark.django_db
-def test_civil_status_other_requires_detail_and_not_specified_does_not_invent_text():
+def test_civil_status_other_requires_detail_and_preserves_custom_text():
     student, _, _ = make_draft("civil-other@example.edu")
     with pytest.raises(InvalidInventoryInput, match="civil_status detail"):
         replace_current_inventory(
@@ -133,15 +131,6 @@ def test_civil_status_other_requires_detail_and_not_specified_does_not_invent_te
         },
     )
     assert read_confidential_content(other).civil_status == "Custom status"
-
-    unspecified = replace_current_inventory(
-        student=student,
-        values={
-            "civil_status_category": CivilStatusCategory.NOT_SPECIFIED,
-            "civil_status": "Must be cleared",
-        },
-    )
-    assert read_confidential_content(unspecified).civil_status == ""
 
 
 @pytest.mark.django_db
@@ -159,8 +148,6 @@ def test_current_religion_categories_are_explicit_without_fuzzy_classification(c
     assert item.current_religion_category == category
     if category == CurrentReligionCategory.OTHER:
         assert read_confidential_content(item).current_religion == "Custom faith"
-    elif category == CurrentReligionCategory.NOT_SPECIFIED:
-        assert read_confidential_content(item).current_religion == ""
     else:
         assert (
             read_confidential_content(item).current_religion
@@ -169,7 +156,7 @@ def test_current_religion_categories_are_explicit_without_fuzzy_classification(c
 
 
 @pytest.mark.django_db
-def test_current_religion_other_requires_detail_and_none_is_distinct_from_not_specified():
+def test_current_religion_other_requires_detail_and_none_is_explicit():
     student, _, _ = make_draft("religion-other@example.edu")
     with pytest.raises(InvalidInventoryInput, match="current_religion detail"):
         replace_current_inventory(
@@ -185,13 +172,6 @@ def test_current_religion_other_requires_detail_and_none_is_distinct_from_not_sp
         values={"current_religion_category": CurrentReligionCategory.NONE},
     )
     assert read_confidential_content(none_value).current_religion == "None"
-
-    unspecified = replace_current_inventory(
-        student=student,
-        values={"current_religion_category": CurrentReligionCategory.NOT_SPECIFIED},
-    )
-    assert read_confidential_content(unspecified).current_religion == ""
-    assert CurrentReligionCategory.NONE != CurrentReligionCategory.NOT_SPECIFIED
 
 
 @pytest.mark.django_db
@@ -226,36 +206,23 @@ def test_pwd_status_requires_detail_when_pwd_and_keeps_the_answered_physical_dis
     )
     assert read_confidential_content(none_value).physical_disadvantage == "None"
 
-    unspecified = replace_current_inventory(
-        student=student,
-        values={
-            "pwd_status": PWDStatus.NOT_SPECIFIED,
-            "physical_disadvantage": "Do not infer",
-        },
-    )
-    assert read_confidential_content(unspecified).physical_disadvantage == ""
-
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("category", ParentStatusCategory.values)
-def test_atomic_parent_family_status_categories_do_not_rewrite_legacy_grouped_values(category):
-    student, _, _ = make_draft(f"parent-status-{category.lower()}@example.edu")
+@pytest.mark.parametrize("status", ParentStatus.values)
+def test_parent_status_checklist_values_are_stored_verbatim(status):
+    student, _, _ = make_draft(f"parent-status-{status.lower()}@example.edu")
     item = replace_current_inventory(
         student=student,
-        values={
-            "parent_statuses": ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
-            "parent_status_category": category,
-        },
+        values={"parent_statuses": [status]},
     )
-    assert item.parent_status_category == category
-    assert item.parent_statuses == ["MARRIED_ANNULLED_LEGALLY_SEPARATED"]
+    assert item.parent_statuses == [status]
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("field", ["father_life_status", "mother_life_status"])
 @pytest.mark.parametrize(
     "life_status",
-    [ParentLifeStatus.LIVING, ParentLifeStatus.DECEASED, ParentLifeStatus.NOT_SPECIFIED],
+    [ParentLifeStatus.LIVING, ParentLifeStatus.DECEASED, ParentLifeStatus.UNKNOWN],
 )
 def test_parent_life_status_is_explicit_support_data_and_not_inferred(field, life_status):
     student, _, _ = make_draft(f"parent-life-{field}-{life_status.lower()}@example.edu")
@@ -308,7 +275,7 @@ def test_parent_occupation_category_requires_detail_only_for_other(category):
     assert mother.occupation_category == category
     if category == OccupationCategory.OTHER:
         assert read_confidential_content(mother).occupation == "Custom occupation"
-    elif category in {OccupationCategory.NONE, OccupationCategory.NOT_SPECIFIED}:
+    elif category == OccupationCategory.NONE:
         assert read_confidential_content(mother).occupation == ""
     else:
         assert read_confidential_content(mother).occupation == "Narrative detail"
@@ -372,19 +339,19 @@ def test_parent_income_status_distinguishes_reported_none_and_unknown():
     ).family_members.get(kind="FATHER")
     assert none_value.annual_income_previous_year == Decimal("0")
 
-    unspecified = replace_current_inventory(
+    unknown = replace_current_inventory(
         student=student,
         values={
             "family_members": [
                 {
                     "kind": "FATHER",
-                    "annual_income_status": AnnualIncomeStatus.NOT_SPECIFIED,
+                    "annual_income_status": AnnualIncomeStatus.UNKNOWN,
                     "annual_income_previous_year": Decimal("999.00"),
                 }
             ]
         },
     ).family_members.get(kind="FATHER")
-    assert unspecified.annual_income_previous_year is None
+    assert unknown.annual_income_previous_year is None
 
     with pytest.raises(InvalidInventoryInput, match="positive amount"):
         replace_current_inventory(
@@ -414,12 +381,12 @@ def test_combined_parent_income_excludes_spouse_and_preserves_unknown_semantics(
     unknown = combine_parent_annual_income(
         father_status=AnnualIncomeStatus.REPORTED,
         father_amount=Decimal("100000"),
-        mother_status=AnnualIncomeStatus.NOT_SPECIFIED,
+        mother_status=AnnualIncomeStatus.UNKNOWN,
         mother_amount=None,
     )
-    assert unknown.status == CombinedParentIncomeStatus.NOT_SPECIFIED
+    assert unknown.status == CombinedParentIncomeStatus.UNKNOWN
     assert unknown.amount is None
-    assert classify_parent_annual_income(unknown) == ParentIncomeBand.NOT_SPECIFIED
+    assert classify_parent_annual_income(unknown) == ParentIncomeBand.UNKNOWN
 
 
 @pytest.mark.parametrize(
@@ -532,26 +499,27 @@ def test_psgc_snapshot_rejects_half_pairs_and_missing_required_region_or_city(ba
 
 
 @pytest.mark.django_db
-def test_explicit_unknown_location_uses_state_not_fake_psgc_code_and_kind_is_unique():
-    student, _, _ = make_draft("geo-unknown@example.edu")
-    item = replace_current_inventory(
-        student=student,
-        values={
-            "geographic_locations": [{"kind": "CURRENT", "not_specified": True}],
-        },
-    )
-    current = item.geographic_locations.get()
-    assert current.not_specified
-    assert current.region_psgc_code == ""
-    assert current.city_municipality_psgc_code == ""
-
+def test_geographic_location_kind_is_unique():
+    student, _, _ = make_draft("geo-unique@example.edu")
     with pytest.raises(InvalidInventoryInput, match="unique"):
         replace_current_inventory(
             student=student,
             values={
                 "geographic_locations": [
-                    {"kind": "CURRENT", "not_specified": True},
-                    {"kind": "CURRENT", "not_specified": True},
+                    {
+                        "kind": "CURRENT",
+                        "region_psgc_code": "1300000000",
+                        "region_name_snapshot": "National Capital Region",
+                        "city_municipality_psgc_code": "1380600000",
+                        "city_municipality_name_snapshot": "City of Manila",
+                    },
+                    {
+                        "kind": "CURRENT",
+                        "region_psgc_code": "1300000000",
+                        "region_name_snapshot": "National Capital Region",
+                        "city_municipality_psgc_code": "1380600000",
+                        "city_municipality_name_snapshot": "City of Manila",
+                    },
                 ]
             },
         )
@@ -563,14 +531,12 @@ def test_geographic_location_db_uniqueness_protects_one_snapshot_per_kind():
     InventoryGeographicLocation.objects.create(
         inventory=draft,
         kind=GeographicLocationKind.CURRENT,
-        not_specified=True,
     )
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             InventoryGeographicLocation.objects.create(
                 inventory=draft,
                 kind=GeographicLocationKind.CURRENT,
-                not_specified=True,
             )
 
 
@@ -582,7 +548,6 @@ def test_geographic_location_db_uniqueness_protects_one_snapshot_per_kind():
         (TransportationFrequencyCategory.SEVERAL_TIMES_A_WEEK, "Several times a week"),
         (TransportationFrequencyCategory.WEEKLY, "Weekly"),
         (TransportationFrequencyCategory.OCCASIONAL, "Occasional"),
-        (TransportationFrequencyCategory.NOT_SPECIFIED, ""),
     ],
 )
 def test_transportation_frequency_fixed_categories_normalize_legacy_snapshot(
@@ -689,7 +654,6 @@ def test_negative_transport_fare_and_parent_income_have_database_protection():
         ("civil_status_category", "Choose your civil status."),
         ("current_religion_category", "Choose your current religion."),
         ("pwd_status", "Choose your PWD status."),
-        ("parent_status_category", "Choose your parents' marital status."),
         ("living_arrangement", "Choose your living arrangement."),
     ],
 )
@@ -752,7 +716,6 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
             "current_religion": "Bad client text",
             "pwd_status": PWDStatus.NON_PWD,
             "physical_disadvantage": "None",
-            "parent_status_category": ParentStatusCategory.MARRIED,
             "transportation_entries": [
                 {
                     "mode": "JEEPNEY",
@@ -771,57 +734,6 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
     assert read_confidential_content(submitted).physical_disadvantage == "None"
     assert submitted.course_currently_enrolled == program.name
     assert read_confidential_content(submitted.transportation_entries.get()).frequency == "Daily"
-
-
-@pytest.mark.django_db
-def test_legacy_submitted_inventory_with_null_normalized_fields_remains_readable_and_unmodified():
-    student, _, draft = make_draft("legacy-normalization@example.edu")
-    update_inventory_row(
-        StudentInventory.objects.filter(pk=draft.pk),
-        submitted_at=timezone.now() - timedelta(days=100),
-        civil_status="legacy free text",
-        civil_status_category=None,
-        current_religion="legacy religion",
-        current_religion_category=None,
-        physical_disadvantage="legacy detail",
-        pwd_status=None,
-        parent_statuses=["WIDOW_WIDOWER_LIVING_TOGETHER"],
-        parent_status_category=None,
-        program=None,
-        year_level=None,
-    )
-    create_inventory_row(
-        InventoryFamilyMember,
-        inventory=draft,
-        kind="FATHER",
-        occupation="Teacher at DepEd",
-        occupation_category=None,
-        annual_income_previous_year=None,
-        annual_income_status=None,
-    )
-    create_inventory_row(
-        InventoryTransportationEntry,
-        inventory=draft,
-        mode="TRICYCLE",
-        frequency="legacy free text",
-        frequency_category=None,
-        fare=Decimal("10.00"),
-    )
-
-    historical = get_my_inventory_history_item(student=student, inventory_id=draft.pk)
-    assert historical.civil_status_category is None
-    assert historical.current_religion_category is None
-    assert historical.pwd_status is None
-    assert historical.parent_status_category is None
-    assert historical.family_members.get().occupation_category is None
-    assert historical.support_profile.four_ps_status is None
-    assert historical.support_profile.indigenous_peoples_status is None
-    assert historical.support_profile.mother_life_status is None
-    assert historical.support_profile.father_life_status is None
-    assert historical.transportation_entries.get().frequency_category is None
-    assert historical.geographic_locations.count() == 0
-    assert read_confidential_content(historical).civil_status == "legacy free text"
-    assert read_confidential_content(historical).current_religion == "legacy religion"
 
 
 @pytest.mark.django_db
