@@ -353,21 +353,17 @@ def test_historical_anonymized_submission_keeps_its_manila_report_day():
     assert day_before["report_context"]["submitted_response_count"] == 0
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_disposal_markers_fence_late_provider_callbacks_without_a_ledger(kind):
-    source, consent = legacy_media_source(kind)
+def test_disposal_markers_fence_late_provider_callbacks_without_a_ledger():
+    source, consent = legacy_media_source("RECORDING")
     historically_disposed_media(source)
     with patch("celery.app.task.Task.apply_async") as dispatch:
         process_media_webhook_event(
-            event_type="recording.ready-to-download"
-            if kind == "RECORDING"
-            else "transcript.ready-to-download",
+            event_type="recording.ready-to-download",
             event_id="late-ready",
             event_ts=timezone.now().timestamp(),
             payload={
                 "room_name": source.room.daily_room_name,
                 "recording_id": "artifact-opaque",
-                "transcript_id": "artifact-opaque",
             },
         )
     source.refresh_from_db()
@@ -379,19 +375,15 @@ def test_disposal_markers_fence_late_provider_callbacks_without_a_ledger(kind):
 
 
 @override_settings(DAILY_ENABLED=True)
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_callback_for_a_room_absent_from_the_new_database_creates_nothing(kind):
+def test_callback_for_a_room_absent_from_the_new_database_creates_nothing():
     """A late callback from a pre-reset room cannot recreate a room, capture or artifact."""
 
-    _, capture = reservation(kind)
+    _, capture = reservation("RECORDING")
     rooms = ECounselingRoom.objects.count()
     captures = ECounselingMediaCapture.objects.count()
     event = body_for(capture)
     event["payload"]["room_name"] = "ec-" + "0" * 32
-    if kind == "RECORDING":
-        event["payload"]["instance_id"] = "pre-reset-instance"
-    else:
-        event["payload"]["info"]["instanceId"] = "pre-reset-instance"
+    event["payload"]["instance_id"] = "pre-reset-instance"
     with patch("celery.app.task.Task.apply_async") as dispatch:
         signed(event)
     receipt = Receipt.objects.get(provider_event_id=event["id"])
@@ -408,8 +400,6 @@ def test_callback_for_a_room_absent_from_the_new_database_creates_nothing(kind):
     [
         ("get_recording", "/recordings/opaque%2Fid"),
         ("delete_recording", "/recordings/opaque%2Fid"),
-        ("get_transcript", "/transcript/opaque%2Fid"),
-        ("delete_transcript", "/transcript/opaque%2Fid"),
     ],
 )
 def test_daily_artifact_resource_paths_used_by_custody_cleanup_stay_documented(method, path):

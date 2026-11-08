@@ -24,7 +24,7 @@ export function artifactOutcome(kind: ECounselingMediaKind, state: ArtifactState
   if (state.artifact_disposed_at || state.artifact_status === "DISPOSED") return { text: "Deleted under an approved retention rule.", short: "deleted" };
   if (state.artifact_status === "PENDING" || state.artifact_status === "PROCESSING") return { text: "Preparing file…", short: "preparing" };
   if (state.artifact_status === "FAILED") return { text: "The file isn't available right now. Preparation will be retried.", short: "not available" };
-  if (state.artifact_status === "STORED") return state.artifact_available ? { text: "Ready", short: kind === "RECORDING" ? "ready" : "saved" } : { text: "Saved", short: "saved" };
+  if (state.artifact_status === "STORED") return state.artifact_available ? { text: "Ready", short: "ready" } : { text: "Saved", short: "saved" };
   return null;
 }
 
@@ -41,7 +41,7 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
   const [error, setError] = useState<string | null>(null);
   const resourceAccess = ecounselingResourceAccess(useQueryClient());
   const denial = useECounselingResourceDenial(appointmentId);
-  const subject = kind === "RECORDING" ? "recording" : "transcript";
+  const subject = "recording";
 
   async function download() {
     if (pending || resourceAccess.getDenial(appointmentId)) return;

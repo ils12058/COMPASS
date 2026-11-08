@@ -8,7 +8,6 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.db import connection
 from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
@@ -18,12 +17,10 @@ from compass.ecounseling.artifacts import access_artifact, ensure_pending_artifa
 from compass.ecounseling.media import (
     ECounselingConsentConflict,
     ECounselingConsentNotApproved,
-    ECounselingConsentScopeIncompatible,
     get_media_projection,
     process_media_webhook_event,
     request_consents,
     start_recording,
-    start_transcription,
     withdraw_my_consent,
 )
 from compass.ecounseling.models import (
@@ -34,7 +31,6 @@ from compass.ecounseling.models import (
 )
 from compass.ecounseling.services import (
     ECounselingNotPermitted,
-    ECounselingProviderUnavailable,
     create_join_credential,
 )
 from compass.ecounseling.tasks import recover_media_artifacts
@@ -64,21 +60,14 @@ def fake_dispatch():
 
 
 def session():
-    return setup_session(media_policy_version=2)
+    return setup_session(precreate_room=False)
 
 
-def approved_session(storage=False):
+def approved_session():
     _, student, counselor, appointment = session()
     approve_scope(
-        student=student, counselor=counselor, appointment=appointment, scope="SESSION_MEDIA_CAPTURE"
+        student=student, counselor=counselor, appointment=appointment, scope="AUDIO_VIDEO_RECORDING"
     )
-    if storage:
-        approve_scope(
-            student=student,
-            counselor=counselor,
-            appointment=appointment,
-            scope="TRANSCRIPT_STORAGE",
-        )
     client = FakeMediaDailyClient()
     with patch("compass.ecounseling.services.settings.DAILY_ENABLED", True):
         create_join_credential(
@@ -90,153 +79,29 @@ def approved_session(storage=False):
     return student, counselor, appointment, client
 
 
-def test_new_room_combines_permission_without_starting_media_and_preserves_terminal_choices():
+def test_new_room_requests_recording_permission_without_starting_media_and_keeps_denial():
     _, student, counselor, appointment = session()
     rows = request_consents(
         counselor=counselor,
         appointment_id=appointment.pk,
-        scopes=["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"],
+        scopes=["AUDIO_VIDEO_RECORDING"],
         context=context(counselor),
     )
     room = ECounselingRoom.objects.get(appointment=appointment)
-    assert room.media_policy_version == 2 and room.provisioned_at is None
+    assert room.provisioned_at is None
     assert not room.media_captures.exists()
-    assert len(rows) == 2
-    media = room.consents.get(scope="SESSION_MEDIA_CAPTURE")
+    assert len(rows) == 1
+    media = room.consents.get(scope="AUDIO_VIDEO_RECORDING")
     media.decision, media.decided_at = "DENIED", timezone.now()
     media.save()
     with pytest.raises(ECounselingConsentConflict):
         request_consents(
             counselor=counselor,
             appointment_id=appointment.pk,
-            scopes=["SESSION_MEDIA_CAPTURE"],
+            scopes=["AUDIO_VIDEO_RECORDING"],
             context=context(counselor),
         )
     assert appointment.status == "SCHEDULED"
-
-
-@pytest.mark.parametrize(
-    "version,scope",
-    [(1, "SESSION_MEDIA_CAPTURE"), (2, "AUDIO_VIDEO_RECORDING"), (2, "LIVE_TRANSCRIPTION")],
-)
-def test_scope_contract_is_enforced_in_services_and_api(version, scope):
-    _, _, counselor, appointment = session()
-    ECounselingRoom.objects.create(
-        appointment=appointment, daily_room_name="scope-room", media_policy_version=version
-    )
-    with pytest.raises(ECounselingConsentScopeIncompatible):
-        request_consents(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            scopes=[scope],
-            context=context(counselor),
-        )
-    response = auth_client(counselor).post(
-        f"/api/v1/e-counseling/appointments/{appointment.pk}/consents",
-        data='{"scopes":["' + scope + '"]}',
-        content_type="application/json",
-    )
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "ecounseling_consent_scope_incompatible"
-    assert not ECounselingConsent.objects.exists()
-
-
-def test_both_v2_capture_types_use_combined_permission_but_storage_needs_its_own():
-    student, counselor, appointment, client = approved_session()
-    with patch("compass.ecounseling.media.settings.DAILY_ENABLED", True):
-        with pytest.raises(ECounselingConsentNotApproved):
-            start_transcription(
-                counselor=counselor,
-                appointment_id=appointment.pk,
-                store_transcript=True,
-                context=context(counselor),
-                daily_client=client,
-            )
-        recording = start_recording(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            context=context(counselor),
-            daily_client=client,
-        )
-        transcription = start_transcription(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            store_transcript=False,
-            context=context(counselor),
-            daily_client=client,
-        )
-    assert recording.pk != transcription.pk
-    assert len(client.recording_starts) == len(client.transcription_starts) == 1
-    assert not transcription.transcript_storage_authorized
-
-
-@pytest.mark.parametrize("fail_recording", [False, True])
-def test_combined_withdrawal_commits_before_both_stops_and_independent_storage_disable(
-    fail_recording,
-):
-    student, counselor, appointment, client = approved_session(storage=True)
-    with patch("compass.ecounseling.media.settings.DAILY_ENABLED", True):
-        start_recording(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            context=context(counselor),
-            daily_client=client,
-        )
-        start_transcription(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            store_transcript=True,
-            context=context(counselor),
-            daily_client=client,
-        )
-    consent = ECounselingConsent.objects.get(scope="SESSION_MEDIA_CAPTURE")
-    original = client.stop_recording
-
-    def stop(**kwargs):
-        assert (
-            not connection.in_atomic_block
-            or consent.__class__.objects.get(pk=consent.pk).withdrawn_at
-        )
-        assert consent.__class__.objects.get(pk=consent.pk).withdrawn_at
-        original(**kwargs)
-        if fail_recording:
-            raise DailyUnavailable("sanitized")
-        return {"status": "sent"}
-
-    client.stop_recording = stop
-    with patch("compass.ecounseling.media.settings.DAILY_ENABLED", True):
-        if fail_recording:
-            with pytest.raises(ECounselingProviderUnavailable):
-                withdraw_my_consent(
-                    student=student,
-                    appointment_id=appointment.pk,
-                    consent_id=consent.pk,
-                    context=context(student),
-                    daily_client=client,
-                )
-        else:
-            withdraw_my_consent(
-                student=student,
-                appointment_id=appointment.pk,
-                consent_id=consent.pk,
-                context=context(student),
-                daily_client=client,
-            )
-    consent.refresh_from_db()
-    assert consent.withdrawn_at and not consent.is_effectively_approved
-    assert len(client.recording_stops) == len(client.transcription_stops) == 1
-    assert client.room_updates[-1][1] == {"enable_transcription_storage": False}
-    transcription = ECounselingMediaCapture.objects.get(kind="TRANSCRIPTION")
-    assert (
-        not transcription.transcript_storage_enabled and transcription.transcript_storage_authorized
-    )
-    with pytest.raises(ECounselingConsentConflict):
-        request_consents(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            scopes=["SESSION_MEDIA_CAPTURE"],
-            context=context(counselor),
-        )
 
 
 class FakeStorage:
@@ -296,27 +161,11 @@ class ArtifactDaily:
             "room_name": self.capture.room.daily_room_name,
         }
 
-    def get_transcript(self, *, artifact_id):
-        self.calls.append("GET")
-        return {
-            "transcriptId": artifact_id,
-            "status": "t_finished",
-            "roomId": self.capture.room.daily_room_id,
-            "isVttAvailable": True,
-        }
-
     def recording_access_link(self, *, artifact_id):
         self.calls.append("LINK")
         return {
             "download_link": "https://daily-meeting-recordings.s3.us-west-2.amazonaws.com/opaque?secret=provider",
             "expires": int(time.time()) + 900,
-        }
-
-    def transcript_access_link(self, *, artifact_id):
-        self.calls.append("LINK")
-        return {
-            "transcriptId": artifact_id,
-            "link": "https://daily-meeting-transcripts.s3.us-west-2.amazonaws.com/opaque?secret=provider",
         }
 
     def delete_recording(self, *, artifact_id):
@@ -325,23 +174,13 @@ class ArtifactDaily:
             raise DailyUnavailable("sanitized")
         return {"deleted": True, "id": artifact_id}
 
-    def delete_transcript(self, *, artifact_id):
-        self.calls.append("DELETE")
-        if self.fail_delete:
-            raise DailyUnavailable("sanitized")
-        return {"transcriptId": artifact_id, "status": "t_deleted"}
-
 
 @contextmanager
 def fake_download(url, *, kind):
-    content = (
-        b"WEBVTT\n\n00:00.000 --> 00:01.000\nsynthetic\n"
-        if kind == "TRANSCRIPTION"
-        else b"\x00\x00\x00\x18ftypisomsynthetic-media"
-    )
+    content = b"\x00\x00\x00\x18ftypisomsynthetic-media"
     yield (
         BytesIO(content),
-        "text/vtt" if kind == "TRANSCRIPTION" else "video/mp4",
+        "video/mp4",
         len(content),
         hashlib.sha256(content).hexdigest(),
     )
@@ -353,7 +192,6 @@ def ready_artifact(kind="RECORDING", *, pending=True):
         appointment=appointment,
         daily_room_name="opaque-room",
         daily_room_id="opaque-provider-room",
-        media_policy_version=2,
         room_expires_at=timezone.now() - timedelta(days=31),
     )
     capture = ECounselingMediaCapture.objects.create(
@@ -364,7 +202,6 @@ def ready_artifact(kind="RECORDING", *, pending=True):
         provider_binding_verified_at=timezone.now() - timedelta(days=32),
         ready_at=timezone.now() - timedelta(days=31),
         media_authorized_at=timezone.now() - timedelta(days=32),
-        transcript_storage_authorized=kind == "TRANSCRIPTION",
     )
     artifact = ensure_pending_artifact(capture)
     if not pending:
@@ -378,7 +215,7 @@ def ready_artifact(kind="RECORDING", *, pending=True):
     return student, counselor, appointment, capture, artifact, FakeStorage()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
+@pytest.mark.parametrize("kind", ["RECORDING"])
 def test_ingestion_stores_verified_opaque_copy_then_cleans_provider_and_projects_availability(kind):
     _, counselor, appointment, capture, artifact, storage = ready_artifact(kind)
     client = ArtifactDaily(capture)
@@ -390,9 +227,7 @@ def test_ingestion_stores_verified_opaque_copy_then_cleans_provider_and_projects
     assert artifact.object_key == f"{capture.room_id}/{capture.pk}/{artifact.pk}"
     assert client.calls == ["GET", "LINK", "GET", "DELETE"]
     assert storage.calls.index("SAVE") < storage.calls.index("VERIFY")
-    assert get_media_projection(capture.room)[
-        "recording" if kind == "RECORDING" else "transcription"
-    ]["artifact_available"]
+    assert get_media_projection(capture.room)["recording"]["artifact_available"]
     with patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage):
         access = access_artifact(
             counselor=counselor,
@@ -526,16 +361,14 @@ def test_access_has_no_store_bounded_ttl_and_survives_completed_appointment_serv
     assert not {"object_key", "provider_artifact_id"} & result.json().keys()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
+@pytest.mark.parametrize("kind", ["RECORDING"])
 def test_historically_disposed_v2_media_stays_fenced_against_ingestion_and_late_events(kind):
     _, counselor, appointment, capture, artifact, storage = ready_artifact(kind, pending=False)
     historically_disposed_media(capture, artifact, storage)
     provider = ArtifactDaily(capture)
     ingest_artifact(artifact.pk, storage=storage, client=provider, download=fake_download)
     process_media_webhook_event(
-        event_type="recording.ready-to-download"
-        if kind == "RECORDING"
-        else "transcript.ready-to-download",
+        event_type="recording.ready-to-download",
         event_id="late-event",
         event_ts=time.time(),
         payload={
@@ -548,8 +381,7 @@ def test_historically_disposed_v2_media_stays_fenced_against_ingestion_and_late_
     capture.refresh_from_db()
     assert not storage.objects and provider.calls == []
     assert artifact.status == "DISPOSED" and capture.provider_artifact_id is None
-    key = "recording" if kind == "RECORDING" else "transcription"
-    assert not get_media_projection(capture.room)[key]["artifact_available"]
+    assert not get_media_projection(capture.room)["recording"]["artifact_available"]
     with patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage):
         response = auth_client(counselor).get(
             f"/api/v1/e-counseling/appointments/{appointment.pk}/media/{kind}/access"
@@ -603,7 +435,7 @@ def test_recording_start_rechecks_combined_consent_after_provider_room_enablemen
     settings.DAILY_ENABLED = True
     student, counselor, appointment, client = approved_session()
     consent = ECounselingConsent.objects.get(
-        room__appointment=appointment, scope="SESSION_MEDIA_CAPTURE"
+        room__appointment=appointment, scope="AUDIO_VIDEO_RECORDING"
     )
     original = client.update_room
 

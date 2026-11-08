@@ -1,36 +1,31 @@
 "use client";
 
-import type { MediaPolicyVersion } from "@/lib/api/generated/model";
 import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
-const callAndDevices: HelpSection = {
-  heading: "Call and devices",
-  content: "Use Check devices before joining to test your camera, microphone, and speaker locally on your device, or use Devices during a call to switch them. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open; leaving doesn’t complete the Appointment or record the Counseling Encounter; use Finish counseling when the session ends, and it doesn’t stop recording or transcription.",
-};
-
-const encounterRecords: HelpSection = {
-  heading: "Encounter records",
-  content: "Finishing counseling records the Counseling Encounter and completes the Appointment in one action. It is separate from recording audio or video, and it is available once the online access period has ended.",
-};
-
+// E-Counseling is recording-only: there is no transcription, transcript or captions feature.
 export const ecounselingHelpSections: readonly HelpSection[] = [
-  { heading: "Media consent", content: "The student decides separately whether audio/video recording, live transcription, and transcript storage are allowed. Declining or withdrawing consent doesn’t affect access to Counseling." },
-  { heading: "Recording", content: "Captures audio and video while recording is on. Consent approval alone doesn’t start recording; the Counselor starts and stops it from the call controls. Active and stopping states stay visible on the call." },
-  { heading: "Transcription", content: "Processes speech as text while transcription is on. Transcript text isn’t shown during the session, and transcription can run without transcript storage." },
-  { heading: "Transcript storage", content: "Optional, off by default, and requires separate student consent before transcription starts. Transcript text, playback, and recording downloads aren’t available for these sessions." },
-  encounterRecords,
-  callAndDevices,
+  {
+    heading: "Recording permission",
+    content: "Recording is optional. If the student agrees, the Counselor may start an audio/video recording of this session. The student may withdraw permission during the session, and COMPASS then asks the recording to stop. Declining or withdrawing doesn’t affect access to Counseling.",
+  },
+  {
+    heading: "Recording",
+    content: "The Counselor starts and stops recording from the call controls. Allowing permission never starts it. Active and stopping states stay visible on the call.",
+  },
+  {
+    heading: "Private files",
+    content: "A completed recording is prepared for private storage and appears under Session files. Only the assigned Counselor can download it, and each download creates a short-lived link. Withdrawing permission doesn’t delete what was already recorded; it stays subject to the University’s records and privacy requirements. Downloaded copies can’t be recalled.",
+  },
+  {
+    heading: "Encounter records",
+    content: "Recording audio or video doesn’t document the session. Finishing counseling records the Counseling Encounter and completes the Appointment in one action, once the online access period has ended.",
+  },
+  {
+    heading: "Call and devices",
+    content: "Use Check devices before joining to test your camera, microphone, and speaker on your device, or use Devices during a call to switch them. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open. Leaving doesn’t complete the Appointment or stop recording.",
+  },
 ];
 
-export const ecounselingV2HelpSections: readonly HelpSection[] = [
-  { heading: "Media permission", content: "One student decision allows recording and live transcription for this session; saving a transcript needs a separate decision. Allowing never starts either one. Declining or withdrawing doesn’t affect access to Counseling." },
-  { heading: "Recording", content: "The Counselor starts and stops recording from the call controls after reviewing what it does. A completed recording is prepared for private storage before it can be downloaded by the assigned Counselor." },
-  { heading: "Live transcription and saved transcripts", content: "Live transcription processes speech as text while it’s on; transcript text isn’t shown during the session. A transcript file is saved only when the student allowed transcript storage and the Counselor chose to save it before starting." },
-  { heading: "Private files", content: "Completed files appear under Session files once they’re prepared. Each download creates a short-lived link. Withdrawing permission stops affected capture but doesn’t delete files already captured. They remain subject to the University’s records and privacy requirements; COMPASS doesn’t delete them automatically after a set period. Downloaded copies can’t be recalled." },
-  encounterRecords,
-  callAndDevices,
-];
-
-export function ECounselingHelp({ mediaPolicyVersion }: { mediaPolicyVersion?: MediaPolicyVersion }) {
-  return <ContextHelp title="About E-Counseling" sections={mediaPolicyVersion === 2 ? ecounselingV2HelpSections : ecounselingHelpSections} />;
+export function ECounselingHelp() {
+  return <ContextHelp title="About E-Counseling" sections={ecounselingHelpSections} />;
 }

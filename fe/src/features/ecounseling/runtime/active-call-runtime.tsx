@@ -206,7 +206,7 @@ export function ActiveECounselingRuntimeProvider({
     else await queryClient.invalidateQueries({ queryKey, exact: true }, { cancelRefetch: false });
   }, [appointmentId, freshness, queryClient, resourceAccess, role]);
 
-  // Daily's recording and transcription events only ask COMPASS to re-read the session.
+  // Daily's recording events only ask COMPASS to re-read the session.
   useEffect(() => {
     session.setProviderMediaEventHandler(() => void refreshSession());
   }, [refreshSession, session]);
@@ -216,7 +216,6 @@ export function ActiveECounselingRuntimeProvider({
   // Students never get a stop: capture is the assigned Counselor's governed action.
   const canStop = {
     recording: !protectedUnavailable && canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.recording.capture_status)),
-    transcription: !protectedUnavailable && canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.transcription.capture_status)),
   };
 
   const { ref: audioRef, blocked: audioBlocked, resume: resumeAudio } = useRemoteAudioPlayback(live ? snapshot.remote?.audio.track ?? null : null, snapshot.devices.speaker);

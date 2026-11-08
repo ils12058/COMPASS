@@ -31,7 +31,7 @@ from tests.test_realtime_tickets import issue
 
 pytestmark = pytest.mark.django_db(transaction=True)
 EVENT = "ecounseling.consent.changed"
-SCOPES = ["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"]
+SCOPES = ["AUDIO_VIDEO_RECORDING"]
 ORIGINAL_PUBLISH = publish._publish
 
 
@@ -41,7 +41,7 @@ def world(settings, monkeypatch):
     settings.REALTIME_ENABLED = True
     monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
-    admin, student, counselor, appointment = setup_session(media_policy_version=2)
+    admin, student, counselor, appointment = setup_session(precreate_room=False)
     return admin, student, counselor, appointment
 
 
@@ -107,8 +107,8 @@ def assert_participants(world, frames, recipients=None):
     )
 
 
-@pytest.mark.parametrize("scopes", [[SCOPES[0]], SCOPES])
-def test_new_request_one_hint_per_participant_only_after_outer_commit(world, publications, scopes):
+def test_new_request_one_hint_per_participant_only_after_outer_commit(world, publications):
+    scopes = SCOPES
     with transaction.atomic():
         rows = request(world, scopes)
         assert ECounselingConsent.objects.count() == len(scopes)
@@ -343,7 +343,7 @@ def test_unrelated_or_designated_staff_never_qualify(world, publications, role):
 
 def test_invalid_requests_and_wrong_participants_emit_nothing(world, publications):
     _, student, counselor, appointment = world
-    for scopes in ([], [SCOPES[0], SCOPES[0]], ["not-a-scope"], ["TRANSCRIPT_STORAGE"]):
+    for scopes in ([], [SCOPES[0], SCOPES[0]], ["not-a-scope"], ["TRANSCRIPT_STORAGE"]):  # retired
         with pytest.raises(media.ECounselingConsentConflict):
             media.request_consents(
                 counselor=counselor,
@@ -385,7 +385,7 @@ def test_resolution_failure_cannot_fail_committed_request_or_log_private_data(
 
     monkeypatch.setattr(consent_realtime, "_recipient_id", fail)
     request(world)
-    assert ECounselingConsent.objects.count() == 2
+    assert ECounselingConsent.objects.count() == 1
     assert hints(publications) == []
     assert private not in caplog.text
     assert "consent freshness hint was not published" in caplog.text
@@ -456,7 +456,7 @@ def test_real_redis_socket_and_authorized_http_consent_flow(world, settings, mon
             await receive(sockets[1], frame)
             await sockets[2].nothing()
             listed = await database_call(clients[0].get, student_path)
-            assert listed.status_code == 200 and len(listed.json()["items"]) == 2
+            assert listed.status_code == 200 and len(listed.json()["items"]) == 1
             consent = next(row for row in listed.json()["items"] if row["scope"] == SCOPES[0])
             approved = await database_call(
                 clients[0].post,
@@ -471,20 +471,6 @@ def test_real_redis_socket_and_authorized_http_consent_flow(world, settings, mon
             assert next(row for row in state.json()["items"] if row["id"] == consent["id"])[
                 "effective"
             ]
-            withdrawn = await database_call(
-                clients[0].post,
-                f"{student_path}/{consent['id']}/withdraw",
-                data="{}",
-                content_type="application/json",
-            )
-            assert withdrawn.status_code == 200 and withdrawn.json()["withdrawn_at"]
-            await receive(sockets[0], frame)
-            await receive(sockets[1], frame)
-            state = await database_call(clients[1].get, counselor_path)
-            assert not next(row for row in state.json()["items"] if row["id"] == consent["id"])[
-                "effective"
-            ]
-            await sockets[2].nothing()
             denied = await database_call(clients[2].get, counselor_path)
             assert denied.status_code == 403
             # Leave sockets on real Redis; make only Django publication use a refused connection.
@@ -492,21 +478,19 @@ def test_real_redis_socket_and_authorized_http_consent_flow(world, settings, mon
                 host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1
             )
             monkeypatch.setattr(publish, "realtime_redis", lambda: refused)
-            storage = next(row for row in listed.json()["items"] if row["scope"] == SCOPES[1])
-            declined = await database_call(
+            withdrawn = await database_call(
                 clients[0].post,
-                f"{student_path}/{storage['id']}/decision",
-                data='{"decision":"DENIED"}',
+                f"{student_path}/{consent['id']}/withdraw",
+                data="{}",
                 content_type="application/json",
             )
-            assert declined.status_code == 200 and declined.json()["decision"] == "DENIED"
+            assert withdrawn.status_code == 200 and withdrawn.json()["withdrawn_at"]
             for socket in sockets:
                 await socket.nothing()
             state = await database_call(clients[1].get, counselor_path)
-            assert (
-                next(row for row in state.json()["items"] if row["id"] == storage["id"])["decision"]
-                == "DENIED"
-            )
+            assert not next(row for row in state.json()["items"] if row["id"] == consent["id"])[
+                "effective"
+            ]
         finally:
             for socket in sockets:
                 await socket.disconnect()

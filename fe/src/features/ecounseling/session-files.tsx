@@ -1,12 +1,12 @@
 "use client";
 
 import { DisclosureSection } from "@/components/ui/disclosure";
-import { ECounselingCaptureStatus, type ECounselingMediaKind, type MediaWorkspaceState, type RecordingWorkspaceState, type TranscriptionWorkspaceState } from "@/lib/api/generated/model";
+import { ECounselingCaptureStatus, type ECounselingMediaKind, type MediaWorkspaceState, type RecordingWorkspaceState } from "@/lib/api/generated/model";
 
 import { MediaArtifactDownload, artifactOutcome } from "./media-artifact-download";
 
 type Outcome = { text: string; short: string };
-type FileRow = { kind: ECounselingMediaKind; label: string; outcome: Outcome; state: RecordingWorkspaceState | TranscriptionWorkspaceState };
+type FileRow = { kind: ECounselingMediaKind; label: string; outcome: Outcome; state: RecordingWorkspaceState };
 
 const ended: ReadonlySet<ECounselingCaptureStatus> = new Set([ECounselingCaptureStatus.STOPPED, ECounselingCaptureStatus.READY]);
 const running: ReadonlySet<ECounselingCaptureStatus> = new Set([
@@ -14,14 +14,9 @@ const running: ReadonlySet<ECounselingCaptureStatus> = new Set([
   ECounselingCaptureStatus.ACTIVE,
   ECounselingCaptureStatus.STOP_REQUESTED,
 ]);
-const deleted: Outcome = { text: "Deleted under an approved retention rule.", short: "deleted" };
 
 function recordingOutcome(media: MediaWorkspaceState): Outcome | null {
   const recording = media.recording;
-  if (media.media_policy_version !== 2) {
-    if (recording.artifact_disposed_at) return deleted;
-    return recording.capture_status === ECounselingCaptureStatus.READY ? { text: "Recording completed.", short: "completed" } : null;
-  }
   const file = artifactOutcome("RECORDING", recording);
   if (file) return file;
   if (running.has(recording.capture_status)) return { text: "Available after recording ends.", short: "in progress" };
@@ -29,35 +24,14 @@ function recordingOutcome(media: MediaWorkspaceState): Outcome | null {
   return null;
 }
 
-function transcriptOutcome(media: MediaWorkspaceState): Outcome | null {
-  const transcription = media.transcription;
-  if (media.media_policy_version !== 2) {
-    if (transcription.artifact_disposed_at) return deleted;
-    if (transcription.capture_status === ECounselingCaptureStatus.READY) return { text: "Transcription completed. The transcript was stored by the video service.", short: "completed" };
-    return transcription.capture_status === ECounselingCaptureStatus.STOPPED ? { text: "Transcription stop has not been confirmed.", short: "stop unconfirmed" } : null;
-  }
-  const file = artifactOutcome("TRANSCRIPTION", transcription);
-  if (file) return file;
-  if (transcription.capture_status === ECounselingCaptureStatus.STOPPED) return { text: "Transcription stop has not been confirmed.", short: "stop unconfirmed" };
-  if (!ended.has(transcription.capture_status)) return null;
-  // Live transcription without saving ends without a file; that is the outcome to state, not a
-  // storage setting.
-  return transcription.storage_enabled ? { text: "Preparing file…", short: "preparing" } : { text: "No transcript saved.", short: "not saved" };
-}
-
-// What each capture produced, described by its outcome. V2 sessions have COMPASS-held files; V1
-// sessions kept files with the video service, so they show completion only.
+// What the recording produced, described by its outcome. Files are held privately by COMPASS.
 export function sessionFileRows(media: MediaWorkspaceState): FileRow[] {
-  const rows: FileRow[] = [];
   const recording = recordingOutcome(media);
-  const transcript = transcriptOutcome(media);
-  if (recording) rows.push({ kind: "RECORDING", label: "Recording", outcome: recording, state: media.recording });
-  if (transcript) rows.push({ kind: "TRANSCRIPTION", label: "Transcript", outcome: transcript, state: media.transcription });
-  return rows;
+  return recording ? [{ kind: "RECORDING", label: "Recording", outcome: recording, state: media.recording }] : [];
 }
 
-// Completed recordings and transcripts, kept out of the live call controls. Each download asks for
-// a fresh link on click (MediaArtifactDownload).
+// Completed recordings, kept out of the live call controls. Each download asks for a fresh link on
+// click (MediaArtifactDownload).
 export function SessionFiles({
   appointmentId,
   media,
@@ -81,7 +55,7 @@ export function SessionFiles({
               <p className="font-semibold text-ink">{row.label}</p>
               <p className="text-sm text-muted">{row.outcome.text}</p>
             </div>
-            {media.media_policy_version === 2 ? <MediaArtifactDownload appointmentId={appointmentId} kind={row.kind} state={row.state} canAccess={canAccess} /> : null}
+            <MediaArtifactDownload appointmentId={appointmentId} kind={row.kind} state={row.state} canAccess={canAccess} />
           </li>
         ))}
       </ul>

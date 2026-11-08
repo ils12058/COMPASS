@@ -27,11 +27,11 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-for (const kind of ["recording", "transcription"]) {
+for (const kind of ["recording"]) {
   for (const [status, safety] of [["ACTIVE", "active"], ["START_REQUESTED", "starting"], ["STOP_REQUESTED", "stopping"], ["ERROR", "uncertain"]]) {
     test(`${kind} ${status} is safety-relevant with truthful Leave and sign-out copy`, () => {
       const value = media(); value[kind].capture_status = status;
-      assert.equal(captureSafetyState(kind, status), safety);
+      assert.equal(captureSafetyState(status), safety);
       assert.deepEqual(activeCaptureKinds(value), [kind]);
       assert.equal(captureIndicators(value).length, 1);
       assert.match(captureIndicators(value)[0].label.toLowerCase(), new RegExp(kind));
@@ -46,16 +46,15 @@ for (const kind of ["recording", "transcription"]) {
   }
 }
 
-test("terminal capture has no warning; legacy transcription STOPPED remains uncertain", () => {
-  for (const status of ["NOT_STARTED", "READY"]) {
+test("terminal recording has no warning; an uncertain one says so for recording only", () => {
+  for (const status of ["NOT_STARTED", "STOPPED", "READY"]) {
     assert.deepEqual(activeCaptureKinds(media(status)), []);
     assert.deepEqual(captureIndicators(media(status)), []);
   }
-  assert.deepEqual(activeCaptureKinds(media("STOPPED")), ["transcription"]);
   assert.equal(captureCessationWarning([], "leave"), null);
-  const stopped = media("STOPPED"); stopped.media_policy_version = 2;
-  assert.match(sessionFileRows(stopped).find((row) => row.kind === "TRANSCRIPTION").outcome.text, /stop has not been confirmed/);
-  assert.match(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /Recording and transcription have/);
+  assert.match(sessionFileRows(media("STOPPED")).find((row) => row.kind === "RECORDING").outcome.text, /Preparing file/);
+  assert.match(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /^Recording has not been confirmed as stopped/);
+  assert.doesNotMatch(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /transcri/i);
 });
 
 function seeded() {
@@ -82,7 +81,7 @@ for (const key of [canonical, getECounselingGetMyWorkspaceQueryKey(appointmentId
   try {
     await assert.rejects(client.fetchQuery({ queryKey: key, queryFn: async () => { throw error(403, key[0]); }, retry: false, staleTime: 0 }));
     assert.ok(access.getDenial(appointmentId));
-    assert.deepEqual(access.getDenial(appointmentId).captureKinds, ["recording", "transcription"]);
+    assert.deepEqual(access.getDenial(appointmentId).captureKinds, ["recording"]);
     assert.equal(client.getQueryData(canonical), undefined);
     for (const dependency of dependencies) assert.equal(client.getQueryData(dependency), undefined);
     assert.equal(observer.getCurrentResult().data, undefined, "Already mounted observers are also concealed");
@@ -100,7 +99,7 @@ for (const failure of [error(503), new TypeError("Failed to fetch"), error(408)]
     assert.equal(access.getDenial(appointmentId), null);
     const query = client.getQueryCache().find({ queryKey: canonical });
     const data = safeQueryData({ data: query.state.data, error: query.state.error, isError: true });
-    assert.deepEqual(activeCaptureKinds(data.data.media), ["recording", "transcription"]);
+    assert.deepEqual(activeCaptureKinds(data.data.media), ["recording"]);
   } finally { client.clear(); }
 });
 

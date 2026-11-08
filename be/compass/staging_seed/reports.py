@@ -711,7 +711,7 @@ def _summary(result) -> str:
         "",
         "- The population is a UAT design, not a statistical model of UCN enrollment.",
         "- The Graduate School has no Counselor responsibility and no seeded Students.",
-        "- No Daily room, recording, transcript or provider session is created; joining an "
+        "- No Daily room, recording or provider session is created; joining an "
         "E-Counseling call needs an operator-approved provider plan.",
         "- Structured PSGC geography stays 'not specified'; no Resource files are uploaded.",
         "- Seeding creates in-app notifications only; live UAT actions send normal staging email "

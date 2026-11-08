@@ -90,7 +90,7 @@ export function GlobalCallDock({
   const href = sessionPath(runtime.appointmentId);
   const cue = runtime.role === "STUDENT" ? pendingConsentCue(runtime.canonical.media) : null;
   const consentEnded = runtime.role === "COUNSELOR" ? consentEndedNotice(runtime.canonical.media) : null;
-  const stops = (["recording", "transcription"] as const).filter((kind) => runtime.capture.canStop[kind]);
+  const stops = (["recording"] as const).filter((kind) => runtime.capture.canStop[kind]);
   const unstable = connected && (call.network === "warning" || call.network === "bad");
   const timingNoticeBox = timingNotice ? (
     <div
@@ -130,10 +130,9 @@ export function GlobalCallDock({
             // Stopping holds until COMPASS confirms the stop, as on the session page. A failed Stop
             // request says so and can be sent again.
             const stopState = stopControlState(runtime.canonical.media?.[kind].capture_status, { stopping: runtime.capture.stopping[kind], failed: runtime.capture.failed[kind] });
-            const subject = kind === "recording" ? "recording" : "transcription";
             return (
-              <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={stopState === "stopping"} aria-label={stopState === "not-confirmed" ? `${kind === "recording" ? "Recording" : "Transcription"} stop not confirmed. Stop ${subject} again` : undefined} onClick={() => void runtime.capture.stop(kind)}>
-                {stopState === "stopping" ? "Stopping…" : stopState === "not-confirmed" ? "Stop not confirmed · Retry" : `Stop ${subject}`}
+              <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={stopState === "stopping"} aria-label={stopState === "not-confirmed" ? "Recording stop not confirmed. Stop recording again" : undefined} onClick={() => void runtime.capture.stop(kind)}>
+                {stopState === "stopping" ? "Stopping…" : stopState === "not-confirmed" ? "Stop not confirmed · Retry" : "Stop recording"}
               </Button>
             );
           })}

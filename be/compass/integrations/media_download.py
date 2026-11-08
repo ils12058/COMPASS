@@ -24,7 +24,7 @@ class MediaDownloadError(RuntimeError):
         self.failure = failure
 
 
-# Daily serves signed downloads of its own recording and transcript storage from this exact host
+# Daily serves signed downloads of its own recording storage from this exact host
 # (live staging, 2026-10-17). Legacy direct-S3 links stay accepted; no other Daily host is trusted.
 DAILY_SIGNED_LINK_HOSTS = frozenset({"c.daily.co"})
 
@@ -43,13 +43,12 @@ def validate_daily_link(payload, *, kind, artifact_id):
     if len(set(candidates)) != 1:
         raise MediaDownloadError("Provider media link is ambiguous.")
     url = candidates[0]
-    if kind == "TRANSCRIPTION" and payload.get("transcriptId") != artifact_id:
-        raise MediaDownloadError("Provider transcript identity is invalid.")
-    if kind == "RECORDING":
-        expires = payload.get("expires")
-        if type(expires) is not int or expires <= time.time():
-            raise MediaDownloadError("Provider media link expired.")
-    bucket = "daily-meeting-recordings" if kind == "RECORDING" else "daily-meeting-transcripts"
+    if kind != "RECORDING":
+        raise MediaDownloadError("Only recordings can be downloaded.")
+    expires = payload.get("expires")
+    if type(expires) is not int or expires <= time.time():
+        raise MediaDownloadError("Provider media link expired.")
+    bucket = "daily-meeting-recordings"
     try:
         parts = urlsplit(url)
         host = parts.hostname or ""
@@ -114,18 +113,7 @@ def stream_daily_media(url, *, kind):
                         "Provider media download is incomplete.",
                         failure=MediaDownloadFailure.VALIDATION,
                     )
-                if kind == "TRANSCRIPTION":
-                    if raw_type not in {
-                        "text/vtt",
-                        "text/plain",
-                        "application/octet-stream",
-                    } or not first.lstrip(b"\xef\xbb\xbf").startswith(b"WEBVTT"):
-                        raise MediaDownloadError(
-                            "Provider transcript format is invalid.",
-                            failure=MediaDownloadFailure.VALIDATION,
-                        )
-                    content_type = "text/vtt"
-                elif first[4:8] == b"ftyp" and raw_type in {
+                if first[4:8] == b"ftyp" and raw_type in {
                     "video/mp4",
                     "application/octet-stream",
                 }:

@@ -25,7 +25,7 @@ from compass.ecounseling.models import (
 from compass.ecounseling.services import ECounselingProviderUnavailable, process_daily_webhook
 from compass.ecounseling.webhooks import replay_receipt
 from tests.test_daily_diagnostics import PRIVATE_TEXT, assert_private_absent
-from tests.test_ecounseling_media import FakeMediaDailyClient, context
+from tests.test_ecounseling_media import context
 from tests.test_ecounseling_media_v2 import ArtifactDaily, FakeStorage, fake_download
 from tests.test_ecounseling_reconciliation import MetadataOnlyDaily, metadata
 from tests.test_ecounseling_reconciliation import fake_only_boundaries as fake_only_boundaries
@@ -35,15 +35,15 @@ from tests.test_ecounseling_webhook_security import SECRET, body_for, fenced_art
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.fixture
+def kind():
+    """E-Counseling is recording-only, so capture-generic checks run for recordings."""
+    return "RECORDING"
+
+
 class ScopedArtifactDaily(ArtifactDaily):
     def get_recording(self, **kwargs):
         return {**super().get_recording(**kwargs), "mtgSessionId": self.capture.provider_session_id}
-
-    def get_transcript(self, **kwargs):
-        return {
-            **super().get_transcript(**kwargs),
-            "mtgSessionId": self.capture.provider_session_id,
-        }
 
 
 @pytest.fixture(autouse=True)
@@ -64,7 +64,6 @@ def emit(event):
     )
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("conflict", [False, True])
 def test_concurrent_identical_or_conflicting_event_ids_have_one_original_binding(kind, conflict):
     _, capture = reservation(kind)
@@ -99,12 +98,11 @@ def test_concurrent_identical_or_conflicting_event_ids_have_one_original_binding
     )
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     "race", ["withdrawal", "capture_disposition", "artifact_disposition", "cleanup", "stored"]
 )
 def test_domain_change_committed_during_webhook_validation_wins_safe_apply(kind, race, monkeypatch):
-    people, capture = reservation(kind, bound=True, storage=kind == "TRANSCRIPTION")
+    people, capture = reservation(kind, bound=True)
     event = body_for(capture, "ready-to-download")
     from compass.ecounseling import webhooks
 
@@ -123,7 +121,7 @@ def test_domain_change_committed_during_webhook_validation_wins_safe_apply(kind,
     try:
         if race == "withdrawal":
             consent = ECounselingConsent.objects.get(
-                room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+                room=capture.room, scope="AUDIO_VIDEO_RECORDING"
             )
             withdraw_my_consent(
                 student=people[0],
@@ -154,7 +152,6 @@ def test_domain_change_committed_during_webhook_validation_wins_safe_apply(kind,
         consent.refresh_from_db()
         assert consent.withdrawn_at and not consent.is_effectively_approved
         assert capture.status == "READY" and capture.stop_requested_at
-        assert not capture.transcript_storage_enabled
     else:
         assert (
             row.processing_outcome == "DISPOSITION_BLOCKED" and capture.status == "START_REQUESTED"
@@ -218,26 +215,6 @@ def test_binding_quarantine_during_ingester_metadata_prevents_transfer_or_provid
     assert artifact.status == ("STORED" if cleanup else "FAILED")
 
 
-def test_real_policy_stop_runs_after_receipt_and_stop_intent_commit_once():
-    _, capture = reservation("TRANSCRIPTION")
-    ECounselingConsent.objects.filter(room=capture.room).update(withdrawn_at=timezone.now())
-    client = FakeMediaDailyClient()
-    original = client.stop_transcription
-
-    def checked(**kwargs):
-        assert not connection.in_atomic_block
-        assert Receipt.objects.filter(capture=capture, mitigation_state="ATTEMPT_RESERVED").exists()
-        assert ECounselingMediaCapture.objects.get(pk=capture.pk).stop_requested_at
-        return original(**kwargs)
-
-    client.stop_transcription = checked
-    with patch("compass.integrations.daily.DailyClient.from_settings", return_value=client):
-        event = body_for(capture)
-        emit(event)
-        emit(event)
-    assert len(client.transcription_stops) == 1
-
-
 def test_capture_save_failure_after_receipt_creation_rolls_back_both():
     _, capture = reservation("RECORDING")
     event = body_for(capture)
@@ -272,21 +249,6 @@ def test_replay_process_loss_rolls_back_budget_and_fresh_delivery_converges():
     )
 
 
-def test_application_transaction_defers_policy_io_and_rollback_discards_attempt():
-    _, capture = reservation("TRANSCRIPTION")
-    ECounselingConsent.objects.filter(room=capture.room).update(withdrawn_at=timezone.now())
-    with patch("compass.ecounseling.webhooks._run_policy_stop") as stop:
-        with pytest.raises(OperationalError):
-            with transaction.atomic():
-                emit(body_for(capture))
-                stop.assert_not_called()
-                raise OperationalError("synthetic rollback")
-        stop.assert_not_called()
-    capture.refresh_from_db()
-    assert capture.stop_requested_at is None
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_signed_completion_committed_during_metadata_io_supersedes_old_claim(kind):
     from compass.ecounseling.reconciliation import reconcile_captures
 

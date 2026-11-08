@@ -6,7 +6,7 @@ import { useId, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
 // Progressive disclosure for settled detail and longer explanation (ADR-091, ADR-093). Never put
-// what a reader must notice or decide behind one: active recording or transcription, a pending
+// what a reader must notice or decide behind one: an active recording, a pending
 // decision, a failure, or the consequence of an action at the moment it is confirmed.
 
 // Open state that the reader controls, reset when the surrounding layout changes what should be

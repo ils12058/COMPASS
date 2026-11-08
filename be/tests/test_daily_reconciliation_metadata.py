@@ -36,15 +36,9 @@ def client():
     return DailyClient("synthetic-key", base_url="https://api.daily.co/v1", timeout_seconds=9)
 
 
-@pytest.mark.parametrize(
-    ("kind", "collection"), [("RECORDING", "recordings"), ("TRANSCRIPTION", "transcript")]
-)
-def test_capture_metadata_uses_get_encoded_bound_id_and_bounded_timeout_and_body(
-    kind, collection, monkeypatch
-):
-    response = Response(
-        json.dumps({"status": "finished" if kind == "RECORDING" else "t_finished"}).encode()
-    )
+def test_capture_metadata_uses_get_encoded_bound_id_and_bounded_timeout_and_body(monkeypatch):
+    kind, collection = "RECORDING", "recordings"
+    response = Response(json.dumps({"status": "finished"}).encode())
     calls = []
 
     def open_fake(request, *, timeout):
@@ -53,7 +47,7 @@ def test_capture_metadata_uses_get_encoded_bound_id_and_bounded_timeout_and_body
 
     monkeypatch.setattr("compass.integrations.daily.urlopen", open_fake)
     item = client().get_capture_metadata(kind=kind, artifact_id="synthetic/id?x", timeout_seconds=5)
-    assert item["status"] in ("finished", "t_finished")
+    assert item["status"] == "finished"
     assert calls == [("GET", f"https://api.daily.co/v1/{collection}/synthetic%2Fid%3Fx", None, 5)]
     assert response.read_sizes == [65537] and response.closed
 
@@ -77,9 +71,7 @@ def test_oversize_or_nonobject_metadata_is_sanitized_and_response_closed(body, m
     response = Response(body)
     monkeypatch.setattr("compass.integrations.daily.urlopen", lambda *_args, **_kwargs: response)
     with pytest.raises(DailyInvalidResponse) as exc:
-        client().get_capture_metadata(
-            kind="TRANSCRIPTION", artifact_id="synthetic", timeout_seconds=5
-        )
+        client().get_capture_metadata(kind="RECORDING", artifact_id="synthetic", timeout_seconds=5)
     assert response.closed and response.read_sizes == [65537]
     assert_private_absent(str(exc.value))
 

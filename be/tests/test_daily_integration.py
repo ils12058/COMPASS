@@ -26,9 +26,7 @@ class CapturingDailyClient(DailyClient):
         self.calls.append((method, path, payload))
         if path == "/meeting-tokens":
             return {"token": "ephemeral-token"}
-        if path.endswith(
-            ("/recordings/start", "/recordings/stop", "/transcription/start", "/transcription/stop")
-        ):
+        if path.endswith(("/recordings/start", "/recordings/stop")):
             return {"status": "sent"}
         return {
             "id": "provider-room-id",
@@ -117,29 +115,22 @@ def test_daily_media_control_payloads_match_documented_rest_boundary():
         {"instanceId": "recording-instance"},
     )
 
-    client.update_room(
-        room_name="ec-opaque",
-        properties={"enable_transcription_storage": True},
-    )
+    client.update_room(room_name="ec-opaque", properties={"enable_recording": "cloud"})
     assert client.calls[-1] == (
         "POST",
         "/rooms/ec-opaque",
-        {"properties": {"enable_transcription_storage": True}},
+        {"properties": {"enable_recording": "cloud"}},
     )
 
-    client.start_transcription(room_name="ec-opaque", instance_id="transcription-instance")
-    assert client.calls[-1] == (
-        "POST",
-        "/rooms/ec-opaque/transcription/start",
-        {"instanceId": "transcription-instance"},
-    )
-
-    client.stop_transcription(room_name="ec-opaque", instance_id="transcription-instance")
-    assert client.calls[-1] == (
-        "POST",
-        "/rooms/ec-opaque/transcription/stop",
-        {"instanceId": "transcription-instance"},
-    )
+    # EC-RC-1/2: the client has no transcription operation at all.
+    for retired in (
+        "start_transcription",
+        "stop_transcription",
+        "get_transcript",
+        "delete_transcript",
+        "transcript_access_link",
+    ):
+        assert not hasattr(client, retired), retired
 
 
 def test_daily_from_settings_refuses_disabled_or_missing_key():

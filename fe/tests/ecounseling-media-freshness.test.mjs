@@ -16,7 +16,7 @@ const consentKey = { STUDENT: getECounselingListMyConsentsQueryKey, COUNSELOR: g
 
 function workspace(status = "NOT_STARTED", artifact = null, joinable = true) {
   const base = { consent_status: "APPROVED", capture_status: status, artifact_status: artifact, artifact_available: artifact === "STORED", artifact_disposed_at: artifact === "DISPOSED" ? "2026-10-14T00:00:00Z" : null };
-  return { data: { provider_readiness: { join_allowed: joinable }, media: { media_policy_version: 2, recording: base, transcription: { ...base, capture_status: "NOT_STARTED", artifact_status: null, artifact_available: false, storage_consent_status: "NOT_REQUESTED", storage_enabled: false } } } };
+  return { data: { provider_readiness: { join_allowed: joinable }, media: { recording: base } } };
 }
 
 function fixture({ role = "STUDENT", viewerOnly = false, fetch } = {}) {
@@ -197,12 +197,6 @@ test("settled historical and inactive cached appointments have no media polling"
     f.consumer.setActiveCall(A); assert.equal(f.timers.size, 2);
     f.consumer.setActiveCall(null); assert.equal(f.timers.size, 1);
   } finally { f.close(); }
-});
-
-test("legacy transcription STOPPED remains an unresolved fast safety refresh while live", () => {
-  const value = workspace("NOT_STARTED", null, false);
-  value.data.media.transcription.capture_status = "STOPPED";
-  assert.equal(sessionRefreshInterval(false, value.data.media, true), 7000);
 });
 
 for (const recovery of ["visibility", "online", "focus"]) test(`${recovery} recovery reconciles pending media without hidden/offline HTTP`, async () => {

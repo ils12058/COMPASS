@@ -59,7 +59,7 @@ export function PortalUserMenu() {
     await performSignOut();
   }
 
-  // Leaves the call first, then signs out. Leaving the call doesn't stop recording or transcription.
+  // Leaves the call first, then signs out. Leaving the call doesn't stop recording.
   async function endCallAndSignOut() {
     setEnding(true);
     try {

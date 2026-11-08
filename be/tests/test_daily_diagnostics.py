@@ -34,7 +34,7 @@ PRIVATE_VALUES = (
     "synthetic-private-bearer",
     "https://private.invalid/media?signed=synthetic-secret",
     "synthetic-student-identifier",
-    "WEBVTT confidential synthetic transcript",
+    "confidential synthetic session note",
     "private-bucket/private-object-key",
 )
 PRIVATE_TEXT = " | ".join(PRIVATE_VALUES)
@@ -207,12 +207,6 @@ def test_no_active_hint_is_stop_specific_exact_and_bounded(monkeypatch):
             "INVALID_REQUEST",
         ),
         (
-            "stop_transcription",
-            "room does not have an active recording",
-            "invalid-request-error",
-            "INVALID_REQUEST",
-        ),
-        (
             "stop_recording",
             "room does not have an active recording",
             "different-error",
@@ -347,7 +341,7 @@ def test_invalid_json_and_response_shapes_are_classified(raw, monkeypatch, caplo
 @pytest.mark.parametrize(
     "payload",
     [{"status": "sent"}, {"sent": "true"}, {"sent": True}],
-    ids=["recording", "transcription", "legacy_boolean"],
+    ids=["recording", "sent_string", "legacy_boolean"],
 )
 def test_documented_acknowledgments_still_work(payload, monkeypatch):
     monkeypatch.setattr(

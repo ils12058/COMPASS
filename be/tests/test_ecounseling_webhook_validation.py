@@ -8,28 +8,15 @@ from compass.ecounseling.webhook_events import InvalidEvent, validate_event
 
 
 def payload(kind="recording", phase="started"):
-    if kind == "recording":
-        result = {"recording_id": "artifact-a", "instance_id": "instance-a", "start_ts": 1700000000}
-        if phase != "started":
-            result["room_name"] = "room-a"
-        if phase == "ready-to-download":
-            result.update(status="finished", duration=5)
-        if phase == "error":
-            result["timestamp"] = "1700000005"
-        return result
-    return {
-        "id": "artifact-a",
-        "info": {"instanceId": "instance-a"},
-        "room_name": "room-a",
-        "room_id": "room-id-a",
-        "mtg_session_id": "session-a",
-        "status": {
-            "started": "t_in_progress",
-            "ready-to-download": "t_finished",
-            "error": "t_error",
-        }[phase],
-        "duration": 0 if phase == "started" else 5.5,
-    }
+    assert kind == "recording"
+    result = {"recording_id": "artifact-a", "instance_id": "instance-a", "start_ts": 1700000000}
+    if phase != "started":
+        result["room_name"] = "room-a"
+    if phase == "ready-to-download":
+        result.update(status="finished", duration=5)
+    if phase == "error":
+        result["timestamp"] = "1700000005"
+    return result
 
 
 def parse(data=None, *, kind="recording", phase="started", **kwargs):
@@ -41,7 +28,7 @@ def parse(data=None, *, kind="recording", phase="started", **kwargs):
     )
 
 
-@pytest.mark.parametrize("kind", ["recording", "transcript"])
+@pytest.mark.parametrize("kind", ["recording"])
 @pytest.mark.parametrize("phase", ["started", "ready-to-download", "error"])
 def test_documented_media_shapes_normalize_only_allowlisted_evidence(kind, phase):
     data = payload(kind, phase)
@@ -76,7 +63,7 @@ def test_documented_media_shapes_normalize_only_allowlisted_evidence(kind, phase
         604801,
     ],
 )
-@pytest.mark.parametrize("kind", ["recording", "transcript"])
+@pytest.mark.parametrize("kind", ["recording"])
 def test_invalid_duration_never_enters_normalized_evidence(kind, value):
     data = payload(kind, "ready-to-download")
     data["duration"] = value
@@ -120,9 +107,6 @@ def test_recording_start_time_rejects_invalid_integer_epoch(value):
     [
         ("recording", "recording_id"),
         ("recording", "instance_id"),
-        ("transcript", "id"),
-        ("transcript", "room_name"),
-        ("transcript", "mtg_session_id"),
     ],
 )
 @pytest.mark.parametrize("value", [None, "", True, 12, [], {}, "x" * 161])
@@ -133,17 +117,7 @@ def test_required_identity_rejects_null_empty_wrong_type_or_oversize(kind, key, 
         parse(data, kind=kind)
 
 
-@pytest.mark.parametrize(
-    "info", [None, [], "instance-a", 1, {"instanceId": None}, {"instanceId": {}}, {}]
-)
-def test_transcript_start_needs_documented_nested_instance(info):
-    data = payload("transcript")
-    data["info"] = info
-    with pytest.raises(InvalidEvent):
-        parse(data, kind="transcript")
-
-
-@pytest.mark.parametrize("kind", ["recording", "transcript"])
+@pytest.mark.parametrize("kind", ["recording"])
 @pytest.mark.parametrize("status", [None, "unknown", "t_error", 12, True, {}])
 def test_supplied_completion_status_must_match_documented_event(kind, status):
     data = payload(kind, "ready-to-download")
@@ -167,7 +141,6 @@ def test_missing_optional_media_times_are_unknown_and_dispatch_is_separate():
     data.pop("start_ts")
     event = parse(data)
     assert event.started_at is None and event.occurred_at is None
-    assert parse(kind="transcript").started_at is None
 
 
 @pytest.mark.parametrize(
@@ -206,3 +179,14 @@ def test_meeting_events_describe_meeting_times_without_capture_evidence(phase):
         },
     )
     assert event.identity.kind == "MEETING" and not event.completion
+
+
+@pytest.mark.parametrize("phase", ["started", "ready-to-download", "error"])
+def test_transcript_events_are_unsupported_in_a_recording_only_service(phase):
+    with pytest.raises(InvalidEvent):
+        validate_event(
+            event_type=f"transcript.{phase}",
+            event_id="event-a",
+            event_ts=1700000010.5,
+            payload={"id": "artifact-a", "room_name": "room-a"},
+        )

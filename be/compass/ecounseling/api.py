@@ -32,9 +32,7 @@ from .media import (
     list_my_consents,
     request_consents,
     start_recording,
-    start_transcription,
     stop_recording,
-    stop_transcription,
     withdraw_my_consent,
 )
 from .models import (
@@ -43,7 +41,6 @@ from .models import (
     MediaArtifactStatus,
     MediaCaptureKind,
     MediaCaptureStatus,
-    MediaPolicyVersion,
 )
 from .services import (
     ECounselingAppointmentNotEligible,
@@ -73,10 +70,7 @@ class StrictSchema(Schema):
 
 
 class ECounselingConsentScope(StrEnum):
-    SESSION_MEDIA_CAPTURE = ConsentScope.SESSION_MEDIA_CAPTURE
     AUDIO_VIDEO_RECORDING = ConsentScope.AUDIO_VIDEO_RECORDING
-    LIVE_TRANSCRIPTION = ConsentScope.LIVE_TRANSCRIPTION
-    TRANSCRIPT_STORAGE = ConsentScope.TRANSCRIPT_STORAGE
 
 
 class ECounselingConsentDecision(StrEnum):
@@ -97,7 +91,6 @@ class ECounselingConsentStatus(StrEnum):
 
 class ECounselingMediaKind(StrEnum):
     RECORDING = MediaCaptureKind.RECORDING
-    TRANSCRIPTION = MediaCaptureKind.TRANSCRIPTION
 
 
 class ECounselingCaptureStatus(StrEnum):
@@ -167,20 +160,8 @@ class RecordingWorkspaceState(StrictSchema):
     artifact_available: bool
 
 
-class TranscriptionWorkspaceState(StrictSchema):
-    consent_status: ECounselingConsentStatus
-    storage_consent_status: ECounselingConsentStatus
-    capture_status: ECounselingCaptureStatus
-    storage_enabled: bool
-    artifact_disposed_at: datetime | None
-    artifact_status: MediaArtifactStatus | None
-    artifact_available: bool
-
-
 class MediaWorkspaceState(StrictSchema):
-    media_policy_version: MediaPolicyVersion
     recording: RecordingWorkspaceState
-    transcription: TranscriptionWorkspaceState
 
 
 class StudentWorkspaceResponse(StrictSchema):
@@ -232,14 +213,9 @@ class ConsentDecisionRequest(StrictSchema):
     decision: Literal["APPROVED", "DENIED"]
 
 
-class TranscriptionStartRequest(StrictSchema):
-    store_transcript: bool = False
-
-
 class MediaCaptureResponse(StrictSchema):
     kind: ECounselingMediaKind
     status: ECounselingCaptureStatus
-    storage_enabled: bool
 
 
 class WebhookAckResponse(StrictSchema):
@@ -296,11 +272,7 @@ def _raise(exc: Exception) -> NoReturn:
 
 
 def _media_response(capture) -> dict[str, object]:
-    return {
-        "kind": capture.kind,
-        "status": capture.status,
-        "storage_enabled": bool(capture.transcript_storage_enabled),
-    }
+    return {"kind": capture.kind, "status": capture.status}
 
 
 class MediaArtifactAccessResponse(StrictSchema):
@@ -484,47 +456,6 @@ def ecounseling_start_assigned_recording(request, appointment_id: UUID):
 def ecounseling_stop_assigned_recording(request, appointment_id: UUID):
     try:
         capture = stop_recording(
-            counselor=request.auth_user,
-            appointment_id=appointment_id,
-            context=_context(request),
-        )
-        return _media_response(capture)
-    except ECounselingError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/appointments/{appointment_id}/transcription/start",
-    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 422, 502, 503),
-    auth=session_auth,
-    operation_id="eCounselingStartAssignedTranscription",
-)
-def ecounseling_start_assigned_transcription(
-    request,
-    appointment_id: UUID,
-    payload: TranscriptionStartRequest,
-):
-    try:
-        capture = start_transcription(
-            counselor=request.auth_user,
-            appointment_id=appointment_id,
-            store_transcript=payload.store_transcript,
-            context=_context(request),
-        )
-        return _media_response(capture)
-    except ECounselingError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/appointments/{appointment_id}/transcription/stop",
-    response=response_with_errors(MediaCaptureResponse, 401, 403, 404, 409, 502, 503),
-    auth=session_auth,
-    operation_id="eCounselingStopAssignedTranscription",
-)
-def ecounseling_stop_assigned_transcription(request, appointment_id: UUID):
-    try:
-        capture = stop_transcription(
             counselor=request.auth_user,
             appointment_id=appointment_id,
             context=_context(request),

@@ -76,16 +76,15 @@ def legacy_media_source(kind):
     )
     from tests.test_ecounseling_media import setup_session
 
-    _, student, counselor, appointment = setup_session(media_policy_version=2)
+    _, student, counselor, appointment = setup_session(precreate_room=False)
     room = ECounselingRoom.objects.create(
         appointment=appointment,
         daily_room_name="safe-opaque-room",
-        media_policy_version=1,
         room_expires_at=timezone.now() - timedelta(days=31),
     )
     consent = ECounselingConsent.objects.create(
         room=room,
-        scope="AUDIO_VIDEO_RECORDING" if kind == "RECORDING" else "TRANSCRIPT_STORAGE",
+        scope="AUDIO_VIDEO_RECORDING",
         requested_by=counselor,
         decision="APPROVED",
         decided_at=timezone.now() - timedelta(days=32),

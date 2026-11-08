@@ -272,14 +272,15 @@ test("a fatal call error ends the call in product words and destroys the call ob
   assert.equal(daily.instances[0].isDestroyed(), true);
 });
 
-test("provider recording and transcription events only ask COMPASS to refresh; transcript text is never received", async () => {
+test("provider recording events only ask COMPASS to refresh; no transcription event or text is received", async () => {
   const { daily, session, join } = setup();
   let refreshes = 0;
   session.setProviderMediaEventHandler(() => { refreshes += 1; });
   await join();
   const before = session.getSnapshot();
-  for (const event of ["recording-started", "recording-stopped", "recording-error", "transcription-started", "transcription-stopped", "transcription-error"]) daily.providerEvent(event);
-  assert.equal(refreshes, 6);
+  for (const event of ["recording-started", "recording-stopped", "recording-error"]) daily.providerEvent(event);
+  assert.equal(refreshes, 3);
+  assert.equal(subscribedCallEvents.some((event) => event.startsWith("transcription")), false);
   assert.equal(session.getSnapshot(), before, "Provider events never change the call's own state");
   assert.equal(subscribedCallEvents.includes("transcription-message"), false);
   daily.transcriptMessage();

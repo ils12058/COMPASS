@@ -12,7 +12,7 @@ import { getAuthGetSessionQueryKey } from "@/lib/api/generated/auth/auth";
 
 import { captureSafetyState } from "./runtime/runtime-model";
 
-type CaptureKind = "recording" | "transcription";
+type CaptureKind = "recording";
 export type ResourceDenial = { error: CompassApiError; captureKinds: CaptureKind[] };
 type Resource = { epoch: number; denial: ResourceDenial | null; paths: Set<string>; captureKinds: CaptureKind[] };
 
@@ -134,11 +134,11 @@ export class ECounselingResourceAccess {
     if (!data) return;
     if (isRecord(data.media)) {
       const media = data.media;
-      resource.captureKinds = (["recording", "transcription"] as const).filter((kind) => {
+      resource.captureKinds = (["recording"] as const).filter((kind) => {
         const item = media[kind];
         if (!isRecord(item)) return false;
         const status = Object.values(ECounselingCaptureStatus).find((value) => item.capture_status === value);
-        return status === undefined || captureSafetyState(kind, status) !== "terminal";
+        return status === undefined || captureSafetyState(status) !== "terminal";
       });
     }
     const routine = idOf(data.routine_interview);
@@ -165,12 +165,10 @@ export class ECounselingResourceAccess {
     for (const key of [getECounselingGetAssignedWorkspaceQueryKey(id), getECounselingGetMyWorkspaceQueryKey(id)]) {
       const media = responseData(this.client.getQueryData(key))?.media;
       if (!isRecord(media)) continue;
-      for (const kind of ["recording", "transcription"] as const) {
-        const item = media[kind];
-        if (!isRecord(item)) continue;
-        for (const status of Object.values(ECounselingCaptureStatus)) {
-          if (item.capture_status === status && captureSafetyState(kind, status) !== "terminal") captureKinds.add(kind);
-        }
+      const item = media.recording;
+      if (!isRecord(item)) continue;
+      for (const status of Object.values(ECounselingCaptureStatus)) {
+        if (item.capture_status === status && captureSafetyState(status) !== "terminal") captureKinds.add("recording");
       }
     }
     resource.epoch += 1;

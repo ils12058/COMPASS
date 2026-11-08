@@ -507,8 +507,6 @@ EXPECTED_OPERATION_IDS = {
     "eCounselingWithdrawMyConsent",
     "eCounselingStartAssignedRecording",
     "eCounselingStopAssignedRecording",
-    "eCounselingStartAssignedTranscription",
-    "eCounselingStopAssignedTranscription",
     "eCounselingAccessAssignedMedia",
     "eCounselingCreateJoinCredential",
     "eCounselingDailyWebhook",
@@ -2048,13 +2046,9 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
             schema, "/api/v1/e-counseling/appointments/{appointment_id}/recording/start", "post"
         )
     ) >= {200, 401, 403, 404, 409, 502, 503}
-    assert _response_statuses(
-        _operation(
-            schema,
-            "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start",
-            "post",
-        )
-    ) >= {200, 401, 403, 404, 409, 422, 502, 503}
+    # EC-RC-1/2: E-Counseling is recording-only; no transcription route or schema exists.
+    assert not any("transcri" in path for path in schema["paths"])
+    assert not any("Transcription" in name for name in schema["components"]["schemas"])
     assert _response_statuses(_operation(schema, "/api/v1/integrations/daily/webhook", "post")) >= {
         200,
         400,

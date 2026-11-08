@@ -20,7 +20,7 @@ export type CallControls = CallSnapshot & {
   selectSpeaker: (id: string) => Promise<void>;
 };
 
-export type CaptureKind = "recording" | "transcription";
+export type CaptureKind = "recording";
 
 export type ActiveECounselingCall = {
   role: "STUDENT" | "COUNSELOR" | null;

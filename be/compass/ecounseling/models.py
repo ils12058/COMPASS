@@ -12,11 +12,6 @@ from compass.appointments.models import Appointment
 from compass.integrations.daily import DailyFailureCode
 
 
-class MediaPolicyVersion(models.IntegerChoices):
-    LEGACY = 1, "Legacy granular consent"
-    V2 = 2, "Media policy v2"
-
-
 class ECounselingRoom(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     appointment = models.OneToOneField(
@@ -25,9 +20,6 @@ class ECounselingRoom(models.Model):
         related_name="ecounseling_room",
     )
     daily_room_name = models.CharField(max_length=128, unique=True)
-    media_policy_version = models.PositiveSmallIntegerField(
-        choices=MediaPolicyVersion.choices, default=MediaPolicyVersion.V2
-    )
     daily_room_id = models.CharField(max_length=128, null=True, blank=True)
     daily_room_url = models.URLField(max_length=500, null=True, blank=True)
     room_expires_at = models.DateTimeField(null=True, blank=True)
@@ -38,19 +30,12 @@ class ECounselingRoom(models.Model):
     class Meta:
         default_permissions = ()
         ordering = ("-created_at", "id")
-        constraints = [
-            models.CheckConstraint(
-                condition=Q(media_policy_version__in=MediaPolicyVersion.values),
-                name="ec_room_media_policy_valid",
-            )
-        ]
 
 
+# E-Counseling is recording-only (EC-RC-1/2): audio/video recording is the one media capture and
+# the one consent scope. Transcription was removed outright, with no legacy policy versions kept.
 class ConsentScope(models.TextChoices):
-    SESSION_MEDIA_CAPTURE = "SESSION_MEDIA_CAPTURE", "Recording and live transcription"
     AUDIO_VIDEO_RECORDING = "AUDIO_VIDEO_RECORDING", "Audio/video recording"
-    LIVE_TRANSCRIPTION = "LIVE_TRANSCRIPTION", "Live transcription"
-    TRANSCRIPT_STORAGE = "TRANSCRIPT_STORAGE", "Transcript storage"
 
 
 class ConsentDecision(models.TextChoices):
@@ -109,6 +94,10 @@ class ECounselingConsent(models.Model):
                 condition=Q(withdrawn_at__isnull=True) | Q(decision=ConsentDecision.APPROVED),
                 name="ec_consent_withdrawn_approved_ck",
             ),
+            models.CheckConstraint(
+                condition=Q(scope=ConsentScope.AUDIO_VIDEO_RECORDING),
+                name="ec_consent_recording_only_ck",
+            ),
         ]
 
     @property
@@ -118,7 +107,6 @@ class ECounselingConsent(models.Model):
 
 class MediaCaptureKind(models.TextChoices):
     RECORDING = "RECORDING", "Recording"
-    TRANSCRIPTION = "TRANSCRIPTION", "Transcription"
 
 
 class MediaCaptureStatus(models.TextChoices):
@@ -144,9 +132,6 @@ class ECounselingMediaCapture(models.Model):
         choices=MediaCaptureStatus.choices,
         default=MediaCaptureStatus.NOT_STARTED,
     )
-    transcript_storage_enabled = models.BooleanField(default=False)
-    # Historical start authorization, separate from the last confirmed provider storage switch.
-    transcript_storage_authorized = models.BooleanField(default=False)
     media_authorized_at = models.DateTimeField(null=True)
     provider_instance_id = models.CharField(max_length=160, null=True, blank=True)
     provider_artifact_id = models.CharField(max_length=160, null=True, blank=True)
@@ -175,14 +160,11 @@ class ECounselingMediaCapture(models.Model):
                 name="ec_media_room_kind_uniq",
             ),
             models.CheckConstraint(
-                condition=(
-                    Q(kind=MediaCaptureKind.TRANSCRIPTION) | Q(transcript_storage_enabled=False)
-                ),
-                name="ec_media_storage_transcription_ck",
-            ),
-            models.CheckConstraint(
                 condition=Q(duration_seconds__isnull=True) | Q(duration_seconds__gte=0),
                 name="ec_media_duration_nonnegative_ck",
+            ),
+            models.CheckConstraint(
+                condition=Q(kind=MediaCaptureKind.RECORDING), name="ec_media_recording_only_ck"
             ),
         ]
 

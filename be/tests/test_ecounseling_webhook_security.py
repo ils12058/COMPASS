@@ -39,45 +39,40 @@ from compass.ecounseling.services import (
 )
 from compass.ecounseling.tasks import replay_media_webhooks
 from compass.ecounseling.webhooks import replay_due_events, replay_receipt
-from compass.integrations.daily import DailyTimeout, DailyWebhookSignatureInvalid
+from compass.integrations.daily import DailyWebhookSignatureInvalid
 from tests.test_daily_diagnostics import PRIVATE_TEXT, assert_private_absent
 from tests.test_ecounseling_reconciliation import MetadataOnlyDaily, metadata, pending_capture
 from tests.test_ecounseling_reconciliation import fake_only_boundaries as fake_only_boundaries
 from tests.test_ecounseling_state_correctness import authorized_session
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def kind():
+    """E-Counseling is recording-only, so capture-generic checks run for recordings."""
+    return "RECORDING"
+
+
 SECRET = b"slice1c3-synthetic-webhook-secret"
 
 
 def body_for(capture, phase="started", *, event_id=None, artifact_id=None):
-    recording = capture.kind == "RECORDING"
     payload = {
-        "recording_id" if recording else "id": artifact_id
-        or capture.provider_artifact_id
-        or "synthetic-artifact",
+        "recording_id": artifact_id or capture.provider_artifact_id or "synthetic-artifact",
         "room_name": capture.room.daily_room_name,
         "mtg_session_id": capture.provider_session_id or "synthetic-session",
         "room_id": capture.room.daily_room_id,
+        "instance_id": capture.provider_instance_id,
+        "start_ts": int(time.time()) - 10,
     }
-    if recording:
-        payload.update(instance_id=capture.provider_instance_id, start_ts=int(time.time()) - 10)
-        if phase == "ready-to-download":
-            payload.update(status="finished", duration=5)
-        if phase == "error":
-            payload["timestamp"] = int(time.time())
-    else:
-        payload.update(
-            info={"instanceId": capture.provider_instance_id},
-            status={
-                "started": "t_in_progress",
-                "ready-to-download": "t_finished",
-                "error": "t_error",
-            }[phase],
-            duration=0 if phase == "started" else 5.5,
-        )
+    if phase == "ready-to-download":
+        payload.update(status="finished", duration=5)
+    if phase == "error":
+        payload["timestamp"] = int(time.time())
     return {
         "version": "1.1.0",
-        "type": f"{'recording' if recording else 'transcript'}.{phase}",
+        "type": f"recording.{phase}",
         "id": event_id or str(uuid4()),
         "event_ts": time.time(),
         "payload": payload,
@@ -110,10 +105,8 @@ def signed(event=None, *, raw=None, signature=None, header_age=0, http=False):
         )
 
 
-def reservation(kind="TRANSCRIPTION", *, bound=False, storage=False, state="START_REQUESTED"):
-    *people, capture = pending_capture(
-        kind=kind, state=state, bound=bound, storage=storage, stop_intent=False
-    )
+def reservation(kind="RECORDING", *, bound=False, state="START_REQUESTED"):
+    *people, capture = pending_capture(kind=kind, state=state, bound=bound, stop_intent=False)
     return people, capture
 
 
@@ -138,11 +131,9 @@ def fenced_artifact(capture, fence):
     return ECounselingMediaArtifact.objects.create(**fields)
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("phase", ["started", "ready-to-download", "error"])
 def test_signed_supported_event_mutates_only_exact_verified_capture(kind, phase):
     _, capture = reservation(kind, bound=phase != "started")
-    prior_start = capture.started_at
     event = body_for(capture, phase)
     assert signed(event).accepted
     capture.refresh_from_db()
@@ -152,14 +143,9 @@ def test_signed_supported_event_mutates_only_exact_verified_capture(kind, phase)
         capture.status
         == {"started": "ACTIVE", "ready-to-download": "READY", "error": "ERROR"}[phase]
     )
-    assert capture.provider_instance_id == event["payload"].get(
-        "instance_id", event["payload"].get("info", {}).get("instanceId")
-    )
-    if kind == "TRANSCRIPTION":
-        assert capture.started_at == prior_start and capture.ended_at is None
+    assert capture.provider_instance_id == event["payload"]["instance_id"]
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     "change,code",
     [
@@ -180,15 +166,10 @@ def test_same_room_or_instance_does_not_authorize_conflicting_identity(kind, cha
     )
     event = body_for(capture)
     if change == "instance":
-        event["payload"]["instance_id"] = (
-            "foreign-instance" if kind == "RECORDING" else capture.provider_instance_id
-        )
-        if kind == "TRANSCRIPTION":
-            event["payload"].pop("instance_id")
-            event["payload"]["info"]["instanceId"] = "foreign-instance"
+        event["payload"]["instance_id"] = "foreign-instance"
     else:
         key = {
-            "artifact": "recording_id" if kind == "RECORDING" else "id",
+            "artifact": "recording_id",
             "session": "mtg_session_id",
             "room": "room_name",
             "room_id": "room_id",
@@ -209,9 +190,8 @@ def test_same_room_or_instance_does_not_authorize_conflicting_identity(kind, cha
     assert not ECounselingMediaArtifact.objects.exists()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_early_completion_replays_after_exact_start_binding_without_media_io(kind):
-    _, capture = reservation(kind, storage=kind == "TRANSCRIPTION")
+    _, capture = reservation(kind)
     early = body_for(capture, "ready-to-download", artifact_id="early-artifact")
     signed(early)
     receipt = Receipt.objects.get(provider_event_id=early["id"])
@@ -228,7 +208,6 @@ def test_early_completion_replays_after_exact_start_binding_without_media_io(kin
     assert receipt.processing_attempts == 2
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_unbound_foreign_completion_is_not_adopted_by_later_other_start(kind):
     _, capture = reservation(kind)
     early = body_for(capture, "ready-to-download", artifact_id="foreign-artifact")
@@ -248,12 +227,11 @@ def test_unbound_foreign_completion_is_not_adopted_by_later_other_start(kind):
     assert not ECounselingMediaArtifact.objects.exists()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_no_reservation_never_adopts_foreign_artifact_or_issues_stop(kind):
     _, _, appointment, _ = authorized_session(kind=kind)
     room = appointment.ecounseling_room
     event = {
-        "type": f"{'recording' if kind == 'RECORDING' else 'transcript'}.started",
+        "type": "recording.started",
         "id": "unreserved-event",
         "event_ts": time.time(),
         "payload": {
@@ -276,7 +254,6 @@ def test_no_reservation_never_adopts_foreign_artifact_or_issues_stop(kind):
     assert row.mitigation_state == "REVIEW_REQUIRED" and row.mitigation_attempted_at is None
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_conflicting_reused_applied_event_id_quarantines_binding_and_fences_metadata_and_custody(
     kind,
 ):
@@ -308,7 +285,6 @@ def test_conflicting_reused_applied_event_id_quarantines_binding_and_fences_meta
     assert capture.status == "STOP_REQUESTED" and not ECounselingMediaArtifact.objects.exists()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_terminal_webhook_supersedes_reconciliation_claim_without_resetting_attempts(kind):
     _, capture = reservation(kind, bound=True, state="STOP_REQUESTED")
     discover_captures(limit=20)
@@ -322,7 +298,6 @@ def test_terminal_webhook_supersedes_reconciliation_claim_without_resetting_atte
     assert recovery.claim_token is None and recovery.next_attempt_at is None
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("status", ["STOP_REQUESTED", "READY"])
 def test_late_started_and_error_preserve_stop_intent_and_terminal_evidence(kind, status):
     _, capture = reservation(kind, bound=True, state=status)
@@ -335,7 +310,6 @@ def test_late_started_and_error_preserve_stop_intent_and_terminal_evidence(kind,
     assert capture.status == status and capture.stop_requested_at == original
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("fence", ["capture", "artifact", "cleanup", "stored"])
 def test_delayed_valid_events_cannot_resurrect_protected_media(kind, fence):
     _, capture = reservation(kind, bound=True)
@@ -351,57 +325,11 @@ def test_delayed_valid_events_cannot_resurrect_protected_media(kind, fence):
     assert Receipt.objects.latest("received_at").processing_outcome == "DISPOSITION_BLOCKED"
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-@pytest.mark.parametrize("failure", [None, "timeout"])
-def test_verified_policy_stop_reserves_one_attempt_and_ack_never_proves_cessation(kind, failure):
-    _, capture = reservation(kind)
-    ECounselingConsent.objects.filter(room=capture.room).update(withdrawn_at=timezone.now())
-    from tests.test_ecounseling_media import FakeMediaDailyClient
-
-    client = FakeMediaDailyClient()
-    if failure:
-        setattr(
-            client,
-            "stop_recording" if kind == "RECORDING" else "stop_transcription",
-            lambda **_: (_ for _ in ()).throw(DailyTimeout(PRIVATE_TEXT)),
-        )
-    with patch("compass.integrations.daily.DailyClient.from_settings", return_value=client):
-        event = body_for(capture)
-        signed(event)
-        signed(event)
-    capture.refresh_from_db()
-    row = Receipt.objects.get(provider_event_id=event["id"])
-    if kind == "RECORDING":
-        assert row.mitigation_attempted_at is None and row.mitigation_state == "REVIEW_REQUIRED"
-        assert client.recording_stops == []
-    else:
-        assert row.mitigation_attempted_at and row.mitigation_state == (
-            "FAILED_UNVERIFIED" if failure else "ACK_UNVERIFIED"
-        )
-    assert capture.status == "STOP_REQUESTED" and capture.ended_at is None
-    if not failure and kind == "TRANSCRIPTION":
-        assert (
-            len(client.recording_stops if kind == "RECORDING" else client.transcription_stops) == 1
-        )
-    assert_private_absent(str(list(Receipt.objects.values())))
-
-
-def test_lost_policy_callback_remains_durably_unverified_and_never_retries_stop():
-    _, capture = reservation("TRANSCRIPTION")
-    ECounselingConsent.objects.filter(room=capture.room).update(withdrawn_at=timezone.now())
-    event = body_for(capture)
-    with patch("compass.ecounseling.webhooks._after_commit"):
-        signed(event)
-    assert signed(event).duplicate
-    row = Receipt.objects.get(provider_event_id=event["id"])
-    assert row.mitigation_state == "ATTEMPT_RESERVED" and row.operator_review_required
-
-
 @pytest.mark.parametrize(
     "bad", [None, True, "5", float("nan"), float("inf"), -float("inf"), -1, 10**1000]
 )
 def test_signed_malformed_duration_is_durable_quarantine_with_generic_http_ack(bad):
-    _, capture = reservation("TRANSCRIPTION", bound=True)
+    _, capture = reservation(bound=True)
     event = body_for(capture, "ready-to-download")
     event["payload"]["duration"] = bad
     result = signed(event)
@@ -480,7 +408,7 @@ def test_receipt_commit_failure_rolls_back_capture_and_exposes_only_safe_error()
 
 
 def test_operator_readout_distinguishes_current_risk_from_historical_privacy_escalation():
-    _, capture = reservation("TRANSCRIPTION")
+    _, capture = reservation()
     ECounselingConsent.objects.filter(room=capture.room).update(withdrawn_at=timezone.now())
     with patch("compass.ecounseling.webhooks._after_commit"):
         signed(body_for(capture))
@@ -512,7 +440,6 @@ def test_replay_task_exception_and_result_are_closed_and_pickle_safe():
     assert str(pickle.loads(pickle.dumps(error.value))) == str(error.value)
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_unknown_room_has_durable_closed_evidence_without_provider_action(kind):
     _, capture = reservation(kind)
     event = body_for(capture)
@@ -527,7 +454,6 @@ def test_unknown_room_has_durable_closed_evidence_without_provider_action(kind):
     assert row.operator_review_required and row.mitigation_attempted_at is None
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_expired_room_start_is_historical_uncertainty_without_new_stop(kind):
     _, capture = reservation(kind)
     capture.room.room_expires_at = timezone.now() - timedelta(minutes=1)
@@ -541,7 +467,6 @@ def test_expired_room_start_is_historical_uncertainty_without_new_stop(kind):
     assert row.mitigation_attempted_at is None
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_webhook_after_metadata_completion_fills_only_absent_readiness_anchor(kind):
     _, capture = reservation(kind, bound=True, state="STOP_REQUESTED")
     discover_captures(limit=20)
@@ -556,7 +481,6 @@ def test_webhook_after_metadata_completion_fills_only_absent_readiness_anchor(ki
     assert capture.reconciliation.attempts == 1
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_same_applied_id_with_other_supported_type_preserves_original_and_quarantines(kind):
     _, capture = reservation(kind)
     event = body_for(capture)
@@ -585,7 +509,7 @@ def test_malformed_redelivery_does_not_rewrite_valid_identity_or_quarantine_bind
 
 
 def test_http_quarantine_duplicate_and_database_failure_have_safe_existing_response_shape():
-    _, capture = reservation("TRANSCRIPTION")
+    _, capture = reservation()
     event = body_for(capture)
     event["payload"]["info"] = []
     first = signed(event, http=True)
@@ -638,13 +562,10 @@ def test_replay_maximum_age_clears_schedule_without_fabricating_terminal_state()
     assert capture.status == "START_REQUESTED"
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_historical_unverified_binding_cannot_be_certified_by_metadata_or_custody(kind):
     from compass.ecounseling.artifacts import ensure_pending_artifact
 
-    _, capture = reservation(
-        kind, bound=True, state="STOP_REQUESTED", storage=kind == "TRANSCRIPTION"
-    )
+    _, capture = reservation(kind, bound=True, state="STOP_REQUESTED")
     capture.provider_binding_verified_at = None
     capture.save(update_fields=["provider_binding_verified_at"])
     client = MetadataOnlyDaily(metadata(capture))

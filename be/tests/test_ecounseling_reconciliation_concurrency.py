@@ -102,7 +102,6 @@ def test_concurrent_discovery_is_unique_without_rewriting_source_capture(monkeyp
 def test_new_domain_evidence_wins_while_worker_is_outside_database_locks(race):
     student, counselor, appointment, original, capture = pending_capture(
         state="START_REQUESTED" if race in ("stop", "authorization_revoked") else "STOP_REQUESTED",
-        storage=True,
     )
     active = race in ("webhook_ready", "withdrawal", "stop", "authorization_revoked")
     client, entered, release = blocked_client(capture, active=active)
@@ -119,7 +118,7 @@ def test_new_domain_evidence_wins_while_worker_is_outside_database_locks(race):
                 student=student,
                 appointment_id=appointment.pk,
                 consent_id=ECounselingConsent.objects.get(
-                    room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+                    room=capture.room, scope="AUDIO_VIDEO_RECORDING"
                 ).pk,
                 context=context(student),
                 daily_client=original,
@@ -156,16 +155,16 @@ def test_new_domain_evidence_wins_while_worker_is_outside_database_locks(race):
             )
         else:
             ECounselingConsent.objects.filter(
-                room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+                room=capture.room, scope="AUDIO_VIDEO_RECORDING"
             ).update(decision="DENIED")
-        commands_after_domain_action = deepcopy(original.transcription_stops)
+        commands_after_domain_action = deepcopy(original.recording_stops)
     finally:
         release.set()
         thread.join(20)
     assert not thread.is_alive() and not errors
     capture.refresh_from_db()
     row = Recovery.objects.get(capture=capture)
-    assert original.transcription_stops == commands_after_domain_action
+    assert original.recording_stops == commands_after_domain_action
     assert capture.stop_requested_at == expected_stop
     if race == "webhook_ready":
         assert capture.status == "READY" and capture.ready_at == terminal_at
@@ -177,10 +176,9 @@ def test_new_domain_evidence_wins_while_worker_is_outside_database_locks(race):
         )
         assert not ECounselingMediaArtifact.objects.exists()
         if race == "withdrawal":
-            assert capture.transcript_storage_authorized and not capture.transcript_storage_enabled
             assert (
                 ECounselingConsent.objects.get(
-                    room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+                    room=capture.room, scope="AUDIO_VIDEO_RECORDING"
                 ).withdrawn_at
                 is not None
             )

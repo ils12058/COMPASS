@@ -6,21 +6,16 @@ from django.conf import settings
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
-from compass.integrations.daily import DailyClient, DailyError, safe_daily_failure_code
-
 from .diagnostics import log_media_webhook
 from .media import (
+    RECORDING_SCOPE,
     _capture_status_for_event,
-    _has_stop_intent,
-    _provider_ack,
     effective_consent,
-    media_scope,
 )
 from .media_realtime import media_changed_on_commit
 from .models import (
     CaptureReconciliationOutcome,
     CaptureReconciliationState,
-    ConsentScope,
     ECounselingCaptureReconciliation,
     ECounselingConsent,
     ECounselingMediaArtifact,
@@ -59,13 +54,7 @@ REPLAY_DELAY = timedelta(seconds=60)
 
 
 def _stored_event(receipt):
-    kind = (
-        "MEETING"
-        if receipt.event_type.startswith("meeting.")
-        else "RECORDING"
-        if receipt.event_type.startswith("recording.")
-        else "TRANSCRIPTION"
-    )
+    kind = "MEETING" if receipt.event_type.startswith("meeting.") else "RECORDING"
     return ValidatedEvent(
         receipt.event_type,
         receipt.provider_event_id,
@@ -223,19 +212,9 @@ def _protected(capture, artifact):
 
 
 def _consent_ok(capture, consents):
-    scopes = {row.scope: row for row in consents}
-    media = scopes.get(media_scope(capture.room, capture.kind))
-    storage = scopes.get(ConsentScope.TRANSCRIPT_STORAGE)
-    ok = effective_consent(media) and (
-        capture.kind != "TRANSCRIPTION"
-        or not capture.transcript_storage_enabled
-        or effective_consent(storage)
-    )
-    withdrawn = bool(
-        (media and media.withdrawn_at)
-        or (capture.transcript_storage_enabled and storage and storage.withdrawn_at)
-    )
-    return ok, Anomaly.WITHDRAWN if withdrawn else Anomaly.AUTHORIZATION
+    media = next((row for row in consents if row.scope == RECORDING_SCOPE), None)
+    withdrawn = bool(media and media.withdrawn_at)
+    return effective_consent(media), Anomaly.WITHDRAWN if withdrawn else Anomaly.AUTHORIZATION
 
 
 def _defer(receipt):
@@ -335,8 +314,6 @@ def _apply(receipt, event):
     ok, consent_code = _consent_ok(capture, consents)
     now = timezone.now()
     _outcome(receipt, Outcome.APPLIED)
-    was_stopping = _has_stop_intent(capture)
-    mitigation = None
     if event.started:
         # Only an exact authorized Start reservation establishes a new artifact/session.
         capture.provider_artifact_id = capture.provider_artifact_id or event.identity.artifact_id
@@ -347,15 +324,9 @@ def _apply(receipt, event):
             capture.status = "STOP_REQUESTED"
             capture.stop_requested_at = capture.stop_requested_at or now
             capture.error_code = capture.error_code or "CONSENT_NOT_EFFECTIVE"
+            # The recording operation is room-scoped and cannot uniquely target this instance, so a
+            # delayed event never issues an automatic Stop; explicit withdrawal already did.
             _outcome(receipt, Outcome.APPLIED, consent_code, urgent=True)
-            # The recording operation is room-scoped and cannot uniquely target this instance.
-            # Preserve explicit authorized withdrawal operations, but never issue this automatic
-            # recording backstop from a delayed event. The existing targeted transcription path
-            # remains one-shot after exact provenance and a durable attempt reservation.
-            if not was_stopping and capture.kind == "TRANSCRIPTION":
-                receipt.mitigation_state = Mitigation.ATTEMPTED
-                receipt.mitigation_attempted_at = now
-                mitigation = receipt.pk
         else:
             capture.status = _capture_status_for_event(capture, "started")
     elif event.completion:
@@ -364,12 +335,7 @@ def _apply(receipt, event):
         if capture.duration_seconds is None:
             capture.duration_seconds = event.duration
         capture.ready_at = capture.ready_at or event.dispatch_at
-        if (
-            capture.kind == "RECORDING"
-            and capture.ended_at is None
-            and capture.started_at
-            and capture.duration_seconds is not None
-        ):
+        if capture.ended_at is None and capture.started_at and capture.duration_seconds is not None:
             if event.duration is not None:
                 try:
                     capture.ended_at = capture.started_at + timedelta(seconds=event.duration)
@@ -391,7 +357,6 @@ def _apply(receipt, event):
         pending = ensure_pending_artifact(capture, publish_hint=False)
     if previous_status != capture.status or (artifact is None and pending is not None):
         media_changed_on_commit(room.appointment_id)
-    return mitigation
 
 
 def _after_commit(callback):
@@ -401,62 +366,6 @@ def _after_commit(callback):
         transaction.on_commit(callback)
     else:
         callback()
-
-
-def _run_policy_stop(receipt_id):
-    try:
-        with transaction.atomic():
-            receipt = Receipt.objects.select_for_update().get(pk=receipt_id)
-            if receipt.mitigation_state != Mitigation.ATTEMPTED or not receipt.capture_id:
-                return
-            room = ECounselingRoom.objects.select_for_update().get(pk=receipt.capture.room_id)
-            consents = list(
-                ECounselingConsent.objects.select_for_update().filter(room=room).order_by("scope")
-            )
-            capture = Capture.objects.select_for_update().get(pk=receipt.capture_id)
-            capture.room = room
-            artifact = (
-                ECounselingMediaArtifact.objects.select_for_update().filter(capture=capture).first()
-            )
-            reason = capture_identity_conflict(
-                capture,
-                _stored_event(receipt).identity,
-                require_instance=True,
-                require_artifact=True,
-            )
-            if (
-                reason
-                or receipt.event_id_conflict
-                or capture.provider_binding_quarantined_at
-                or _protected(capture, artifact)
-                or capture.status != "STOP_REQUESTED"
-                or _consent_ok(capture, consents)[0]
-                or not settings.DAILY_ENABLED
-                or not room.provisioned_at
-                or capture.kind != "TRANSCRIPTION"
-            ):
-                receipt.mitigation_state = Mitigation.REVIEW
-                receipt.save(update_fields=["mitigation_state"])
-                return
-            name, instance = room.daily_room_name, capture.provider_instance_id
-        # The existing verified policy Stop runs once, after its durable attempt reservation.
-        failure = None
-        try:
-            client = DailyClient.from_settings()
-            _provider_ack(client.stop_transcription(room_name=name, instance_id=instance))
-        except DailyError as exc:
-            failure = safe_daily_failure_code(exc)
-        except Exception:
-            failure = safe_daily_failure_code(Exception())
-        with transaction.atomic():
-            receipt = Receipt.objects.select_for_update().get(pk=receipt_id)
-            receipt.mitigation_state = Mitigation.FAILED if failure else Mitigation.ACK
-            receipt.mitigation_failure_code = failure
-            receipt.save(update_fields=["mitigation_state", "mitigation_failure_code"])
-        log_media_webhook(receipt)
-    except DatabaseError:
-        # The committed reservation truthfully remains outcome-unknown. No automatic Stop retry.
-        return
 
 
 def process_event(*, event_type, event_id, event_ts, payload):
@@ -470,7 +379,6 @@ def process_event(*, event_type, event_id, event_ts, payload):
         )
     except InvalidEvent:
         event = None
-    mitigation = None
     replay_capture = None
     try:
         with transaction.atomic():
@@ -524,7 +432,7 @@ def process_event(*, event_type, event_id, event_ts, payload):
                     and timezone.now() < receipt.received_at + REPLAY_AGE
                 ):
                     receipt.processing_attempts += 1
-                    mitigation = _apply(receipt, event)
+                    _apply(receipt, event)
                     if (
                         event.started
                         and receipt.identity_verified
@@ -541,8 +449,6 @@ def process_event(*, event_type, event_id, event_ts, payload):
             "Daily webhook processing is temporarily unavailable."
         ) from None
     _after_commit(lambda: log_media_webhook(receipt))
-    if mitigation:
-        _after_commit(lambda: _run_policy_stop(mitigation))
     if replay_capture:
         _after_commit(lambda: replay_for_capture(replay_capture))
     return WebhookProcessingResult(accepted=True, duplicate=not created, supported=True)
@@ -593,9 +499,7 @@ def replay_for_capture(capture_id):
             event_id_conflict=False,
             provider_artifact_id=capture.provider_artifact_id,
             provider_room_name=capture.room.daily_room_name,
-            event_type="recording.ready-to-download"
-            if capture.kind == "RECORDING"
-            else "transcript.ready-to-download",
+            event_type="recording.ready-to-download",
             next_attempt_at__isnull=False,
         )
         .order_by("received_at", "pk")
@@ -613,7 +517,7 @@ def replay_due_events():
             processing_outcome=Outcome.UNRESOLVED,
             event_id_conflict=False,
             next_attempt_at__lte=timezone.now(),
-            event_type__in=("recording.ready-to-download", "transcript.ready-to-download"),
+            event_type="recording.ready-to-download",
         )
         .order_by("next_attempt_at", "received_at", "pk")
         .values_list("pk", flat=True)[:REPLAY_LIMIT]

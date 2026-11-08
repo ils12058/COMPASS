@@ -20,8 +20,6 @@ from compass.audit.actions import (
     ECOUNSELING_CONSENT_WITHDRAWN,
     ECOUNSELING_RECORDING_START_REQUESTED,
     ECOUNSELING_RECORDING_STOP_REQUESTED,
-    ECOUNSELING_TRANSCRIPTION_START_REQUESTED,
-    ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -51,7 +49,6 @@ from .models import (
     MediaArtifactStatus,
     MediaCaptureKind,
     MediaCaptureStatus,
-    MediaPolicyVersion,
 )
 from .services import (
     ECounselingAppointmentNotEligible,
@@ -97,27 +94,12 @@ class ECounselingConsentScopeIncompatible(ECounselingError):
     pass
 
 
-def media_scope(room, kind):
-    if room.media_policy_version == MediaPolicyVersion.V2:
-        return ConsentScope.SESSION_MEDIA_CAPTURE
-    return (
-        ConsentScope.AUDIO_VIDEO_RECORDING
-        if kind == MediaCaptureKind.RECORDING
-        else ConsentScope.LIVE_TRANSCRIPTION
-    )
+# Recording is the only media capture, so its consent is the only scope (EC-RC-2).
+RECORDING_SCOPE = ConsentScope.AUDIO_VIDEO_RECORDING
 
 
-def _validate_scopes(version, scopes):
-    allowed = (
-        {ConsentScope.SESSION_MEDIA_CAPTURE, ConsentScope.TRANSCRIPT_STORAGE}
-        if version == MediaPolicyVersion.V2
-        else {
-            ConsentScope.AUDIO_VIDEO_RECORDING,
-            ConsentScope.LIVE_TRANSCRIPTION,
-            ConsentScope.TRANSCRIPT_STORAGE,
-        }
-    )
-    if not set(scopes) <= allowed:
+def _validate_scopes(scopes):
+    if not set(scopes) <= {RECORDING_SCOPE}:
         raise ECounselingConsentScopeIncompatible(
             "This consent scope is incompatible with the session's media policy."
         )
@@ -193,62 +175,33 @@ def _consent_dict(consent: ECounselingConsent) -> dict[str, object]:
 
 
 def get_media_projection(room: ECounselingRoom | None) -> dict[str, object]:
-    consents: dict[str, ECounselingConsent] = {}
-    captures: dict[str, ECounselingMediaCapture] = {}
+    consent = None
+    recording = None
     if room is not None:
-        consents = {item.scope: item for item in room.consents.all()}
-        captures = {item.kind: item for item in room.media_captures.all()}
-    recording = captures.get(MediaCaptureKind.RECORDING)
-    transcription = captures.get(MediaCaptureKind.TRANSCRIPTION)
-
-    def artifact_state(capture):
-        artifact = (
-            ECounselingMediaArtifact.objects.filter(capture=capture).first() if capture else None
+        consent = next(
+            (item for item in room.consents.all() if item.scope == RECORDING_SCOPE), None
         )
-        return {
+        recording = next(
+            (item for item in room.media_captures.all() if item.kind == MediaCaptureKind.RECORDING),
+            None,
+        )
+    artifact = (
+        ECounselingMediaArtifact.objects.filter(capture=recording).first() if recording else None
+    )
+    return {
+        "recording": {
             "artifact_status": artifact.status if artifact else None,
             "artifact_available": bool(
                 artifact
                 and artifact.status == MediaArtifactStatus.STORED
                 and not artifact.disposed_at
-                and not capture.artifact_disposed_at
+                and not recording.artifact_disposed_at
             ),
-        }
-
-    version = room.media_policy_version if room else MediaPolicyVersion.V2
-    recording_scope = (
-        media_scope(room, MediaCaptureKind.RECORDING)
-        if room
-        else ConsentScope.SESSION_MEDIA_CAPTURE
-    )
-    transcription_scope = (
-        media_scope(room, MediaCaptureKind.TRANSCRIPTION)
-        if room
-        else ConsentScope.SESSION_MEDIA_CAPTURE
-    )
-    return {
-        "media_policy_version": version,
-        "recording": {
-            **artifact_state(recording),
             "artifact_disposed_at": recording.artifact_disposed_at if recording else None,
-            "consent_status": _consent_status(consents.get(recording_scope)),
+            "consent_status": _consent_status(consent),
             "capture_status": (
                 recording.status if recording is not None else MediaCaptureStatus.NOT_STARTED
             ),
-        },
-        "transcription": {
-            **artifact_state(transcription),
-            "artifact_disposed_at": transcription.artifact_disposed_at if transcription else None,
-            "consent_status": _consent_status(consents.get(transcription_scope)),
-            "storage_consent_status": _consent_status(
-                consents.get(ConsentScope.TRANSCRIPT_STORAGE)
-            ),
-            "capture_status": (
-                transcription.status
-                if transcription is not None
-                else MediaCaptureStatus.NOT_STARTED
-            ),
-            "storage_enabled": bool(transcription and transcription.transcript_storage_enabled),
         },
     }
 
@@ -303,31 +256,15 @@ def request_consents(
 
     # Consent needs a stable session anchor before either participant necessarily joins.
     # This creates only the local opaque binding; remote Daily provisioning remains join-driven.
-    existing_room = ECounselingRoom.objects.filter(appointment=appointment).first()
-    _validate_scopes(
-        existing_room.media_policy_version if existing_room else MediaPolicyVersion.V2, scopes
-    )
+    _validate_scopes(scopes)
     room = _ensure_local_room_binding(appointment)
 
     with transaction.atomic():
         locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
-        _validate_scopes(locked_room.media_policy_version, scopes)
         existing = {
             item.scope: item
             for item in ECounselingConsent.objects.select_for_update().filter(room=locked_room)
         }
-
-        if ConsentScope.TRANSCRIPT_STORAGE in scopes:
-            live_scope = media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION)
-            live = existing.get(live_scope)
-            live_requested_together = live_scope in scopes
-            existing_live_usable = bool(
-                live and live.decision != ConsentDecision.DENIED and live.withdrawn_at is None
-            )
-            if not live_requested_together and not existing_live_usable:
-                raise ECounselingConsentConflict(
-                    "Transcript storage consent requires a media consent request for this session."
-                )
 
         for scope in scopes:
             current = existing.get(scope)
@@ -409,7 +346,7 @@ def decide_my_consent(
         )
         if consent is None:
             raise ECounselingConsentNotFound("The requested consent was not found.")
-        _validate_scopes(locked_room.media_policy_version, [consent.scope])
+        _validate_scopes([consent.scope])
         if consent.decision != ConsentDecision.PENDING or consent.withdrawn_at is not None:
             raise ECounselingConsentConflict("This consent has already been decided.")
         consent.decision = decision
@@ -529,9 +466,6 @@ def _audit_media_request(
         "media_kind": capture.kind,
         "provider": "DAILY",
     }
-    if action == ECOUNSELING_TRANSCRIPTION_START_REQUESTED:
-        # Historical selection/consent evidence, not proof of provider configuration or custody.
-        metadata["storage_selected"] = capture.transcript_storage_authorized
     record_event(
         context=context,
         action=action,
@@ -563,7 +497,7 @@ def start_recording(
         locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
         _require_effective_consent_locked(
             room=locked_room,
-            scope=media_scope(locked_room, MediaCaptureKind.RECORDING),
+            scope=RECORDING_SCOPE,
         )
         capture = _get_or_create_capture_locked(
             room=locked_room,
@@ -609,12 +543,12 @@ def start_recording(
             room_name=room.daily_room_name,
             properties={"enable_recording": "cloud"},
         )
-        # Serialize with withdrawal after room enablement, just as transcription does.
+        # Serialize with withdrawal after room enablement.
         with transaction.atomic():
             locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
             _require_effective_consent_locked(
                 room=locked_room,
-                scope=media_scope(locked_room, MediaCaptureKind.RECORDING),
+                scope=RECORDING_SCOPE,
             )
             capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
             if (
@@ -631,172 +565,6 @@ def start_recording(
                     instance_id=instance_id,
                 )
             )
-    except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
-        _handle_start_provider_failure(capture_id, exc)
-    return ECounselingMediaCapture.objects.get(pk=capture_id)
-
-
-def start_transcription(
-    *,
-    counselor: User,
-    appointment_id: UUID,
-    store_transcript: bool,
-    context: AuditContext,
-    daily_client: DailyClient | None = None,
-) -> ECounselingMediaCapture:
-    appointment = _load_eligible_appointment(appointment_id)
-    _require_counselor_relationship(
-        actor=counselor,
-        appointment=appointment,
-        capability="ecounseling.manage_media_assigned",
-    )
-    if not _join_window_open(appointment):
-        raise ECounselingMediaConflict("Transcription can start only during the session window.")
-    room = _require_provisioned_room(appointment)
-
-    # Refuse an enclosing application transaction: intent must commit before external side effects.
-    # Django's TestCase wrapper is exempt from the durable-block guard; production requests are
-    # autocommit (ATOMIC_REQUESTS is disabled).
-    with transaction.atomic(durable=True):
-        locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
-        _require_effective_consent_locked(
-            room=locked_room,
-            scope=media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION),
-        )
-        if store_transcript:
-            _require_effective_consent_locked(
-                room=locked_room,
-                scope=ConsentScope.TRANSCRIPT_STORAGE,
-            )
-        capture = _get_or_create_capture_locked(
-            room=locked_room,
-            kind=MediaCaptureKind.TRANSCRIPTION,
-        )
-        if capture.status != MediaCaptureStatus.NOT_STARTED or _has_stop_intent(capture):
-            raise ECounselingMediaConflict(
-                "This session transcription has already been started or requires reconciliation."
-            )
-        capture.status = MediaCaptureStatus.START_REQUESTED
-        capture.media_authorized_at = timezone.now()
-        capture.provider_instance_id = str(uuid.uuid4())
-        capture.transcript_storage_authorized = store_transcript
-        capture.error_code = None
-        capture.failed_at = None
-        capture.save(
-            update_fields=[
-                "status",
-                "media_authorized_at",
-                "provider_instance_id",
-                "transcript_storage_authorized",
-                "error_code",
-                "failed_at",
-                "updated_at",
-            ]
-        )
-        _audit_media_request(
-            context=context,
-            action=ECOUNSELING_TRANSCRIPTION_START_REQUESTED,
-            appointment=appointment,
-            room=locked_room,
-            capture=capture,
-        )
-        capture_id = capture.pk
-        instance_id = capture.provider_instance_id
-        media_changed_on_commit(appointment.pk)
-
-    client = _daily_client(daily_client)
-    assert instance_id is not None
-    try:
-        client.update_room(
-            room_name=room.daily_room_name,
-            properties={"enable_transcription_storage": store_transcript},
-        )
-
-        # Commit the acknowledged room setting independently of the external Start transaction.
-        # Selection/authorization was already committed with the original intent above. Withdrawal
-        # uses the same locks and can supersede either boundary; it never regains authorization.
-        with transaction.atomic(durable=True):
-            locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
-            _require_effective_consent_locked(
-                room=locked_room,
-                scope=media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION),
-            )
-            if store_transcript:
-                _require_effective_consent_locked(
-                    room=locked_room,
-                    scope=ConsentScope.TRANSCRIPT_STORAGE,
-                )
-            capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
-            if (
-                capture.status != MediaCaptureStatus.START_REQUESTED
-                or capture.provider_instance_id != instance_id
-                or _has_stop_intent(capture)
-            ):
-                raise ECounselingMediaConflict(
-                    "Transcription start was superseded by a consent or media-state transition."
-                )
-            storage_changed = capture.transcript_storage_enabled != store_transcript
-            capture.transcript_storage_enabled = store_transcript
-            capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
-            if storage_changed:
-                media_changed_on_commit(appointment.pk)
-
-        # Keep provider Start under the original consent serialization locks. Recheck after the
-        # preceding commit: a withdrawal in that gap prevents Start; one blocked behind Start sees
-        # its durable reservation and requests Stop. No new command retry is introduced.
-        with transaction.atomic():
-            locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
-            _require_effective_consent_locked(
-                room=locked_room,
-                scope=media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION),
-            )
-            if store_transcript:
-                _require_effective_consent_locked(
-                    room=locked_room,
-                    scope=ConsentScope.TRANSCRIPT_STORAGE,
-                )
-            capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
-            if (
-                capture.status != MediaCaptureStatus.START_REQUESTED
-                or capture.provider_instance_id != instance_id
-                or _has_stop_intent(capture)
-            ):
-                raise ECounselingMediaConflict(
-                    "Transcription start was superseded by a consent or media-state transition."
-                )
-            _provider_ack(
-                client.start_transcription(
-                    room_name=room.daily_room_name,
-                    instance_id=instance_id,
-                )
-            )
-    except (ECounselingConsentNotApproved, ECounselingMediaConflict):
-        if store_transcript:
-            try:
-                client.update_room(
-                    room_name=room.daily_room_name,
-                    properties={"enable_transcription_storage": False},
-                )
-            except (
-                DailyConfigurationError,
-                DailyUnavailable,
-                DailyHTTPError,
-                DailyInvalidResponse,
-            ) as cleanup_exc:
-                _set_provider_uncertain(capture_id, code="CONSENT_CLEANUP_UNCERTAIN")
-                raise _provider_failure(cleanup_exc) from cleanup_exc
-            else:
-                # A manual Stop can supersede Start after the configuration flag committed.
-                # Persist this existing cleanup's acknowledgment without erasing historical choice.
-                with transaction.atomic():
-                    ECounselingRoom.objects.select_for_update().get(pk=room.pk)
-                    capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
-                    storage_changed = capture.transcript_storage_enabled
-                    capture.transcript_storage_enabled = False
-                    capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
-                    if storage_changed:
-                        media_changed_on_commit(appointment.pk)
-        raise
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _handle_start_provider_failure(capture_id, exc)
     return ECounselingMediaCapture.objects.get(pk=capture_id)
@@ -828,11 +596,7 @@ def _prepare_stop_locked(
     if not already_requested:
         _audit_media_request(
             context=context,
-            action=(
-                ECOUNSELING_RECORDING_STOP_REQUESTED
-                if kind == MediaCaptureKind.RECORDING
-                else ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED
-            ),
+            action=ECOUNSELING_RECORDING_STOP_REQUESTED,
             appointment=appointment,
             room=room,
             capture=capture,
@@ -856,28 +620,16 @@ def _execute_provider_stop(
 ) -> ECounselingMediaCapture:
     client = _daily_client(daily_client)
     try:
-        if capture.kind == MediaCaptureKind.RECORDING:
-            if not capture.provider_instance_id:
-                raise DailyInvalidResponse("Recording instance ID is unavailable.")
-            _provider_ack(
-                client.stop_recording(
-                    room_name=room.daily_room_name,
-                    instance_id=capture.provider_instance_id,
-                )
+        if not capture.provider_instance_id:
+            raise DailyInvalidResponse("Recording instance ID is unavailable.")
+        _provider_ack(
+            client.stop_recording(
+                room_name=room.daily_room_name,
+                instance_id=capture.provider_instance_id,
             )
-            # Daily has no recording-stopped webhook in the selected subscription. Keep
-            # STOP_REQUESTED until artifact readiness/provider reconciliation advances the state.
-        else:
-            if not capture.provider_instance_id:
-                raise DailyInvalidResponse("Transcription instance ID is unavailable.")
-            _provider_ack(
-                client.stop_transcription(
-                    room_name=room.daily_room_name,
-                    instance_id=capture.provider_instance_id,
-                )
-            )
-            # "sent" acknowledges the command only. It supplies no finished-job evidence or
-            # end timestamp, so retain Stop intent and any uncertainty until correlated completion.
+        )
+        # Daily has no recording-stopped webhook in the selected subscription. Keep
+        # STOP_REQUESTED until artifact readiness/provider reconciliation advances the state.
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _mark_stop_failed(capture.pk, code=f"STOP_PROVIDER_{safe_daily_failure_code(exc)}")
         raise _provider_failure(exc) from exc
@@ -932,22 +684,6 @@ def stop_recording(
     )
 
 
-def stop_transcription(
-    *,
-    counselor: User,
-    appointment_id: UUID,
-    context: AuditContext,
-    daily_client: DailyClient | None = None,
-) -> ECounselingMediaCapture:
-    return stop_media_capture(
-        counselor=counselor,
-        appointment_id=appointment_id,
-        kind=MediaCaptureKind.TRANSCRIPTION,
-        context=context,
-        daily_client=daily_client,
-    )
-
-
 def withdraw_my_consent(
     *,
     student: User,
@@ -963,8 +699,7 @@ def withdraw_my_consent(
         capability="ecounseling.consent_self",
     )
     room = _require_room_for_appointment(appointment)
-    captures_to_stop: list[ECounselingMediaCapture] = []
-    disable_storage = False
+    capture_to_stop: ECounselingMediaCapture | None = None
     media_changed = False
 
     with transaction.atomic():
@@ -995,97 +730,34 @@ def withdraw_my_consent(
             },
         )
 
-        _validate_scopes(locked_room.media_policy_version, [consent.scope])
-        kinds = (
-            [MediaCaptureKind.RECORDING, MediaCaptureKind.TRANSCRIPTION]
-            if consent.scope == ConsentScope.SESSION_MEDIA_CAPTURE
-            else [MediaCaptureKind.RECORDING]
-            if consent.scope == ConsentScope.AUDIO_VIDEO_RECORDING
-            else [MediaCaptureKind.TRANSCRIPTION]
+        _validate_scopes([consent.scope])
+        capture = (
+            ECounselingMediaCapture.objects.select_for_update()
+            .filter(room=locked_room, kind=MediaCaptureKind.RECORDING)
+            .first()
         )
-        for kind in kinds:
-            capture = (
-                ECounselingMediaCapture.objects.select_for_update()
-                .filter(room=locked_room, kind=kind)
-                .first()
+        if capture is not None and capture.status in {
+            MediaCaptureStatus.START_REQUESTED,
+            MediaCaptureStatus.ACTIVE,
+            MediaCaptureStatus.ERROR,
+            MediaCaptureStatus.STOP_REQUESTED,
+        }:
+            media_changed = capture.status != MediaCaptureStatus.STOP_REQUESTED
+            capture_to_stop, _ = _prepare_stop_locked(
+                appointment=appointment,
+                room=locked_room,
+                kind=MediaCaptureKind.RECORDING,
+                context=context,
+                publish_hint=False,
             )
-            if capture is None:
-                continue
-            activeish = capture.status in {
-                MediaCaptureStatus.START_REQUESTED,
-                MediaCaptureStatus.ACTIVE,
-                MediaCaptureStatus.ERROR,
-                MediaCaptureStatus.STOP_REQUESTED,
-            }
-            if kind == MediaCaptureKind.TRANSCRIPTION:
-                pending_storage = capture.status == MediaCaptureStatus.START_REQUESTED
-                disable_storage = capture.transcript_storage_enabled or pending_storage
-            should_stop = activeish and (
-                consent.scope != ConsentScope.TRANSCRIPT_STORAGE or disable_storage
-            )
-            if should_stop:
-                media_changed |= capture.status != MediaCaptureStatus.STOP_REQUESTED
-                capture, _ = _prepare_stop_locked(
-                    appointment=appointment,
-                    room=locked_room,
-                    kind=kind,
-                    context=context,
-                    publish_hint=False,
-                )
-                captures_to_stop.append(capture)
 
         consent_changed_on_commit(appointment.pk)
         if media_changed:
             media_changed_on_commit(appointment.pk)
 
     # Withdrawal is already durable before any provider call. Provider failure never rolls it back.
-    # Stop capture and disable transcript storage are independent mitigations: failure of one must
-    # not prevent the other from being attempted.
-    provider_error: ECounselingError | None = None
-    for capture_to_stop in captures_to_stop:
-        try:
-            _execute_provider_stop(
-                capture=capture_to_stop,
-                room=room,
-                daily_client=daily_client,
-            )
-        except ECounselingError as exc:
-            provider_error = exc
-
-    if disable_storage and room.provisioned_at:
-        try:
-            client = _daily_client(daily_client)
-            client.update_room(
-                room_name=room.daily_room_name,
-                properties={"enable_transcription_storage": False},
-            )
-        except ECounselingError as exc:
-            if provider_error is None:
-                provider_error = exc
-        except (
-            DailyConfigurationError,
-            DailyUnavailable,
-            DailyHTTPError,
-            DailyInvalidResponse,
-        ) as exc:
-            if provider_error is None:
-                provider_error = _provider_failure(exc)
-        else:
-            with transaction.atomic():
-                capture = (
-                    ECounselingMediaCapture.objects.select_for_update()
-                    .filter(room=room, kind=MediaCaptureKind.TRANSCRIPTION)
-                    .first()
-                )
-                if capture is not None:
-                    storage_changed = capture.transcript_storage_enabled
-                    capture.transcript_storage_enabled = False
-                    capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
-                    if storage_changed:
-                        media_changed_on_commit(appointment.pk)
-
-    if provider_error is not None:
-        raise provider_error
+    if capture_to_stop is not None:
+        _execute_provider_stop(capture=capture_to_stop, room=room, daily_client=daily_client)
     return _consent_dict(ECounselingConsent.objects.get(pk=consent_id))
 
 

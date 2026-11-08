@@ -129,11 +129,6 @@ class Command(BaseCommand):
                     provider_binding_quarantined_at__isnull=False
                 ).count(),
                 "escalations": escalations,
-                "legacy_transcription_stopped_without_ready_anchor": (
-                    ECounselingMediaCapture.objects.filter(
-                        kind="TRANSCRIPTION", status="STOPPED", ready_at__isnull=True
-                    ).count()
-                ),
                 "confirmed_completion_without_ready_anchor": Recovery.objects.filter(
                     completion_confirmed_at__isnull=False, capture__ready_at__isnull=True
                 ).count(),

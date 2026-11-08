@@ -20,9 +20,9 @@ import {
   type DailyCallClientFactory,
 } from "./call-model";
 
-// Every Daily event the call subscribes to. Provider recording/transcription events are hints that
-// only ask COMPASS to re-read its own session state; `transcription-message` (live transcript text)
-// is deliberately never subscribed, so no transcript text enters the page (ADR-093).
+// Every Daily event the call subscribes to. Provider recording events are hints that only ask COMPASS
+// to re-read its own session state (ADR-093). E-Counseling is recording-only, so no transcription
+// event is subscribed.
 export const subscribedCallEvents = [
   "joined-meeting",
   "left-meeting",
@@ -42,18 +42,12 @@ export const subscribedCallEvents = [
   "recording-started",
   "recording-stopped",
   "recording-error",
-  "transcription-started",
-  "transcription-stopped",
-  "transcription-error",
 ] as const satisfies readonly DailyEvent[];
 
 const providerMediaEvents: ReadonlySet<DailyEvent> = new Set([
   "recording-started",
   "recording-stopped",
   "recording-error",
-  "transcription-started",
-  "transcription-stopped",
-  "transcription-error",
 ]);
 
 declare global {

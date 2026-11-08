@@ -16,13 +16,13 @@ import { canShowLastKnownData, shouldHideProtectedData } from "@/features/freshn
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { boundaryDelay, useServerBoundary } from "@/features/freshness/use-server-boundary";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
-import { RoutineCounselorEvaluationReadOnly, RoutineCounselorEvaluationWorkspace } from "@/features/routine-interviews/routine-counselor-evaluation";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { RoutineCounselorEvaluationReadOnly } from "@/features/routine-interviews/routine-counselor-evaluation";
 import { RoutineStudentIntakeReadOnly } from "@/features/routine-interviews/routine-student-intake";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
-import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
-import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
+import { contextEncounterPreset, recordEncounterPath } from "@/features/counseling/encounter-origin";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { finishCounselingNotice, finishCounselingState } from "@/features/counseling/finish-counseling-availability";
 import { FinishCounselingDialog } from "@/features/counseling/finish-counseling-dialog";
@@ -40,7 +40,6 @@ import {
   contextEncounterStateLabels,
   expiredContextEncounterMessage,
   formatCounselingDateTime,
-  unconfirmedEncounterMessage,
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
@@ -54,17 +53,14 @@ import type {
   CounselingFinishResponse,
   CounselorRoutineDetailResponse,
 } from "@/lib/api/generated/model";
-import { AppointmentStatus, CounselingContextAnchorType, CounselingContextInventoryStatus, CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
+import { AppointmentStatus, CounselingContextAnchorType, CounselingContextInventoryStatus } from "@/lib/api/generated/model";
 import {
-  getAppointmentsGetQueryKey,
   useAppointmentsGet,
 } from "@/lib/api/generated/appointments/appointments";
 import {
-  getCounselingContextGetOverviewQueryKey,
   getCounselingContextGetInventoryQueryKey,
   getCounselingContextGetSupportIndicatorsQueryKey,
   getCounselingContextListHistoryQueryKey,
-  getCounselingListMyEncountersQueryKey,
   useCounselingContextGetInventory,
   useCounselingContextGetOverview,
   useCounselingContextGetSupportIndicators,
@@ -72,9 +68,6 @@ import {
   useCounselingGetEncounter,
 } from "@/lib/api/generated/counseling/counseling";
 import {
-  getRoutineInterviewsGetAssignedQueryKey,
-  getRoutineInterviewsListAssignedQueryKey,
-  getRoutineInterviewsListEncounterCandidatesQueryKey,
   useRoutineInterviewsGetAssigned,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
 
@@ -110,18 +103,6 @@ const historyStatusLabels: Record<ContextHistoryStatus, string> = {
   SUBMITTED: "Submitted",
   VOIDED: "Voided",
 };
-
-function isDeliveryMode(value: string): value is DeliveryMode {
-  return Object.values(DeliveryMode).includes(value as DeliveryMode);
-}
-
-function isDirectEntryMode(value: string): value is "WALK_IN" | "CALLED_IN" | "REFERRED" {
-  return value === CounselingEntryMode.WALK_IN || value === CounselingEntryMode.CALLED_IN || value === CounselingEntryMode.REFERRED;
-}
-
-function directEntryMode(value: string): CounselingEntryMode | undefined {
-  return isDirectEntryMode(value) ? value : undefined;
-}
 
 function Metadata({ label, children }: { label: string; children: ReactNode }) {
   return <div className="min-w-0 py-2.5"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm text-ink">{children}</dd></div>;
@@ -241,37 +222,14 @@ function CounselingWorkspaceContent({
 }) {
   const queryClient = useQueryClient();
   const { user } = usePortalSession();
-  const [recordOpen, setRecordOpen] = useState(false);
-  const [recordUncertain, setRecordUncertain] = useState(false);
-  const [checkingRecord, setCheckingRecord] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishNotice, setFinishNotice] = useState<string | null>(null);
   const encounterActionsRef = useRef<HTMLDivElement>(null);
-  const [recordNotice, setRecordNotice] = useState<string | null>(null);
   const [contextExpired, setContextExpired] = useState(false);
-  const [contextPanelRevision, setContextPanelRevision] = useState(0);
 
-  const directMode = anchorType === CounselingContextAnchorType.ROUTINE_INTERVIEW ? directEntryMode(overview.entry_mode) : undefined;
-  const directDelivery = isDeliveryMode(overview.delivery_mode) ? overview.delivery_mode : null;
-  const preset: EncounterOriginPreset | undefined = anchorType === CounselingContextAnchorType.APPOINTMENT && isDeliveryMode(overview.delivery_mode)
-    ? {
-        entryMode: CounselingEntryMode.APPOINTMENT,
-        appointmentId: anchorId,
-        studentName: overview.student.display_name,
-        institutionalId: overview.student.institutional_id,
-        deliveryMode: overview.delivery_mode,
-      }
-    : directMode && directDelivery
-      ? {
-          entryMode: directMode,
-          studentId: overview.student.id,
-          studentName: overview.student.display_name,
-          institutionalId: overview.student.institutional_id,
-          deliveryMode: directDelivery,
-          // Recorded from this Routine Interview's workspace, so COMPASS links it on creation.
-          routineInterviewId: anchorId,
-        }
-      : undefined;
+  // Recording happens on the dedicated Record Counseling Encounter page (EC-WS-2); this read-only
+  // context only says whether it can, and links there.
+  const preset = contextEncounterPreset(anchorType, anchorId, overview);
   const encounterState = contextEncounterState(overview);
   const assignedEncounter = useCounselingGetEncounter(overview.matching_encounter?.id ?? "", {
     query: { enabled: access.canViewAssigned && Boolean(overview.matching_encounter), retry: false },
@@ -332,51 +290,6 @@ function CounselingWorkspaceContent({
     return true;
   }
 
-  async function handleCreated() {
-    const routineId = overview.routine_interview?.id;
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(anchorType, anchorId) }),
-      // Recording links the Encounter to this context's Routine Interview.
-      ...(routineId
-        ? [
-            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineId) }),
-            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineId) }),
-            queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
-          ]
-        : []),
-      // The Appointment's own Encounter fact decides whether Finish or Record is offered next.
-      ...(anchorType === CounselingContextAnchorType.APPOINTMENT
-        ? [queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(anchorId) })]
-        : []),
-    ]);
-    setRecordOpen(false);
-    setContextPanelRevision((revision) => revision + 1);
-    await onRefreshOverview();
-  }
-
-  async function handleAlreadyRecorded() {
-    await handleCreated();
-    setRecordNotice(anchorType === CounselingContextAnchorType.ROUTINE_INTERVIEW
-      ? "This Routine Interview's encounter was already recorded. The latest details are now shown."
-      : "An encounter was already recorded for this Appointment. The latest details are now shown.");
-  }
-
-  async function checkRecordAgain() {
-    setCheckingRecord(true);
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
-        onRefreshOverview(),
-      ]);
-      if (anchorType === CounselingContextAnchorType.APPOINTMENT) {
-        await queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(anchorId) });
-        await appointmentQuery.refetch();
-      }
-    } finally {
-      setCheckingRecord(false);
-    }
-  }
-
   useEffect(() => {
     if (contextExpired) onContextInvalidated(true);
   }, [contextExpired, onContextInvalidated]);
@@ -403,12 +316,12 @@ function CounselingWorkspaceContent({
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
               <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
               <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
-              <Metadata label="Counseling Encounter">{recordUncertain && encounterState === "NOT_RECORDED" ? "Not confirmed" : contextEncounterStateLabels[encounterState]}</Metadata>
+              <Metadata label="Counseling Encounter">{contextEncounterStateLabels[encounterState]}</Metadata>
             </dl>
             <div ref={encounterActionsRef}>
             {finishNotice ? <p role="status" className="mb-2 text-sm text-ink">{finishNotice}</p> : null}
             {overview.matching_encounter && encounterState === "RECORDED" ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
             ) : overview.matching_encounter ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
             ) : anchorType === CounselingContextAnchorType.APPOINTMENT &&
@@ -417,34 +330,15 @@ function CounselingWorkspaceContent({
               // The Appointment's own Encounter fact comes from the Appointment read, so this still
               // shows when the context window no longer projects the record.
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My counseling encounters.</p><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
-            ) : canRecord && recordUncertain ? (
-              // An unconfirmed save is checked, never retried here.
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-ink">{unconfirmedEncounterMessage}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="secondary" aria-busy={checkingRecord} onClick={() => void checkRecordAgain()}>{checkingRecord ? "Checking…" : "Check again"}</Button><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "quiet" })}>View encounters</Link></div></div>
             ) : canRecord && finishOffered ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => { setRecordOpen(false); setFinishNotice(null); setFinishOpen(true); }}>Finish counseling</Button><p className="mt-3 text-sm text-muted">{appointment?.status === AppointmentStatus.COMPLETED ? "Records the Encounter for this completed Appointment." : "Records the Encounter and completes this Appointment."}</p></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => { setFinishNotice(null); setFinishOpen(true); }}>Finish counseling</Button><p className="mt-3 text-sm text-muted">{appointment?.status === AppointmentStatus.COMPLETED ? "Records the Encounter for this completed Appointment." : "Records the Encounter and completes this Appointment."}</p></div>
+            ) : canRecord && preset ? (
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><GuardedPortalLink href={recordEncounterPath(anchorType, anchorId)} className={buttonVariants({ variant: "secondary" })}>Record encounter</GuardedPortalLink><p className="mt-3 text-sm text-muted">Opens the Record Counseling Encounter page.</p></div>
             ) : canRecord ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => setRecordOpen(true)}>Record encounter</Button>{!preset && recordOpen ? <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">This interaction cannot be recorded here. Review its visit type and delivery mode.</p></div>
             ) : null}
             </div>
           </Panel>
-          {canRecord && preset ? (
-            <RecordEncounterDialog
-              open={recordOpen && !overview.matching_encounter}
-              onOpenChange={setRecordOpen}
-              preset={preset}
-              onUncertain={() => setRecordUncertain(true)}
-              onCreated={handleCreated}
-              onAlreadyRecorded={handleAlreadyRecorded}
-              // Recording replaces the opener with View encounter, so focus moves to the new action.
-              onCloseAutoFocus={(event) => {
-                const action = encounterActionsRef.current?.querySelector<HTMLElement>("a, button");
-                if (!action) return;
-                event.preventDefault();
-                action.focus();
-              }}
-            />
-          ) : null}
-
           {appointment ? (
             <FinishCounselingDialog
               open={finishOpen}
@@ -465,7 +359,7 @@ function CounselingWorkspaceContent({
           ) : null}
 
           <CounselingContextPanel
-            key={`${anchorType}-${anchorId}-${contextPanelRevision}`}
+            key={`${anchorType}-${anchorId}`}
             anchorType={anchorType}
             anchorId={anchorId}
             overview={overview}
@@ -596,7 +490,7 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
         />
         {detail.intake_status === "SUBMITTED" && detail.intake ? <div className="px-4 py-4 sm:px-5"><RoutineStudentIntakeReadOnly intake={detail.intake} /></div> : <PanelMessage role="status">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</PanelMessage>}
       </Panel>
-      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <RoutineCounselorEvaluationWorkspace key={detail.id} routineInterviewId={detail.id} entryMode={detail.entry_mode} linkedEncounter={detail.counseling_encounter} initialEvaluation={detail.evaluation} evaluationFinalized={false} /> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
+      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Edited on the Routine Interview." /><div className="px-4 py-4 sm:px-5"><p className="text-sm text-muted">The evaluation is written, saved and finalized on its Routine Interview. This workspace only shows it.</p><GuardedPortalLink href={`/portal/routine-interviews/${encodeURIComponent(detail.id)}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>Open Routine Interview</GuardedPortalLink></div></Panel> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
     </div>
   );
 }

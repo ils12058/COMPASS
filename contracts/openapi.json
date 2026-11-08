@@ -10543,10 +10543,7 @@
       },
       "ECounselingConsentScope": {
         "enum": [
-          "SESSION_MEDIA_CAPTURE",
-          "AUDIO_VIDEO_RECORDING",
-          "LIVE_TRANSCRIPTION",
-          "TRANSCRIPT_STORAGE"
+          "AUDIO_VIDEO_RECORDING"
         ],
         "title": "ECounselingConsentScope",
         "type": "string"
@@ -10575,8 +10572,7 @@
       },
       "ECounselingMediaKind": {
         "enum": [
-          "RECORDING",
-          "TRANSCRIPTION"
+          "RECORDING"
         ],
         "title": "ECounselingMediaKind",
         "type": "string"
@@ -23163,45 +23159,24 @@
           },
           "status": {
             "$ref": "#/components/schemas/ECounselingCaptureStatus"
-          },
-          "storage_enabled": {
-            "title": "Storage Enabled",
-            "type": "boolean"
           }
         },
         "required": [
           "kind",
-          "status",
-          "storage_enabled"
+          "status"
         ],
         "title": "MediaCaptureResponse",
         "type": "object"
       },
-      "MediaPolicyVersion": {
-        "enum": [
-          1,
-          2
-        ],
-        "title": "MediaPolicyVersion",
-        "type": "integer"
-      },
       "MediaWorkspaceState": {
         "additionalProperties": false,
         "properties": {
-          "media_policy_version": {
-            "$ref": "#/components/schemas/MediaPolicyVersion"
-          },
           "recording": {
             "$ref": "#/components/schemas/RecordingWorkspaceState"
-          },
-          "transcription": {
-            "$ref": "#/components/schemas/TranscriptionWorkspaceState"
           }
         },
         "required": [
-          "media_policy_version",
-          "recording",
-          "transcription"
+          "recording"
         ],
         "title": "MediaWorkspaceState",
         "type": "object"
@@ -27370,8 +27345,7 @@
       "RetentionPolicyCategory": {
         "enum": [
           "GRADUATE_TRACER",
-          "ECOUNSELING_RECORDING",
-          "ECOUNSELING_TRANSCRIPT"
+          "ECOUNSELING_RECORDING"
         ],
         "title": "RetentionPolicyCategory",
         "type": "string"
@@ -31577,73 +31551,6 @@
         ],
         "title": "ThreadStatus",
         "type": "string"
-      },
-      "TranscriptionStartRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "store_transcript": {
-            "default": false,
-            "title": "Store Transcript",
-            "type": "boolean"
-          }
-        },
-        "title": "TranscriptionStartRequest",
-        "type": "object"
-      },
-      "TranscriptionWorkspaceState": {
-        "additionalProperties": false,
-        "properties": {
-          "artifact_available": {
-            "title": "Artifact Available",
-            "type": "boolean"
-          },
-          "artifact_disposed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Artifact Disposed At"
-          },
-          "artifact_status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MediaArtifactStatus"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "capture_status": {
-            "$ref": "#/components/schemas/ECounselingCaptureStatus"
-          },
-          "consent_status": {
-            "$ref": "#/components/schemas/ECounselingConsentStatus"
-          },
-          "storage_consent_status": {
-            "$ref": "#/components/schemas/ECounselingConsentStatus"
-          },
-          "storage_enabled": {
-            "title": "Storage Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "consent_status",
-          "storage_consent_status",
-          "capture_status",
-          "storage_enabled",
-          "artifact_disposed_at",
-          "artifact_status",
-          "artifact_available"
-        ],
-        "title": "TranscriptionWorkspaceState",
-        "type": "object"
       },
       "TransportationEntryPayload": {
         "additionalProperties": false,
@@ -46345,8 +46252,7 @@
             "required": true,
             "schema": {
               "enum": [
-                "RECORDING",
-                "TRANSCRIPTION"
+                "RECORDING"
               ],
               "title": "ECounselingMediaKind",
               "type": "string"
@@ -46637,222 +46543,6 @@
           }
         ],
         "summary": "Ecounseling Stop Assigned Recording",
-        "tags": [
-          "e-counseling"
-        ]
-      }
-    },
-    "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start": {
-      "post": {
-        "operationId": "eCounselingStartAssignedTranscription",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "appointment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Appointment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TranscriptionStartRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaCaptureResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          },
-          "502": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Bad Gateway"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Ecounseling Start Assigned Transcription",
-        "tags": [
-          "e-counseling"
-        ]
-      }
-    },
-    "/api/v1/e-counseling/appointments/{appointment_id}/transcription/stop": {
-      "post": {
-        "operationId": "eCounselingStopAssignedTranscription",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "appointment_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Appointment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaCaptureResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "502": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Bad Gateway"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Ecounseling Stop Assigned Transcription",
         "tags": [
           "e-counseling"
         ]

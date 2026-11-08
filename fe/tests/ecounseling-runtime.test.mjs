@@ -59,16 +59,15 @@ test("one portal runtime holds at most one call, and another tab's lease blocks 
 
 test("the Student's cue and the Counselor's notices come from COMPASS session state", () => {
   const pending = media(); pending.recording.consent_status = "PENDING";
-  assert.equal(pendingConsentCue(pending), "Media permission requested");
-  const storage = media(); storage.transcription.storage_consent_status = "PENDING";
-  assert.equal(pendingConsentCue(storage), "Transcript storage permission requested");
+  assert.equal(pendingConsentCue(pending), "Recording permission requested");
   assert.equal(pendingConsentCue(media()), null);
   const withdrawn = media("STOP_REQUESTED"); withdrawn.recording.consent_status = "WITHDRAWN";
-  assert.equal(consentEndedNotice(withdrawn), "The student withdrew media permission.");
+  assert.equal(consentEndedNotice(withdrawn), "The student withdrew recording permission.");
   assert.equal(consentEndedNotice(media("READY")), null);
-  assert.deepEqual(activeCaptureKinds(media("ACTIVE")), ["recording", "transcription"]);
-  assert.deepEqual(activeCaptureKinds(media("START_REQUESTED")), ["recording", "transcription"]);
-  assert.deepEqual(activeCaptureKinds(media("STOP_REQUESTED")), ["recording", "transcription"]);
+  assert.deepEqual(activeCaptureKinds(media("ACTIVE")), ["recording"]);
+  assert.deepEqual(activeCaptureKinds(media("START_REQUESTED")), ["recording"]);
+  assert.deepEqual(activeCaptureKinds(media("STOP_REQUESTED")), ["recording"]);
+  assert.deepEqual(activeCaptureKinds(media("STOPPED")), [], "A stopped recording is terminal");
 });
 
 // An in-memory BroadcastChannel and clock shared by simulated tabs.

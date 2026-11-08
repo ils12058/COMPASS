@@ -45,6 +45,14 @@ from tests.test_realtime_service import Socket, run
 from tests.test_realtime_tickets import issue
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+@pytest.fixture
+def kind():
+    """E-Counseling is recording-only, so capture-generic checks run for recordings."""
+    return "RECORDING"
+
+
 EVENT = "ecounseling.media.changed"
 ORIGINAL_PUBLISH = publish._publish
 
@@ -97,17 +105,13 @@ def assert_hints(frames, appointment, participants, *, transitions=1):
     )
 
 
-def start(kind, counselor, appointment, client, *, storage=False):
-    kwargs = dict(
+def start(kind, counselor, appointment, client):
+    assert kind == "RECORDING"
+    return media.start_recording(
         counselor=counselor,
         appointment_id=appointment.pk,
         context=context(counselor),
         daily_client=client,
-    )
-    return (
-        media.start_recording(**kwargs)
-        if kind == "RECORDING"
-        else media.start_transcription(**kwargs, store_transcript=storage)
     )
 
 
@@ -120,14 +124,7 @@ class BoundArtifactDaily(ArtifactDaily):
     def get_recording(self, **kwargs):
         return {**super().get_recording(**kwargs), "mtgSessionId": self.capture.provider_session_id}
 
-    def get_transcript(self, **kwargs):
-        return {
-            **super().get_transcript(**kwargs),
-            "mtgSessionId": self.capture.provider_session_id,
-        }
 
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_start_intent_is_durable_before_provider_and_ack_does_not_mean_active(frames, kind):
     student, counselor, appointment, client = authorized_session(kind=kind)
     frames.clear()
@@ -147,7 +144,6 @@ def test_start_intent_is_durable_before_provider_and_ack_does_not_mean_active(fr
     assert_hints(frames, appointment, [student, counselor])
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("known", [False, True])
 def test_start_failure_publishes_only_a_changed_public_status(frames, kind, known):
     student, counselor, appointment, client = authorized_session(kind=kind)
@@ -164,27 +160,6 @@ def test_start_failure_publishes_only_a_changed_public_status(frames, kind, know
     assert_hints(frames, appointment, [student, counselor], transitions=2 if known else 1)
 
 
-def test_transcription_storage_configuration_and_cleanup_are_separate_visible_commits(frames):
-    student, counselor, appointment, client = authorized_session(storage=True)
-    frames.clear()
-    capture = start("TRANSCRIPTION", counselor, appointment, client, storage=True)
-    assert capture.transcript_storage_enabled and capture.status == "START_REQUESTED"
-    assert_hints(frames, appointment, [student, counselor], transitions=2)
-    consent = ECounselingConsent.objects.get(room=capture.room, scope="TRANSCRIPT_STORAGE")
-    frames.clear()
-    media.withdraw_my_consent(
-        student=student,
-        appointment_id=appointment.pk,
-        consent_id=consent.pk,
-        context=context(student),
-        daily_client=client,
-    )
-    capture.refresh_from_db()
-    assert capture.status == "STOP_REQUESTED" and not capture.transcript_storage_enabled
-    assert_hints(frames, appointment, [student, counselor], transitions=2)
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("failure", [False, True])
 def test_stop_intent_survives_failure_and_repeated_stop_does_not_publish(frames, kind, failure):
     student, counselor, appointment, _, capture = pending_capture(
@@ -216,11 +191,10 @@ def test_stop_intent_survives_failure_and_repeated_stop_does_not_publish(frames,
     assert media_frames(frames) == []
 
 
-def test_combined_withdrawal_publishes_one_media_transition_before_failed_mitigation(frames):
+def test_withdrawal_publishes_one_media_transition_before_failed_stop(frames):
     student, counselor, appointment, client = authorized_session()
     recording = start("RECORDING", counselor, appointment, client)
-    start("TRANSCRIPTION", counselor, appointment, client)
-    consent = ECounselingConsent.objects.get(room=recording.room, scope="SESSION_MEDIA_CAPTURE")
+    consent = ECounselingConsent.objects.get(room=recording.room, scope="AUDIO_VIDEO_RECORDING")
     frames.clear()
 
     def failed_stop(**kwargs):
@@ -384,14 +358,12 @@ def test_transport_and_lookup_failures_never_undo_capture_intent(
     assert "PRIVATE_PROVIDER_LOCATION" not in caplog.text
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("phase", ["started", "ready-to-download", "error"])
 def test_verified_signed_webhook_publishes_only_a_changed_projection(frames, kind, phase):
     student, counselor, appointment, _, capture = pending_capture(
         kind=kind,
         state="START_REQUESTED",
         bound=phase != "started",
-        storage=kind == "TRANSCRIPTION",
         stop_intent=False,
     )
     frames.clear()
@@ -412,14 +384,11 @@ def test_verified_signed_webhook_publishes_only_a_changed_projection(frames, kin
     )
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     "invalid", ["room", "instance", "session", "artifact", "malformed", "quarantined", "disposed"]
 )
 def test_untrusted_or_protected_webhook_never_publishes(frames, kind, invalid):
-    _, _, _, _, capture = pending_capture(
-        kind=kind, state="START_REQUESTED", storage=kind == "TRANSCRIPTION", stop_intent=False
-    )
+    _, _, _, _, capture = pending_capture(kind=kind, state="START_REQUESTED", stop_intent=False)
     event = body_for(capture)
     if invalid == "room":
         event["payload"]["room_name"] = "foreign-room"
@@ -448,13 +417,11 @@ def test_untrusted_or_protected_webhook_never_publishes(frames, kind, invalid):
     assert media_frames(frames) == []
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_early_completion_replay_publishes_active_then_ready_once(frames, kind):
     student, counselor, appointment, _, capture = pending_capture(
         kind=kind,
         state="START_REQUESTED",
         bound=False,
-        storage=kind == "TRANSCRIPTION",
         stop_intent=False,
     )
     frames.clear()
@@ -473,7 +440,6 @@ def test_early_completion_replay_publishes_active_then_ready_once(frames, kind):
     assert media_frames(frames) == []
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("active", [False, True])
 def test_reconciliation_publishes_changed_capture_and_artifact_not_claim_metadata(
     frames, kind, active
@@ -481,7 +447,6 @@ def test_reconciliation_publishes_changed_capture_and_artifact_not_claim_metadat
     student, counselor, appointment, _, capture = pending_capture(
         kind=kind,
         state="START_REQUESTED" if active else "STOP_REQUESTED",
-        storage=kind == "TRANSCRIPTION",
         stop_intent=not active,
     )
     frames.clear()
@@ -506,7 +471,6 @@ def test_uncertain_metadata_and_retry_bookkeeping_do_not_publish(frames):
     assert capture.status == "STOP_REQUESTED" and media_frames(frames) == []
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("failure", [None, "integrity", "cleanup"])
 def test_custody_hints_follow_verified_public_stages_and_ignore_cleanup_bookkeeping(
     frames, kind, failure
@@ -581,7 +545,7 @@ def test_concurrent_start_superseded_by_stop_or_withdrawal_has_only_committed_hi
             )
         else:
             consent = ECounselingConsent.objects.get(
-                room__appointment=appointment, scope="SESSION_MEDIA_CAPTURE"
+                room__appointment=appointment, scope="AUDIO_VIDEO_RECORDING"
             )
             media.withdraw_my_consent(
                 student=student,
@@ -625,7 +589,7 @@ def test_media_public_contract_rejects_every_additional_field(field):
 def test_room_provisioning_notifies_once_independently_of_later_token_failure(
     frames, token_failure
 ):
-    _, student, counselor, appointment = setup_session(media_policy_version=2)
+    _, student, counselor, appointment = setup_session(precreate_room=False)
     client = FakeMediaDailyClient()
     if token_failure:
 
@@ -673,11 +637,8 @@ def test_artifact_creation_rolls_back_without_hint_or_dispatch(frames):
     assert media_frames(frames) == []
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_concurrent_verified_webhook_and_reconciliation_converge_on_one_transition(frames, kind):
-    student, counselor, appointment, _, capture = pending_capture(
-        kind=kind, storage=kind == "TRANSCRIPTION"
-    )
+    student, counselor, appointment, _, capture = pending_capture(kind=kind)
     claimed = claim(capture)
     observation = observe_metadata(claimed, metadata(capture))
     event = body_for(capture, "ready-to-download")
@@ -889,15 +850,16 @@ def test_real_redis_socket_authenticated_http_signed_provider_and_custody_flow(m
                 host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1
             )
             monkeypatch.setattr(publish, "realtime_redis", lambda: refused)
-            started_transcript = await database_call(
+            # EC-RC-1/2: the retired transcription route no longer exists, even for old clients.
+            retired = await database_call(
                 clients[1].post,
                 base + "/transcription/start",
                 data='{"store_transcript":false}',
                 content_type="application/json",
             )
-            assert started_transcript.status_code == 200
+            assert retired.status_code == 404
             state = await database_call(clients[1].get, base)
-            assert state.json()["media"]["transcription"]["capture_status"] == "START_REQUESTED"
+            assert set(state.json()["media"]) == {"recording"}
             assert state.json()["media"]["recording"]["artifact_available"]
             for socket in sockets:
                 await socket.nothing()

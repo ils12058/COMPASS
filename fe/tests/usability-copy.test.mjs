@@ -71,10 +71,7 @@ function renderConsent() {
       createElement(StudentConsentPanel, {
         appointmentId: APPOINTMENT,
         access: { canConsentSelf: true },
-        media: {
-          recording: { capture_status: "NOT_STARTED", consent_status: "APPROVED" },
-          transcription: { capture_status: "NOT_STARTED", consent_status: "PENDING", storage_consent_status: "NOT_REQUESTED", storage_enabled: false },
-        },
+        media: { recording: { capture_status: "NOT_STARTED", consent_status: "APPROVED" } },
       }),
     ),
   );
@@ -85,11 +82,8 @@ test("media consent still says it does not affect Counseling, where Students dec
   assert.match(html, /Your choices don’t affect your access to Counseling\./);
   // Each requested scope keeps its meaning beside its status and the decisions available now; a
   // scope that was never requested is still listed, separately, as not requested.
-  assert.match(html, /Allows audio and video from this Counseling session to be recorded\./);
-  assert.match(html, /Allows speech from this session to be processed as text while transcription is active\./);
-  assert.match(html, /Transcript storage<\/h3><span[^>]*>Not requested/);
-  assert.match(html, />Allow</);
-  assert.match(html, />Decline</);
+  assert.match(html, /Recording is optional and creates a saved audio\/video file\./);
+  assert.doesNotMatch(html, /transcri/i);
   assert.match(html, />Withdraw permission</);
   assert.doesNotMatch(html, IMPLEMENTATION_TERMS);
   // Capture activity lives on the session stage, not repeated in the consent list.

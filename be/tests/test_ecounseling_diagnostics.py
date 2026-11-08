@@ -71,12 +71,8 @@ class DownloadResponse:
 
 
 def install_stream(monkeypatch, *, kind="RECORDING", failure=None, webm=False):
-    body = (
-        b"WEBVTT\n\n00:00.000 --> 00:01.000\nsynthetic\n"
-        if kind == "TRANSCRIPTION"
-        else b"\x00\x00\x00\x18ftypisomsynthetic"
-    )
-    mime = "text/vtt" if kind == "TRANSCRIPTION" else "video/mp4"
+    assert kind == "RECORDING"
+    body, mime = b"\x00\x00\x00\x18ftypisomsynthetic", "video/mp4"
     if webm:
         body, mime = b"\x1a\x45\xdf\xa3synthetic", "video/webm"
     if failure == "content_type":
@@ -220,8 +216,8 @@ def test_each_failure_boundary_preserves_custody_retry_and_privacy(
 
 @pytest.mark.parametrize(
     ("kind", "webm"),
-    [("RECORDING", False), ("RECORDING", True), ("TRANSCRIPTION", False)],
-    ids=["mp4", "webm", "webvtt"],
+    [("RECORDING", False), ("RECORDING", True)],
+    ids=["mp4", "webm"],
 )
 def test_real_bounded_stream_validation_and_successful_cleanup_still_work(
     kind, webm, monkeypatch, caplog
@@ -460,23 +456,3 @@ def test_provider_cleanup_404_is_not_deletion_evidence(monkeypatch, caplog):
     assert artifact.error_code == "PROVIDER_CLEANUP_UNVERIFIED"
     assert capture.provider_artifact_id and "DELETE" not in client.calls
     assert diagnostics(caplog)[-1]["provider_failure_code"] == "UNCLASSIFIED"
-
-
-@pytest.mark.parametrize("invalid_field", ["transcriptId", "roomId", "isVttAvailable", "outParams"])
-def test_transcript_provenance_and_storage_validation_remain_fail_closed(
-    invalid_field, monkeypatch
-):
-    _, _, _, capture, artifact, storage = ready_artifact("TRANSCRIPTION")
-    client = ArtifactDaily(capture)
-    original = client.get_transcript
-
-    def metadata(**kwargs):
-        item = original(**kwargs)
-        item[invalid_field] = False if invalid_field == "isVttAvailable" else PRIVATE_TEXT
-        return item
-
-    monkeypatch.setattr(client, "get_transcript", metadata)
-    ingest_artifact(artifact.pk, storage=storage, client=client, download=fake_download)
-    artifact.refresh_from_db()
-    assert artifact.status == "FAILED" and artifact.error_code == "PROVIDER_IDENTITY_UNVERIFIED"
-    assert artifact.stored_at is None and "DELETE" not in client.calls

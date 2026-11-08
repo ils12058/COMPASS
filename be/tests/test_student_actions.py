@@ -255,25 +255,23 @@ def test_call_slip_live_future_due_overdue_completed_voided_and_provenance(world
 
 def test_consent_grouping_earliest_real_decisions_and_capability(world):
     anchor = room(world)
-    consents = [
-        ECounselingConsent.objects.create(room=anchor, scope=scope, requested_by=world.counselor)
-        for scope in ["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"]
-    ]
+    consent = ECounselingConsent.objects.create(
+        room=anchor, scope="AUDIO_VIDEO_RECORDING", requested_by=world.counselor
+    )
     earlier = timezone.now() - timedelta(days=1)
-    ECounselingConsent.objects.filter(pk=consents[0].pk).update(requested_at=earlier)
+    ECounselingConsent.objects.filter(pk=consent.pk).update(requested_at=earlier)
     item = actions(world)[0]
     assert item.kind == Kind.ECOUNSELING_CONSENT and item.source_id == world.appointment.pk
-    assert item.pending_count == 2 and item.waiting_since == earlier
+    assert item.pending_count == 1 and item.waiting_since == earlier
     assert actions(world, world.other_student) == []
-    for i, consent in enumerate(consents):
-        decide_my_consent(
-            student=world.student,
-            appointment_id=world.appointment.pk,
-            consent_id=consent.pk,
-            decision="DENIED",
-            context=AuditContext.user(world.student),
-        )
-        assert len(actions(world)) == (1 if i == 0 else 0)
+    decide_my_consent(
+        student=world.student,
+        appointment_id=world.appointment.pk,
+        consent_id=consent.pk,
+        decision="DENIED",
+        context=AuditContext.user(world.student),
+    )
+    assert actions(world) == []
     # Pending denial stays available after graduation, matching canonical decision rules.
     deny(world.student, "ecounseling.consent_self")
     assert actions(world) == []
@@ -624,34 +622,31 @@ def test_local_live_call_slip_issue_due_and_complete_services(world):
     assert actions(world) == []
 
 
-def test_local_consent_request_two_scopes_then_decide_services(world):
+def test_local_consent_request_then_decide_services(world):
     from compass.ecounseling.media import request_consents
 
     online(world)
-    requested = request_consents(
+    [requested] = request_consents(
         counselor=world.counselor,
         appointment_id=world.appointment.pk,
-        scopes=["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"],
+        scopes=["AUDIO_VIDEO_RECORDING"],
         context=AuditContext.user(world.counselor),
     )
-    assert actions(world)[0].pending_count == 2
-    for remaining, consent in zip([1, 0], requested, strict=True):
-        decide_my_consent(
-            student=world.student,
-            appointment_id=world.appointment.pk,
-            consent_id=consent["id"],
-            decision="DENIED",
-            context=AuditContext.user(world.student),
-        )
-        assert len(actions(world)) == bool(remaining)
-        if remaining:
-            assert actions(world)[0].pending_count == remaining
+    assert actions(world)[0].pending_count == 1
+    decide_my_consent(
+        student=world.student,
+        appointment_id=world.appointment.pk,
+        consent_id=requested["id"],
+        decision="DENIED",
+        context=AuditContext.user(world.student),
+    )
+    assert actions(world) == []
 
 
 def test_consent_pending_capability_and_graduated_denial_remain_canonical(world):
     anchor = room(world)
     consent = ECounselingConsent.objects.create(
-        room=anchor, scope="SESSION_MEDIA_CAPTURE", requested_by=world.counselor
+        room=anchor, scope="AUDIO_VIDEO_RECORDING", requested_by=world.counselor
     )
     world.student.student_lifecycle_status = "GRADUATED"
     world.student.save(update_fields=["student_lifecycle_status"])
@@ -758,7 +753,7 @@ def test_multirow_sources_exclude_old_ineligible_rows_before_sql_prefix(world, s
                 anchor = ECounselingRoom.objects.create(
                     appointment=row, daily_room_name=f"prefix-{i}"
                 )
-                for scope in ["SESSION_MEDIA_CAPTURE", "TRANSCRIPT_STORAGE"]:
+                for scope in ["AUDIO_VIDEO_RECORDING"]:
                     consent = ECounselingConsent.objects.create(
                         room=anchor,
                         scope=scope,
@@ -808,7 +803,7 @@ def test_multirow_sources_exclude_old_ineligible_rows_before_sql_prefix(world, s
         elif source == "consent":
             result = pending_consents(student=world.student, limit=3)
             ids = [row["room__appointment_id"] for row in result]
-            assert all(row["pending_count"] == 2 for row in result)
+            assert all(row["pending_count"] == 1 for row in result)
             table = "ecounseling_ecounselingconsent"
         elif source == "join":
             result = open_join_windows(student=world.student, now=now, limit=3)

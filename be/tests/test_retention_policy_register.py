@@ -185,14 +185,12 @@ def test_register_defines_each_former_category_once_in_a_fixed_order():
     assert codes == [
         RetentionPolicyCategory.GRADUATE_TRACER,
         RetentionPolicyCategory.ECOUNSELING_RECORDING,
-        RetentionPolicyCategory.ECOUNSELING_TRANSCRIPT,
     ]
     assert len(set(codes)) == len(codes)
     assert set(codes) == set(RetentionPolicyCategory)
     assert [entry.category_label for entry in register.REGISTER] == [
         "Graduate Tracer responses",
         "E-Counseling recordings",
-        "E-Counseling transcripts",
     ]
     projected = [register.project(entry) for entry in register.REGISTER]
     assert projected == [register.project(entry) for entry in register.REGISTER]
@@ -319,11 +317,11 @@ def test_dpo_reads_the_minimized_register_without_reading_domain_records(dpo):
 
 
 def test_an_adopted_entry_is_projected_verbatim(dpo, monkeypatch):
-    entry = adopted(category_code=RetentionPolicyCategory.ECOUNSELING_TRANSCRIPT)
+    entry = adopted(category_code=RetentionPolicyCategory.ECOUNSELING_RECORDING)
     monkeypatch.setattr(register, "REGISTER", validate_register((entry,)))
     item = auth_client(dpo).get(POLICIES).json()["items"][0]
     assert item == {
-        "category_code": "ECOUNSELING_TRANSCRIPT",
+        "category_code": "ECOUNSELING_RECORDING",
         "category_label": "Synthetic category",
         "adoption_status": "ADOPTED",
         "retention_period": "SYNTHETIC TEST WORDING - not institutional policy",

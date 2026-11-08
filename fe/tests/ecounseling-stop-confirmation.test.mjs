@@ -52,7 +52,7 @@ test("a Stop is sent once, a failure is reported before the re-read, and a faile
 });
 
 function tray(status, { stopping = false, failed = false } = {}) {
-  const both = (value) => ({ recording: value, transcription: value });
+  const both = (value) => ({ recording: value });
   const media = {
     access: { canManageMediaAssigned: true },
     status: both(status),
@@ -69,22 +69,21 @@ function tray(status, { stopping = false, failed = false } = {}) {
 
 test("the call tray distinguishes pending confirmation, a failed Stop request and completion", () => {
   const pending = tray("STOP_REQUESTED");
-  assert.equal((pending.match(/Stopping…/g) ?? []).length, 2);
+  assert.equal((pending.match(/Stopping…/g) ?? []).length, 1);
   assert.doesNotMatch(pending, /Stop not confirmed/);
-  assert.equal((pending.match(/disabled=""/g) ?? []).length, 2, "an accepted Stop cannot be re-sent");
+  assert.equal((pending.match(/disabled=""/g) ?? []).length, 1, "an accepted Stop cannot be re-sent");
 
   const failed = tray("STOP_REQUESTED", { failed: true });
   assert.match(failed, /aria-label="Recording stop not confirmed\. Stop recording again"/);
-  assert.match(failed, /aria-label="Transcription stop not confirmed\. Stop transcription again"/);
-  assert.equal((failed.match(/>Stop not confirmed</g) ?? []).length, 2);
-  assert.doesNotMatch(failed, /Stopping…|Recorded|Transcribed/);
+  assert.equal((failed.match(/>Stop not confirmed</g) ?? []).length, 1);
+  assert.doesNotMatch(failed, /Stopping…|Recorded|Transcri/);
   assert.doesNotMatch(failed, /disabled=""/, "the not-confirmed Stop can be sent again");
 
   const retrying = tray("STOP_REQUESTED", { stopping: true, failed: true });
-  assert.equal((retrying.match(/Stopping…/g) ?? []).length, 2);
+  assert.equal((retrying.match(/Stopping…/g) ?? []).length, 1);
 
   const completed = tray("READY", { failed: true });
   assert.match(completed, /Recorded/);
-  assert.match(completed, /Transcribed/);
+  assert.doesNotMatch(completed, /Transcri/);
   assert.doesNotMatch(completed, /Stop not confirmed|Stopping…/);
 });

@@ -22,11 +22,9 @@ export const appointment = {
   actions: Object.fromEntries(["cancel", "reschedule", "reassign", "complete", "mark_no_show"].map((name) => [name, { allowed: true, blocker: null, consequences: [] }])),
 };
 export const media = (capture = "NOT_STARTED") => ({
-  media_policy_version: 1,
   recording: { artifact_disposed_at: null, artifact_status: null, artifact_available: false, capture_status: capture, consent_status: "APPROVED" },
-  transcription: { artifact_disposed_at: null, artifact_status: null, artifact_available: false, capture_status: capture, consent_status: "APPROVED", storage_consent_status: "NOT_REQUESTED", storage_enabled: false },
 });
-export const consents = (decision = "APPROVED") => ["AUDIO_VIDEO_RECORDING", "LIVE_TRANSCRIPTION"].map((scope, index) => ({
+export const consents = (decision = "APPROVED") => ["AUDIO_VIDEO_RECORDING"].map((scope, index) => ({
   id: `consent-${index}`, scope, decision, effective: decision === "APPROVED", withdrawn_at: null,
   requested_at: "2026-10-07T00:00:00Z", decided_at: decision === "PENDING" ? null : "2026-10-07T00:01:00Z",
 }));

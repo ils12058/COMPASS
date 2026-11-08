@@ -11,7 +11,6 @@ from django.db import connection, transaction
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 from compass.integrations.daily import DailyClient, DailyError, safe_daily_failure_code
 
@@ -19,10 +18,10 @@ from .artifacts import ensure_pending_artifact
 from .diagnostics import CaptureStage, log_capture_reconciliation
 from .media import (
     _TERMINAL_CAPTURE_STATES,
+    RECORDING_SCOPE,
     _capture_status_for_event,
     _has_stop_intent,
     effective_consent,
-    media_scope,
 )
 from .models import (
     CaptureEvidence as Evidence,
@@ -34,13 +33,12 @@ from .models import (
     CaptureReconciliationState as State,
 )
 from .models import (
-    ConsentScope,
+    ECounselingCaptureReconciliation as Recovery,
+)
+from .models import (
     ECounselingConsent,
     ECounselingMediaArtifact,
     ECounselingRoom,
-)
-from .models import (
-    ECounselingCaptureReconciliation as Recovery,
 )
 from .models import (
     ECounselingMediaCapture as Capture,
@@ -166,7 +164,6 @@ def _identity(capture):
         capture.provider_artifact_id,
         capture.provider_session_id,
         capture.media_authorized_at,
-        capture.transcript_storage_authorized,
         capture.provider_binding_verified_at,
     )
 
@@ -256,16 +253,11 @@ def claim_capture(capture_id):
         )
 
 
-def _metadata_time(value, *, recording):
+def _metadata_time(value):
     try:
-        if recording:
-            if type(value) not in (int, float) or not math.isfinite(value):
-                return None
-            return datetime.fromtimestamp(value, UTC)
-        if not isinstance(value, str) or len(value) > 64:
+        if type(value) not in (int, float) or not math.isfinite(value):
             return None
-        result = parse_datetime(value)
-        return result if result and timezone.is_aware(result) else None
+        return datetime.fromtimestamp(value, UTC)
     except (ValueError, OverflowError, OSError):
         return None
 
@@ -274,9 +266,9 @@ def observe_metadata(claim, item):
     """Reduce an untrusted response to closed evidence; persist no response/body/location."""
     if not isinstance(item, dict):
         return Observation(Outcome.IDENTITY)
-    _, room_name, room_id, kind, instance, artifact_id, session, _, _, verified_at = claim.identity
-    recording = kind == "RECORDING"
-    if not instance or not claim.identity[7] or not verified_at:
+    _, room_name, room_id, kind, instance, artifact_id, session, _, verified_at = claim.identity
+    authorized_at = claim.identity[7]  # media_authorized_at (see _identity).
+    if not instance or not authorized_at or not verified_at:
         return Observation(Outcome.IDENTITY)
     # No guaranteed instance field exists in these GET contracts. A conflicting supplied value
     # cannot override the existing binding, even when it appears as an undocumented extra.
@@ -297,7 +289,7 @@ def observe_metadata(claim, item):
         return Observation(Outcome.IDENTITY)
     identity = ProviderIdentity(
         item.get("kind", kind),
-        item.get("id" if recording else "transcriptId"),
+        item.get("id"),
         instances[0] if instances else None,
         item.get("room_name"),
         item.get("roomId"),
@@ -312,13 +304,13 @@ def observe_metadata(claim, item):
         artifact_id=artifact_id,
         session_id=session,
         require_artifact=True,
-        require_room_name=recording,
-        require_room_id=not recording,
+        require_room_name=True,
+        require_room_id=False,
         require_known_session=True,
     ):
         return Observation(Outcome.IDENTITY)
     status = item.get("status")
-    active, complete = ("in-progress", "finished") if recording else ("t_in_progress", "t_finished")
+    active, complete = "in-progress", "finished"
     if status not in (active, complete):
         return Observation(Outcome.UNKNOWN)
     duration = item.get("duration")
@@ -329,27 +321,14 @@ def observe_metadata(claim, item):
     return Observation(
         Outcome.ACTIVE if status == active else Outcome.COMPLETED,
         Evidence.ACTIVE if status == active else Evidence.COMPLETED,
-        started_at=_metadata_time(
-            item.get("start_ts" if recording else "created_at"), recording=recording
-        ),
+        started_at=_metadata_time(item.get("start_ts")),
         duration=duration,
     )
 
 
 def _consent_checks(capture, consents):
-    by_scope = {consent.scope: consent for consent in consents}
-    media_ok = effective_consent(by_scope.get(media_scope(capture.room, capture.kind)))
-    storage_ok = effective_consent(by_scope.get(ConsentScope.TRANSCRIPT_STORAGE))
-    applicable_ok = (
-        media_ok
-        and capture.media_authorized_at is not None
-        and (
-            capture.kind != "TRANSCRIPTION"
-            or not (capture.transcript_storage_enabled or capture.transcript_storage_authorized)
-            or storage_ok
-        )
-    )
-    return media_ok, storage_ok, applicable_ok
+    media = next((consent for consent in consents if consent.scope == RECORDING_SCOPE), None)
+    return effective_consent(media) and capture.media_authorized_at is not None
 
 
 def apply_observation(claim, observation):
@@ -372,7 +351,7 @@ def apply_observation(claim, observation):
             recovery.outcome_code = observation.outcome
             recovery.provider_evidence = observation.evidence
             recovery.provider_failure_code = observation.failure_code
-            _, _, applicable_ok = _consent_checks(capture, consents)
+            applicable_ok = _consent_checks(capture, consents)
             if observation.evidence == Evidence.COMPLETED:
                 capture.status = _capture_status_for_event(capture, "ready")
                 if (
@@ -463,7 +442,8 @@ def reconcile_captures(*, client=None):
         if claim is None:
             continue
         counts["claimed"] += 1
-        if not claim.artifact_id or not claim.identity[9]:
+        # identity[-1] is provider_binding_verified_at (see _identity).
+        if not claim.artifact_id or not claim.identity[-1]:
             observation = Observation(Outcome.IDENTITY)
         else:
             try:

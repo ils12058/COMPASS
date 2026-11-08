@@ -7,10 +7,9 @@ from datetime import UTC, datetime
 
 from .provider_identity import ProviderIdentity
 
+# Recording is the only media capture; transcript.* events are unsupported and ignored.
 MEDIA_WEBHOOK_TYPES = frozenset(
-    f"{kind}.{phase}"
-    for kind in ("recording", "transcript")
-    for phase in ("started", "ready-to-download", "error")
+    f"recording.{phase}" for phase in ("started", "ready-to-download", "error")
 )
 MEETING_WEBHOOK_TYPES = frozenset({"meeting.started", "meeting.ended"})
 MAX_DURATION_SECONDS = 7 * 86400  # Defensive COMPASS bound, not a claimed Daily limit.
@@ -113,8 +112,7 @@ def validate_event(*, event_type, event_id, event_ts, payload):
         )
     if event_type not in MEDIA_WEBHOOK_TYPES:
         raise InvalidEvent()
-    recording = event_type.startswith("recording.")
-    kind = "RECORDING" if recording else "TRANSCRIPTION"
+    kind = "RECORDING"
     phase = event_type.rsplit(".", 1)[1]
     info = payload.get("info", {})
     if not isinstance(info, dict):
@@ -126,33 +124,17 @@ def validate_event(*, event_type, event_id, event_ts, payload):
     instance = instance or nested_instance
     if phase in ("started", "error") and not instance:
         raise InvalidEvent()
-    if not recording and phase in ("started", "error") and not nested_instance:
-        raise InvalidEvent()
-    artifact = _optional_id(payload, "recording_id" if recording else "id")
-    if (phase != "error" or not recording) and not artifact:
+    artifact = _optional_id(payload, "recording_id")
+    if phase != "error" and not artifact:
         raise InvalidEvent()
     room_name = _aliases(payload, ("room_name", "roomName", "room"), maximum=128)
     room_id = _aliases(payload, ("room_id", "roomId"), maximum=128)
     session = _aliases(payload, ("mtg_session_id", "mtgSessionId"))
-    if not (recording and phase == "started") and not room_name:
-        raise InvalidEvent()
-    if not recording and not session:
+    if phase != "started" and not room_name:
         raise InvalidEvent()
     if "kind" in payload and payload["kind"] != kind:
         raise InvalidEvent()
-    expected_status = (
-        (
-            "finished"
-            if phase == "ready-to-download"
-            else "in-progress"
-            if phase == "started"
-            else None
-        )
-        if recording
-        else {"started": "t_in_progress", "ready-to-download": "t_finished", "error": "t_error"}[
-            phase
-        ]
-    )
+    expected_status = {"ready-to-download": "finished", "started": "in-progress"}.get(phase)
     status = payload.get("status")
     if "status" in payload and (not isinstance(status, str) or status != expected_status):
         raise InvalidEvent()
@@ -162,27 +144,17 @@ def validate_event(*, event_type, event_id, event_ts, payload):
     if started_at and nested_start and started_at != nested_start:
         raise InvalidEvent()
     # Validate supplied observations, but trust media timing only where documented for this event.
-    started_at = (
-        started_at
-        if recording and phase in ("started", "ready-to-download")
-        else nested_start
-        if not recording and phase == "error"
-        else None
-    )
+    started_at = started_at if phase in ("started", "ready-to-download") else None
     if started_at and started_at > dispatch_at:
         raise InvalidEvent()
     if nested_start and nested_end and nested_end < nested_start:
         raise InvalidEvent()
     duration = (
-        finite_number(
-            payload["duration"],
-            maximum=MAX_DURATION_SECONDS,
-            integer=recording or phase == "started",
-        )
+        finite_number(payload["duration"], maximum=MAX_DURATION_SECONDS, integer=True)
         if "duration" in payload
         else None
     )
-    if recording and phase == "ready-to-download" and duration == 0:
+    if phase == "ready-to-download" and duration == 0:
         raise InvalidEvent()
     if (
         started_at
@@ -192,12 +164,12 @@ def validate_event(*, event_type, event_id, event_ts, payload):
         raise InvalidEvent()
     occurred_at = (
         event_time(payload["timestamp"], integer=True, decimal_text=True)
-        if recording and "timestamp" in payload
+        if "timestamp" in payload
         else None
     )
     if occurred_at and occurred_at > dispatch_at:
         raise InvalidEvent()
-    if not (recording and phase == "error"):
+    if phase != "error":
         occurred_at = None
     if phase == "started":
         occurred_at = started_at

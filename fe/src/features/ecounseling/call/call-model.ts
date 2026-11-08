@@ -11,8 +11,8 @@ import type {
 } from "@daily-co/daily-js";
 
 // The Daily Call Object methods COMPASS uses (ADR-093). Daily is the media engine; COMPASS renders
-// every visible part of the call. Recording and transcription methods are deliberately absent:
-// those are institutional actions that only start or stop through the COMPASS backend (ADR-092).
+// every visible part of the call. Recording methods are deliberately absent: recording is an
+// institutional action that only starts or stops through the COMPASS backend (ADR-092).
 export type DailyCallClient = Pick<
   DailyCall,
   | "join"

@@ -53,14 +53,15 @@ test("compact actions have independent names, touch labels and conventional low-
   for (const unsafe of ["delete", "issue", "publish", "record", "withdraw", "disable"]) assert.equal(unsafe in actionIcons, false);
 });
 
-test("E-Counseling Help holds separate media and encounter concepts", () => {
+test("E-Counseling Help holds separate recording and encounter concepts, recording-only", () => {
   const html = help(ecounselingHelpSections);
-  for (const heading of ["Media consent", "Recording", "Transcription", "Transcript storage", "Encounter records", "Call and devices"]) assert.ok(ecounselingHelpSections.some((section) => section.heading === heading));
-  assert.match(html, /separately/);
-  assert.match(html, /approval alone doesn’t start recording/);
-  assert.match(html, /requires separate student consent/);
+  for (const heading of ["Recording permission", "Recording", "Private files", "Encounter records", "Call and devices"]) assert.ok(ecounselingHelpSections.some((section) => section.heading === heading));
+  assert.match(html, /Recording is optional/);
+  assert.match(html, /Allowing permission never starts it/);
+  assert.match(html, /Recording audio or video doesn’t document the session/);
   // Leaving the call is not stopping capture, and that is said where people look for call help.
-  assert.match(html, /doesn’t stop recording or transcription/);
+  assert.match(html, /Leaving doesn’t complete the Appointment or stop recording/);
+  assert.doesNotMatch(html, /transcri|caption/i);
 });
 
 test("Service Help explains coverage, saved appointments and separate video settings", () => {
@@ -94,11 +95,11 @@ test("operator Help retains diagnostic limitations and the retention oversight b
   assert.doesNotMatch(help(retentionHelpSections), /Eligibility|holds?\b|retry/i);
 });
 
-test("active recording and transcription are visible on the call without opening Help and without relying on color", () => {
+test("an active recording is visible on the call without opening Help and without relying on color", () => {
   const html = renderToStaticMarkup(h(CaptureIndicators, { media: workspace("ACTIVE").media }));
   assert.match(html, /aria-live="polite"/);
   assert.match(html, />Recording<\/li>|Recording<\/li>/);
-  assert.match(html, /Transcription on/);
+  assert.doesNotMatch(html, /Transcri/);
   assert.equal(renderToStaticMarkup(h(CaptureIndicators, { media: workspace("NOT_STARTED").media })).includes("<li"), false, "Consent alone never shows as activity");
 });
 
@@ -136,26 +137,25 @@ test("Student decisions keep each scope's meaning and Counseling access visible 
   const html = render(h(StudentConsentPanel, { appointmentId, access: { canConsentSelf: true }, media: workspace().media }), (client) => {
     client.setQueryData(getECounselingListMyConsentsQueryKey(appointmentId), { data: { items: consents("PENDING") }, status: 200, headers: {} });
   });
-  assert.match(html, /audio and video from this Counseling session to be recorded/);
-  assert.match(html, /speech from this session to be processed as text/);
+  assert.match(html, /Recording is optional and creates a saved audio\/video file/);
+  assert.doesNotMatch(html, /transcri/i);
   assert.match(html, /don’t affect your access to Counseling/);
   assert.match(html, />Allow</);
   assert.match(html, /aria-label="Allow audio\/video recording"/);
-  assert.match(html, /aria-label="Allow session transcription"/);
   assert.match(html, />Decline</);
   assert.match(html, /<details/);
 });
 
 test("withdrawn and denied permissions remain visible and cannot be re-requested", () => {
-  const rows = consents("DENIED");
-  rows[0] = { ...rows[0], decision: "APPROVED", withdrawn_at: "2026-10-07T00:02:00Z", effective: false };
-  const html = render(h(StudentConsentPanel, { appointmentId, access: { canConsentSelf: true }, media: workspace().media }), (client) => {
-    client.setQueryData(getECounselingListMyConsentsQueryKey(appointmentId), { data: { items: rows }, status: 200, headers: {} });
-  });
-  assert.match(html, /Withdrawn/);
-  assert.match(html, /Declined/);
-  assert.doesNotMatch(html, />Allow</);
-  assert.match(html, /won’t be requested again/);
+  const withdrawn = [{ ...consents("APPROVED")[0], withdrawn_at: "2026-10-07T00:02:00Z", effective: false }];
+  const denied = consents("DENIED");
+  for (const [rows, label] of [[withdrawn, /Withdrawn/], [denied, /Declined/]]) {
+    const html = render(h(StudentConsentPanel, { appointmentId, access: { canConsentSelf: true }, media: workspace().media }), (client) => {
+      client.setQueryData(getECounselingListMyConsentsQueryKey(appointmentId), { data: { items: rows }, status: 200, headers: {} });
+    });
+    assert.match(html, label);
+    assert.doesNotMatch(html, />Allow</);
+  }
 });
 
 test("embedded Counseling retains the access deadline; a standalone Interaction panel owns its repeated facts", () => {

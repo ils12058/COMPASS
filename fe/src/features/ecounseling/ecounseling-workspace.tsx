@@ -16,13 +16,13 @@ import { CounselingContextPanel } from "@/features/counseling/counseling-workspa
 import { FinishCounselingDialog } from "@/features/counseling/finish-counseling-dialog";
 import { finishCounselingNotice, finishCounselingState } from "@/features/counseling/finish-counseling-availability";
 import { invalidateAfterCounselingFinish } from "@/features/counseling/finish-counseling-refresh";
-import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
+import { recordEncounterPath } from "@/features/counseling/encounter-origin";
 import { CallStage } from "@/features/ecounseling/call/call-stage";
 import { useSessionCallView } from "@/features/ecounseling/runtime/use-session-call-view";
 import { CaptureStartDialogs, CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from "@/features/ecounseling/counselor-media";
 import { getECounselingAccess, type ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { encounterSectionView, type UncertainSave } from "@/features/ecounseling/encounter-section-state";
-import { captureStatusLabel, ecounselingErrorMessage, sessionEncounterPreset } from "@/features/ecounseling/ecounseling-shared";
+import { captureStatusLabel, ecounselingErrorMessage } from "@/features/ecounseling/ecounseling-shared";
 import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
@@ -69,7 +69,6 @@ function SessionHeader({
   selfPhotoUrl,
   selfPhotoUpdatedAt,
   appointment,
-  mediaPolicyVersion,
   layoutControl,
 }: {
   appointmentId: string;
@@ -80,7 +79,6 @@ function SessionHeader({
   selfPhotoUrl?: string | null;
   selfPhotoUpdatedAt?: string | null;
   appointment: AppointmentWorkspaceSummary;
-  mediaPolicyVersion: MediaWorkspaceState["media_policy_version"];
   // Shown beside the title only where the workspace is wide enough for presets to change anything.
   layoutControl?: ReactNode;
 }) {
@@ -93,7 +91,7 @@ function SessionHeader({
       </div>}
       // Guidance Messages is the session's durable text channel (ADR-103); there is no call chat.
       actions={<div className="flex flex-wrap items-start gap-2"><GuidanceMessagesTrigger />{layoutControl}</div>}
-      help={<ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />}
+      help={<ECounselingHelp />}
       back={(
         <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
           Back to appointment
@@ -118,7 +116,6 @@ function SessionDetails({ appointment, routine, media }: {
   const captured = media
     ? ([
         ["Recording", media.recording.capture_status, media.recording.artifact_disposed_at, "recording"],
-        ["Transcription", media.transcription.capture_status, media.transcription.artifact_disposed_at, "transcription"],
       ] as const).filter(([, status]) => status !== ECounselingCaptureStatus.NOT_STARTED)
     : [];
   return (
@@ -287,7 +284,6 @@ function StudentSession({ appointmentId, access, data }: {
         selfPhotoUrl={profile?.profile_photo_url}
         selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
         appointment={data.appointment}
-        mediaPolicyVersion={data.media.media_policy_version}
       />
       {/* The video gets the larger column; a Student's work is the permission decisions. */}
       <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] @4xl:gap-5">
@@ -352,7 +348,6 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
 function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: CounselorWorkspaceResponse; canManage: boolean; defaultOpen: boolean }) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
-  const [recordOpen, setRecordOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [uncertainSave, setUncertainSave] = useState<UncertainSave>(null);
   const [checking, setChecking] = useState(false);
@@ -361,7 +356,6 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
   const appointmentId = workspace.appointment.id;
   const routineInterviewId = workspace.routine_interview?.id;
   const encounter = workspace.counseling_encounter;
-  const preset = sessionEncounterPreset(workspace);
   // Finishing needs Appointment management as well as Counseling management, so the read that
   // decides it is only asked for when this Counselor could actually finish.
   const canFinish = canManage && getAppointmentAccess(user).canManage;
@@ -389,17 +383,6 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(appointmentId) }),
       ...(workspace.routine_interview ? [queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(workspace.routine_interview.id) })] : []),
     ]);
-  }
-
-  async function handleCreated() {
-    await reloadEncounter();
-    setRecordOpen(false);
-  }
-
-  async function handleAlreadyRecorded() {
-    await reloadEncounter();
-    setNotice("An encounter was already recorded for this Appointment. The latest details are now shown.");
-    setRecordOpen(false);
   }
 
   // One action records the Encounter and completes the Appointment, so every surface projecting
@@ -448,17 +431,14 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
     }
   }
 
-  function openDialog(kind: "finish" | "record") {
+  function openFinish() {
     setNotice(null);
     setUncertainSave(null);
-    setRecordOpen(false);
-    setFinishOpen(false);
-    if (kind === "finish") setFinishOpen(true);
-    else setRecordOpen(true);
+    setFinishOpen(true);
   }
 
-  // Finishing or recording replaces the opener with the action that remains, so focus moves back
-  // into this section's actions.
+  // Finishing replaces the opener with the action that remains, so focus moves back into this
+  // section's actions.
   function restoreFocus(event: Event) {
     const action = actionsRef.current?.querySelector<HTMLElement>("a, button");
     if (!action) return;
@@ -488,10 +468,15 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
               return <Link key={action} className={buttonVariants({ variant: "secondary" })} href={`/portal/appointments/${appointmentId}`}>View appointment</Link>;
             }
             if (action === "finish") {
-              return <Button key={action} onClick={() => openDialog("finish")}>Finish counseling</Button>;
+              return <Button key={action} onClick={openFinish}>Finish counseling</Button>;
             }
             if (action === "record") {
-              return <Button key={action} variant="secondary" onClick={() => openDialog("record")}>Record encounter</Button>;
+              // EC-WS-2: documented on its own page; the call stays connected in the call dock.
+              return (
+                <GuardedPortalLink key={action} className={buttonVariants({ variant: "secondary" })} href={recordEncounterPath(CounselingContextAnchorType.APPOINTMENT, appointmentId, "ecounseling")}>
+                  Record encounter
+                </GuardedPortalLink>
+              );
             }
             return (
               <Button key={action} variant="secondary" aria-busy={checking} onClick={() => void checkAgain()}>
@@ -501,17 +486,6 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
           })}
         </div>
       </div>
-      {canManage ? (
-        <RecordEncounterDialog
-          open={recordOpen && view.actions.includes("record")}
-          onOpenChange={setRecordOpen}
-          preset={preset}
-          onUncertain={() => setUncertainSave("RECORD")}
-          onCreated={handleCreated}
-          onAlreadyRecorded={handleAlreadyRecorded}
-          onCloseAutoFocus={restoreFocus}
-        />
-      ) : null}
       {appointment ? (
         <FinishCounselingDialog
           open={finishOpen && view.actions.includes("finish")}
@@ -604,7 +578,6 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
         selfPhotoUrl={profile?.profile_photo_url}
         selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
         appointment={data.appointment}
-        mediaPolicyVersion={data.media.media_policy_version}
         layoutControl={wide ? <LayoutPresetControl value={preset} onChange={setPreset} /> : undefined}
       />
       <div data-layout={preset} className={cn("grid items-start gap-4 @4xl:gap-5", sessionGrid[preset])}>

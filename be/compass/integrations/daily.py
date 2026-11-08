@@ -246,6 +246,7 @@ class DailyClient:
                     "enable_chat": False,
                     "enable_screenshare": False,
                     "enable_live_captions_ui": False,
+                    # COMPASS is recording-only: Daily must never store a transcript.
                     "enable_transcription_storage": False,
                     "enforce_unique_user_ids": True,
                 },
@@ -280,20 +281,6 @@ class DailyClient:
         return self._request(
             "POST",
             f"/rooms/{quote(room_name, safe='')}/recordings/stop",
-            payload={"instanceId": instance_id},
-        )
-
-    def start_transcription(self, *, room_name: str, instance_id: str) -> dict[str, object]:
-        return self._request(
-            "POST",
-            f"/rooms/{quote(room_name, safe='')}/transcription/start",
-            payload={"instanceId": instance_id},
-        )
-
-    def stop_transcription(self, *, room_name: str, instance_id: str) -> dict[str, object]:
-        return self._request(
-            "POST",
-            f"/rooms/{quote(room_name, safe='')}/transcription/stop",
             payload={"instanceId": instance_id},
         )
 
@@ -339,7 +326,7 @@ class DailyClient:
         """Only a bound-ID metadata GET, with a small body and timeout; no list/link/media API."""
         if (
             not isinstance(kind, str)
-            or kind not in {"RECORDING", "TRANSCRIPTION"}
+            or kind != "RECORDING"
             or not isinstance(artifact_id, str)
             or not artifact_id
             or len(artifact_id) > 160
@@ -347,10 +334,9 @@ class DailyClient:
             or not 0 < timeout_seconds <= 5
         ):
             raise DailyInvalidResponse("Capture metadata request is invalid.")
-        collection = "recordings" if kind == "RECORDING" else "transcript"
         return self._request(
             "GET",
-            f"/{collection}/{quote(artifact_id, safe='')}",
+            f"/recordings/{quote(artifact_id, safe='')}",
             response_byte_limit=64 * 1024,
             timeout_seconds=timeout_seconds,
         )
@@ -360,17 +346,8 @@ class DailyClient:
             "GET", f"/recordings/{quote(artifact_id, safe='')}/access-link?valid_for_secs=900"
         )
 
-    def transcript_access_link(self, *, artifact_id: str) -> dict[str, object]:
-        return self._request("GET", f"/transcript/{quote(artifact_id, safe='')}/access-link")
-
     def delete_recording(self, *, artifact_id: str) -> dict[str, object]:
         return self._request("DELETE", f"/recordings/{quote(artifact_id, safe='')}")
-
-    def get_transcript(self, *, artifact_id: str) -> dict[str, object]:
-        return self._request("GET", f"/transcript/{quote(artifact_id, safe='')}")
-
-    def delete_transcript(self, *, artifact_id: str) -> dict[str, object]:
-        return self._request("DELETE", f"/transcript/{quote(artifact_id, safe='')}")
 
 
 def verify_daily_webhook(

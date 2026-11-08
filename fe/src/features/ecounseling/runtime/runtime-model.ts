@@ -97,14 +97,13 @@ export const joinBlockedCopy: Record<"other-session" | "other-tab", string> = {
 export type CaptureSafetyState = "starting" | "active" | "stopping" | "uncertain" | "terminal";
 
 // The workspace has no error certainty/cessation projection. ERROR therefore remains uncertain.
-// Until EC-01 changes the backend, transcription STOPPED can mean only a REST acknowledgment.
-export function captureSafetyState(kind: "recording" | "transcription", status: ECounselingCaptureStatus): CaptureSafetyState {
+export function captureSafetyState(status: ECounselingCaptureStatus): CaptureSafetyState {
   switch (status) {
     case ECounselingCaptureStatus.START_REQUESTED: return "starting";
     case ECounselingCaptureStatus.ACTIVE: return "active";
     case ECounselingCaptureStatus.STOP_REQUESTED: return "stopping";
     case ECounselingCaptureStatus.ERROR: return "uncertain";
-    case ECounselingCaptureStatus.STOPPED: return kind === "transcription" ? "uncertain" : "terminal";
+    case ECounselingCaptureStatus.STOPPED:
     case ECounselingCaptureStatus.NOT_STARTED:
     case ECounselingCaptureStatus.READY: return "terminal";
     default: return "uncertain";
@@ -114,7 +113,7 @@ export function captureSafetyState(kind: "recording" | "transcription", status: 
 // What a Stop control shows. "stopping" while this person's request is in flight or COMPASS awaits
 // completion of a Stop it accepted; "not-confirmed" when this person's Stop request itself failed
 // while COMPASS still records Stop intent, so capture may still be running and Stop may be retried.
-// Neither is a completed state: only the refreshed capture status shows Recorded or Transcribed.
+// Neither is a completed state: only the refreshed capture status shows Recorded.
 export type StopControlState = "stopping" | "not-confirmed" | null;
 
 export function stopControlState(status: ECounselingCaptureStatus | undefined, local: { stopping: boolean; failed: boolean }): StopControlState {
@@ -144,18 +143,15 @@ export async function settleCaptureStop(
 
 // Only capture types, without names, references or other protected session details. Safe to retain
 // as a warning when access is lost; local call cleanup is never evidence of capture cessation.
-export function activeCaptureKinds(media: MediaWorkspaceState | undefined): Array<"recording" | "transcription"> {
+export function activeCaptureKinds(media: MediaWorkspaceState | undefined): Array<"recording"> {
   if (!media) return [];
-  return (["recording", "transcription"] as const).filter((kind) => captureSafetyState(kind, media[kind].capture_status) !== "terminal");
+  return captureSafetyState(media.recording.capture_status) !== "terminal" ? ["recording"] : [];
 }
 
-export function captureCessationWarning(kinds: ReadonlyArray<"recording" | "transcription">, action: "leave" | "sign-out" | "access-loss"): string | null {
+export function captureCessationWarning(kinds: ReadonlyArray<"recording">, action: "leave" | "sign-out" | "access-loss"): string | null {
   if (!kinds.length) return null;
-  const both = kinds.length > 1;
-  const subject = both ? "Recording and transcription have" : kinds[0] === "recording" ? "Recording has" : "Transcription has";
-  const capture = both ? "recording or transcription" : kinds[0];
   const consequence = action === "leave" ? "Leaving the call may not stop" : action === "sign-out" ? "Signing out may not stop" : "Ending your local call may not stop";
-  return `${subject} not been confirmed as stopped. ${consequence} ${capture}. Please confirm ${both ? "their" : "its"} status.`;
+  return `Recording has not been confirmed as stopped. ${consequence} recording. Please confirm its status.`;
 }
 
 // A decision the Student still has to make, from the COMPASS session state. The dock only points to
@@ -163,17 +159,14 @@ export function captureCessationWarning(kinds: ReadonlyArray<"recording" | "tran
 export function pendingConsentCue(media: MediaWorkspaceState | undefined): string | null {
   if (!media) return null;
   const pending = (status: ECounselingConsentStatus) => status === ECounselingConsentStatus.PENDING;
-  if (pending(media.recording.consent_status) || pending(media.transcription.consent_status)) return "Media permission requested";
-  if (pending(media.transcription.storage_consent_status)) return "Transcript storage permission requested";
-  return null;
+  return pending(media.recording.consent_status) ? "Recording permission requested" : null;
 }
 
 // The Student withdrew or declined while capture was still running: the dock says why it is stopping.
 export function consentEndedNotice(media: MediaWorkspaceState | undefined): string | null {
   if (!media) return null;
   const ended = (status: ECounselingConsentStatus) => status === ECounselingConsentStatus.WITHDRAWN || status === ECounselingConsentStatus.DENIED;
-  const stopping = [media.recording.capture_status, media.transcription.capture_status].some(
-    (status) => status === ECounselingCaptureStatus.STOP_REQUESTED || status === ECounselingCaptureStatus.ACTIVE,
-  );
-  return stopping && (ended(media.recording.consent_status) || ended(media.transcription.consent_status)) ? "The student withdrew media permission." : null;
+  const status = media.recording.capture_status;
+  const stopping = status === ECounselingCaptureStatus.STOP_REQUESTED || status === ECounselingCaptureStatus.ACTIVE;
+  return stopping && ended(media.recording.consent_status) ? "The student withdrew recording permission." : null;
 }

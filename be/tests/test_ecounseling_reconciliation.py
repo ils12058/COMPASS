@@ -24,7 +24,7 @@ from compass.ecounseling.diagnostics import (
     CaptureStage,
     log_capture_reconciliation,
 )
-from compass.ecounseling.media import get_media_projection, withdraw_my_consent
+from compass.ecounseling.media import withdraw_my_consent
 from compass.ecounseling.models import (
     ECounselingCaptureReconciliation as Recovery,
 )
@@ -53,6 +53,12 @@ from tests.test_ecounseling_state_correctness import begin, deliver
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture
+def kind():
+    """E-Counseling is recording-only, so capture-generic checks run for recordings."""
+    return "RECORDING"
+
+
 @pytest.fixture(autouse=True)
 def fake_only_boundaries(monkeypatch, caplog):
     def forbidden(*_args, **_kwargs):
@@ -73,12 +79,10 @@ def fake_only_boundaries(monkeypatch, caplog):
 
 def pending_capture(
     *,
-    kind="TRANSCRIPTION",
+    kind="RECORDING",
     state="STOP_REQUESTED",
     bound=True,
-    storage=False,
     stop_intent=None,
-    version=2,
 ):
     # The existing helper assumes an otherwise empty DB. Use distinct synthetic sessions for
     # batch/concurrency cases, including unique artifact identities from the documented contract.
@@ -99,16 +103,11 @@ def pending_capture(
             ),
         ),
     ):
-        student, counselor, appointment, original_client, capture = begin(
-            kind=kind, storage=storage, version=version
-        )
+        student, counselor, appointment, original_client, capture = begin(kind=kind)
     if bound:
-        deliver(
-            capture, "started", **{"recording_id" if kind == "RECORDING" else "id": str(uuid4())}
-        )
+        deliver(capture, "started", recording_id=str(uuid4()))
         capture.provider_session_id = str(uuid4())
-        # Synthetic provider media time, independent of webhook dispatch. Transcript started
-        # has no documented media-start timestamp after Slice 1C.3 removes the old fallback.
+        # Synthetic provider media time, independent of webhook dispatch.
         capture.started_at = capture.started_at or timezone.now() - timedelta(seconds=120)
     capture.status = state
     capture.media_authorized_at = timezone.now() - timedelta(seconds=120)
@@ -125,25 +124,14 @@ def pending_capture(
     return student, counselor, appointment, original_client, capture
 
 
-def metadata(capture, *, active=False, vtt=True):
-    if capture.kind == "RECORDING":
-        return {
-            "id": capture.provider_artifact_id,
-            "room_name": capture.room.daily_room_name,
-            "mtgSessionId": capture.provider_session_id,
-            "status": "in-progress" if active else "finished",
-            "start_ts": int((timezone.now() - timedelta(seconds=90)).timestamp()),
-            **({} if active else {"duration": 30}),
-        }
+def metadata(capture, *, active=False):
     return {
-        "transcriptId": capture.provider_artifact_id,
-        "roomId": capture.room.daily_room_id,
+        "id": capture.provider_artifact_id,
+        "room_name": capture.room.daily_room_name,
         "mtgSessionId": capture.provider_session_id,
-        "status": "t_in_progress" if active else "t_finished",
-        "created_at": (timezone.now() - timedelta(seconds=90)).isoformat(),
-        "updated_at": timezone.now().isoformat(),
-        "duration": 30,
-        **({} if vtt is None else {"isVttAvailable": vtt}),
+        "status": "in-progress" if active else "finished",
+        "start_ts": int((timezone.now() - timedelta(seconds=90)).timestamp()),
+        **({} if active else {"duration": 30}),
     }
 
 
@@ -164,7 +152,6 @@ class MetadataOnlyDaily:
         pytest.fail("A forbidden provider operation was attempted.", pytrace=False)
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     ("state", "stop_intent"),
     [("START_REQUESTED", False), ("STOP_REQUESTED", True), ("ERROR", True), ("ERROR", False)],
@@ -185,8 +172,6 @@ def test_bound_metadata_is_monotonic_and_preserves_historical_evidence(
             "started_at",
             "ready_at",
             "ended_at",
-            "transcript_storage_enabled",
-            "transcript_storage_authorized",
         )
     }
     client = MetadataOnlyDaily(metadata(capture, active=active))
@@ -211,7 +196,6 @@ def test_bound_metadata_is_monotonic_and_preserves_historical_evidence(
     assert len(client.calls) == 1
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("state", ["START_REQUESTED", "STOP_REQUESTED", "ERROR"])
 def test_unknown_artifact_never_lists_adopts_replays_or_proves_absence(kind, state):
     *_, capture = pending_capture(kind=kind, state=state, bound=False)
@@ -230,7 +214,6 @@ def test_unknown_artifact_never_lists_adopts_replays_or_proves_absence(kind, sta
     assert not client.calls and not ECounselingMediaArtifact.objects.exists()
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     "conflict",
     [
@@ -251,8 +234,8 @@ def test_metadata_identity_conflicts_or_missing_required_binding_preserve_uncert
     *_, capture = pending_capture(kind=kind)
     item = metadata(capture)
     field = {
-        "artifact": "id" if kind == "RECORDING" else "transcriptId",
-        "room": "room_name" if kind == "RECORDING" else "roomId",
+        "artifact": "id",
+        "room": "room_name",
         "session": "mtgSessionId",
     }
     if conflict.startswith("missing_"):
@@ -272,16 +255,7 @@ def test_metadata_identity_conflicts_or_missing_required_binding_preserve_uncert
     assert not ECounselingMediaArtifact.objects.exists()
 
 
-@pytest.mark.parametrize(
-    ("kind", "status"),
-    [
-        ("RECORDING", "canceled"),
-        ("TRANSCRIPTION", "t_error"),
-        ("TRANSCRIPTION", "t_deleted"),
-        ("RECORDING", None),
-        ("TRANSCRIPTION", "unsupported-malformed-status"),
-    ],
-)
+@pytest.mark.parametrize("status", ["canceled", None, "t_finished", "unsupported-malformed-status"])
 def test_noncompletion_or_malformed_status_does_not_establish_cessation(kind, status):
     *_, capture = pending_capture(kind=kind)
     item = metadata(capture)
@@ -327,29 +301,6 @@ def test_provider_failures_preserve_uncertainty_and_schedule_safe_bounded_retry(
         assert_private_absent(JsonFormatter().format(record))
 
 
-@pytest.mark.parametrize("vtt", [None, False, True])
-@pytest.mark.parametrize("stored", [False, True])
-def test_finished_transcript_does_not_invent_vtt_storage_flags_or_institutional_custody(
-    vtt, stored
-):
-    *_, capture = pending_capture(storage=stored)
-    reconcile_captures(client=MetadataOnlyDaily(metadata(capture, vtt=vtt)))
-    capture.refresh_from_db()
-    assert capture.status == "READY" and capture.ready_at is None and capture.ended_at is None
-    assert (
-        capture.transcript_storage_authorized is stored
-        and capture.transcript_storage_enabled is stored
-    )
-    artifact = ECounselingMediaArtifact.objects.filter(capture=capture).first()
-    assert (artifact is not None) is stored
-    if artifact:
-        assert (
-            artifact.status == "PENDING" and artifact.stored_at is None and artifact.attempts == 0
-        )
-        assert artifact.provider_deleted_at is None and artifact.object_key is None
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_documented_start_metadata_can_fill_an_absent_time_without_inventing_end_or_ready(kind):
     *_, capture = pending_capture(kind=kind)
     capture.started_at = None
@@ -362,7 +313,6 @@ def test_documented_start_metadata_can_fill_an_absent_time_without_inventing_end
     assert Recovery.objects.get(capture=capture).completion_confirmed_at > capture.started_at
 
 
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize(
     "optional", ["missing", "bad_time", "bad_duration", "nan_duration", "infinite_duration"]
 )
@@ -391,19 +341,6 @@ def test_malformed_optional_times_or_duration_do_not_fabricate_media_evidence(ki
         assert capture.duration_seconds is None
 
 
-def test_missing_local_transcript_room_binding_cannot_fall_back_to_room_name():
-    *_, capture = pending_capture()
-    item = metadata(capture)
-    item["room_name"] = capture.room.daily_room_name
-    capture.room.daily_room_id = None
-    capture.room.save(update_fields=["daily_room_id"])
-    reconcile_captures(client=MetadataOnlyDaily(item))
-    capture.refresh_from_db()
-    assert capture.status == "STOP_REQUESTED"
-    assert Recovery.objects.get(capture=capture).outcome_code == "PROVIDER_IDENTITY_INSUFFICIENT"
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_unknown_session_is_never_assigned_from_a_provider_snapshot(kind):
     *_, capture = pending_capture(kind=kind)
     capture.provider_session_id = None
@@ -524,7 +461,7 @@ def test_terminal_disposition_cleanup_and_custody_are_excluded_without_any_get(f
 
 
 def test_capture_attempts_do_not_overwrite_the_existing_artifact_retry_or_custody_record():
-    *_, capture = pending_capture(storage=True)
+    *_, capture = pending_capture()
     artifact = ECounselingMediaArtifact.objects.create(
         capture=capture,
         status="FAILED",
@@ -542,26 +479,26 @@ def test_capture_attempts_do_not_overwrite_the_existing_artifact_retry_or_custod
 def test_withdrawal_preserves_authorization_and_stop_and_active_metadata_escalates_urgently(
     active, caplog
 ):
-    student, _, appointment, original, capture = pending_capture(storage=True)
+    student, _, appointment, original, capture = pending_capture()
     original_stop = capture.stop_requested_at
     withdraw_my_consent(
         student=student,
         appointment_id=appointment.pk,
         consent_id=ECounselingConsent.objects.get(
-            room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+            room=capture.room, scope="AUDIO_VIDEO_RECORDING"
         ).pk,
         context=context(student),
         daily_client=original,
     )
-    commands = deepcopy(original.transcription_stops)
+    commands = deepcopy(original.recording_stops)
     reconcile_captures(client=MetadataOnlyDaily(metadata(capture, active=active)))
     capture.refresh_from_db()
     row = Recovery.objects.get(capture=capture)
-    assert capture.stop_requested_at == original_stop and capture.transcript_storage_authorized
-    assert not capture.transcript_storage_enabled and original.transcription_stops == commands
+    assert capture.stop_requested_at == original_stop
+    assert original.recording_stops == commands, "Reconciliation never sends a provider command"
     assert (
         ECounselingConsent.objects.get(
-            room=capture.room, scope="SESSION_MEDIA_CAPTURE"
+            room=capture.room, scope="AUDIO_VIDEO_RECORDING"
         ).withdrawn_at
         is not None
     )
@@ -582,23 +519,6 @@ def test_withdrawal_preserves_authorization_and_stop_and_active_metadata_escalat
         assert (
             artifact.status == "PENDING" and artifact.stored_at is None and artifact.attempts == 0
         )
-
-
-def test_unselected_transcript_storage_is_not_authorized_by_approved_storage_consent():
-    student, counselor, appointment, _, capture = pending_capture(storage=False)
-    from tests.test_ecounseling_media import approve_scope
-
-    approve_scope(
-        student=student, counselor=counselor, appointment=appointment, scope="TRANSCRIPT_STORAGE"
-    )
-    before = get_media_projection(capture.room)
-    reconcile_captures(client=MetadataOnlyDaily(metadata(capture)))
-    after = get_media_projection(capture.room)
-    capture.refresh_from_db()
-    assert set(before) == set(after)
-    assert not capture.transcript_storage_authorized and not capture.transcript_storage_enabled
-    assert not ECounselingMediaArtifact.objects.exists()
-    assert "reconciliation" not in json.dumps(after)
 
 
 def test_private_provider_metadata_and_exception_prose_never_enter_recovery_or_logs(caplog):
@@ -715,12 +635,3 @@ def test_configuration_caps_cannot_allow_unbounded_provider_checks(setting, valu
 def test_operator_evidence_command_is_bounded_and_read_only(limit):
     with pytest.raises(CommandError, match="limit"):
         call_command("ecounseling_capture_reconciliation_status", limit=limit)
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_legacy_pending_capture_uses_its_own_consent_scope_and_does_not_create_v2_custody(kind):
-    *_, capture = pending_capture(kind=kind, storage=kind == "TRANSCRIPTION", version=1)
-    reconcile_captures(client=MetadataOnlyDaily(metadata(capture)))
-    capture.refresh_from_db()
-    assert capture.status == "READY" and capture.room.media_policy_version == 1
-    assert not ECounselingMediaArtifact.objects.exists()

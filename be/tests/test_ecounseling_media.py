@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -27,16 +26,13 @@ from compass.ecounseling.media import (
     process_media_webhook_event,
     request_consents,
     start_recording,
-    start_transcription,
     withdraw_my_consent,
 )
 from compass.ecounseling.models import (
     ConsentDecision,
     ConsentScope,
     ECounselingConsent,
-    ECounselingMediaCapture,
     ECounselingRoom,
-    MediaCaptureKind,
     MediaCaptureStatus,
 )
 from compass.ecounseling.services import (
@@ -59,8 +55,6 @@ class FakeMediaDailyClient:
         self.room_updates: list[tuple[str, dict[str, object]]] = []
         self.recording_starts: list[tuple[str, str]] = []
         self.recording_stops: list[tuple[str, str]] = []
-        self.transcription_starts: list[tuple[str, str]] = []
-        self.transcription_stops: list[tuple[str, str]] = []
 
     def create_room(self, *, room_name: str, expires_at_epoch: int):
         self.created_rooms.append((room_name, expires_at_epoch))
@@ -114,16 +108,6 @@ class FakeMediaDailyClient:
             raise DailyUnavailable("provider unavailable")
         return {"status": "sent"}
 
-    def start_transcription(self, *, room_name: str, instance_id: str):
-        self.transcription_starts.append((room_name, instance_id))
-        return {"sent": "true"}
-
-    def stop_transcription(self, *, room_name: str, instance_id: str):
-        self.transcription_stops.append((room_name, instance_id))
-        if self.fail_stop:
-            raise DailyUnavailable("provider unavailable")
-        return {"sent": "true"}
-
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
@@ -172,19 +156,17 @@ def make_appointment(*, student: User, counselor: User, service) -> Appointment:
     )
 
 
-def setup_session(*, media_policy_version=1):
+def setup_session(*, precreate_room=True):
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     service = create_counseling_service(admin)
     appointment = make_appointment(student=student, counselor=counselor, service=service)
-    if media_policy_version == 1:
-        # The original granular suite explicitly represents a pre-cutover room.
+    if precreate_room:
+        # A local room binding that exists before any consent request.
         ECounselingRoom.objects.create(
-            appointment=appointment,
-            daily_room_name=f"ec-{appointment.pk.hex}",
-            media_policy_version=1,
+            appointment=appointment, daily_room_name=f"ec-{appointment.pk.hex}"
         )
     return admin, student, counselor, appointment
 
@@ -274,66 +256,23 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
 
 
 @pytest.mark.django_db
-def test_multi_scope_consent_request_batches_notification_and_later_new_scope_gets_new_one():
-    _, student, counselor, appointment = setup_session()
-
-    first_batch = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
-        context=context(counselor),
-    )
-    first_notifications = Notification.objects.filter(
-        recipient=student,
-        event_code="ecounseling.consent.requested",
-    )
-    assert len(first_batch) == 2
-    assert first_notifications.count() == 1
-    first_notification = first_notifications.get()
-    assert first_notification.source_id == first_batch[0]["id"]
-    assert EmailDelivery.objects.filter(notification=first_notification).count() == 1
-
-    repeated = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
-        context=context(counselor),
-    )
-    assert repeated == first_batch
-    assert first_notifications.count() == 1
-
-    later = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.AUDIO_VIDEO_RECORDING],
-        context=context(counselor),
-    )
-    all_notifications = Notification.objects.filter(
-        recipient=student,
-        event_code="ecounseling.consent.requested",
-    )
-    assert all_notifications.count() == 2
-    assert later[0]["id"] in set(all_notifications.values_list("source_id", flat=True))
-    assert EmailDelivery.objects.filter(notification__in=all_notifications).count() == 2
-
-
-@pytest.mark.django_db
-def test_consent_request_rejects_duplicates_terminal_rerequest_and_storage_without_live_request():
+def test_consent_request_rejects_duplicates_retired_scopes_and_terminal_rerequest():
     _, student, counselor, appointment = setup_session()
     with pytest.raises(ECounselingConsentConflict, match="Duplicate"):
         request_consents(
             counselor=counselor,
             appointment_id=appointment.pk,
-            scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.LIVE_TRANSCRIPTION],
+            scopes=[ConsentScope.AUDIO_VIDEO_RECORDING, ConsentScope.AUDIO_VIDEO_RECORDING],
             context=context(counselor),
         )
-    with pytest.raises(ECounselingConsentConflict, match="requires"):
-        request_consents(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            scopes=[ConsentScope.TRANSCRIPT_STORAGE],
-            context=context(counselor),
-        )
+    for retired in ("LIVE_TRANSCRIPTION", "TRANSCRIPT_STORAGE", "SESSION_MEDIA_CAPTURE"):
+        with pytest.raises(ECounselingConsentConflict, match="not supported"):
+            request_consents(
+                counselor=counselor,
+                appointment_id=appointment.pk,
+                scopes=[retired],
+                context=context(counselor),
+            )
 
     item = request_consents(
         counselor=counselor,
@@ -445,150 +384,6 @@ def test_recording_requires_effective_consent_and_uses_deterministic_instance_id
 
 
 @pytest.mark.django_db
-def test_transcription_storage_requires_both_consents_and_room_config_matches_choice():
-    _, student, counselor, appointment = setup_session()
-    fake = FakeMediaDailyClient()
-    with override_settings(DAILY_ENABLED=True):
-        create_join_credential(
-            actor=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-            daily_client=fake,
-        )
-        approve_scope(
-            student=student,
-            counselor=counselor,
-            appointment=appointment,
-            scope=ConsentScope.LIVE_TRANSCRIPTION,
-        )
-        with pytest.raises(ECounselingConsentNotApproved):
-            start_transcription(
-                counselor=counselor,
-                appointment_id=appointment.pk,
-                store_transcript=True,
-                context=context(counselor),
-                daily_client=fake,
-            )
-        capture = start_transcription(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            store_transcript=False,
-            context=context(counselor),
-            daily_client=fake,
-        )
-
-    assert capture.status == MediaCaptureStatus.START_REQUESTED
-    assert capture.transcript_storage_enabled is False
-    assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
-    assert fake.transcription_starts[-1][1] == capture.provider_instance_id
-
-
-@pytest.mark.django_db
-def test_transcription_with_storage_approved_enables_provider_storage():
-    _, student, counselor, appointment = setup_session()
-    fake = FakeMediaDailyClient()
-    requested = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
-        context=context(counselor),
-    )
-    for item in requested:
-        decide_my_consent(
-            student=student,
-            appointment_id=appointment.pk,
-            consent_id=item["id"],
-            decision=ConsentDecision.APPROVED,
-            context=context(student),
-        )
-    with override_settings(DAILY_ENABLED=True):
-        create_join_credential(
-            actor=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-            daily_client=fake,
-        )
-        capture = start_transcription(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            store_transcript=True,
-            context=context(counselor),
-            daily_client=fake,
-        )
-    assert capture.transcript_storage_enabled is True
-    assert fake.room_updates[-1][1] == {"enable_transcription_storage": True}
-
-
-@pytest.mark.django_db
-def test_storage_withdrawal_supersedes_pending_transcription_storage_start():
-    _, student, counselor, appointment = setup_session()
-    fake = FakeMediaDailyClient()
-    requested = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
-        context=context(counselor),
-    )
-    consent_ids = {}
-    for item in requested:
-        decide_my_consent(
-            student=student,
-            appointment_id=appointment.pk,
-            consent_id=item["id"],
-            decision=ConsentDecision.APPROVED,
-            context=context(student),
-        )
-        consent_ids[item["scope"]] = item["id"]
-
-    original_update = fake.update_room
-    withdrawal_triggered = False
-
-    def racing_update_room(*, room_name: str, properties: dict[str, object]):
-        nonlocal withdrawal_triggered
-        result = original_update(room_name=room_name, properties=properties)
-        if properties.get("enable_transcription_storage") is True and not withdrawal_triggered:
-            withdrawal_triggered = True
-            withdraw_my_consent(
-                student=student,
-                appointment_id=appointment.pk,
-                consent_id=consent_ids[ConsentScope.TRANSCRIPT_STORAGE],
-                context=context(student),
-                daily_client=fake,
-            )
-        return result
-
-    fake.update_room = racing_update_room
-    with override_settings(DAILY_ENABLED=True):
-        create_join_credential(
-            actor=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-            daily_client=fake,
-        )
-        with pytest.raises(ECounselingConsentNotApproved):
-            start_transcription(
-                counselor=counselor,
-                appointment_id=appointment.pk,
-                store_transcript=True,
-                context=context(counselor),
-                daily_client=fake,
-            )
-
-    storage_consent = ECounselingConsent.objects.get(
-        pk=consent_ids[ConsentScope.TRANSCRIPT_STORAGE]
-    )
-    capture = ECounselingMediaCapture.objects.get(
-        room__appointment=appointment,
-        kind=MediaCaptureKind.TRANSCRIPTION,
-    )
-    assert storage_consent.withdrawn_at is not None
-    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
-    assert capture.stop_requested_at is not None and capture.ended_at is None
-    assert not fake.transcription_starts
-    assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
-
-
-@pytest.mark.django_db
 def test_withdrawal_persists_when_recording_stop_fails():
     _, student, counselor, appointment = setup_session()
     fake = FakeMediaDailyClient(fail_stop=True)
@@ -632,65 +427,6 @@ def test_withdrawal_persists_when_recording_stop_fails():
     assert capture.error_code == "STOP_PROVIDER_TRANSPORT_FAILURE"
     assert AuditEvent.objects.filter(action="ecounseling.consent_withdrawn").count() == 1
     assert AuditEvent.objects.filter(action="ecounseling.recording_stop_requested").count() == 1
-
-
-@pytest.mark.django_db
-def test_transcript_storage_withdrawal_disables_storage_even_when_stop_fails():
-    _, student, counselor, appointment = setup_session()
-    fake = FakeMediaDailyClient(fail_stop=True)
-    requested = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION, ConsentScope.TRANSCRIPT_STORAGE],
-        context=context(counselor),
-    )
-    approved = {}
-    for item in requested:
-        decided = decide_my_consent(
-            student=student,
-            appointment_id=appointment.pk,
-            consent_id=item["id"],
-            decision=ConsentDecision.APPROVED,
-            context=context(student),
-        )
-        approved[decided["scope"]] = decided
-
-    with override_settings(DAILY_ENABLED=True):
-        create_join_credential(
-            actor=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-            daily_client=fake,
-        )
-        capture = start_transcription(
-            counselor=counselor,
-            appointment_id=appointment.pk,
-            store_transcript=True,
-            context=context(counselor),
-            daily_client=fake,
-        )
-    capture.status = MediaCaptureStatus.ACTIVE
-    capture.save(update_fields=["status", "updated_at"])
-
-    with override_settings(DAILY_ENABLED=True):
-        with pytest.raises(ECounselingProviderUnavailable):
-            withdraw_my_consent(
-                student=student,
-                appointment_id=appointment.pk,
-                consent_id=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"],
-                context=context(student),
-                daily_client=fake,
-            )
-
-    consent = ECounselingConsent.objects.get(pk=approved[ConsentScope.TRANSCRIPT_STORAGE]["id"])
-    capture.refresh_from_db()
-    assert consent.withdrawn_at is not None
-    assert not consent.is_effectively_approved
-    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
-    assert capture.error_code == "STOP_PROVIDER_TRANSPORT_FAILURE"
-    assert capture.transcript_storage_enabled is False
-    assert fake.transcription_stops
-    assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
 
 
 @pytest.mark.django_db
@@ -820,46 +556,12 @@ def test_late_recording_started_webhook_does_not_regress_stopping_or_finished_ca
 
 
 @pytest.mark.django_db
-def test_unreserved_transcription_is_durably_escalated_without_adoption_or_unsafe_stop():
-    _, student, _, appointment = setup_session()
-    fake = FakeMediaDailyClient()
-    with override_settings(DAILY_ENABLED=True):
-        credential = create_join_credential(
-            actor=student,
-            appointment_id=appointment.pk,
-            context=context(student),
-            daily_client=fake,
-        )
-        with patch("compass.ecounseling.media.DailyClient.from_settings", return_value=fake):
-            result = process_media_webhook_event(
-                event_type="transcript.started",
-                event_id="tra-start-unexpected",
-                event_ts=timezone.now().timestamp(),
-                payload={
-                    "id": "transcript-1",
-                    "info": {"instanceId": "transcription-instance-1"},
-                    "room_name": credential.room.daily_room_name,
-                    "mtg_session_id": "meeting-1",
-                    "duration": 0,
-                },
-            )
-    assert result.accepted and result.supported
-    from compass.ecounseling.models import DailyWebhookReceipt
-
-    assert not ECounselingMediaCapture.objects.filter(room=credential.room).exists()
-    receipt = DailyWebhookReceipt.objects.get(provider_event_id="tra-start-unexpected")
-    assert receipt.anomaly_code == "RESERVATION_MISSING"
-    assert receipt.operator_review_required and receipt.mitigation_state == "REVIEW_REQUIRED"
-    assert receipt.mitigation_attempted_at is None and fake.transcription_stops == []
-
-
-@pytest.mark.django_db
 def test_consent_audit_contains_state_not_counseling_content():
     _, student, counselor, appointment = setup_session()
     item = request_consents(
         counselor=counselor,
         appointment_id=appointment.pk,
-        scopes=[ConsentScope.LIVE_TRANSCRIPTION],
+        scopes=[ConsentScope.AUDIO_VIDEO_RECORDING],
         context=context(counselor),
     )[0]
     decide_my_consent(
@@ -870,7 +572,7 @@ def test_consent_audit_contains_state_not_counseling_content():
         context=context(student),
     )
     serialized = str(list(AuditEvent.objects.values("action", "metadata")))
-    assert "LIVE_TRANSCRIPTION" in serialized
+    assert "AUDIO_VIDEO_RECORDING" in serialized
     assert "APPROVED" in serialized
     assert "transcript text" not in serialized.lower()
     assert "recording_url" not in serialized.lower()
@@ -883,25 +585,19 @@ def test_consent_audit_contains_state_not_counseling_content():
 )
 def test_non_current_student_cannot_approve_new_consent_but_can_deny_and_withdraw(status):
     _admin, student, counselor, appointment = setup_session()
-    requested = request_consents(
-        counselor=counselor,
-        appointment_id=appointment.pk,
-        scopes=[
-            ConsentScope.AUDIO_VIDEO_RECORDING,
-            ConsentScope.LIVE_TRANSCRIPTION,
-        ],
-        context=context(counselor),
-    )
-    by_scope = {item["scope"]: item for item in requested}
-
-    approved = decide_my_consent(
+    approved = approve_scope(
         student=student,
-        appointment_id=appointment.pk,
-        consent_id=by_scope[ConsentScope.AUDIO_VIDEO_RECORDING]["id"],
-        decision=ConsentDecision.APPROVED,
-        context=context(student),
+        counselor=counselor,
+        appointment=appointment,
+        scope=ConsentScope.AUDIO_VIDEO_RECORDING,
     )
-    assert approved["decision"] == ConsentDecision.APPROVED
+    later = make_appointment(student=student, counselor=counselor, service=appointment.service)
+    pending = request_consents(
+        counselor=counselor,
+        appointment_id=later.pk,
+        scopes=[ConsentScope.AUDIO_VIDEO_RECORDING],
+        context=context(counselor),
+    )[0]
 
     student.student_lifecycle_status = status
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -909,16 +605,15 @@ def test_non_current_student_cannot_approve_new_consent_but_can_deny_and_withdra
     with pytest.raises(ECounselingCurrentStudentRequired):
         decide_my_consent(
             student=student,
-            appointment_id=appointment.pk,
-            consent_id=by_scope[ConsentScope.LIVE_TRANSCRIPTION]["id"],
+            appointment_id=later.pk,
+            consent_id=pending["id"],
             decision=ConsentDecision.APPROVED,
             context=context(student),
         )
-
     denied = decide_my_consent(
         student=student,
-        appointment_id=appointment.pk,
-        consent_id=by_scope[ConsentScope.LIVE_TRANSCRIPTION]["id"],
+        appointment_id=later.pk,
+        consent_id=pending["id"],
         decision=ConsentDecision.DENIED,
         context=context(student),
     )
@@ -927,7 +622,7 @@ def test_non_current_student_cannot_approve_new_consent_but_can_deny_and_withdra
     withdrawn = withdraw_my_consent(
         student=student,
         appointment_id=appointment.pk,
-        consent_id=by_scope[ConsentScope.AUDIO_VIDEO_RECORDING]["id"],
+        consent_id=approved["id"],
         context=context(student),
     )
     assert withdrawn["withdrawn_at"] is not None

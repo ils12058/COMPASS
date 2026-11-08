@@ -158,7 +158,7 @@ export function CallStage({
   readiness: ProviderReadiness;
   canJoin: boolean;
   media: MediaWorkspaceState;
-  // The assigned Counselor's Record and Transcript controls, which act through the COMPASS backend.
+  // The assigned Counselor's Record control, which acts through the COMPASS backend.
   governedControls?: ReactNode;
   // With six controls, Devices moves to the stage's top bar on narrow stages.
   devicesInTray?: "always" | "when-wide";

@@ -2,8 +2,8 @@
 
 import { useConfirmedECounselingConsent, usePendingECounselingMedia } from "./consent-freshness-provider";
 
-import { Check, Circle, Clock, LoaderCircle, ScrollText, Square, X, type LucideIcon } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { Check, Circle, Clock, LoaderCircle, Square, X, type LucideIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import {
   useECounselingListAssignedConsents,
   useECounselingRequestConsent,
   useECounselingStartAssignedRecording,
-  useECounselingStartAssignedTranscription,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 import {
   ECounselingCaptureStatus,
@@ -46,11 +45,6 @@ function latestConsent(rows: ConsentResponse[], scope: ECounselingConsentScope):
 
 function isEffectivelyApproved(row: ConsentResponse | undefined): boolean {
   return Boolean(row?.effective && row.decision === ECounselingConsentDecision.APPROVED && !row.withdrawn_at);
-}
-
-// Pending, or approved and still in effect: a request that can still lead to capture.
-function isViable(row: ConsentResponse | undefined): boolean {
-  return Boolean(row && !row.withdrawn_at && (row.decision === ECounselingConsentDecision.PENDING || isEffectivelyApproved(row)));
 }
 
 type PermissionState = "not-requested" | "pending" | "approved" | "invalid" | "declined" | "withdrawn";
@@ -89,8 +83,8 @@ type PermissionRow = {
   request?: { scopes: ECounselingConsentScope[]; label: string };
 };
 
-// The assigned Counselor's media work for one session: consent requests, the governed Record and
-// Transcript controls, and their confirmations. Every start, stop and request goes to the COMPASS
+// The assigned Counselor's recording work for one session: the consent request, the governed Record
+// control, and its confirmation. Every start, stop and request goes to the COMPASS
 // backend, which checks consent, authorization and state before it contacts Daily (ADR-092); the
 // browser call object never starts or stops capture. Starts fail closed when consent or the latest
 // session state cannot be confirmed; stopping a running capture stays available.
@@ -117,45 +111,32 @@ export function useCounselorMedia({
   });
   const request = useECounselingRequestConsent({ mutation: { retry: false } });
   const startRecording = useECounselingStartAssignedRecording({ mutation: { retry: false } });
-  const startTranscription = useECounselingStartAssignedTranscription({ mutation: { retry: false } });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingStart, setPendingStart] = useState<CaptureKind | null>(null);
-  const [storeTranscript, setStoreTranscript] = useState(false);
   const capture = useCaptureStop(appointmentId, () => refreshCanonicalState());
 
   const media = workspace.media;
-  const isV2 = media.media_policy_version === 2;
   const rows = consentQuery.data?.data.items ?? [];
   const consentsKnown = useConfirmedECounselingConsent(appointmentId, getECounselingListAssignedConsentsQueryKey(appointmentId));
-  const recordingScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.AUDIO_VIDEO_RECORDING;
-  const transcriptionScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.LIVE_TRANSCRIPTION;
-  const recordingConsent = latestConsent(rows, recordingScope);
-  const transcriptionConsent = latestConsent(rows, transcriptionScope);
-  const storageConsent = latestConsent(rows, ECounselingConsentScope.TRANSCRIPT_STORAGE);
-  const storageApproved = consentsKnown && media.transcription.storage_consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(storageConsent);
+  const recordingConsent = latestConsent(rows, ECounselingConsentScope.AUDIO_VIDEO_RECORDING);
   const readiness = workspace.provider_readiness;
   const canOperate = access.canManageMediaAssigned && sessionStateCurrent && readiness.daily_enabled && readiness.room_provisioned && readiness.join_allowed;
-  const status: Record<CaptureKind, ECounselingCaptureStatus> = {
-    recording: media.recording.capture_status,
-    transcription: media.transcription.capture_status,
-  };
+  const status: Record<CaptureKind, ECounselingCaptureStatus> = { recording: media.recording.capture_status };
   const canStart: Record<CaptureKind, boolean> = {
     recording: consentsKnown && canOperate && media.recording.consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(recordingConsent) && status.recording === ECounselingCaptureStatus.NOT_STARTED,
-    transcription: consentsKnown && canOperate && media.transcription.consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(transcriptionConsent) && status.transcription === ECounselingCaptureStatus.NOT_STARTED,
   };
   const canStop: Record<CaptureKind, boolean> = {
     recording: access.canManageMediaAssigned && isLiveOrTransitionalCapture(status.recording),
-    transcription: access.canManageMediaAssigned && isLiveOrTransitionalCapture(status.transcription),
   };
-  const starting = startRecording.isPending || startTranscription.isPending;
+  const starting = startRecording.isPending;
   const requesting = request.isPending;
 
   // A confirmation whose action is no longer allowed (the Student withdrew, or the state changed)
   // closes; the person reviews the current controls again rather than confirming stale ones.
   if (pendingStart && !starting && !canStart[pendingStart]) {
     setPendingStart(null);
-    setError("Media permission or the session changed, so this can’t start now.");
+    setError("Recording permission or the session changed, so this can’t start now.");
   }
 
   async function refreshCanonicalState() {
@@ -180,7 +161,6 @@ export function useCounselorMedia({
   function openStart(kind: CaptureKind) {
     setError(null);
     setNotice(null);
-    setStoreTranscript(false);
     leaveFullscreen();
     setPendingStart(kind);
   }
@@ -190,13 +170,10 @@ export function useCounselorMedia({
     if (!kind || !canStart[kind]) return;
     setError(null);
     try {
-      if (kind === "recording") await startRecording.mutateAsync({ appointmentId });
-      else await startTranscription.mutateAsync({ appointmentId, data: { store_transcript: storeTranscript && storageApproved } });
+      await startRecording.mutateAsync({ appointmentId });
     } catch (caught) {
       // Closed rather than retried in place: the refreshed controls show what actually happened.
-      setError(ecounselingErrorMessage(caught, kind === "recording"
-        ? "Recording couldn’t be started. The session has been refreshed."
-        : "Transcription couldn’t be started. The session has been refreshed."));
+      setError(ecounselingErrorMessage(caught, "Recording couldn’t be started. The session has been refreshed."));
     }
     setPendingStart(null);
     await refreshCanonicalState();
@@ -208,9 +185,7 @@ export function useCounselorMedia({
     await capture.stop(kind);
   }
 
-  // The permission rows the Counselor sees, with the request each one still allows. V1 sessions keep
-  // their three separate historical permissions; V2 sessions have one media permission plus
-  // transcript storage.
+  // The one permission row the Counselor sees, with the request it still allows.
   const projected = (projection: ECounselingConsentStatus) => projectedStates[projection];
   // Denial/withdrawal cannot be reopened. A terminal workspace projection must not be
   // presented as valid permission just because an older consent-list read said APPROVED.
@@ -220,49 +195,17 @@ export function useCounselorMedia({
       : permissionState(row)
   );
   const canRequest = consentsKnown && access.canManageMediaAssigned && sessionStateCurrent;
-  const permissions: PermissionRow[] = isV2
-    ? [
-        {
-          key: "media",
-          subject: "Media permission",
-          state: state(recordingConsent, media.recording.consent_status),
-          row: recordingConsent,
-          request: canRequest && !recordingConsent ? { scopes: [ECounselingConsentScope.SESSION_MEDIA_CAPTURE], label: "Request media permission" } : undefined,
-        },
-        ...(storageConsent || isViable(recordingConsent) ? [{
-          key: "storage",
-          subject: "Transcript storage",
-          state: state(storageConsent, media.transcription.storage_consent_status),
-          row: storageConsent,
-          request: canRequest && !storageConsent ? { scopes: [ECounselingConsentScope.TRANSCRIPT_STORAGE], label: "Request transcript storage" } : undefined,
-        }] : []),
-      ]
-    : [
-        {
-          key: "recording",
-          subject: "Recording permission",
-          state: state(recordingConsent, media.recording.consent_status),
-          row: recordingConsent,
-          request: canRequest && !recordingConsent ? { scopes: [ECounselingConsentScope.AUDIO_VIDEO_RECORDING], label: "Request recording permission" } : undefined,
-        },
-        {
-          key: "transcription",
-          subject: "Transcription permission",
-          state: state(transcriptionConsent, media.transcription.consent_status),
-          row: transcriptionConsent,
-          request: canRequest && !transcriptionConsent ? { scopes: [ECounselingConsentScope.LIVE_TRANSCRIPTION], label: "Request transcription permission" } : undefined,
-        },
-        {
-          key: "storage",
-          subject: "Transcript storage",
-          state: state(storageConsent, media.transcription.storage_consent_status),
-          row: storageConsent,
-          request: canRequest && !storageConsent && isViable(transcriptionConsent) ? { scopes: [ECounselingConsentScope.TRANSCRIPT_STORAGE], label: "Request transcript storage" } : undefined,
-        },
-      ];
+  const permissions: PermissionRow[] = [
+    {
+      key: "recording",
+      subject: "Recording permission",
+      state: state(recordingConsent, media.recording.consent_status),
+      row: recordingConsent,
+      request: canRequest && !recordingConsent ? { scopes: [ECounselingConsentScope.AUDIO_VIDEO_RECORDING], label: "Request recording permission" } : undefined,
+    },
+  ];
 
   return {
-    isV2,
     access,
     status,
     canStart,
@@ -271,14 +214,11 @@ export function useCounselorMedia({
     stopFailed: capture.failed,
     starting,
     requesting,
-    storageApproved,
     consentQuery,
     permissions,
     error: error ?? capture.error,
     notice,
     pendingStart,
-    storeTranscript,
-    setStoreTranscript,
     sessionStateCurrent,
     inCall,
     openStart,
@@ -297,7 +237,6 @@ type Tile = { label: ReactNode; accessibleName?: string; icon: LucideIcon; tone:
 
 const tileCopy: Record<CaptureKind, { idle: string; stop: string; stopShort: string; done: string; icon: LucideIcon }> = {
   recording: { idle: "Record", stop: "Stop recording", stopShort: "Stop", done: "Recorded", icon: Circle },
-  transcription: { idle: "Transcript", stop: "Stop transcript", stopShort: "Stop", done: "Transcribed", icon: ScrollText },
 };
 
 // The visible label shortens on a narrow tray; the accessible name always says what stops.
@@ -319,13 +258,13 @@ function captureTile(media: CounselorMedia, kind: CaptureKind): Tile {
   }
   if (stopState === "not-confirmed") {
     // COMPASS still records Stop intent, but this request failed: capture may still be running.
-    return { label: "Stop not confirmed", accessibleName: kind === "recording" ? "Recording stop not confirmed. Stop recording again" : "Transcription stop not confirmed. Stop transcription again", icon: kind === "recording" ? Square : copy.icon, tone: "live", disabled: false, problem: true, onClick: () => void media.stop(kind) };
+    return { label: "Stop not confirmed", accessibleName: "Recording stop not confirmed. Stop recording again", icon: Square, tone: "live", disabled: false, problem: true, onClick: () => void media.stop(kind) };
   }
   if (media.canStop[kind]) {
-    return { label: stopLabel(kind), accessibleName: kind === "recording" ? "Stop recording" : "Stop transcription", icon: kind === "recording" ? Square : copy.icon, tone: "live", disabled: false, onClick: () => void media.stop(kind) };
+    return { label: stopLabel(kind), accessibleName: "Stop recording", icon: Square, tone: "live", disabled: false, onClick: () => void media.stop(kind) };
   }
-  if (captureSafetyState(kind, status) === "uncertain") {
-    return { label: "Status uncertain", accessibleName: kind === "recording" ? "Recording status uncertain" : "Transcription stop not confirmed", icon: copy.icon, tone: "default", disabled: true, problem: true };
+  if (captureSafetyState(status) === "uncertain") {
+    return { label: "Status uncertain", accessibleName: "Recording status uncertain", icon: copy.icon, tone: "default", disabled: true, problem: true };
   }
   if (status === ECounselingCaptureStatus.STOPPED || status === ECounselingCaptureStatus.READY) {
     return { label: copy.done, icon: Check, tone: "default", disabled: true };
@@ -335,7 +274,7 @@ function captureTile(media: CounselorMedia, kind: CaptureKind): Tile {
   }
   return {
     label: copy.idle,
-    accessibleName: kind === "recording" ? "Start recording" : "Start transcription",
+    accessibleName: "Start recording",
     icon: copy.icon,
     tone: "default",
     disabled: !media.canStart[kind] || media.starting,
@@ -344,13 +283,13 @@ function captureTile(media: CounselorMedia, kind: CaptureKind): Tile {
   };
 }
 
-// Record and Transcript in the call tray. They look like part of the call but act through the
-// COMPASS backend (useCounselorMedia).
+// Record in the call tray. It looks like part of the call but acts through the COMPASS backend
+// (useCounselorMedia).
 export function GovernedCaptureControls({ media }: { media: CounselorMedia }) {
   if (!media.access.canManageMediaAssigned) return null;
   return (
     <>
-      {(["recording", "transcription"] as const).map((kind) => {
+      {(["recording"] as const).map((kind) => {
         const tile = captureTile(media, kind);
         return (
           <CallControl
@@ -397,37 +336,37 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
     return <p className="px-3 py-2.5 text-sm text-muted sm:px-4">Media controls are unavailable to this account.</p>;
   }
   const { consentQuery } = media;
-  const problems = (["recording", "transcription"] as const).filter((kind) => captureSafetyState(kind, media.status[kind]) === "uncertain");
-  const stopOutsideCall = media.inCall ? [] : (["recording", "transcription"] as const).filter((kind) => media.canStop[kind]);
+  const problems = (["recording"] as const).filter((kind) => captureSafetyState(media.status[kind]) === "uncertain");
+  const stopOutsideCall = media.inCall ? [] : (["recording"] as const).filter((kind) => media.canStop[kind]);
   const withTimes = media.permissions.filter((permission) => permission.row);
   return (
     <div className="space-y-2 px-3 py-2.5 sm:px-4">
       {consentQuery.isPending ? (
-        <div aria-busy="true"><span className="sr-only">Loading media permission…</span><Skeleton className="h-6 w-2/3" /></div>
+        <div aria-busy="true"><span className="sr-only">Loading recording permission…</span><Skeleton className="h-6 w-2/3" /></div>
       ) : consentQuery.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-danger">
-          <span>Media permission couldn’t be loaded. Recording and transcription can’t start until it loads.</span>
+          <span>Recording permission couldn’t be loaded. Recording can’t start until it loads.</span>
           <Button variant="secondary" className="min-h-9 px-3 py-1" onClick={() => void consentQuery.refetch()}>Retry</Button>
         </div>
       ) : null}
       {!media.sessionStateCurrent ? (
-        <p role="alert" className="text-sm font-medium text-danger">Session status couldn’t be refreshed. Starting recording or transcription is paused until it’s back.</p>
+        <p role="alert" className="text-sm font-medium text-danger">Session status couldn’t be refreshed. Starting recording is paused until it’s back.</p>
       ) : null}
       {problems.map((kind) => (
-        <p key={kind} role="alert" className="text-sm font-semibold text-danger">{kind === "recording" ? "Recording" : "Transcription"} · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>
+        <p key={kind} role="alert" className="text-sm font-semibold text-danger">Recording · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>
       ))}
       {stopOutsideCall.length ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-danger">Stopping has not been confirmed:</span>
           {stopOutsideCall.map((kind) => (
             <Button key={kind} variant="secondary" className="min-h-11 px-3 py-1" disabled={media.stopping[kind]} onClick={() => void media.stop(kind)}>
-              {media.stopping[kind] ? "Stopping…" : kind === "recording" ? "Stop recording" : "Stop transcription"}
+              {media.stopping[kind] ? "Stopping…" : "Stop recording"}
             </Button>
           ))}
         </div>
       ) : null}
       {media.error && !media.pendingStart ? <p role="alert" className="text-sm font-medium text-danger">{media.error}</p> : null}
-      <ul aria-label="Media permission" className="flex flex-wrap gap-x-6 gap-y-1">
+      <ul aria-label="Recording permission" className="flex flex-wrap gap-x-6 gap-y-1">
         {media.permissions.map((permission) => (
           <PermissionItem key={permission.key} permission={permission} busy={media.requesting} onRequest={(scopes) => void media.requestPermission(scopes)} />
         ))}
@@ -450,54 +389,14 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
   );
 }
 
-function TranscriptChoice({ media }: { media: CounselorMedia }) {
-  const name = useId();
-  if (!media.storageApproved) {
-    return <p className="text-sm text-ink">Live transcription only. The student hasn’t allowed transcript storage, so no transcript file is saved.</p>;
-  }
-  const options = [
-    { value: false, label: "Live transcription only", hint: "No transcript file is saved." },
-    {
-      value: true,
-      label: "Live transcription + save transcript",
-      hint: media.isV2 ? "The transcript is saved and may be downloaded by an authorized assigned Counselor." : "The transcript is stored by the video service.",
-    },
-  ];
-  return (
-    <fieldset>
-      <legend className="text-sm font-semibold text-ink">Transcript</legend>
-      <div className="mt-2 space-y-2">
-        {options.map((option) => (
-          <label key={String(option.value)} className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-subtle has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
-            <input
-              type="radio"
-              name={name}
-              className="mt-1 size-4 accent-brand focus-visible:outline-none"
-              checked={media.storeTranscript === option.value}
-              disabled={media.starting}
-              onChange={() => media.setStoreTranscript(option.value)}
-            />
-            <span>
-              <span className="block text-sm font-semibold text-ink">{option.label}</span>
-              <span className="block text-sm text-muted">{option.hint}</span>
-            </span>
-          </label>
-        ))}
-      </div>
-      <p className="mt-2 text-sm text-muted">The student has allowed transcript storage.</p>
-    </fieldset>
-  );
-}
-
-// The confirmations for starting capture. Their wording is the consequence the Counselor reviews
+// The confirmation for starting a recording. Its wording is the consequence the Counselor reviews
 // at the moment of the decision; it is not repeated elsewhere on the page.
 export function CaptureStartDialogs({ media }: { media: CounselorMedia }) {
-  const recording = media.pendingStart === "recording";
   return (
     <ConsequentialActionDialog
       open={media.pendingStart !== null}
-      title={recording ? "Start recording?" : "Start live transcription?"}
-      confirmLabel={recording ? "Start recording" : "Start transcription"}
+      title="Start recording?"
+      confirmLabel="Start recording"
       pendingLabel="Starting…"
       pending={media.starting}
       error={null}
@@ -505,20 +404,9 @@ export function CaptureStartDialogs({ media }: { media: CounselorMedia }) {
         if (!open) media.closeStart();
       }}
       onConfirm={() => void media.confirmStart()}
-      choices={!recording && media.pendingStart ? <TranscriptChoice media={media} /> : undefined}
     >
-      {recording ? (
-        media.isV2 ? (
-          <>
-            <p>Audio and video from this session will be recorded.</p>
-            <p>The student has approved media permission. The completed recording will be saved and may be downloaded by an authorized assigned Counselor.</p>
-          </>
-        ) : (
-          <p>Audio and video from this session will be recorded. The student has approved recording.</p>
-        )
-      ) : (
-        <p>Speech is processed as text while transcription is on. Transcript text isn’t shown here.</p>
-      )}
+      <p>Audio and video from this session will be recorded.</p>
+      <p>The student has allowed recording. The completed recording will be saved privately and may be downloaded by the assigned Counselor.</p>
     </ConsequentialActionDialog>
   );
 }

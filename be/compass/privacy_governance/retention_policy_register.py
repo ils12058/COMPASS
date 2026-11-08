@@ -26,7 +26,6 @@ MAX_TEXT_LENGTH = 500
 class RetentionPolicyCategory(StrEnum):
     GRADUATE_TRACER = "GRADUATE_TRACER"
     ECOUNSELING_RECORDING = "ECOUNSELING_RECORDING"
-    ECOUNSELING_TRANSCRIPT = "ECOUNSELING_TRANSCRIPT"
 
 
 class RetentionAdoptionStatus(StrEnum):
@@ -103,11 +102,6 @@ REGISTER: tuple[RetentionPolicy, ...] = validate_register(
         RetentionPolicy(
             category_code=RetentionPolicyCategory.ECOUNSELING_RECORDING,
             category_label="E-Counseling recordings",
-            adoption_status=RetentionAdoptionStatus.NOT_ADOPTED,
-        ),
-        RetentionPolicy(
-            category_code=RetentionPolicyCategory.ECOUNSELING_TRANSCRIPT,
-            category_label="E-Counseling transcripts",
             adoption_status=RetentionAdoptionStatus.NOT_ADOPTED,
         ),
     )

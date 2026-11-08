@@ -1,4 +1,4 @@
-"""Durable V2 custody and assigned access. Locations and provider links stay internal."""
+"""Durable recording custody and assigned access. Locations and provider links stay internal."""
 
 import time
 import uuid
@@ -33,7 +33,6 @@ from .models import (
     ECounselingMediaCapture,
     MediaArtifactStatus,
     MediaCaptureStatus,
-    MediaPolicyVersion,
 )
 from .services import _require_counselor_relationship
 
@@ -59,13 +58,11 @@ def artifact_guard(artifact_id):
 
 def artifact_eligible(capture):
     return (
-        capture.room.media_policy_version == MediaPolicyVersion.V2
-        and capture.status == MediaCaptureStatus.READY
+        capture.status == MediaCaptureStatus.READY
         and not capture.artifact_disposed_at
         and not capture.provider_binding_quarantined_at
         and capture.provider_binding_verified_at is not None
         and capture.media_authorized_at is not None
-        and (capture.kind == "RECORDING" or capture.transcript_storage_authorized)
     )
 
 
@@ -107,27 +104,8 @@ def custody_audit(action, artifact):
     )
 
 
-# Daily reports its own transcript storage in outParams too (live staging, 2026-10-17, with no
-# custom transcription_bucket on the domain). Only this exact Daily-owned bucket is accepted.
-DAILY_TRANSCRIPT_BUCKETS = frozenset({"daily-co-transcription"})
-
-
-def daily_owned_transcript_storage(out_params):
-    """Absent outParams or Daily's own bucket; any other location is customer-managed storage."""
-    if not out_params:
-        return True
-    if not isinstance(out_params, dict):
-        return False
-    bucket = out_params.get("bucket")
-    return (
-        isinstance(bucket, str)
-        and bucket in DAILY_TRANSCRIPT_BUCKETS
-        and out_params.get("storage_provider") in (None, "aws")
-    )
-
-
-def provider_metadata(source, client, *, allow_deleted=False):
-    """Exact artifact/room/session identity; reject customer-managed transcript storage."""
+def provider_metadata(source, client):
+    """Exact recording/room/session identity; reject customer-managed storage."""
     if (
         not source.provider_binding_verified_at
         or source.provider_binding_quarantined_at
@@ -137,25 +115,13 @@ def provider_metadata(source, client, *, allow_deleted=False):
     ):
         raise ArtifactVerificationError("Provider media binding requires protected review.")
     artifact_id = source.provider_artifact_id
-    if source.kind == "RECORDING":
-        item = client.get_recording(artifact_id=artifact_id)
-        valid = (
-            item.get("id") == artifact_id
-            and item.get("status") == "finished"
-            and item.get("room_name") == source.room.daily_room_name
-            and item.get("storage_provider") in (None, "aws")
-        )
-    else:
-        item = client.get_transcript(artifact_id=artifact_id)
-        terminal = {"t_finished", "t_deleted"} if allow_deleted else {"t_finished"}
-        valid = (
-            item.get("transcriptId") == artifact_id
-            and item.get("status") in terminal
-            and source.room.daily_room_id
-            and item.get("roomId") == source.room.daily_room_id
-            and daily_owned_transcript_storage(item.get("outParams"))
-            and (item.get("status") == "t_deleted" or item.get("isVttAvailable") is True)
-        )
+    item = client.get_recording(artifact_id=artifact_id)
+    valid = (
+        item.get("id") == artifact_id
+        and item.get("status") == "finished"
+        and item.get("room_name") == source.room.daily_room_name
+        and item.get("storage_provider") in (None, "aws")
+    )
     if source.provider_session_id:
         valid = valid and item.get("mtgSessionId") == source.provider_session_id
     if (
@@ -168,25 +134,16 @@ def provider_metadata(source, client, *, allow_deleted=False):
     return item
 
 
-def delete_v2_provider(source, client):
-    item = provider_metadata(source, client, allow_deleted=True)
+def delete_provider_recording(source, client):
+    provider_metadata(source, client)
     artifact_id = source.provider_artifact_id
-    if source.kind == "RECORDING":
-        result = client.delete_recording(artifact_id=artifact_id)
-        if (
-            result.get("deleted") is not True
-            or result.get("id") != artifact_id
-            or result.get("storage_provider")
-        ):
-            raise ArtifactVerificationError("Provider deletion could not be verified.")
-    elif item.get("status") != "t_deleted":
-        result = client.delete_transcript(artifact_id=artifact_id)
-        if (
-            result.get("transcriptId") != artifact_id
-            or result.get("status") != "t_deleted"
-            or not daily_owned_transcript_storage(result.get("outParams"))
-        ):
-            raise ArtifactVerificationError("Provider deletion could not be verified.")
+    result = client.delete_recording(artifact_id=artifact_id)
+    if (
+        result.get("deleted") is not True
+        or result.get("id") != artifact_id
+        or result.get("storage_provider")
+    ):
+        raise ArtifactVerificationError("Provider deletion could not be verified.")
 
 
 def _retry(artifact_id, token, code):
@@ -306,11 +263,7 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                     client = client or DailyClient.from_settings()
                     provider_metadata(source, client)
                     stage = ArtifactStage.ACCESS_LINK
-                    link_payload = (
-                        client.recording_access_link(artifact_id=provider_id)
-                        if source.kind == "RECORDING"
-                        else client.transcript_access_link(artifact_id=provider_id)
-                    )
+                    link_payload = client.recording_access_link(artifact_id=provider_id)
                     stage = ArtifactStage.LINK_VALIDATION
                     url = validate_daily_link(
                         link_payload, kind=source.kind, artifact_id=provider_id
@@ -375,7 +328,7 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                 raise ArtifactVerificationError("Stored media integrity is unverified.")
             if provider_id:
                 stage = ArtifactStage.PROVIDER_CLEANUP
-                delete_v2_provider(source, client or DailyClient.from_settings())
+                delete_provider_recording(source, client or DailyClient.from_settings())
             stage = ArtifactStage.CLEANUP_COMMIT
             with transaction.atomic():
                 capture = ECounselingMediaCapture.objects.select_for_update().get(pk=source.pk)
@@ -464,10 +417,9 @@ def access_artifact(*, counselor, appointment_id, kind, context):
             raise ArtifactVerificationError("Media storage namespace changed.")
         if not storage.exists(artifact.object_key):
             raise ValueError()
-        extensions = {"video/mp4": "mp4", "video/webm": "webm", "text/vtt": "vtt"}
+        extensions = {"video/mp4": "mp4", "video/webm": "webm"}
         date = institution_date(appointment.starts_at).isoformat()
-        subject = "recording" if kind == "RECORDING" else "transcript"
-        filename = f"e-counseling-{subject}-{date}.{extensions[artifact.content_type]}"
+        filename = f"e-counseling-recording-{date}.{extensions[artifact.content_type]}"
         ttl = settings.ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS
         url = storage.private_url(
             artifact.object_key,

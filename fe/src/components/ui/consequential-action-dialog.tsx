@@ -83,7 +83,7 @@ export function ConsequentialActionDialog({
   variant?: "primary" | "danger";
   cancelLabel?: string;
   completed?: ConsequentialActionCompletion | null;
-  // A choice that shapes the action, such as whether a transcript is saved. It sits after the
+  // A choice that shapes the action, such as which option applies. It sits after the
   // description, so the description stays plain text for assistive technology.
   choices?: ReactNode;
   onOpenChange: (open: boolean) => void;

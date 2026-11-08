@@ -11,23 +11,13 @@ const recordingLabels: Partial<Record<ECounselingCaptureStatus, string>> = {
   [ECounselingCaptureStatus.ERROR]: "Recording status uncertain",
 };
 
-const transcriptionLabels: Partial<Record<ECounselingCaptureStatus, string>> = {
-  [ECounselingCaptureStatus.START_REQUESTED]: "Transcription starting…",
-  [ECounselingCaptureStatus.ACTIVE]: "Transcription on",
-  [ECounselingCaptureStatus.STOP_REQUESTED]: "Transcription stopping…",
-  [ECounselingCaptureStatus.ERROR]: "Transcription status uncertain",
-  [ECounselingCaptureStatus.STOPPED]: "Transcription stop not confirmed",
-};
-
 // What is being captured right now, from the COMPASS session state only: never from consent alone
 // and never from a provider event in the browser. Shown on the call stage for both people.
 export function captureIndicators(media: MediaWorkspaceState | undefined): Indicator[] {
   const indicators: Indicator[] = [];
   if (!media) return indicators;
-  const recording = captureSafetyState("recording", media.recording.capture_status) === "terminal" ? undefined : recordingLabels[media.recording.capture_status];
-  const transcription = captureSafetyState("transcription", media.transcription.capture_status) === "terminal" ? undefined : transcriptionLabels[media.transcription.capture_status];
+  const recording = captureSafetyState(media.recording.capture_status) === "terminal" ? undefined : recordingLabels[media.recording.capture_status];
   if (recording) indicators.push({ key: "recording", label: recording, recording: media.recording.capture_status === ECounselingCaptureStatus.ACTIVE });
-  if (transcription) indicators.push({ key: "transcription", label: transcription, recording: false });
   return indicators;
 }
 

@@ -29,9 +29,9 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
     ecounseling_artifact_not_ready: "The file is still being prepared or was not saved.",
     ecounseling_artifact_disposed: "This file was deleted under an approved retention rule.",
     ecounseling_artifact_unavailable: "The file isn't available right now. Try again.",
-    ecounseling_media_conflict: "Recording or transcription changed. The session has been refreshed.",
+    ecounseling_media_conflict: "Recording changed. The session has been refreshed.",
     ecounseling_media_stop_pending: "Stopping is still being confirmed.",
-    ecounseling_provider_disabled: "Recording and transcription are not available for video sessions right now. Counseling is unaffected.",
+    ecounseling_provider_disabled: "Recording is not available for video sessions right now. Counseling is unaffected.",
     ecounseling_provider_unavailable: "The video service could not confirm this change. Counseling is unaffected.",
     ecounseling_invalid_provider_response: "The video service could not confirm this change. Counseling is unaffected.",
   };
@@ -68,8 +68,8 @@ const captureStatusLabels: Record<ECounselingCaptureStatus, string> = {
   [ECounselingCaptureStatus.ERROR]: "Needs attention",
 };
 
-export function captureStatusLabel(status: ECounselingCaptureStatus, kind?: "recording" | "transcription"): string {
-  if (kind && captureSafetyState(kind, status) === "uncertain") return "Status uncertain";
+export function captureStatusLabel(status: ECounselingCaptureStatus, kind?: "recording"): string {
+  if (kind && captureSafetyState(status) === "uncertain") return "Status uncertain";
   return captureStatusLabels[status];
 }
 
@@ -84,16 +84,12 @@ export function isLiveOrTransitionalCapture(status: ECounselingCaptureStatus): b
 }
 
 export function hasLiveOrTransitionalMedia(media: MediaWorkspaceState | undefined): boolean {
-  return Boolean(media && (
-    isLiveOrTransitionalCapture(media.recording.capture_status) ||
-    isLiveOrTransitionalCapture(media.transcription.capture_status)
-  ));
+  return Boolean(media && isLiveOrTransitionalCapture(media.recording.capture_status));
 }
 
 export function hasPreparingMediaFile(media: MediaWorkspaceState | undefined): boolean {
-  return Boolean(media && [media.recording, media.transcription].some(
-    (item) => item.artifact_status === "PENDING" || item.artifact_status === "PROCESSING" || item.artifact_status === "FAILED",
-  ));
+  const status = media?.recording.artifact_status;
+  return status === "PENDING" || status === "PROCESSING" || status === "FAILED";
 }
 
 export function formatECounselingDateTime(value: string | null | undefined): string {
@@ -108,9 +104,7 @@ export const SESSION_REFRESH_MS = 7000;
 export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined, realtimeLive = false): number | false {
   if (!inCall && activeCaptureKinds(media).length === 0 && !hasPreparingMediaFile(media)) return false;
   // Unresolved Start/Stop or ERROR remains a fast safety check, even while hints are live.
-  const unresolved = media && (media.transcription.capture_status === "STOPPED" || [media.recording, media.transcription].some(
-    (item) => ["START_REQUESTED", "STOP_REQUESTED", "ERROR"].includes(item.capture_status),
-  ));
+  const unresolved = media && ["START_REQUESTED", "STOP_REQUESTED", "ERROR"].includes(media.recording.capture_status);
   return realtimeLive && !unresolved ? 60_000 : SESSION_REFRESH_MS;
 }
 
