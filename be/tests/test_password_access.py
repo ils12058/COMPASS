@@ -237,7 +237,7 @@ def test_password_request_rate_limit_and_turnstile_use_existing_safe_controls(mo
         "compass.authentication.abuse.RedisRateLimiter.from_settings",
         lambda: AllowLimiter(),
     )
-    with override_settings(AUTH_TURNSTILE_EMAIL_OTP_REQUIRED=True, TURNSTILE_ENABLED=False):
+    with override_settings(TURNSTILE_ENABLED=True):
         rejected = post_json(
             client,
             "/api/v1/auth/password/request",

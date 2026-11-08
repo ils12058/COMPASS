@@ -30,6 +30,7 @@ from compass.audit.models import AuditEvent
 from compass.authentication.abuse import (
     AuthenticationRateLimited,
     check_auth_rate_limit,
+    verify_turnstile,
 )
 from compass.authentication.actions import AUTH_MFA_RECOVERY_CODES_REGENERATED
 from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
@@ -618,9 +619,8 @@ def test_mfa_status_reports_enabled_and_recent_state():
 
 
 @pytest.mark.django_db
-@override_settings(AUTH_MFA_REQUIRED_ROLE_CODES=["COUNSELOR"])
 def test_mandatory_mfa_bootstrap_is_challenge_only_until_totp_is_confirmed():
-    user = make_user(email="mandatory-mfa@example.edu", role_code="COUNSELOR")
+    user = make_user(email="mandatory-mfa@example.edu", role_code="IT_ADMIN")
     client = Client()
 
     login_response = login(client, email=user.email, password="correct-password")
@@ -654,6 +654,34 @@ def test_mandatory_mfa_bootstrap_is_challenge_only_until_totp_is_confirmed():
     assert TOTPFactor.objects.get(user=user).confirmed_at is not None
     assert not AuthSession.objects.filter(user=user).exists()
     assert client.get("/api/v1/auth/session").status_code == 401
+
+    challenged = login(client, email=user.email, password="correct-password")
+    assert challenged.status_code == 200
+    assert challenged.json()["mfa_required"] is True
+    assert not AuthSession.objects.filter(user=user).exists()
+    completed = post_json(
+        client,
+        "/api/v1/auth/mfa/verify",
+        {"method": "recovery", "code": confirmed.json()["recovery_codes"][0]},
+        headers=csrf_headers(client),
+    )
+    assert completed.status_code == 200
+    assert completed.json()["authenticated"] is True
+    assert AuthSession.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role_code",
+    ["STUDENT", "FACULTY", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "INSTITUTIONAL_OFFICER"],
+)
+def test_other_roles_can_sign_in_without_enrolling_mfa(role_code):
+    user = make_user(role_code=role_code)
+    response = login(Client(), email=user.email, password="correct-password")
+    assert response.status_code == 200
+    assert response.json()["authenticated"] is True
+    assert AuthSession.objects.filter(user=user).exists()
+    assert not LoginChallenge.objects.filter(user=user).exists()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1210,7 +1238,6 @@ def test_turnstile_required_login_uses_server_side_verifier_without_persisting_t
         verify=lambda token, **kwargs: SimpleNamespace(success=token == "valid-token")
     )
     with override_settings(
-        AUTH_TURNSTILE_LOGIN_REQUIRED=True,
         TURNSTILE_ENABLED=True,
         TURNSTILE_SECRET_KEY="server-only-secret",
     ):
@@ -1237,6 +1264,30 @@ def test_turnstile_required_login_uses_server_side_verifier_without_persisting_t
             )
             assert accepted.status == "success"
     assert not EmailOTPChallenge.objects.filter(email="valid-token").exists()
+
+
+@pytest.mark.parametrize("flow", ["login", "email_otp"])
+@pytest.mark.parametrize("token", [None, "", "invalid-token", "valid-token"])
+def test_turnstile_master_switch_requires_valid_tokens_for_both_flows(settings, flow, token):
+    settings.TURNSTILE_ENABLED = True
+    fake_verifier = SimpleNamespace(
+        verify=lambda token, **kwargs: SimpleNamespace(success=token == "valid-token")
+    )
+    with patch(
+        "compass.authentication.abuse.TurnstileVerifier.from_settings",
+        return_value=fake_verifier,
+    ) as factory:
+        assert verify_turnstile(SimpleNamespace(META={}), token, flow=flow) is (
+            token == "valid-token"
+        )
+        assert factory.call_count == (1 if token else 0)
+
+
+@pytest.mark.parametrize("flow", ["login", "email_otp"])
+def test_turnstile_missing_server_secret_fails_closed(settings, flow):
+    settings.TURNSTILE_ENABLED = True
+    settings.TURNSTILE_SECRET_KEY = ""
+    assert not verify_turnstile(SimpleNamespace(META={}), "valid-token", flow=flow)
 
 
 @pytest.mark.django_db

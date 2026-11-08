@@ -33,6 +33,7 @@ from compass.authentication.actions import (
     AUTH_MFA_TOTP_VERIFIED,
 )
 from compass.authentication.mfa import (
+    MANDATORY_MFA_ROLE_CODES,
     TOTPVerification,
     active_totp_factor,
     confirm_totp_enrollment,
@@ -353,7 +354,7 @@ def start_login_totp_enrollment(
             or locked.consumed_at is not None
             or locked.expires_at <= current
             or "totp_enroll" not in locked.allowed_methods
-            or user.role.code not in settings.AUTH_MFA_REQUIRED_ROLE_CODES
+            or user.role.code not in MANDATORY_MFA_ROLE_CODES
             or has_active_totp_factor(user.pk)
         ):
             raise InvalidLoginChallenge("login challenge is unavailable")
@@ -400,7 +401,7 @@ def confirm_login_totp_enrollment(
             or locked.consumed_at is not None
             or locked.expires_at <= current
             or "totp_enroll" not in locked.allowed_methods
-            or user.role.code not in settings.AUTH_MFA_REQUIRED_ROLE_CODES
+            or user.role.code not in MANDATORY_MFA_ROLE_CODES
             or has_active_totp_factor(user.pk)
         ):
             raise InvalidLoginChallenge("login challenge is unavailable")

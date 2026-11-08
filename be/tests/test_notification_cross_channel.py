@@ -230,7 +230,7 @@ def test_expired_mfa_challenge_never_creates_record_access(request, settings, mo
     from tests.test_authentication import AllowLimiter, csrf_headers, login, post_json
 
     settings.AUTH_TOTP_ENCRYPTION_KEY = Fernet.generate_key().decode()
-    settings.AUTH_MFA_REQUIRED_ROLE_CODES = ["COUNSELOR"]
+    monkeypatch.setattr("compass.authentication.mfa.MANDATORY_MFA_ROLE_CODES", {"COUNSELOR"})
     monkeypatch.setattr(
         "compass.authentication.abuse.RedisRateLimiter.from_settings", lambda: AllowLimiter()
     )

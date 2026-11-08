@@ -186,9 +186,10 @@ docker compose --project-name compass run --rm --no-deps --pull never -T \
 - Deliver each line privately to its assigned evaluator, then delete the handoff file. If the
   command fails, nothing was committed and any partial file is removed.
 
-MFA, email verification and authorization policy are unchanged for UAT: staff roles listed in
-`AUTH_MFA_REQUIRED_ROLE_CODES` set up an authenticator on first sign-in as usual. Evaluators should
-change their temporary password from Account > Security after first sign-in.
+The seeded IT Administrators must enroll an authenticator at first sign-in and save their recovery
+codes before returning to sign in. MFA is opt-in for every other role. The seeder does not provision
+authenticator secrets or recovery codes; email verification and authorization still apply.
+Evaluators should change their temporary password from Account > Security after first sign-in.
 
 The onboarding Student (`onboarding`) demonstrates first-time Password Access instead: it has no
 password and an unverified email, so it needs `STAGING_SEED_ONBOARDING_EMAIL` to reach a mailbox.

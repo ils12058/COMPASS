@@ -163,9 +163,9 @@ authorize its own enrollment. Mandatory role-required enrollment remains separat
 password authentication creates a purpose-restricted `LoginChallenge`, and that challenge may
 bootstrap TOTP without asking for the password a second time. `confirm` returns recovery codes
 once; PostgreSQL stores only the encrypted TOTP secret and one-way recovery-code hashes. The
-current default does not require MFA for every role, but an enrolled factor causes MFA at the next
-password login. Role-specific mandatory MFA can be configured with
-`AUTH_MFA_REQUIRED_ROLE_CODES`; the setting remains separate from capabilities.
+IT Administrator role requires authenticator enrollment at first sign-in. Every other role is
+opt-in, and an enrolled factor causes MFA at the next password login. This authentication policy
+is code-owned and remains separate from capabilities.
 
 Email OTP challenge rows store only a hash, and delivery is queued through the existing Celery +
 SMTP adapter. `POST /api/v1/auth/password/request` returns the same `202` response shape for

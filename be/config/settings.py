@@ -185,7 +185,6 @@ DATABASES = {
 }
 
 _redis_urls = redis_urls(live_staging=not IS_LOCAL_STAGING)
-REDIS_URL = _redis_urls["REDIS_URL"]
 REDIS_CACHE_URL = _redis_urls["REDIS_CACHE_URL"]
 REDIS_RATE_LIMIT_URL = _redis_urls["REDIS_RATE_LIMIT_URL"]
 REDIS_IDEMPOTENCY_URL = _redis_urls["REDIS_IDEMPOTENCY_URL"]
@@ -406,10 +405,6 @@ AUTH_SESSION_LAST_USED_WRITE_INTERVAL_SECONDS = env_int(
 AUTH_RECENT_MFA_WINDOW_SECONDS = env_int("AUTH_RECENT_MFA_WINDOW_SECONDS", 10 * 60)
 AUTH_MAX_SESSION_LIST_SIZE = env_int("AUTH_MAX_SESSION_LIST_SIZE", 100)
 
-# MFA policy is deliberately separate from capabilities. An enrolled TOTP factor is an explicit
-# user opt-in and requires MFA at login; role-specific mandatory MFA can be enabled later through
-# this configuration without changing the authentication/session model.
-AUTH_MFA_REQUIRED_ROLE_CODES = env_csv("AUTH_MFA_REQUIRED_ROLE_CODES", [])
 AUTH_TOTP_ISSUER_NAME = env("AUTH_TOTP_ISSUER_NAME", "COMPASS")
 AUTH_TOTP_INTERVAL_SECONDS = env_int("AUTH_TOTP_INTERVAL_SECONDS", 30)
 AUTH_TOTP_VALID_WINDOW = env_int("AUTH_TOTP_VALID_WINDOW", 1)
@@ -436,23 +431,13 @@ AUTH_EMAIL_OTP_TTL_SECONDS = env_int("AUTH_EMAIL_OTP_TTL_SECONDS", 10 * 60)
 AUTH_EMAIL_OTP_MAX_ATTEMPTS = env_int("AUTH_EMAIL_OTP_MAX_ATTEMPTS", 5)
 AUTH_EMAIL_OTP_RESEND_INTERVAL_SECONDS = env_int("AUTH_EMAIL_OTP_RESEND_INTERVAL_SECONDS", 60)
 AUTH_EMAIL_OTP_MAX_SENDS = env_int("AUTH_EMAIL_OTP_MAX_SENDS", 5)
-AUTH_EMAIL_OTP_CODE_LENGTH = env_int("AUTH_EMAIL_OTP_CODE_LENGTH", 6)
 if (
     AUTH_EMAIL_OTP_TTL_SECONDS < 1
     or AUTH_EMAIL_OTP_MAX_ATTEMPTS < 1
     or AUTH_EMAIL_OTP_RESEND_INTERVAL_SECONDS < 1
     or AUTH_EMAIL_OTP_MAX_SENDS < 1
-    or AUTH_EMAIL_OTP_CODE_LENGTH != 6
 ):
-    raise ValueError("email OTP settings must be positive and use six-digit codes")
-
-# Turnstile is enabled by default for anonymous high-abuse flows in live-staging. Local tests and
-# local-staging remain usable with the explicit local default, while live deployments can opt out
-# only by setting a documented security policy deliberately.
-AUTH_TURNSTILE_LOGIN_REQUIRED = env_bool("AUTH_TURNSTILE_LOGIN_REQUIRED", not IS_LOCAL_STAGING)
-AUTH_TURNSTILE_EMAIL_OTP_REQUIRED = env_bool(
-    "AUTH_TURNSTILE_EMAIL_OTP_REQUIRED", not IS_LOCAL_STAGING
-)
+    raise ValueError("email OTP settings must be positive")
 
 IDEMPOTENCY_TTL_SECONDS = env_int("IDEMPOTENCY_TTL_SECONDS", 86_400)
 IDEMPOTENCY_MAX_RESPONSE_BYTES = env_int("IDEMPOTENCY_MAX_RESPONSE_BYTES", 1_048_576)
@@ -779,7 +764,6 @@ STAGING_SEED_ENABLED = env_bool("STAGING_SEED_ENABLED", IS_LOCAL_STAGING)
 API_DOCS_ENABLED = env_bool("API_DOCS_ENABLED", IS_LOCAL_STAGING)
 if not IS_LOCAL_STAGING and API_DOCS_ENABLED:
     raise ValueError("API_DOCS_ENABLED must be false in live-staging")
-CADDY_MAX_REQUEST_BODY_SIZE = env("CADDY_MAX_REQUEST_BODY_SIZE", "10MB")
 
 PROFILE_PHOTO_MAX_UPLOAD_BYTES = env_int("PROFILE_PHOTO_MAX_UPLOAD_BYTES", 5 * 1024 * 1024)
 PROFILE_PHOTO_MAX_OUTPUT_BYTES = env_int("PROFILE_PHOTO_MAX_OUTPUT_BYTES", 2 * 1024 * 1024)

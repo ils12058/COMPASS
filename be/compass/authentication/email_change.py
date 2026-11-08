@@ -25,7 +25,11 @@ from compass.authentication.email_otp import (
     consume_email_otp,
     issue_email_otp,
 )
-from compass.authentication.mfa import has_active_totp_factor, mfa_required_for_user
+from compass.authentication.mfa import (
+    MANDATORY_MFA_ROLE_CODES,
+    has_active_totp_factor,
+    mfa_required_for_user,
+)
 from compass.authentication.models import (
     EmailChangeRequest,
     EmailOTPChallenge,
@@ -264,7 +268,7 @@ def request_self_email_change(
     # accounting must commit independently instead of being rolled back with staging.
     role = getattr(user, "role", None)
     role_code = getattr(role, "code", None)
-    required_by_role = role_code in settings.AUTH_MFA_REQUIRED_ROLE_CODES
+    required_by_role = role_code in MANDATORY_MFA_ROLE_CODES
     has_totp = has_active_totp_factor(user.pk)
     if not has_totp and not required_by_role:
         if current_email_challenge_id is None or current_email_code is None:

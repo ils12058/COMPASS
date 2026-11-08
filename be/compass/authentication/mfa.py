@@ -35,6 +35,7 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 
 User = get_user_model()
+MANDATORY_MFA_ROLE_CODES = frozenset({"IT_ADMIN"})
 TOTP_CODE_RE = re.compile(r"^\d{6}$", re.ASCII)
 RECOVERY_CODE_RE = re.compile(r"^[A-Z2-9]{12}$", re.ASCII)
 RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -116,11 +117,11 @@ def has_active_totp_factor(user_id) -> bool:
 
 
 def mfa_required_for_user(user) -> bool:
-    """Apply opt-in factor policy plus future role-specific mandatory policy."""
+    """Require MFA for IT Administrators and every account with an enrolled factor."""
 
     role = getattr(user, "role", None)
     role_code = getattr(role, "code", None)
-    if role_code in settings.AUTH_MFA_REQUIRED_ROLE_CODES:
+    if role_code in MANDATORY_MFA_ROLE_CODES:
         return True
     return has_active_totp_factor(user.pk)
 

@@ -161,24 +161,14 @@ def check_auth_rate_limit(
             raise AuthenticationRateLimited(result.retry_after_seconds)
 
 
-_TURNSTILE_SETTINGS = {
-    "login": "AUTH_TURNSTILE_LOGIN_REQUIRED",
-    "email_otp": "AUTH_TURNSTILE_EMAIL_OTP_REQUIRED",
-}
-
-
 def verify_turnstile(request, token: str | None, *, flow: str) -> bool:
-    """Verify Turnstile server-side only when the configured flow requires it."""
+    """Require server-side Turnstile verification for both flows when enabled."""
 
-    try:
-        setting_name = _TURNSTILE_SETTINGS[flow]
-    except KeyError as exc:
-        raise ValueError(f"unknown Turnstile flow: {flow}") from exc
-    if not getattr(settings, setting_name):
+    if flow not in {"login", "email_otp"}:
+        raise ValueError(f"unknown Turnstile flow: {flow}")
+    if not settings.TURNSTILE_ENABLED:
         return True
     if not isinstance(token, str) or not token:
-        return False
-    if not settings.TURNSTILE_ENABLED:
         return False
     try:
         verifier = TurnstileVerifier.from_settings()

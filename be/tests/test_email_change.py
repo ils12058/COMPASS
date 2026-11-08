@@ -48,7 +48,7 @@ class AllowLimiter:
 @pytest.fixture(autouse=True)
 def configure_security(settings, monkeypatch):
     settings.AUTH_TOTP_ENCRYPTION_KEY = Fernet.generate_key().decode()
-    settings.AUTH_TURNSTILE_EMAIL_OTP_REQUIRED = False
+    settings.TURNSTILE_ENABLED = False
     monkeypatch.setattr(
         "compass.authentication.abuse.RedisRateLimiter.from_settings",
         lambda: AllowLimiter(),
@@ -297,10 +297,11 @@ def test_totp_accounts_require_recent_mfa_and_email_otp_cannot_substitute(settin
     user.refresh_from_db()
     assert user.email == "totp-old@example.edu"
 
-    settings.AUTH_MFA_REQUIRED_ROLE_CODES = {"STUDENT"}
     factor = TOTPFactor.objects.get(user=user)
     factor.disabled_at = timezone.now()
     factor.save(update_fields=["disabled_at"])
+    user.role = Role.objects.get(code="IT_ADMIN")
+    user.save(update_fields=["role"])
 
     required_client, _required = auth_client(user, recent_mfa=True)
     cannot_substitute = post(

@@ -6,12 +6,12 @@ from urllib.parse import unquote, urlsplit
 
 import pytest
 
-from compass.common.redis_config import LEGACY_URL_SETTINGS, redis_urls
+from compass.common.redis_config import URL_OVERRIDE_SETTINGS, redis_urls
 
 
 @pytest.fixture(autouse=True)
 def clean_redis_environment(monkeypatch):
-    for name in (*LEGACY_URL_SETTINGS, "REDIS_PASSWORD", "REDIS_HOST", "REDIS_PORT"):
+    for name in (*URL_OVERRIDE_SETTINGS, "REDIS_PASSWORD", "REDIS_HOST", "REDIS_PORT"):
         monkeypatch.delenv(name, raising=False)
         monkeypatch.delenv(f"{name}_FILE", raising=False)
 
@@ -26,7 +26,7 @@ def test_one_password_routes_all_databases_and_celery(tmp_path, monkeypatch, fil
     else:
         monkeypatch.setenv("REDIS_PASSWORD", password)
     urls = redis_urls(live_staging=True)
-    for name, db in zip(LEGACY_URL_SETTINGS[:4], range(4), strict=True):
+    for name, db in zip(URL_OVERRIDE_SETTINGS[:4], range(4), strict=True):
         parsed = urlsplit(urls[name])
         assert parsed.path == f"/{db}"
         assert unquote(parsed.password) == password
@@ -39,7 +39,7 @@ def test_one_password_routes_all_databases_and_celery(tmp_path, monkeypatch, fil
     assert realtime.path == "/4"
     assert unquote(realtime.password) == password
     assert len(set(urls) - {"CELERY_BROKER_URL", "CELERY_RESULT_BACKEND"}) == 5
-    assert len({urlsplit(urls[name]).path for name in LEGACY_URL_SETTINGS[:5]}) == 5
+    assert len({urlsplit(urls[name]).path for name in URL_OVERRIDE_SETTINGS[:5]}) == 5
 
 
 @pytest.mark.parametrize(
@@ -85,15 +85,13 @@ def test_missing_password_fails_safely():
         redis_urls(live_staging=True)
 
 
-def test_local_legacy_urls_do_not_require_a_new_password(monkeypatch):
-    for name, db in zip(LEGACY_URL_SETTINGS[:4], range(4), strict=True):
+def test_local_url_overrides_do_not_require_a_password(monkeypatch):
+    for name, db in zip(URL_OVERRIDE_SETTINGS[:5], range(5), strict=True):
         monkeypatch.setenv(name, f"redis://localhost:6379/{db}")
     monkeypatch.setenv("CELERY_BROKER_URL", "memory://")
     monkeypatch.setenv("CELERY_RESULT_BACKEND", "cache+memory://")
     urls = redis_urls(live_staging=False)
     assert urls["REDIS_IDEMPOTENCY_URL"].endswith("/3")
-    # Overrides that predate the realtime database put realtime state in database 4 of the
-    # primary Redis server rather than requiring a new setting.
     assert urls["REDIS_REALTIME_URL"] == "redis://localhost:6379/4"
     monkeypatch.setenv("REDIS_REALTIME_URL", "redis://localhost:6380/9")
     assert redis_urls(live_staging=False)["REDIS_REALTIME_URL"] == "redis://localhost:6380/9"
@@ -101,8 +99,8 @@ def test_local_legacy_urls_do_not_require_a_new_password(monkeypatch):
     assert urls["CELERY_RESULT_BACKEND"] == "cache+memory://"
 
 
-@pytest.mark.parametrize("name", LEGACY_URL_SETTINGS)
-def test_live_staging_rejects_legacy_overrides_without_exposing_them(monkeypatch, name):
+@pytest.mark.parametrize("name", URL_OVERRIDE_SETTINGS)
+def test_live_staging_rejects_url_overrides_without_exposing_them(monkeypatch, name):
     monkeypatch.setenv(name, "redis://:password-sentinel@localhost:6379/0")
     with pytest.raises(ValueError) as error:
         redis_urls(live_staging=True)
@@ -121,9 +119,20 @@ def test_partial_local_override_preserves_other_derived_databases(monkeypatch):
 def test_django_settings_consumes_derived_urls_and_celery_defaults(monkeypatch):
     monkeypatch.setenv("REDIS_PASSWORD", "synthetic-secret")
     settings = runpy.run_path(str(Path(__file__).parents[1] / "config/settings.py"))
-    assert settings["REDIS_URL"].endswith("/0")
+    assert "REDIS_URL" not in settings
     assert settings["CACHES"]["default"]["LOCATION"].endswith("/1")
     assert settings["REDIS_RATE_LIMIT_URL"].endswith("/2")
     assert settings["REDIS_IDEMPOTENCY_URL"].endswith("/3")
-    assert settings["CELERY_BROKER_URL"] == settings["REDIS_URL"]
+    assert settings["CELERY_BROKER_URL"].endswith("/0")
     assert settings["CELERY_RESULT_BACKEND"] == settings["REDIS_CACHE_URL"]
+
+
+def test_local_urls_without_realtime_override_require_password(monkeypatch):
+    for name, db in zip(URL_OVERRIDE_SETTINGS[:4], range(4), strict=True):
+        monkeypatch.setenv(name, f"redis://localhost:6379/{db}")
+    with pytest.raises(ValueError, match="REDIS_PASSWORD is required"):
+        redis_urls(live_staging=False)
+    monkeypatch.setenv("REDIS_PASSWORD", "synthetic-secret")
+    urls = redis_urls(live_staging=False)
+    assert urls["REDIS_REALTIME_URL"] == "redis://:synthetic-secret@redis:6379/4"
+    assert urls["REDIS_URL"] == "redis://localhost:6379/0"

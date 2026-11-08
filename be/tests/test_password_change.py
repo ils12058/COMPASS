@@ -285,10 +285,9 @@ def test_totp_password_change_requires_recent_mfa_and_preserves_mfa_state():
 
 
 @pytest.mark.django_db
-@override_settings(AUTH_MFA_REQUIRED_ROLE_CODES=["STUDENT"])
 def test_role_required_mfa_without_totp_fails_closed():
     sync_policy()
-    user = make_user("required-mfa-change@example.edu")
+    user = make_user("required-mfa-change@example.edu", role="IT_ADMIN")
     client, _session = auth_client(user, recent_mfa=True)
 
     response = change(
