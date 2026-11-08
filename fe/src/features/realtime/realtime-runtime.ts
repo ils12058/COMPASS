@@ -17,14 +17,13 @@ export type RealtimeSnapshot = Readonly<{ state: RealtimeState; generation: numb
 export type TicketOutcome =
   | { kind: "ticket"; ticket: string; userId: string }
   | { kind: "session-ended" }
-  | { kind: "disabled" }
   | { kind: "unavailable" };
 
 /** The part of a browser WebSocket the runtime uses. */
 export type SocketLike = Pick<WebSocket, "onopen" | "onmessage" | "onclose" | "onerror" | "send" | "close">;
 
 export type RealtimeRuntimeOptions = {
-  /** The configured socket URL, or null when realtime is disabled for this build. */
+  /** The configured socket URL, or null when this build has no valid socket URL. */
   url: string | null;
   requestTicket: (signal: AbortSignal) => Promise<TicketOutcome>;
   createSocket: (url: string) => SocketLike;
@@ -84,7 +83,6 @@ export class RealtimeRuntime {
   private account: string | null = null;
   private online: boolean;
   private visible: boolean;
-  private serverDisabled = false;
   private everLive = false;
   private failures = 0;
   private connection: Connection | null = null;
@@ -173,7 +171,7 @@ export class RealtimeRuntime {
   }
 
   private active(): boolean {
-    return this.url !== null && !this.serverDisabled && this.account !== null;
+    return this.url !== null && this.account !== null;
   }
 
   private setState(state: RealtimeState, { advance = false } = {}): void {
@@ -191,7 +189,7 @@ export class RealtimeRuntime {
 
   /** Decide what to do now that nothing is connected or scheduled. */
   private evaluate(): void {
-    if (this.url === null || this.serverDisabled) return this.setState("disabled");
+    if (this.url === null) return this.setState("disabled");
     if (this.account === null) return this.setState("idle");
     if (!this.online) return this.setState("offline");
     if (!this.visible) return this.setState("idle");
@@ -218,12 +216,6 @@ export class RealtimeRuntime {
   private ticketReceived(url: string, connection: Connection, outcome: TicketOutcome): void {
     // A ticket for an attempt that was abandoned (another account, sign-out, offline) is dropped.
     if (connection !== this.connection) return;
-    if (outcome.kind === "disabled") {
-      this.connection = null;
-      this.serverDisabled = true;
-      this.setState("disabled");
-      return;
-    }
     if (outcome.kind === "ticket" && outcome.userId !== connection.account) {
       // The browser's session now belongs to someone else: never connect it for this account.
       outcome = { kind: "session-ended" };

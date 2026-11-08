@@ -12,7 +12,7 @@ cd "$release"
 export COMPASS_IMAGE="$IMAGE" COMPASS_SECRETS_DIR=/opt/compass/secrets
 # Never inherit the old selector's multi-file reset overlay or a caller's project/profile.
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES
-compose=(docker compose --project-name compass --profile realtime -f "$release/compose.staging.yaml")
+compose=(docker compose --project-name compass -f "$release/compose.staging.yaml")
 if [[ "${1:-}" == preflight ]]; then
   python3 deploy/runtime-secrets/check-runtime-secrets.py --secrets-dir /opt/compass/secrets --env-file /opt/compass/.env --owner compass >&2
   "${compose[@]}" config --format json > .candidate-config.json
@@ -104,10 +104,8 @@ done
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py initialize_organization_catalog --check </dev/null
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py migrate --check </dev/null
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py check --deploy --database default </dev/null
-# Preserve whether realtime was active. No --remove-orphans or implicit infrastructure startup.
-apps=(web worker beat proxy)
-realtime=$(python3 -c 'import json; print(str(json.load(open(".host-preflight.json"))["realtime"]).lower())')
-[[ "$realtime" != true ]] || apps+=(realtime)
+# Start every application service. No --remove-orphans or implicit infrastructure startup.
+apps=(web worker beat realtime proxy)
 "${compose[@]}" up -d --no-deps --pull never --wait --wait-timeout 180 "${apps[@]}"
 "${compose[@]}" exec -T web python manage.py compass_doctor --worker-smoke --worker-timeout 10
 python3 - "$DEPLOY_SHA" "$APP_VERSION" "$BUILD_TIME" <<'PY'
@@ -120,13 +118,13 @@ assert [meta['build_id'],meta['version'],meta['built_at']]==sys.argv[1:]
 # Check every actual app image, not only web's public response.
 import os
 expected_image=json.loads(subprocess.check_output(['docker','image','inspect',os.environ['COMPASS_IMAGE']]))[0]['Id']
-for name in ['web','worker','beat']+(['realtime'] if json.load(open('.host-preflight.json'))['realtime'] else []):
+for name in ['web','worker','beat','realtime']:
     c=json.loads(subprocess.check_output(['docker','inspect','compass-'+name+'-1']))[0]
     image=json.loads(subprocess.check_output(['docker','image','inspect',c['Image']]))[0]
     assert c['Image']==expected_image and image['Config']['Labels']['org.opencontainers.image.revision']==sys.argv[1] and c['State']['Running']
 PY
 # Only a validated canonical selector becomes active. Preserve a refusal, not an old-image rollback.
-printf 'COMPASS_IMAGE=%s\nCOMPASS_SECRETS_DIR=/opt/compass/secrets\nCOMPOSE_FILE=%s/compose.staging.yaml\nCOMPOSE_PROFILES=%s\n' "$IMAGE" "$release" "$([[ "$realtime" == true ]] && echo realtime || true)" > /opt/compass/.deploy.env.next
+printf 'COMPASS_IMAGE=%s\nCOMPASS_SECRETS_DIR=/opt/compass/secrets\nCOMPOSE_FILE=%s/compose.staging.yaml\n' "$IMAGE" "$release" > /opt/compass/.deploy.env.next
 chmod 640 /opt/compass/.deploy.env.next
 mv /opt/compass/.deploy.env.next /opt/compass/.deploy.env
 printf 'echo "Automatic rollback is prohibited; use reviewed canonical forward recovery" >&2\nreturn 1\n' > /opt/compass/.deploy.previous.env

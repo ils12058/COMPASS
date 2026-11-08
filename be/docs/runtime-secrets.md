@@ -61,7 +61,7 @@ remain trusted. A compromised authorized process can read its own grants.
 | `worker`, `beat` | original 22; Follow-Up, Messages and Assessment key/path explicitly empty, none of those key grants |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
-| `realtime` (optional `realtime` profile, ADR-100) | `redis_password` only; no `.env` file |
+| `realtime` (always running, ADR-100) | `redis_password` only; no `.env` file |
 | `proxy` | none |
 
 Keep all optional files present, even when empty. The Follow-Up key is a required, non-empty source

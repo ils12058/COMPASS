@@ -354,7 +354,6 @@ def test_template_operations_never_send_or_publish(
     world, settings, monkeypatch, django_capture_on_commit_callbacks
 ):
     office(world)
-    settings.REALTIME_ENABLED = True
     frames = []
     monkeypatch.setattr(publish, "_publish", lambda channel, frame: frames.append(frame) or True)
     counts = (GuidanceMessage.objects.count(), GuidanceThread.objects.count())

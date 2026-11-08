@@ -61,7 +61,6 @@ def limiter(monkeypatch):
 
 @pytest.fixture
 def hints(settings, monkeypatch):
-    settings.REALTIME_ENABLED = True
     frames = []
     monkeypatch.setattr(
         publish,
@@ -125,13 +124,6 @@ def test_unavailable_limiter_publishes_nothing_and_does_not_fail(world, limiter,
     limiter.unavailable = True
     assert typing(world.student, thread) is False
     assert hints == []
-
-
-def test_realtime_off_skips_the_limiter(world, limiter, hints, settings):
-    thread, _ = office(world)
-    settings.REALTIME_ENABLED = False
-    assert typing(world.student, thread) is False
-    assert limiter.subjects == [] and hints == []
 
 
 def test_nothing_is_stored_or_audited(world, limiter, hints):

@@ -1,5 +1,5 @@
 import type { TicketOutcome } from "@/features/realtime/realtime-runtime";
-import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { CompassApiError } from "@/lib/api/errors";
 import { realtimeIssueTicket } from "@/lib/api/generated/realtime/realtime";
 
 // Tickets come from the ordinary same-origin API, so the session cookie and CSRF handling stay in
@@ -14,9 +14,6 @@ export async function requestRealtimeTicket(signal: AbortSignal): Promise<Ticket
   } catch (error) {
     if (error instanceof CompassApiError) {
       if (error.status === 401) return { kind: "session-ended" };
-      if (error.status === 503 && readApiErrorCode(error.body) === "realtime_disabled") {
-        return { kind: "disabled" };
-      }
     }
     return { kind: "unavailable" };
   }

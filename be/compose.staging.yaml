@@ -143,13 +143,12 @@ services:
         condition: service_healthy
 
   # Django-free realtime WebSocket hints (ADR-100). A separate process from Gunicorn that reuses
-  # the image. It is opt-in (COMPOSE_PROFILES=realtime) and receives only Redis settings, the
+  # the image. It runs by default and receives only Redis settings, the
   # Redis password file, and the exact browser Origins: no env_file, database credentials,
   # SECRET_KEY, or content keyrings.
   realtime:
     image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
     pull_policy: never
-    profiles: ["realtime"]
     restart: unless-stopped
     command:
       [

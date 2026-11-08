@@ -68,8 +68,11 @@ class RegistryTagParserTests(unittest.TestCase):
 
     def test_workflow_preserves_immutable_sha_and_digest_verification(self):
         workflow = (ROOT / ".github/workflows/deploy-staging.yml").read_text()
-        self.assertIn("read_doctl_tag_digest.py \"$tags\" \"$DEPLOY_SHA\"", workflow)
-        self.assertIn('image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"', workflow)
+        self.assertIn('read_doctl_tag_digest.py "$tags" "$DEPLOY_SHA"', workflow)
+        self.assertIn(
+            'image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"',
+            workflow,
+        )
         self.assertIn('[[ -z "$existing_digest" || "$existing_digest" == "$digest" ]]', workflow)
         self.assertIn('[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]', workflow)
 
@@ -228,17 +231,20 @@ class DestinationTests(unittest.TestCase):
             + ("a" * 64)
             + "\nCOMPASS_SECRETS_DIR=/opt/compass/secrets\nCOMPOSE_FILE=/opt/compass/releases/"
             + ("b" * 40)
-            + "/compose.staging.yaml\nCOMPOSE_PROFILES=realtime\n"
+            + "/compose.staging.yaml\n"
         )
         with tempfile.TemporaryDirectory() as directory:
             p = Path(directory) / "selector"
             with patch.object(host.Path, "is_file", return_value=True):
                 p.write_text(good)
-                self.assertEqual(host.read_selector(p)["COMPOSE_PROFILES"], "realtime")
+                self.assertEqual(
+                    host.read_selector(p)["COMPASS_SECRETS_DIR"], "/opt/compass/secrets"
+                )
                 for bad in [
                     good + "echo oops\n",
+                    good + "COMPOSE_PROFILES=realtime\n",
                     good.replace("sha256:" + ("a" * 64), "latest"),
-                    good.replace("realtime", "$(touch /tmp/unsafe)"),
+                    good.replace("compass/secrets", "$(touch /tmp/unsafe)"),
                     good.replace("compass/secrets", "other/secrets"),
                 ]:
                     p.write_text(bad)
@@ -346,6 +352,9 @@ class OrderingTests(unittest.TestCase):
             script.index("phase=migrating"), script.index("python manage.py migrate --noinput")
         )
         self.assertIn("up -d --no-deps --pull never", script)
+        self.assertIn("apps=(web worker beat realtime proxy)", script)
+        self.assertIn("for name in ['web','worker','beat','realtime']:", script)
+        self.assertNotIn("--profile realtime", script)
         for forbidden in [
             "down -v",
             "volume rm",

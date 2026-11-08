@@ -26,7 +26,6 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 @pytest.fixture
 def publications(settings, monkeypatch):
-    settings.REALTIME_ENABLED = True
     messages = []
     monkeypatch.setattr(
         publish,
@@ -112,14 +111,12 @@ def test_read_state_hint_is_only_for_readers_own_sessions(world, publications):
 def test_actual_redis_connection_failure_never_undoes_writes(
     world, settings, monkeypatch, operation
 ):
-    settings.REALTIME_ENABLED = False
     thread, _ = office(world)
     if operation == "reopen":
         services.set_status(actor=world.counselor, thread_id=thread.pk, resolved=True)
     # A real refused TCP connection, independent of the CI Redis service used by other suites.
     failing = redis.Redis(host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1)
     monkeypatch.setattr(publish, "realtime_redis", lambda: failing)
-    settings.REALTIME_ENABLED = True
     if operation == "create":
         result = counseling(world)[0]
     elif operation == "send":
@@ -150,7 +147,6 @@ def test_actual_redis_connection_failure_never_undoes_writes(
 
 @pytest.mark.parametrize("kind", ["OFFICE", "COUNSELING"])
 def test_real_sockets_authenticated_http_commits_and_read_receipt_freshness(world, settings, kind):
-    settings.REALTIME_ENABLED = True
     connection._client.cache_clear()
     users = [
         world.student,

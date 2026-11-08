@@ -106,11 +106,11 @@ cap) and reset after 60 s of live connection or a 4000 close. Features use `useR
 increases on each `ready`) and `useRealtimeEvent`; they never construct a WebSocket. The provider
 fetches no feature data.
 
-### Dark launch
+### Always-on transport (Phase B refinement)
 
-Off by default everywhere: `REALTIME_ENABLED=false` (Django issues no tickets and never contacts
-realtime Redis), the `realtime` Compose profile (the service does not run), and
-`NEXT_PUBLIC_REALTIME_ENABLED` unset (no ticket request, no socket). No feature depends on it.
+Django always issues tickets and publishes best-effort hints and session revocations. The realtime
+Compose service runs by default. The frontend connects whenever `NEXT_PUBLIC_REALTIME_URL` names a
+valid socket URL; its local test-mode seam is preserved. HTTP and polling remain authoritative.
 
 ## Consequences
 
@@ -121,8 +121,8 @@ realtime Redis), the `realtime` Compose profile (the service does not run), and
   revocation, that session's socket can survive until its lifetime ends (at most 15 minutes) and
   receives only content-free hints. Its tickets cannot be renewed, because the HTTP session is
   already revoked.
-- Disabling realtime safely means stopping the realtime service before setting
-  `REALTIME_ENABLED=false`, because Django stops publishing revocations once it is disabled.
+- Service outages never switch off Django publishing or revocation hooks. Browser retries and
+  existing polling heal missed hints after connectivity returns.
 - A deploy restarts the service and closes every socket (1012); clients reconnect with backoff.
   There is no socket migration.
 - Not included: Notification hints, Guidance Messages, presence, typing, read receipts,

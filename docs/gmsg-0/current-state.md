@@ -306,8 +306,7 @@ selection/decryption or read-state write") feeds the Student Action Center (ADR-
 - Publisher `be/compass/realtime/publish.py` (102 lines): docstring `:1-11` "PostgreSQL commits are
   authoritative", "deliberately no outbox", "failures are logged and dropped"; `_publish` swallows
   `(redis.RedisError, OSError)` with a `realtime_publish_failed` warning carrying no payload/user
-  (`:31-40`); `publish_to_user_on_commit` (`:57-65`) validates the event **before** the
-  `REALTIME_ENABLED` check (`:62`) and publishes per-user inside
+  (`:31-40`); `publish_to_user_on_commit` (`:57-65`) validates the event and publishes per-user inside
   `transaction.on_commit(..., robust=True)` (`:65`). Fan-out is a caller-side loop; **no thread
   fan-out primitive exists**.
 - FE mirror `fe/src/features/realtime/realtime-protocol.ts:28-34` (Guidance entry `:31`) re-derives

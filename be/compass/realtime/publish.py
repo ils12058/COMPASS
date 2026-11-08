@@ -49,8 +49,6 @@ def publish_to_user(user_id, event_type: str, fields: Mapping[str, object] | Non
 
     payload = protocol.encode_event(event_type, fields or {})
     channel = protocol.user_channel(user_id)
-    if not settings.REALTIME_ENABLED:
-        return False
     return _publish(channel, payload)
 
 
@@ -61,8 +59,7 @@ def publish_to_user_on_commit(
 
     payload = protocol.encode_event(event_type, fields or {})
     channel = protocol.user_channel(user_id)
-    if settings.REALTIME_ENABLED:
-        transaction.on_commit(partial(_publish, channel, payload), robust=True)
+    transaction.on_commit(partial(_publish, channel, payload), robust=True)
 
 
 def _close_session_sockets(session_id: str) -> bool:
@@ -95,8 +92,7 @@ def _close_session_sockets(session_id: str) -> bool:
 def close_session_sockets_on_commit(session_id) -> None:
     """After a revocation commits, close the AuthSession's sockets and void its tickets."""
 
-    if settings.REALTIME_ENABLED:
-        canonical = protocol.canonical_uuid(session_id)
-        if canonical is None:
-            raise ValueError("session_id must be a UUID")
-        transaction.on_commit(partial(_close_session_sockets, canonical), robust=True)
+    canonical = protocol.canonical_uuid(session_id)
+    if canonical is None:
+        raise ValueError("session_id must be a UUID")
+    transaction.on_commit(partial(_close_session_sockets, canonical), robust=True)

@@ -100,8 +100,6 @@ def run(test, **config_overrides):
 
     async def main():
         client = aioredis.Redis.from_url(redis_url(), decode_responses=True)
-        for key in [key async for key in client.scan_iter(match=f"{protocol.KEY_PREFIX}:*")]:
-            await client.delete(key)
         cfg = config(**config_overrides)
         service_redis = store.create_client(cfg)
         app = RealtimeApp(cfg, redis_client=service_redis)

@@ -13,6 +13,7 @@ import json
 import re
 import time
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import redis
@@ -30,7 +31,7 @@ from compass.authentication.security import (
     invalidate_reusable_auth_state,
 )
 from compass.authentication.sessions import create_auth_session, revoke_auth_session
-from compass.realtime import connection, publish, tickets
+from compass.realtime import connection, publish
 from realtime_service import protocol, store
 
 BACKEND = Path(__file__).parents[1]
@@ -38,8 +39,8 @@ TICKETS = "/api/v1/realtime/tickets"
 
 
 @pytest.fixture
-def realtime_redis(settings):
-    settings.REALTIME_ENABLED = True
+def realtime_redis(settings, monkeypatch):
+    monkeypatch.setattr(protocol, "KEY_PREFIX", f"compass:realtime:test:{uuid4()}")
     connection._client.cache_clear()
     client = redis.Redis.from_url(settings.REDIS_REALTIME_URL, decode_responses=True)
 
@@ -122,7 +123,7 @@ def test_authenticated_session_receives_a_short_lived_digest_only_ticket(realtim
     assert re.fullmatch(r"[A-Za-z0-9_-]{43}", ticket)
 
     digest = hashlib.sha256(ticket.encode()).hexdigest()
-    assert realtime_keys(realtime_redis) == [f"compass:realtime:ticket:{digest}"]
+    assert realtime_keys(realtime_redis) == [f"{protocol.KEY_PREFIX}:ticket:{digest}"]
     key = realtime_keys(realtime_redis)[0]
     assert 0 < realtime_redis.ttl(key) <= 30
     stored = realtime_redis.get(key)
@@ -193,33 +194,7 @@ def test_ticket_endpoint_ignores_any_requested_identity(realtime_redis):
 
 
 @pytest.mark.django_db
-def test_disabled_realtime_issues_nothing_and_never_contacts_redis(
-    settings, monkeypatch, django_capture_on_commit_callbacks
-):
-    settings.REALTIME_ENABLED = False
-
-    def forbidden():
-        pytest.fail("realtime Redis must not be used while realtime is disabled")
-
-    monkeypatch.setattr(tickets, "realtime_redis", forbidden)
-    monkeypatch.setattr(publish, "realtime_redis", forbidden)
-    client, session = session_client(make_user("disabled@example.edu"))
-
-    response = issue(client)
-
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "realtime_disabled"
-    assert response["Cache-Control"] == "no-store"
-    with django_capture_on_commit_callbacks(execute=True) as callbacks:
-        response = client.post("/api/v1/auth/logout", **csrf(client))
-    assert response.status_code == 200
-    assert callbacks == []
-    assert AuthSession.objects.get(pk=session.pk).revoked_at is not None
-
-
-@pytest.mark.django_db
 def test_unavailable_realtime_redis_does_not_break_http(settings):
-    settings.REALTIME_ENABLED = True
     settings.REDIS_REALTIME_URL = "redis://127.0.0.1:1/4"
     settings.REDIS_SOCKET_TIMEOUT = 0.2
     connection._client.cache_clear()
@@ -514,7 +489,4 @@ def test_publish_helper_is_content_free_best_effort_and_after_commit(
     settings.REDIS_REALTIME_URL = "redis://127.0.0.1:1/4"
     settings.REDIS_SOCKET_TIMEOUT = 0.2
     connection._client.cache_clear()
-    assert publish.publish_to_user(user.pk, "test.changed") is False
-
-    settings.REALTIME_ENABLED = False
     assert publish.publish_to_user(user.pk, "test.changed") is False

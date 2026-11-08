@@ -59,8 +59,7 @@ ORIGINAL_PUBLISH = publish._publish
 
 @pytest.fixture(autouse=True)
 def synthetic_boundaries(settings, monkeypatch):
-    settings.REALTIME_ENABLED = settings.DAILY_ENABLED = True
-    settings.ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED = True
+    settings.DAILY_ENABLED = True
     monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
     monkeypatch.setattr(artifacts, "enqueue_artifact", lambda _: None)
@@ -333,15 +332,13 @@ def test_reassignment_resolves_current_provider_before_each_publication(
     assert_hints(frames, appointment, [student, replacement])
 
 
-@pytest.mark.parametrize("transport", ["disabled", "redis-refused", "resolver-error"])
+@pytest.mark.parametrize("transport", ["redis-refused", "resolver-error"])
 def test_transport_and_lookup_failures_never_undo_capture_intent(
     frames, settings, monkeypatch, caplog, transport
 ):
     student, counselor, appointment, client = authorized_session()
     frames.clear()
-    if transport == "disabled":
-        settings.REALTIME_ENABLED = False
-    elif transport == "redis-refused":
+    if transport == "redis-refused":
         refused = redis.Redis(
             host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1
         )

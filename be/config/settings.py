@@ -193,10 +193,8 @@ REDIS_REALTIME_URL = _redis_urls["REDIS_REALTIME_URL"]
 REDIS_SOCKET_TIMEOUT = env_float("REDIS_SOCKET_TIMEOUT", 2.0)
 RATE_LIMITER_FAIL_OPEN = env_bool("RATE_LIMITER_FAIL_OPEN", False)
 
-# Realtime transport (ADR-100). Off by default: when false, Django issues no realtime tickets and
-# never contacts the realtime Redis database. Tickets authenticate one WebSocket each and expire
+# Realtime transport (ADR-100) is always on. Tickets authenticate one WebSocket each and expire
 # quickly; a revoked AuthSession's marker outlives every ticket minted before the revocation.
-REALTIME_ENABLED = env_bool("REALTIME_ENABLED", False)
 REALTIME_TICKET_TTL_SECONDS = env_int("REALTIME_TICKET_TTL_SECONDS", 30)
 REALTIME_REVOCATION_TTL_SECONDS = env_int("REALTIME_REVOCATION_TTL_SECONDS", 3600)
 if not 5 <= REALTIME_TICKET_TTL_SECONDS <= 120:

@@ -2,7 +2,6 @@
 
 from uuid import UUID
 
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import (
     BigIntegerField,
@@ -982,8 +981,6 @@ def signal_typing(*, actor, thread_id):
             raise ThreadNotFound()
         if referral.voided_at is not None:
             raise ReferralVoided()
-    if not settings.REALTIME_ENABLED:
-        return False
     try:
         allowed = (
             RedisRateLimiter.from_settings()

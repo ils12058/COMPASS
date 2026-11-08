@@ -69,8 +69,6 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             str(tmp_path / ".env"),
             "-f",
             str(tmp_path / manifest),
-            "--profile",
-            "realtime",
             "config",
             "--format",
             "json",
@@ -222,7 +220,7 @@ def _assert_realtime_receives_only_its_own_configuration(config, manifest):
     """The realtime process (ADR-100) gets Redis and Origins only, never app or DB secrets."""
 
     realtime = config["services"]["realtime"]
-    assert realtime["profiles"] == ["realtime"]
+    assert not realtime.get("profiles")
     assert realtime["command"][:2] == ["uvicorn", "realtime_service.app:app"]
     assert "gunicorn" not in realtime["command"]
     assert "env_file" not in realtime

@@ -1,5 +1,5 @@
-// Realtime is a dark-launched acceleration layer (ADR-100): it is off unless this build enables it
-// and names the realtime WebSocket URL, and nothing in COMPASS depends on it being on.
+// Realtime is an acceleration layer (ADR-100): it connects whenever this build names the
+// realtime WebSocket URL, and HTTP plus polling remain authoritative.
 //
 // The socket connects directly to the API host's realtime route. It never relies on cookies:
 // a one-time ticket from the ordinary same-origin HTTP API authenticates it.
@@ -22,11 +22,10 @@ const DISABLED: RealtimeConfig = { enabled: false };
 
 /** Accepts only the exact realtime socket URL: wss (ws outside production), no query or fragment. */
 export function parseRealtimeConfig(
-  enabled: string | undefined,
   url: string | undefined,
   { production }: { production: boolean },
 ): RealtimeConfig {
-  if (enabled?.trim() !== "true" || !url) return DISABLED;
+  if (!url) return DISABLED;
   let parsed: URL;
   try {
     parsed = new URL(url.trim());
@@ -53,14 +52,13 @@ export function realtimeConfig(): RealtimeConfig {
   const production = process.env.NODE_ENV === "production";
   // Keep the literal build guard here so ordinary production drops even the window seam read.
   if ((process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE === "1") && browserTestRuntimeEnabled() && window.__COMPASS_REALTIME_TEST_CONFIG__) {
-    const testConfig = parseRealtimeConfig("true", window.__COMPASS_REALTIME_TEST_CONFIG__.url, { production: false });
+    const testConfig = parseRealtimeConfig(window.__COMPASS_REALTIME_TEST_CONFIG__.url, { production: false });
     return testConfig.enabled && isLoopbackHostname(new URL(testConfig.url).hostname)
       ? testConfig
       : DISABLED;
   }
   // Next inlines NEXT_PUBLIC_* values at build time, so they must be read literally.
   return parseRealtimeConfig(
-    process.env.NEXT_PUBLIC_REALTIME_ENABLED,
     process.env.NEXT_PUBLIC_REALTIME_URL,
     { production },
   );

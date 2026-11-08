@@ -6,7 +6,6 @@ import logging
 from functools import partial
 from uuid import UUID
 
-from django.conf import settings
 from django.db import transaction
 
 from compass.realtime.publish import publish_to_user_on_commit
@@ -24,8 +23,6 @@ def _recipient_id(appointment_id: UUID, *, student: bool) -> UUID | None:
 
 
 def _publish_current(appointment_id: UUID) -> None:
-    if not settings.REALTIME_ENABLED:
-        return
     try:
         sent = set()
         for student in (True, False):
@@ -50,5 +47,4 @@ def _publish_current(appointment_id: UUID) -> None:
 def consent_changed_on_commit(appointment_id: UUID) -> None:
     """One best-effort hint per current recipient, discarded by any enclosing rollback."""
 
-    if settings.REALTIME_ENABLED:
-        transaction.on_commit(partial(_publish_current, appointment_id), robust=True)
+    transaction.on_commit(partial(_publish_current, appointment_id), robust=True)

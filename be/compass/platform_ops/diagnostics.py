@@ -205,15 +205,6 @@ def _realtime_health_state(path: str) -> bool | None:
 def probe_realtime_service() -> DiagnosticCheck:
     code = "realtime_service"
     label = "Realtime communication"
-    if not settings.REALTIME_ENABLED:
-        return DiagnosticCheck(
-            code=code,
-            label=label,
-            status=DiagnosticStatus.DISABLED,
-            summary="Realtime communication is disabled for this deployment.",
-            required=False,
-        )
-
     try:
         # Read liveness first: a valid response establishes the service is running.
         # Only a canonical 503 readiness response means the live service is degraded.
@@ -423,7 +414,6 @@ def collect_environment_diagnostics() -> EnvironmentDiagnostics:
             code="realtime",
             label="Realtime communication",
             values=(
-                ConfigurationValue("enabled", "Realtime enabled", bool(settings.REALTIME_ENABLED)),
                 ConfigurationValue(
                     "redis_configured",
                     "Realtime Redis configured",

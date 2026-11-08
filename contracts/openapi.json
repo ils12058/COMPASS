@@ -66732,7 +66732,7 @@
     },
     "/api/v1/realtime/tickets": {
       "post": {
-        "description": "Mints a single-use ticket for the current session. The client sends it as the first WebSocket frame to the realtime service and never places it in a URL. The ticket expires within seconds and authenticates at most one socket. `user_id` is the account the ticket belongs to. Returns 503 `realtime_disabled` when realtime is turned off and 503 `realtime_unavailable` when it is temporarily unavailable.",
+        "description": "Mints a single-use ticket for the current session. The client sends it as the first WebSocket frame to the realtime service and never places it in a URL. The ticket expires within seconds and authenticates at most one socket. `user_id` is the account the ticket belongs to. Returns 503 `realtime_unavailable` when realtime is temporarily unavailable.",
         "operationId": "realtimeIssueTicket",
         "parameters": [],
         "responses": {

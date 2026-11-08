@@ -183,7 +183,7 @@ def test_redis_concerns_and_celery_broker_fail_independently(failed_index):
         patch("compass.platform_ops.diagnostics.redis.Redis.from_url", side_effect=clients),
         patch("compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False),
         patch("compass.platform_ops.diagnostics.Mailer.probe_connection"),
-        override_settings(REALTIME_ENABLED=False),
+        patch("compass.platform_ops.diagnostics._realtime_health_state", return_value=True),
     ):
         health = collect_platform_health()
 
@@ -261,7 +261,7 @@ def test_automatic_health_contains_only_real_probes(daily_enabled, turnstile_ena
         patch("compass.platform_ops.diagnostics.redis.Redis.from_url") as redis_factory,
         patch("compass.platform_ops.diagnostics.ObjectStorage.exists", return_value=False),
         patch("compass.platform_ops.diagnostics.Mailer.probe_connection"),
-        override_settings(REALTIME_ENABLED=False),
+        patch("compass.platform_ops.diagnostics._realtime_health_state", return_value=True),
     ):
         redis_factory.return_value.ping.return_value = True
         health = collect_platform_health()
@@ -310,7 +310,6 @@ def test_overall_status_derivation_is_deterministic():
     REDIS_IDEMPOTENCY_URL="redis://SENTINEL_REDIS_PASSWORD@idem.invalid/3",
     CELERY_BROKER_URL="redis://SENTINEL_REDIS_PASSWORD@broker.invalid/0",
     REDIS_REALTIME_URL="redis://SENTINEL_REALTIME_PASSWORD@realtime.invalid/4",
-    REALTIME_ENABLED=True,
     S3_BUCKET_NAME="SENTINEL_BUCKET",
     S3_ACCESS_KEY_ID="SENTINEL_S3_ACCESS",
     S3_SECRET_ACCESS_KEY="SENTINEL_S3_SECRET",
@@ -357,7 +356,7 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
         value["code"]: value["value"] for value in categories["notification_delivery"]["values"]
     }
     realtime_values = {value["code"]: value["value"] for value in categories["realtime"]["values"]}
-    assert realtime_values == {"enabled": True, "redis_configured": True}
+    assert realtime_values == {"redis_configured": True}
     assert authentication_values["turnstile_enabled"] is settings.TURNSTILE_ENABLED
     assert authentication_values["turnstile_configured"] is True
     assert daily_values["enabled"] is settings.DAILY_ENABLED
@@ -495,14 +494,13 @@ def test_public_liveness_and_readiness_do_not_depend_on_platform_probes(client):
     }
 
 
-def test_environment_realtime_disabled_and_unconfigured():
+def test_environment_realtime_unconfigured():
     from compass.platform_ops.diagnostics import collect_environment_diagnostics
 
-    with override_settings(REALTIME_ENABLED=False, REDIS_REALTIME_URL=""):
+    with override_settings(REDIS_REALTIME_URL=""):
         environment = collect_environment_diagnostics()
     realtime = next(item for item in environment.categories if item.code == "realtime")
     assert {item.code: item.value for item in realtime.values} == {
-        "enabled": False,
         "redis_configured": False,
     }
 
@@ -513,18 +511,6 @@ def _realtime_http_response(status, payload, *, content_type="application/json")
     response.getheader.return_value = content_type
     response.read.return_value = payload
     return response
-
-
-def test_realtime_disabled_does_not_attempt_network_and_is_optional():
-    with (
-        override_settings(REALTIME_ENABLED=False),
-        patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
-    ):
-        check = probe_realtime_service()
-    factory.assert_not_called()
-    assert check.status == DiagnosticStatus.DISABLED
-    assert check.required is False
-    assert derive_overall_status((check,)) == DiagnosticStatus.HEALTHY
 
 
 @pytest.mark.parametrize(
@@ -544,7 +530,6 @@ def test_realtime_readiness_status_contract(ready_status, ready_payload, expecte
     live = _realtime_http_response(200, b'{"status":"ok"}')
     ready = _realtime_http_response(ready_status, ready_payload)
     with (
-        override_settings(REALTIME_ENABLED=True),
         patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
     ):
         factory.return_value.getresponse.side_effect = [live, ready]
@@ -569,7 +554,6 @@ def test_realtime_readiness_status_contract(ready_status, ready_payload, expecte
 def test_realtime_invalid_liveness_never_checks_readiness(status):
     response = _realtime_http_response(status, b'{"status":"unavailable"}')
     with (
-        override_settings(REALTIME_ENABLED=True),
         patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
     ):
         factory.return_value.getresponse.return_value = response
@@ -588,7 +572,6 @@ def test_realtime_invalid_liveness_never_checks_readiness(status):
 )
 def test_realtime_network_failures_are_unavailable_and_sanitized(failure):
     with (
-        override_settings(REALTIME_ENABLED=True),
         patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
     ):
         factory.return_value.getresponse.side_effect = failure
@@ -600,7 +583,6 @@ def test_realtime_network_failures_are_unavailable_and_sanitized(failure):
 
 def test_realtime_failing_required_check_degrades_aggregate_but_not_collector():
     with (
-        override_settings(REALTIME_ENABLED=True),
         patch("compass.platform_ops.diagnostics.probe_database") as database,
         patch("compass.platform_ops.diagnostics.probe_redis_cache") as cache,
         patch("compass.platform_ops.diagnostics.probe_redis_rate_limit") as limit,
@@ -624,7 +606,7 @@ def test_realtime_failing_required_check_degrades_aggregate_but_not_collector():
 def test_compass_doctor_realtime_configuration_only_never_probes():
     output = StringIO()
     with (
-        override_settings(REALTIME_ENABLED=True, REDIS_REALTIME_URL="redis://secret@localhost/4"),
+        override_settings(REDIS_REALTIME_URL="redis://secret@localhost/4"),
         patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
         patch(
             "compass.platform_ops.management.commands.compass_doctor.collect_platform_health"
@@ -637,32 +619,16 @@ def test_compass_doctor_realtime_configuration_only_never_probes():
     assert "realtime" in output.getvalue().lower()
 
 
-def test_compass_doctor_realtime_disabled_and_enabled_failure():
+def test_compass_doctor_realtime_failure():
     from django.core.management.base import CommandError
 
     base = healthy_platform_health().checks
-    disabled = DiagnosticCheck(
-        "realtime_service",
-        "Realtime communication",
-        DiagnosticStatus.DISABLED,
-        "Realtime communication is disabled for this deployment.",
-        required=False,
-    )
     failed = DiagnosticCheck(
         "realtime_service",
         "Realtime communication",
         DiagnosticStatus.UNAVAILABLE,
         "The dependency did not respond successfully to the safe diagnostic probe.",
     )
-    with patch(
-        "compass.platform_ops.management.commands.compass_doctor.collect_platform_health",
-        return_value=PlatformHealth(
-            DiagnosticStatus.HEALTHY, timezone.now(), "Ready", base + (disabled,)
-        ),
-    ):
-        output = StringIO()
-        call_command("compass_doctor", stdout=output)
-        assert "[INFO] Realtime communication" in output.getvalue()
     with patch(
         "compass.platform_ops.management.commands.compass_doctor.collect_platform_health",
         return_value=PlatformHealth(

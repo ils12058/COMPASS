@@ -130,10 +130,8 @@ function createHarness({ url = SOCKET_URL, online = true, visible = true } = {})
 
 test("configuration enables realtime only for the exact socket URL", () => {
   const production = { production: true };
-  assert.deepEqual(parseRealtimeConfig("true", SOCKET_URL, production), { enabled: true, url: SOCKET_URL });
-  assert.deepEqual(parseRealtimeConfig(undefined, SOCKET_URL, production), { enabled: false });
-  assert.deepEqual(parseRealtimeConfig("false", SOCKET_URL, production), { enabled: false });
-  assert.deepEqual(parseRealtimeConfig("true", undefined, production), { enabled: false });
+  assert.deepEqual(parseRealtimeConfig(SOCKET_URL, production), { enabled: true, url: SOCKET_URL });
+  assert.deepEqual(parseRealtimeConfig(undefined, production), { enabled: false });
   for (const url of [
     "ws://staging-api.example.test/api/realtime/v1/socket",
     "https://staging-api.example.test/api/realtime/v1/socket",
@@ -145,15 +143,15 @@ test("configuration enables realtime only for the exact socket URL", () => {
     "wss://staging-api.example.test/api/realtime/v1/socket/",
     "not a url",
   ]) {
-    assert.deepEqual(parseRealtimeConfig("true", url, production), { enabled: false }, url);
+    assert.deepEqual(parseRealtimeConfig(url, production), { enabled: false }, url);
   }
   assert.deepEqual(
-    parseRealtimeConfig("true", `ws://localhost:8080${REALTIME_SOCKET_PATH}`, { production: false }),
+    parseRealtimeConfig(`ws://localhost:8080${REALTIME_SOCKET_PATH}`, { production: false }),
     { enabled: true, url: `ws://localhost:8080${REALTIME_SOCKET_PATH}` },
   );
 });
 
-test("a disabled build never requests a ticket or opens a socket", async () => {
+test("a build without a socket URL never requests a ticket or opens a socket", async () => {
   const h = createHarness({ url: null });
   h.runtime.setAccount("a");
   h.runtime.setOnline(false);
@@ -168,12 +166,11 @@ test("a disabled build never requests a ticket or opens a socket", async () => {
 
 test("realtime test configuration is confined to an explicit local test runtime and local socket", () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  const keys = ["NODE_ENV", "NEXT_PUBLIC_COMPASS_UI_TEST_MODE", "NEXT_PUBLIC_REALTIME_ENABLED", "NEXT_PUBLIC_REALTIME_URL"];
+  const keys = ["NODE_ENV", "NEXT_PUBLIC_COMPASS_UI_TEST_MODE", "NEXT_PUBLIC_REALTIME_URL"];
   const previousEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   const localUrl = `ws://127.0.0.1:8080${REALTIME_SOCKET_PATH}`;
   try {
     process.env.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_REALTIME_ENABLED = "true";
     process.env.NEXT_PUBLIC_REALTIME_URL = SOCKET_URL;
     globalThis.window = { location: { hostname: "127.0.0.1" }, __COMPASS_REALTIME_TEST_CONFIG__: { url: localUrl } };
     delete process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE;
@@ -514,20 +511,6 @@ test("consumers share the one socket and receive only valid hints after ready", 
   assert.deepEqual(second, [JSON.parse(event)]);
   assert.equal(h.sockets.length, 1);
   assert.equal(h.state(), "live");
-});
-
-test("a server that has realtime turned off stops all attempts", async () => {
-  const h = createHarness();
-  h.runtime.setAccount("a");
-  h.tickets[0].resolve({ kind: "disabled" });
-  await flush();
-  assert.equal(h.state(), "disabled");
-  h.runtime.setOnline(false);
-  h.runtime.setOnline(true);
-  h.runtime.setAccount("b");
-  await h.advance(60 * 60_000);
-  assert.equal(h.tickets.length, 1);
-  assert.equal(h.sockets.length, 0);
 });
 
 test("server frames are content-free and versioned", () => {

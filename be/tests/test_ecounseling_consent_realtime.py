@@ -38,7 +38,6 @@ ORIGINAL_PUBLISH = publish._publish
 @pytest.fixture
 def world(settings, monkeypatch):
     # All data and provider behavior are synthetic; normal notification rows are preserved.
-    settings.REALTIME_ENABLED = True
     monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
     admin, student, counselor, appointment = setup_session(precreate_room=False)
@@ -227,24 +226,19 @@ def test_outer_or_nested_rollback_discards_hint_and_state(world, publications, o
 
 
 @pytest.mark.parametrize("operation", ["request", "approve", "deny", "withdraw"])
-@pytest.mark.parametrize("transport", ["disabled", "refused"])
 def test_transport_failure_never_changes_committed_operation(
-    world, publications, settings, monkeypatch, operation, transport
+    world, publications, monkeypatch, operation
 ):
-    settings.REALTIME_ENABLED = False
     consent = None if operation == "request" else request(world)[0]
     if operation == "withdraw":
         decide(world, consent)
-    if transport == "refused":
-        settings.REALTIME_ENABLED = True
-        # A real refused loopback connection, unrelated to the test Redis instance.
-        client = redis.Redis(
-            host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1
-        )
-        monkeypatch.setattr(publish, "_publish", ORIGINAL_PUBLISH)
-        monkeypatch.setattr(publish, "realtime_redis", lambda: client)
-        monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
-        monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
+    publications.clear()
+    # A real refused loopback connection, unrelated to the test Redis instance.
+    client = redis.Redis(host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1)
+    monkeypatch.setattr(publish, "_publish", ORIGINAL_PUBLISH)
+    monkeypatch.setattr(publish, "realtime_redis", lambda: client)
+    monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
+    monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
     if operation == "request":
         result = request(world)[0]
         assert ECounselingConsent.objects.filter(pk=result["id"]).exists()
@@ -411,7 +405,6 @@ def test_public_contract_rejects_malformed_appointment(identifier):
 
 def test_real_redis_socket_and_authorized_http_consent_flow(world, settings, monkeypatch):
     _, student, counselor, appointment = world
-    settings.REALTIME_ENABLED = True
     realtime_connection._client.cache_clear()
     other = make_user("socket-other@example.edu", "COUNSELOR")
     clients = [auth_client(student), auth_client(counselor), auth_client(other)]

@@ -32,7 +32,6 @@ def read(actor, thread, sequence):
 
 @pytest.fixture
 def publications(settings, monkeypatch):
-    settings.REALTIME_ENABLED = True
     frames = []
     monkeypatch.setattr(
         publish,

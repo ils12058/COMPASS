@@ -40,7 +40,7 @@ def docker_json(*args):
 
 
 def read_selector(path=Path("/opt/compass/.deploy.env")):
-    allowed = {"COMPASS_IMAGE", "COMPASS_SECRETS_DIR", "COMPOSE_FILE", "COMPOSE_PROFILES"}
+    allowed = {"COMPASS_IMAGE", "COMPASS_SECRETS_DIR", "COMPOSE_FILE"}
     result = {}
     for line in path.read_text().splitlines():
         require("=" in line, "Selector is not a canonical assignment file")
@@ -60,7 +60,6 @@ def read_selector(path=Path("/opt/compass/.deploy.env")):
         "Mutable image selector",
     )
     require(result["COMPASS_SECRETS_DIR"] == "/opt/compass/secrets", "Unexpected secrets directory")
-    require(result["COMPOSE_PROFILES"] in ("", "realtime"), "Unknown Compose profile")
     for filename in result["COMPOSE_FILE"].split(":"):
         require(
             re.fullmatch(
@@ -208,10 +207,6 @@ def inspect(candidate):
         all(Path(f).parent.name == revision for f in selector["COMPOSE_FILE"].split(":")),
         "Current release/revision mismatch",
     )
-    require(
-        ("realtime" in services) == (selector["COMPOSE_PROFILES"] == "realtime"),
-        "Realtime profile mismatch",
-    )
     env = {**os.environ, **selector}
     current = json.loads(
         run(
@@ -219,8 +214,6 @@ def inspect(candidate):
             "compose",
             "--project-name",
             PROJECT,
-            "--profile",
-            "realtime",
             "config",
             "--format",
             "json",

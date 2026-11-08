@@ -92,12 +92,11 @@ services:
         condition: service_healthy
 
   # Django-free realtime WebSocket hints (ADR-100). A separate process from Gunicorn that reuses
-  # the image. It is opt-in (--profile realtime) and receives only Redis settings and the exact
+  # the image. It runs by default and receives only Redis settings and the exact
   # browser Origins: no env_file, database credentials, SECRET_KEY, or content keyrings.
   realtime:
     image: localhost/compass-backend:local
     pull_policy: never
-    profiles: ["realtime"]
     restart: unless-stopped
     command:
       [

@@ -251,7 +251,6 @@ def test_listing_handlers_changes_nothing_and_publishes_nothing(
     world, settings, monkeypatch, django_capture_on_commit_callbacks
 ):
     thread, _ = office(world)
-    settings.REALTIME_ENABLED = True
     frames = []
     monkeypatch.setattr(publish, "_publish", lambda channel, frame: frames.append(frame) or True)
     events = AuditEvent.objects.count()
@@ -266,7 +265,6 @@ def test_assignment_never_grants_or_preserves_content_access(
     world, settings, monkeypatch, django_capture_on_commit_callbacks
 ):
     thread, _ = office(world)
-    settings.REALTIME_ENABLED = True
     frames = []
     monkeypatch.setattr(
         publish, "_publish", lambda channel, frame: frames.append(json.loads(frame)) or True

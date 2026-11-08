@@ -22,7 +22,6 @@ FRAME = '{"v":1,"type":"notifications.changed"}'
 
 @pytest.fixture
 def publications(settings, monkeypatch):
-    settings.REALTIME_ENABLED = True
     messages = []
 
     class Publisher:
@@ -146,23 +145,6 @@ def test_redis_failure_cannot_undo_notification_writes(publications, operation):
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("operation", ["create", "read", "all"])
-def test_disabled_transport_keeps_notification_writes_working(publications, settings, operation):
-    messages, _ = publications
-    settings.REALTIME_ENABLED = False
-    recipient = make_user(f"disabled-{operation}@example.edu")
-    item = make_notification(recipient)
-    mutate(operation, recipient, item)
-    assert messages == []
-    assert Notification.objects.filter(recipient=recipient).count() == (
-        2 if operation == "create" else 1
-    )
-    if operation != "create":
-        item.refresh_from_db()
-        assert item.read_at is not None
-
-
-@pytest.mark.django_db(transaction=True)
 def test_email_preference_is_not_an_in_app_change(publications):
     messages, _ = publications
     recipient = make_user("preference-hint@example.edu")
@@ -173,7 +155,6 @@ def test_email_preference_is_not_an_in_app_change(publications):
 @pytest.mark.django_db(transaction=True)
 def test_committed_notification_and_http_read_reach_only_recipient_sockets(settings, monkeypatch):
     """Real tickets, Redis, ASGI sockets, DB commits, and authenticated HTTP reads/writes."""
-    settings.REALTIME_ENABLED = True
     connection._client.cache_clear()
     monkeypatch.setattr(services, "_safe_kick_email_delivery", lambda value: None)
     recipient = make_user("socket-notification@example.edu")

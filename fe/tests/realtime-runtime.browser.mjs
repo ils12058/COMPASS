@@ -411,11 +411,11 @@ function notificationWorld() {
   });
 }
 
-for (const unavailable of ["runtime disabled", "server disabled", "Redis unavailable"]) {
+for (const unavailable of ["socket URL unconfigured", "Redis unavailable"]) {
   const world = notificationWorld();
-  const enabled = unavailable !== "runtime disabled";
+  const enabled = unavailable !== "socket URL unconfigured";
   world.overrides["POST /api/v1/realtime/tickets"] = ({ reply }) => reply({ error: {
-    code: unavailable === "server disabled" ? "realtime_disabled" : "realtime_unavailable",
+    code: "realtime_unavailable",
     message: "Synthetic transport unavailable",
   } }, 503);
   await check(`${unavailable}: Notification polling heals without a visible realtime error`, "/portal/notifications", {

@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from django.conf import settings
 from django.http import HttpResponse
 from ninja import Router, Schema
 
@@ -36,17 +35,13 @@ class RealtimeTicketResponse(Schema):
         "Mints a single-use ticket for the current session. The client sends it as the first "
         "WebSocket frame to the realtime service and never places it in a URL. The ticket "
         "expires within seconds and authenticates at most one socket. `user_id` is the "
-        "account the ticket belongs to. Returns 503 `realtime_disabled` when realtime is "
-        "turned off and 503 `realtime_unavailable` when it is temporarily unavailable."
+        "account the ticket belongs to. Returns 503 `realtime_unavailable` when realtime is "
+        "temporarily unavailable."
     ),
 )
 def issue_realtime_ticket(request, response: HttpResponse):
     for name, value in _NO_STORE.items():
         response[name] = value
-    if not settings.REALTIME_ENABLED:
-        raise APIError(
-            503, "realtime_disabled", "Realtime updates are not enabled.", headers=dict(_NO_STORE)
-        )
     try:
         issued = issue_ticket(user_id=request.auth_user.pk, session_id=request.auth_session.pk)
     except RealtimeUnavailable as exc:

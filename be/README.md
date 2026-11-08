@@ -495,8 +495,7 @@ configuration plus `_FILE` pointers in the deployment `.env`. In particular, set
   `routine_interviews.0003`);
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
   `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443;
-- optionally, realtime (`REALTIME_ENABLED`, `REALTIME_ALLOWED_ORIGINS`, and
-  `COMPOSE_PROFILES=realtime`), only after the prerequisites in
+- realtime runs by default; configure `REALTIME_ALLOWED_ORIGINS` and confirm the prerequisites in
   [`docs/realtime-deployment.md`](docs/realtime-deployment.md) are confirmed.
 
 Provision and compare exact existing values before the first file-backed deployment. Dispatch

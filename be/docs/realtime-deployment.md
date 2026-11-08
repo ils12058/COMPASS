@@ -1,23 +1,23 @@
 # Realtime transport: deployment and operation (ADR-100)
 
-Realtime is dark by default and optional. Merging or deploying this code changes nothing until an
-operator enables all three parts below. COMPASS works normally with realtime off or down.
+Realtime runs by default. Django publishing and ticket issuance are always on, and the frontend
+connects whenever its socket URL is configured. COMPASS HTTP and polling keep working during outages.
 
 ## Parts
 
-| Part | Where | Off by default because |
+| Part | Where | Configuration |
 | --- | --- | --- |
-| Ticket endpoint and revocation hook | Django `web` (and `worker`/`beat` settings) | `REALTIME_ENABLED=false` |
-| Realtime service (`uvicorn realtime_service.app:app`, port 8001) | Compose service `realtime` | It is in the `realtime` profile |
-| Portal runtime | Vercel frontend build | `NEXT_PUBLIC_REALTIME_ENABLED` unset |
+| Ticket endpoint and revocation hook | Django `web` (and `worker`/`beat` settings) | Realtime Redis connection and ticket TTLs |
+| Realtime service (`uvicorn realtime_service.app:app`, port 8001) | Compose service `realtime` | Exact `REALTIME_ALLOWED_ORIGINS` and Redis settings |
+| Portal runtime | Vercel frontend build | `NEXT_PUBLIC_REALTIME_URL` |
 
 Caddy always routes `/api/realtime/*` to `realtime:8001`. While the service is not running that
-route answers 502, and nothing calls it. `/api/v1/realtime/tickets` is a Django route and always
+route answers 502, and browsers retry while consumers keep polling. `/api/v1/realtime/tickets` is a Django route and always
 goes to `web`.
 
 ## Operator prerequisites (not verifiable from the repository)
 
-Confirm each item on the live environment before enabling. None of them was verified by the
+Confirm each item on the live environment before deployment. None of them was verified by the
 implementation work.
 
 1. **Cloudflare WebSockets** are enabled for the API hostname's zone
@@ -36,29 +36,27 @@ implementation work.
 6. The deploy workflow's `pull` step lists services explicitly; `realtime` reuses the `web` image,
    which is already pulled.
 
-## Enable (live-staging)
+## Configure (live-staging)
 
 1. Add to the host `.env` (ordinary configuration; no new secret file):
 
    ```sh
-   REALTIME_ENABLED=true
    REALTIME_ALLOWED_ORIGINS=https://staging.compass-gco.com
-   COMPOSE_PROFILES=realtime
    ```
 
    The realtime container receives only `APP_ENV`, `REDIS_HOST`, `REDIS_PORT`,
    `REDIS_PASSWORD_FILE` (the existing `redis_password` grant), `REDIS_SOCKET_TIMEOUT`, and the
    `REALTIME_*` values. It never receives the `.env` file, database credentials, `SECRET_KEY`, or
    content keyrings.
-2. Deploy the exact staging revision through the normal workflow. `up -d` starts `realtime` when
-   the profile is active.
+2. Deploy the exact staging revision through the normal workflow. `up -d` starts `realtime` with
+   the other application services.
 3. Verify:
    - `curl -fsS https://staging-api.compass-gco.com/api/realtime/v1/health/live` returns
      `{"status":"ok"}`, and `/ready` returns `{"status":"ok"}` (Redis reachable).
    - `docker compose -f compose.staging.yaml ps realtime` reports healthy.
    - `docker compose -f compose.staging.yaml logs realtime` shows `realtime_started` with the
      expected `allowed_origin_count`, and no configuration errors.
-4. In Vercel, set `NEXT_PUBLIC_REALTIME_ENABLED=true` and `NEXT_PUBLIC_REALTIME_URL` to the socket
+4. In Vercel, set `NEXT_PUBLIC_REALTIME_URL` to the socket
    URL, then redeploy the frontend (the values are build-time).
 5. Sign in, open the portal, and confirm in the browser's network panel: one
    `POST /api/v1/realtime/tickets` (200), one socket to the API host (101) whose first client
@@ -69,9 +67,8 @@ implementation work.
 Authorized operators with the effective `platform_operations.view` capability can inspect
 realtime in the existing **Platform Operations → Environment** and **Health** pages.
 
-- **Environment → Realtime communication** reports the resolved Django
-  `REALTIME_ENABLED` setting and whether a `REDIS_REALTIME_URL` is configured.
-  These are safe configuration booleans, **not** proof of service reachability.
+- **Environment → Realtime communication** reports whether a `REDIS_REALTIME_URL` is configured.
+  This is a safe configuration boolean, **not** proof of service reachability.
   Redis connection strings and credentials are never returned.
 - **Health → Realtime communication** performs two short, read-only internal GETs:
   `http://realtime:8001/api/realtime/v1/health/live` and
@@ -82,19 +79,17 @@ realtime in the existing **Platform Operations → Environment** and **Health** 
   Each request has a one-second timeout and a 256-byte response-body limit.
   The HTTP client does not follow redirects, consult proxy environment variables,
   send credentials, or accept a user-supplied destination.
-- **Disabled** means Django realtime was intentionally switched off and performs
-  no internal HTTP requests; it does not degrade aggregate health.
-  **Healthy** means the internal service and Redis readiness routes responded.
+- **Healthy** means the internal service and Redis readiness routes responded.
   **Degraded** means the service answered liveness but explicitly reported
   Redis readiness unavailable. **Unavailable** means the service could not be
-  contacted or gave an invalid/unexpected response. Enabled realtime degradation
+  contacted or gave an invalid/unexpected response. Realtime degradation
   marks the aggregated Platform Health result degraded without breaking the HTTP
   diagnostics endpoint or ordinary application liveness/readiness.
 
 A Healthy service check **does not** establish that Cloudflare forwards WebSocket
 upgrades, that browsers have authenticated active sockets, or that individual
-Notifications/Guidance Messages hints arrived. The frontend build flag is also
-separate from the Django feature flag. Existing HTTP messaging works independently
+Notifications/Guidance Messages hints arrived. The frontend socket URL is configured at build
+time. Existing HTTP messaging works independently
 of WebSocket hint delivery.
 
 ## Observe
@@ -108,17 +103,6 @@ The service logs JSON lines on stdout with only closed codes and counts: `realti
 client addresses, and user or session IDs are never logged. Uvicorn runs at warning level without
 access logs. Django logs `realtime_ticket_unavailable`, `realtime_publish_failed`, and
 `realtime_revocation_publish_failed`.
-
-## Disable or roll back
-
-1. Unset `NEXT_PUBLIC_REALTIME_ENABLED` in Vercel and redeploy the frontend (clients stop
-   connecting).
-2. Stop the service: `docker compose -f compose.staging.yaml stop realtime`, and remove
-   `COMPOSE_PROFILES=realtime` so the next deploy does not start it.
-3. Then set `REALTIME_ENABLED=false` and recreate `web`, `worker`, and `beat`.
-
-Stop the service before step 3: once Django is disabled it no longer publishes revocations, so a
-still-running service would keep a revoked session's socket open until its lifetime ends.
 
 ## Restarts
 
