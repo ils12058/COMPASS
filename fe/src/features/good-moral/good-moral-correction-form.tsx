@@ -115,12 +115,11 @@ export function GoodMoralCorrectionForm({
   const [reviewedItem, setReviewedItem] = useState(item);
   const [reviewRequired, setReviewRequired] = useState(false);
   const operation = useRef<{ fingerprint: string; id: string } | null>(null);
-  const ledgerActive = reviewedItem.receipt_identity?.ledger_mode === "ACTIVE";
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const payload = useMemo(() => correctionPayload(ledgerActive ? reviewedItem : item, draft), [item, reviewedItem, ledgerActive, draft]);
+  const payload = useMemo(() => correctionPayload(reviewedItem, draft), [reviewedItem, draft]);
   const hasChanges = Object.keys(payload).length > 0;
   const update = useMutation({
     mutationFn: (changes: GoodMoralCorrectionPayload) => goodMoralUpdateRequest(item.id, changes),
@@ -156,7 +155,7 @@ export function GoodMoralCorrectionForm({
     setNotice(null);
     if (!confirmed || !hasChanges || reviewRequired || sending.current) return;
     let changes = payload;
-    if (ledgerActive && ["official_receipt_number", "official_receipt_date", "official_receipt_amount"].some((name) => name in payload)) {
+    if (["official_receipt_number", "official_receipt_date", "official_receipt_amount"].some((name) => name in payload)) {
       const reviewed = {
         ...payload,
         expected_resource_version: reviewedItem.actions.request_version,
@@ -196,17 +195,10 @@ export function GoodMoralCorrectionForm({
       }
     } catch (caught) {
       if (!alive.current) return;
-      if (ledgerActive && (uncertainGoodMoralMutation(caught) || goodMoralErrorCode(caught) === "good_moral_receipt_changed")) {
+      if (uncertainGoodMoralMutation(caught) || goodMoralErrorCode(caught) === "good_moral_receipt_changed") {
         const refreshed = await refreshCanonical(true);
         if (refreshed) setReviewRequired(true);
         setError("The correction could not be confirmed against the details you reviewed. Your draft is kept; compare it with the latest saved receipt before continuing.");
-        return;
-      }
-      if (uncertainGoodMoralMutation(caught)) {
-        const refreshed = await refreshCanonical();
-        if (refreshed?.status === "REQUESTED") {
-          setError("The correction result could not be confirmed. The request has been refreshed; review its current values before saving again.");
-        }
         return;
       }
       setError(goodMoralErrorMessage(caught, "Certificate details could not be corrected."));
@@ -320,8 +312,8 @@ export function GoodMoralCorrectionForm({
             </section>
 
             <section aria-labelledby="good-moral-correction-receipt-heading" className="border-t border-border pt-5">
-              {item.receipt_identity?.ledger_mode === "ACTIVE" ? <p className="mb-3 text-sm text-muted">Complete the receipt before inspection and preparation. Changing its number, date or amount requires inspection again.</p> : null}
-              <h3 id="good-moral-correction-receipt-heading" className="text-sm font-semibold text-ink">Official Receipt {item.receipt_identity?.ledger_mode !== "ACTIVE" ? <span className="font-normal text-muted">(optional)</span> : null}</h3>
+              <p className="mb-3 text-sm text-muted">Complete the receipt before inspection and preparation. Changing its number, date or amount requires inspection again.</p>
+              <h3 id="good-moral-correction-receipt-heading" className="text-sm font-semibold text-ink">Official Receipt</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>{correctionFieldLabel("receipt-number", "Receipt number")}<Input id="good-moral-correction-receipt-number" className="mt-2" maxLength={96} value={draft.receiptNumber} onChange={(event) => setField("receiptNumber", event.target.value)} /></div>
                 <div>{correctionFieldLabel("receipt-date", "Receipt date")}<Input id="good-moral-correction-receipt-date" className="mt-2" type="date" max={today} value={draft.receiptDate} onChange={(event) => setField("receiptDate", event.target.value)} /></div>
@@ -341,7 +333,7 @@ export function GoodMoralCorrectionForm({
           </div> : null}
           {error ? <p role="alert" className="text-sm leading-6 text-danger">{error}</p> : null}
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-          {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void refreshCanonical(ledgerActive)}>Refresh current request</Button> : null}
+          {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void refreshCanonical(true)}>Refresh current request</Button> : null}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={busy || blockedUntilRefresh || reviewRequired || !hasChanges || !confirmed}>{busy ? "Saving changes…" : "Save changes"}</Button>
             <Button type="button" variant="secondary" onClick={requestClose} disabled={busy}>Close editor</Button>

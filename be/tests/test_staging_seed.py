@@ -15,6 +15,7 @@ import uuid
 from contextlib import ExitStack
 from dataclasses import asdict, replace
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -665,6 +666,17 @@ class SeededDatasetTests(TestCase):
             GoodMoralRequest.objects.get(student=dataset_user("ar_18")).status
             == "READY_FOR_ISSUANCE"
         )
+        receipts = GoodMoralRequest.objects.exclude(official_receipt_number="")
+        numbers = list(receipts.values_list("official_receipt_number", flat=True))
+        assert len(numbers) == len(set(number.upper() for number in numbers))
+        for request in receipts:
+            assert request.official_receipt_amount == Decimal("80.00")
+            assert request.initiation_origin in {"STUDENT_SELF", "GCO_ASSISTED"}
+            if request.status == "ISSUED":
+                inspection = request.issued_receipt_verification
+                assert inspection.assignment_id == request.issued_receipt_assignment_id
+                assert inspection.fee_decision["status"] == "PROVISIONAL"
+                assert inspection.verified_at <= request.issued_at
         thread = GuidanceThread.objects.get(student=dataset_user("ar_14"))
         assert thread.kind == "COUNSELING" and thread.counselor_id == dataset_user("counselor_a").pk
         assert not StudentInventory.objects.filter(student=dataset_user("ar_08")).exists()

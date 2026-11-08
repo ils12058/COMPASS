@@ -35,14 +35,7 @@ from compass.call_slips.services import (
 from compass.counseling.models import CounselingEncounter
 from compass.ecounseling.models import ECounselingRoom
 from compass.good_moral.models import GoodMoralStatus
-from compass.good_moral.services import (
-    GoodMoralConflict,
-    cancel_request,
-    issue_request,
-    prepare_request,
-    render_certificate_pdf,
-    update_request,
-)
+from compass.good_moral.services import GoodMoralConflict, cancel_request, render_certificate_pdf
 from compass.integrations.storage import ObjectStorage
 from compass.notifications.models import Notification
 from compass.referrals.services import (
@@ -79,7 +72,10 @@ from tests.test_good_moral import (
     csrf as good_moral_csrf,
 )
 from tests.test_good_moral import (
+    issue_request,
     make_graduate_request,
+    prepare_request,
+    update_request,
 )
 from tests.test_good_moral import (
     make_user as make_good_moral_user,

@@ -3,13 +3,10 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from decimal import Decimal
-from io import StringIO
 from threading import Barrier, Event
 from uuid import uuid4
 
 import pytest
-from django.core.management import call_command
-from django.core.management.base import CommandError
 from django.db import (
     IntegrityError,
     OperationalError,
@@ -22,22 +19,11 @@ from compass.accounts.models import Role, User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.good_moral import receipt_identity as receipts
-from compass.good_moral.legacy_receipts import (
-    activate_synthetic_import,
-    begin_import,
-    import_chunk,
-)
 from compass.good_moral.models import (
     GoodMoralReceiptAssignment as Assignment,
 )
 from compass.good_moral.models import (
     GoodMoralReceiptIdentity as Identity,
-)
-from compass.good_moral.models import (
-    GoodMoralReceiptImportBatch as Batch,
-)
-from compass.good_moral.models import (
-    GoodMoralReceiptLedger as Ledger,
 )
 from compass.good_moral.models import (
     GoodMoralReceiptMutation as Mutation,
@@ -76,6 +62,7 @@ def person(name, role="STUDENT"):
 
 def request_for(student=None, variant="GRADUATE", **facts):
     student = student or person("applicant")
+    actor = person("receipt-recorder", "COUNSELOR") if facts else None
     if variant == "CURRENT_STUDENT":
         year = AcademicYear.objects.filter(is_current=True).first()
         if year:
@@ -87,26 +74,18 @@ def request_for(student=None, variant="GRADUATE", **facts):
         else:
             item = make_current_request(student)[0]
         if facts:
-            GoodMoralRequest.objects.filter(pk=item.pk).update(**facts)
-            item.refresh_from_db()
+            item = edit(item, actor, facts)
         return item
-    return GoodMoralRequest.objects.create(
+    item = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=student,
         variant="GRADUATE",
         applicant_name_snapshot="Synthetic Applicant",
         degree_snapshot="Bachelor of Science",
         graduation_date=date(2020, 1, 1),
-        **facts,
     )
-
-
-def activate():
-    batch_id = uuid4()
-    observed = begin_import(batch_id=batch_id, evidence_reference="Synthetic fixture")
-    while import_chunk(batch_id=batch_id, observed=observed):
-        pass
-    activate_synthetic_import(batch_id=batch_id)
-    return batch_id
+    return edit(item, actor, facts) if facts else item
 
 
 def edit(item, actor, changes, **overrides):
@@ -173,25 +152,6 @@ def test_normalization_rejects_unsupported_input(value):
 
 
 @pytest.mark.django_db
-def test_default_remains_dormant_and_old_corrections_remain_compatible(world):
-    actor, item = world
-    other = request_for()
-    for target in (item, other):
-        result = update_request(
-            actor=actor,
-            request_id=target.pk,
-            changes={
-                "official_receipt_number": " Unicode–legacy ",
-                "official_receipt_amount": Decimal("50"),
-            },
-            context=AuditContext.user(actor),
-        )
-        assert result.official_receipt_number == "Unicode–legacy"
-    assert receipts.ledger_mode() == "DORMANT"
-    assert not Identity.objects.exists() and not Assignment.objects.exists()
-
-
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("first_variant", "second_variant", "same_student"),
     [
@@ -205,7 +165,6 @@ def test_shared_namespace_and_safe_duplicate(world, first_variant, second_varian
     actor, _ = world
     first = request_for(variant=first_variant)
     second = request_for(first.student if same_student else None, second_variant)
-    activate()
     edit(first, actor, {"official_receipt_number": "  or-00042  "})
     with pytest.raises(receipts.ReceiptConflict) as caught:
         edit(second, actor, {"official_receipt_number": "OR-00042"})
@@ -218,7 +177,6 @@ def test_shared_namespace_and_safe_duplicate(world, first_variant, second_varian
 def test_revisions_clearing_replacement_and_cancellation_never_release(world):
     actor, item = world
     other = request_for()
-    activate()
     edit(item, actor, {"official_receipt_number": "OR-1"})
     original = receipts.latest_revision(item)
     edit(item, actor, {"official_receipt_date": date(2020, 1, 1)})
@@ -262,9 +220,8 @@ def test_revisions_clearing_replacement_and_cancellation_never_release(world):
 @pytest.mark.django_db
 def test_exact_replay_and_noop_are_durable_and_stale_state_is_rejected(world):
     actor, item = world
-    activate()
     expected = item.updated_at.isoformat()
-    previous = receipts.latest_revision(item).pk
+    previous = getattr(receipts.latest_revision(item), "pk", None)
     operation = uuid4()
     args = dict(
         expected_resource_version=expected,
@@ -300,7 +257,6 @@ def test_exact_replay_and_noop_are_durable_and_stale_state_is_rejected(world):
 def test_no_new_role_authority(world, role):
     _, item = world
     actor = person("denied", role)
-    activate()
     with pytest.raises(GoodMoralNotPermitted):
         edit(item, actor, {"official_receipt_number": "PRIVATE"})
     assert not Identity.objects.exists()
@@ -309,7 +265,6 @@ def test_no_new_role_authority(world, role):
 @pytest.mark.django_db
 def test_actor_context_and_inactive_actor_are_not_fabricated(world):
     actor, item = world
-    activate()
     with pytest.raises(GoodMoralNotPermitted):
         edit(item, actor, {"official_receipt_number": "OR-1"}, context=AuditContext.system())
     User.objects.filter(pk=actor.pk).update(is_active=False)
@@ -320,7 +275,6 @@ def test_actor_context_and_inactive_actor_are_not_fabricated(world):
 @pytest.mark.django_db
 def test_audit_failure_rolls_back_all_receipt_facts(world, monkeypatch):
     actor, item = world
-    activate()
     before = Assignment.objects.count()
 
     def fail(**kwargs):
@@ -337,7 +291,6 @@ def test_audit_failure_rolls_back_all_receipt_facts(world, monkeypatch):
 @pytest.mark.django_db
 def test_other_integrity_errors_are_not_hidden_as_identity_conflicts(world, monkeypatch):
     actor, item = world
-    activate()
 
     def fail(**kwargs):
         raise IntegrityError("Synthetic unrelated constraint")
@@ -347,86 +300,6 @@ def test_other_integrity_errors_are_not_hidden_as_identity_conflicts(world, monk
         edit(item, actor, {"official_receipt_number": "OR-1"})
     assert not Identity.objects.exists()
     assert not Assignment.objects.filter(origin="ORDINARY").exists()
-
-
-@pytest.mark.django_db
-def test_legacy_ambiguity_quarantine_and_resumable_observations(world):
-    actor, item = world
-    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_number=" or-1 ")
-    duplicate = request_for(official_receipt_number="OR-1", official_receipt_amount=Decimal("0"))
-    unsupported = request_for(official_receipt_number="ＯＲ-1")
-    unique = request_for(
-        official_receipt_number="OR-2",
-        official_receipt_date=date(2099, 1, 1),
-        official_receipt_amount=Decimal("250"),
-    )
-    snapshot = list(GoodMoralRequest.objects.order_by("id").values())
-    batch_id = uuid4()
-    observed = begin_import(batch_id=batch_id, evidence_reference="Synthetic legacy rehearsal")
-    assert observed.counts["duplicate_claims"] == 2 and observed.counts["quarantined"] == 1
-    assert import_chunk(batch_id=batch_id, observed=observed, size=1) == 1
-    with pytest.raises(IntegrityError), transaction.atomic():
-        GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_number="NEW")
-    # Resume under the same batch; no duplicate observation/event.
-    begin_import(batch_id=batch_id, evidence_reference="Ignored on resume")
-    while import_chunk(batch_id=batch_id, observed=observed, size=1):
-        pass
-    assert import_chunk(batch_id=batch_id, observed=observed) == 0
-    assert Assignment.objects.count() == len(snapshot)
-    ambiguous = Identity.objects.get(normalized_key="OR-1")
-    assert ambiguous.state == "LEGACY_AMBIGUOUS" and ambiguous.bound_request_id is None
-    assert not Assignment.objects.filter(identity=ambiguous, is_current=True).exists()
-    assert Assignment.objects.get(request=unsupported).identity_id is None
-    assert Assignment.objects.get(request=unique).receipt_date == date(2099, 1, 1)
-    assert list(GoodMoralRequest.objects.order_by("id").values()) == snapshot
-    with pytest.raises(IntegrityError), transaction.atomic():
-        activate_synthetic_import(batch_id=batch_id)
-    with pytest.raises(ValueError):
-        begin_import(batch_id=uuid4(), evidence_reference="different batch")
-    assert Assignment.objects.get(request=duplicate).amount == 0
-    assert not hasattr(Assignment.objects.first(), "verified_at")
-
-
-@pytest.mark.django_db
-def test_unique_legacy_anomaly_can_be_corrected_without_reassigning_identity(world):
-    actor, item = world
-    GoodMoralRequest.objects.filter(pk=item.pk).update(
-        official_receipt_number="OR-1", official_receipt_amount=Decimal("-1")
-    )
-    activate()
-    old = receipts.latest_revision(item)
-    assert not old.is_current and old.amount == -1
-    edit(item, actor, {"official_receipt_amount": Decimal("0")})
-    assert Identity.objects.count() == 1
-    assert receipts.latest_revision(item).identity_id == old.identity_id
-    assert receipts.latest_revision(item).is_current
-
-
-@pytest.mark.django_db
-def test_synthetic_command_dryrun_resume_and_privacy(world):
-    _, item = world
-    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_number="PRIVATE-OR")
-    out = StringIO()
-    db = connection.settings_dict["NAME"]
-    call_command(
-        "import_good_moral_receipts", confirm_disposable_database=db, dry_run=True, stdout=out
-    )
-    assert "PRIVATE-OR" not in out.getvalue() and str(item.pk) not in out.getvalue()
-    assert receipts.ledger_mode() == "DORMANT" and not Batch.objects.exists()
-    with pytest.raises(CommandError):
-        call_command("import_good_moral_receipts", confirm_disposable_database="wrong")
-    batch = uuid4()
-    args = dict(
-        confirm_disposable_database=db,
-        apply=True,
-        batch=batch,
-        evidence_reference="Synthetic",
-        stdout=out,
-    )
-    call_command("import_good_moral_receipts", **args)
-    call_command("import_good_moral_receipts", **args, activate=True)
-    call_command("import_good_moral_receipts", **args, activate=True)
-    assert Assignment.objects.count() == 1 and receipts.ledger_mode() == "ACTIVE"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -439,14 +312,12 @@ def test_synthetic_command_dryrun_resume_and_privacy(world):
         "claim_delete",
         "reactivate",
         "projection",
-        "control_downgrade",
         "operation_update",
         "closure_without_successor",
     ],
 )
 def test_database_guards_reject_alternative_writers(world, illegal):
     actor, item = world
-    activate()
     edit(item, actor, {"official_receipt_number": "OR-1"})
     first = receipts.latest_revision(item)
     if illegal == "reactivate":
@@ -471,8 +342,6 @@ def test_database_guards_reject_alternative_writers(world, illegal):
             Assignment.objects.filter(pk=first.pk).update(is_current=True)
         elif illegal == "projection":
             GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_number="UNRESERVED")
-        elif illegal == "control_downgrade":
-            Ledger.objects.filter(pk=1).update(mode="DORMANT", batch=None)
         elif illegal == "operation_update":
             Mutation.objects.update(fingerprint="a" * 64)
         else:
@@ -503,7 +372,6 @@ def test_database_guards_reject_alternative_writers(world, illegal):
 def test_database_claim_and_identity_shapes(world, illegal):
     actor, item = world
     other = request_for()
-    activate()
     edit(item, actor, {"official_receipt_number": "OR-1"})
     old = receipts.latest_revision(item)
     kwargs = dict(
@@ -556,7 +424,6 @@ def worker(callback):
 def test_real_postgresql_same_absent_key_has_exactly_one_winner(world, cross_variant, monkeypatch):
     actor, first = world
     second = request_for(variant="CURRENT_STUDENT" if cross_variant else "GRADUATE")
-    activate()
     initial = Assignment.objects.count()
     barrier = Barrier(2)
     create = Identity.objects.create
@@ -589,8 +456,10 @@ def test_real_postgresql_same_absent_key_has_exactly_one_winner(world, cross_var
 @pytest.mark.parametrize("same_operation", [False, True])
 def test_real_postgresql_same_request_edits_and_replays_serialize(world, same_operation):
     actor, item = world
-    activate()
-    version, revision = item.updated_at.isoformat(), receipts.latest_revision(item).pk
+    version, revision = (
+        item.updated_at.isoformat(),
+        getattr(receipts.latest_revision(item), "pk", None),
+    )
     start = Barrier(2)
     shared_id = uuid4()
 
@@ -622,7 +491,6 @@ def test_real_postgresql_same_request_edits_and_replays_serialize(world, same_op
 @pytest.mark.django_db(transaction=True)
 def test_simultaneous_replacement_reserves_only_winning_new_number(world):
     actor, item = world
-    activate()
     edit(item, actor, {"official_receipt_number": "OR-OLD"})
     item.refresh_from_db()
     version, revision = item.updated_at.isoformat(), receipts.latest_revision(item).pk
@@ -661,7 +529,6 @@ def test_lifecycle_competition_keeps_one_serial_history(
     world, action, correction_first, monkeypatch
 ):
     actor, item = world
-    activate()
     from compass.good_moral import receipt_fee_policy as fees
     from tests.test_good_moral_verification import grant, prepare, synthetic_fee, verify
 
@@ -758,7 +625,6 @@ def test_lifecycle_competition_keeps_one_serial_history(
 @pytest.mark.django_db(transaction=True)
 def test_receipt_lock_timeout_rolls_back_and_deliberate_retry_recovers(world):
     actor, item = world
-    activate()
     locked, release = Event(), Event()
 
     def holder():
@@ -782,43 +648,8 @@ def test_receipt_lock_timeout_rolls_back_and_deliberate_retry_recovers(world):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_fence_waits_for_old_writer_and_captures_its_committed_projection(world):
-    actor, item = world
-    locked, release = Event(), Event()
-
-    def old_writer():
-        with transaction.atomic():
-            update_request(
-                actor=actor,
-                request_id=item.pk,
-                changes={"official_receipt_number": "OR-BEFORE-FENCE"},
-                context=AuditContext.user(actor),
-            )
-            locked.set()
-            assert release.wait(10)
-
-    batch = uuid4()
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        f1 = pool.submit(worker, old_writer)
-        assert locked.wait(10)
-        f2 = pool.submit(
-            worker, lambda: begin_import(batch_id=batch, evidence_reference="Synthetic fence race")
-        )
-        release.set()
-        f1.result(timeout=20)
-        observed = f2.result(timeout=20)
-    while import_chunk(batch_id=batch, observed=observed):
-        pass
-    activate_synthetic_import(batch_id=batch)
-    assert Identity.objects.get(normalized_key="OR-BEFORE-FENCE").bound_request_id == item.pk
-    with pytest.raises(ValueError):
-        begin_import(batch_id=uuid4(), evidence_reference="Cannot import into active writer")
-
-
-@pytest.mark.django_db(transaction=True)
 def test_unclaimed_ordinary_reservation_cannot_commit(world):
     actor, item = world
-    activate()
     with pytest.raises(IntegrityError), transaction.atomic():
         Identity.objects.create(
             normalized_key="OR-ORPHAN",
@@ -838,7 +669,6 @@ def test_api_requires_active_receipt_tokens_preserves_projection_and_replay(worl
 
     actor, item = world
     other = request_for()
-    activate()
     client = auth_client(actor)
     path = f"/api/v1/good-moral/requests/{item.pk}"
     initial = client.get(path).json()
@@ -893,16 +723,18 @@ def test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation(wor
     from compass.good_moral.receipt_verification import ReceiptBlocked
 
     actor, item = world
-    activate()
     staff = person("clerical", "GUIDANCE_OFFICE_ASSISTANT")
     edit(item, staff, {"official_receipt_amount": Decimal("0")})
     assert not Identity.objects.exists()
     with pytest.raises(ReceiptBlocked):
         prepare_request(actor=staff, request_id=item.pk, context=AuditContext.user(staff))
     assert "good_moral.verify_receipt" in CAPABILITY_CODES
-    assert all(
-        "good_moral.verify_receipt" not in codes for codes in ROLE_CAPABILITY_GRANTS.values()
-    )
+    for role in ("COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"):
+        assert {
+            "good_moral.view",
+            "good_moral.prepare",
+            "good_moral.verify_receipt",
+        } <= ROLE_CAPABILITY_GRANTS[role]
     assert Mutation.objects.get(request=item).result_revision.amount == 0
 
 
@@ -910,7 +742,6 @@ def test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation(wor
 def test_concurrent_operation_uuid_reuse_cannot_leave_losing_identity(world, monkeypatch):
     actor, first = world
     second = request_for()
-    activate()
     operation = uuid4()
     barrier = Barrier(2)
     create = Mutation.objects.create
@@ -942,36 +773,6 @@ def test_concurrent_operation_uuid_reuse_cannot_leave_losing_identity(world, mon
     assert AuditEvent.objects.filter(action="good_moral.receipt_assigned").count() == 1
 
 
-@pytest.mark.django_db(transaction=True)
-def test_active_assignment_and_import_never_form_a_dual_writer_interval(world):
-    actor, item = world
-    batch = activate()
-    start = Barrier(2)
-
-    def assignment():
-        start.wait(timeout=10)
-        edit(item, actor, {"official_receipt_number": "OR-ACTIVE"})
-
-    def importer():
-        start.wait(timeout=10)
-        try:
-            observed = begin_import(batch_id=batch, evidence_reference="Same batch replay")
-            assert import_chunk(batch_id=batch, observed=observed) == 0
-        except ValueError:
-            # Source changed after the original import: only the active writer may progress.
-            pass
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        f1 = pool.submit(worker, assignment)
-        f2 = pool.submit(worker, importer)
-        f1.result(timeout=20)
-        f2.result(timeout=20)
-    assert Ledger.objects.get(pk=1).mode == "ACTIVE"
-    assert Assignment.objects.filter(origin="LEGACY_OBSERVED").count() == 1
-    assert Assignment.objects.filter(origin="ORDINARY").count() == 1
-    assert Identity.objects.get(normalized_key="OR-ACTIVE").bound_request_id == item.pk
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
 @pytest.mark.parametrize("assisted", [False, True])
@@ -982,7 +783,6 @@ def test_new_self_and_assisted_requests_still_start_without_receipts_after_cutov
     from tests.test_good_moral import create_my_graduate, make_academic_year
 
     actor, _ = world
-    activate()
     student = person("new-applicant")
     if variant == "CURRENT_STUDENT":
         year = AcademicYear.objects.filter(is_current=True).first() or make_academic_year()
@@ -1019,32 +819,8 @@ def test_new_self_and_assisted_requests_still_start_without_receipts_after_cutov
 
 
 @pytest.mark.django_db
-def test_import_transaction_error_does_not_expose_database_detail(world, monkeypatch):
-    from compass.good_moral.management.commands import import_good_moral_receipts as command
-
-    def fail(**kwargs):
-        raise OperationalError("PRIVATE-RECEIPT-DATABASE-DETAIL")
-
-    monkeypatch.setattr(command, "import_chunk", fail)
-    with pytest.raises(CommandError) as caught:
-        call_command(
-            "import_good_moral_receipts",
-            confirm_disposable_database=connection.settings_dict["NAME"],
-            apply=True,
-            batch=uuid4(),
-            evidence_reference="Synthetic transaction failure",
-            stdout=StringIO(),
-        )
-    assert "PRIVATE" not in str(caught.value)
-    assert caught.value.__suppress_context__
-    assert Ledger.objects.get(pk=1).mode == "FENCED"
-    assert not Assignment.objects.exists()
-
-
-@pytest.mark.django_db
 def test_new_operation_rows_must_reference_the_current_result(world):
     actor, item = world
-    activate()
     edit(item, actor, {"official_receipt_number": "OR-1"})
     item.refresh_from_db()
     current = receipts.latest_revision(item)

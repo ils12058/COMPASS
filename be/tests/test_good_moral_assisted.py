@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from django.db import close_old_connections, connection, transaction
+from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 from compass.accounts.models import Designation, Role, User, UserDesignation
@@ -349,8 +349,14 @@ def test_assisted_duplicate_against_existing_self_service_and_future_request(wor
 def test_provenance_survives_existing_workflows(world, transition):
     item = create(world)
     if transition in {"prepare", "issue"}:
-        services.prepare_request(
-            actor=world["goa"], request_id=item.pk, context=AuditContext.user(world["goa"])
+        from tests.test_good_moral import record_inspected_receipt
+
+        item = record_inspected_receipt(item, world["staff"])
+        item = services.prepare_request(
+            actor=world["goa"],
+            request_id=item.pk,
+            context=AuditContext.user(world["goa"]),
+            expected_resource_version=item.updated_at.isoformat(),
         )
     if transition == "issue":
         with pytest.raises(services.GoodMoralNotPermitted):
@@ -358,7 +364,13 @@ def test_provenance_survives_existing_workflows(world, transition):
                 actor=world["goa"], request_id=item.pk, context=AuditContext.user(world["goa"])
             )
         services.issue_request(
-            actor=world["staff"], request_id=item.pk, context=AuditContext.user(world["staff"])
+            actor=world["staff"],
+            request_id=item.pk,
+            context=AuditContext.user(world["staff"]),
+            expected_resource_version=item.updated_at.isoformat(),
+            expected_preparation_version=item.prepared_at.isoformat(),
+            expected_receipt_revision=item.prepared_receipt_verification.assignment_id,
+            expected_receipt_verification=item.prepared_receipt_verification_id,
         )
         assert Notification.objects.filter(
             event_code="good_moral.issued", source_id=item.pk
@@ -555,23 +567,6 @@ def test_target_change_committed_while_waiting_for_student_fence(world):
     assert not GoodMoralRequest.objects.exists()
 
 
-def test_legacy_defaults_allow_old_writer_insert_and_read(world):
-    # Simulate an older backend inserting without either new column.
-    legacy = GoodMoralRequest.objects.create(student=world["graduate"], variant="GRADUATE")
-    assert legacy.initiation_origin == "LEGACY_UNSPECIFIED" and legacy.initiated_by_id is None
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT column_default FROM information_schema.columns "
-            "WHERE table_name = 'good_moral_goodmoralrequest' "
-            "AND column_name = 'initiation_origin'"
-        )
-        assert "LEGACY_UNSPECIFIED" in cursor.fetchone()[0]
-    response = auth_client(world["graduate"]).get(f"/api/v1/good-moral/me/{legacy.pk}")
-    assert (
-        response.status_code == 200 and response.json()["initiation_origin"] == "LEGACY_UNSPECIFIED"
-    )
-
-
 def test_stale_staff_source_and_mismatched_audit_actor_fail_closed(world):
     with pytest.raises(services.GoodMoralNotPermitted):
         services.create_assisted_request(
@@ -587,3 +582,18 @@ def test_stale_staff_source_and_mismatched_audit_actor_fail_closed(world):
     with pytest.raises(services.GoodMoralNotPermitted):
         create(world)
     assert not GoodMoralRequest.objects.exists()
+
+
+@pytest.mark.parametrize("origin", [None, "", "UNKNOWN"])
+def test_new_requests_require_explicit_canonical_origin(world, origin):
+    from django.db import IntegrityError, transaction
+
+    values = {
+        "student": world["graduate"],
+        "variant": "GRADUATE",
+        "initiated_by": world["graduate"],
+    }
+    if origin is not None:
+        values["initiation_origin"] = origin
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GoodMoralRequest.objects.create(**values)

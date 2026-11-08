@@ -39,7 +39,7 @@ export function useReceiptInspection({ item, confirmed, onRefresh, onActivityCha
   }
 
   function begin() {
-    if (!confirmed || working || !item.receipt_inspection?.can_verify || item.receipt_identity?.ledger_mode !== "ACTIVE") return;
+    if (!confirmed || working || !item.receipt_inspection?.can_verify) return;
     if (!intent.current || !sameReceiptReview(item, intent.current)) {
       if (!globalThis.crypto?.randomUUID) { setError("This browser cannot record an inspection safely. Update the browser and try again."); return; }
       intent.current = inspectionReview(item, globalThis.crypto.randomUUID());
@@ -83,7 +83,7 @@ export function useReceiptInspection({ item, confirmed, onRefresh, onActivityCha
         setError(null);
         setMessage("The receipt is already verified. The recorded inspector and time are shown with this receipt.");
       }
-    } else if (!sameReceiptReview(latest, original) || latest.receipt_identity?.ledger_mode !== "ACTIVE" || !latest.receipt_inspection?.can_verify) {
+    } else if (!sameReceiptReview(latest, original) || !latest.receipt_inspection?.can_verify) {
       intent.current = null;
       setUncertain(false);
       setReview(null);

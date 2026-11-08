@@ -9,7 +9,6 @@ in application code, and is not claimed as covered by this domain harness.
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 from threading import Barrier
@@ -50,7 +49,7 @@ from tests.test_good_moral import (
     make_user,
     sync_policy,
 )
-from tests.test_good_moral_receipts import activate, person
+from tests.test_good_moral_receipts import person
 from tests.test_good_moral_verification import grant, synthetic_fee
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -70,7 +69,6 @@ def actors(approved):
     inspector = person("gm4-inspector", "GUIDANCE_OFFICE_ASSISTANT")
     counselor = person("gm4-issuer", "COUNSELOR")
     grant(inspector)
-    activate()
     return student, inspector, counselor
 
 
@@ -221,14 +219,13 @@ def test_authenticated_api_full_workflow_exact_provenance_and_owned_pdf(actors, 
         "student-verify",
         "student-prepare",
         "student-issue",
-        "ungranted-goa",
+        "revoked-goa",
         "goa-issue",
-        "ungranted-counselor",
+        "revoked-counselor",
         "it-verify",
         "it-issue",
-        "head-without-grant",
+        "head-with-revoked-inspection",
         "revoked",
-        "expired",
         "inactive",
         "missing-dependency",
         "forged-fields",
@@ -246,29 +243,26 @@ def test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged(acto
     actor = inspector
     if case.startswith("student"):
         actor = student
-    elif case == "ungranted-goa":
-        actor = person("ungranted", "GUIDANCE_OFFICE_ASSISTANT")
-    elif case == "ungranted-counselor":
+    elif case == "revoked-goa":
+        actor = person("revoked", "GUIDANCE_OFFICE_ASSISTANT")
+        grant(actor, effect="REVOKE")
+    elif case == "revoked-counselor":
         actor = counselor
+        grant(actor, effect="REVOKE")
     elif case.startswith("it"):
         actor = person("admin", "IT_ADMIN")
         grant(actor)
         grant(actor, "good_moral.issue")
-    elif case == "head-without-grant":
+    elif case == "head-with-revoked-inspection":
         from compass.accounts.models import Designation, UserDesignation
 
         actor = counselor
+        grant(actor, effect="REVOKE")
         UserDesignation.objects.create(
             user=actor, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
         )
     elif case == "revoked":
         grant(actor, effect="REVOKE")
-    elif case == "expired":
-        from compass.accounts.models import UserCapabilityOverride
-
-        UserCapabilityOverride.objects.filter(user=actor).update(
-            expires_at=timezone.now() - timedelta(seconds=1)
-        )
     elif case == "inactive":
         User.objects.filter(pk=actor.pk).update(is_active=False)
     elif case == "missing-dependency":

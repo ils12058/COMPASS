@@ -15842,8 +15842,7 @@
       "GoodMoralInitiationOriginValue": {
         "enum": [
           "STUDENT_SELF",
-          "GCO_ASSISTED",
-          "LEGACY_UNSPECIFIED"
+          "GCO_ASSISTED"
         ],
         "title": "GoodMoralInitiationOriginValue",
         "type": "string"
@@ -16546,6 +16545,21 @@
             ],
             "title": "Expected Amount"
           },
+          "fee_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "APPROVED",
+                  "PROVISIONAL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Status"
+          },
           "method": {
             "anyOf": [
               {
@@ -16564,8 +16578,6 @@
               "INCOMPLETE",
               "NEEDS_VERIFICATION",
               "VERIFIED",
-              "LEGACY_UNKNOWN",
-              "LEGACY_CONFLICT",
               "DISPUTED",
               "POLICY_UNAVAILABLE"
             ],
@@ -16618,6 +16630,7 @@
           "verified_at",
           "method",
           "expected_amount",
+          "fee_status",
           "currency"
         ],
         "title": "GoodMoralReceiptInspectionResponse",
@@ -16668,23 +16681,11 @@
           },
           "identity_state": {
             "enum": [
-              "DORMANT",
               "ABSENT",
               "BOUND",
-              "LEGACY_AMBIGUOUS",
-              "DISPUTED",
-              "QUARANTINED"
+              "DISPUTED"
             ],
             "title": "Identity State",
-            "type": "string"
-          },
-          "ledger_mode": {
-            "enum": [
-              "DORMANT",
-              "FENCED",
-              "ACTIVE"
-            ],
-            "title": "Ledger Mode",
             "type": "string"
           },
           "revision_id": {
@@ -16701,7 +16702,6 @@
           }
         },
         "required": [
-          "ledger_mode",
           "revision_id",
           "identity_state",
           "history"

@@ -207,12 +207,8 @@ def test_parent_child_rename_orders_complete_without_lock_inversion(work, parent
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
 def test_issued_f4_f6_pdf_facts_survive_protected_catalog_changes(work, variant):
     from compass.good_moral.models import GoodMoralRequest
-    from compass.good_moral.services import (
-        build_certificate_render_context,
-        issue_request,
-        prepare_request,
-    )
-    from tests.test_good_moral import auth_client
+    from compass.good_moral.services import build_certificate_render_context
+    from tests.test_good_moral import auth_client, issue_request, prepare_request
     from tests.test_good_moral_receipts import request_for
 
     auth, _, _, p, counselor, _ = work

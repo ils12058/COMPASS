@@ -21,11 +21,6 @@ for (const status of Object.keys(receiptStatuses)) test(`backend ${status} has a
   assert.equal(html.includes('>Verify receipt</button>'), item.receipt_inspection.can_verify);
   if (status !== 'VERIFIED') assert.doesNotMatch(html, />Receipt verified</);
 });
-for (const mode of ['DORMANT', 'FENCED']) test(`${mode} offers no inspection and no invented approved amount`, () => {
-  const html = render(receiptItem('LEGACY_UNKNOWN', mode));
-  assert.doesNotMatch(html, />Verify receipt<\/button>|Approved expected amount/);
-  assert.match(html, mode === 'DORMANT' ? /not enabled here/ : /temporarily paused/);
-});
 test('backend can_verify=false wins even for an otherwise complete receipt', () => {
   const item = receiptItem(); item.receipt_inspection.can_verify = false;
   assert.doesNotMatch(render(item), />Verify receipt<\/button>/);
@@ -40,9 +35,11 @@ test('metadata history is a disclosure and never invents old receipt contents', 
   const html = render(receiptItem()); assert.match(html, /<details/); assert.match(html, /Receipt change history/);
   assert.match(html, /Earlier receipt contents.*not included/); assert.match(html, /Recorder account reference/);
 });
-test('expected fee is displayed only from the approved backend projection', () => {
+test('expected fee displays its backend provisional status', () => {
   const item = receiptItem('POLICY_UNAVAILABLE'); assert.doesNotMatch(render(item), /Approved expected amount/);
-  assert.match(render(receiptItem()), /Approved expected amount/);
+  assert.match(render(receiptItem()), /Team-reported provisional expected amount/);
+  const approved = receiptItem(); approved.receipt_inspection.fee_status = 'APPROVED';
+  assert.match(render(approved), /Approved expected amount/);
   assert.equal(receiptAmount('9999999999.99', 'PHP').replace(/[^0-9.]/g, ''), '9999999999.99');
 });
 test('fee mismatch gives a review blocker without suggesting editing away the printed amount', () => assert.match(receiptBlockerMessage('good_moral_receipt_fee_mismatch'), /keep the amount printed/));

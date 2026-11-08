@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { focusHeading } from "@/lib/focus-heading";
 import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, formatGoodMoralDateTime } from "./good-moral-shared";
-import { receiptAmount, receiptAvailability, receiptBlockerMessage, receiptStatuses } from "./receipt-presentation";
+import { receiptAmount, receiptBlockerMessage, receiptStatuses } from "./receipt-presentation";
 import { useReceiptInspection } from "./use-receipt-inspection";
 
 // Keep a focus target while all mutation controls are disabled; Radix owns the trap.
@@ -27,7 +27,7 @@ function ReceiptFacts({ item, review = false }: { item: GoodMoralOperationalDeta
     <GoodMoralField label="Receipt number" value={item.official_receipt_number} />
     <GoodMoralField label="Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
     <GoodMoralField label="Actual amount" value={receiptAmount(item.official_receipt_amount, fee?.currency)} />
-    {fee?.currency === "PHP" && fee.expected_amount !== null ? <GoodMoralField label="Approved expected amount" value={receiptAmount(fee.expected_amount, fee.currency)} /> : null}
+    {fee?.currency === "PHP" && fee.expected_amount !== null ? <GoodMoralField label={fee.fee_status === "PROVISIONAL" ? "Team-reported provisional expected amount" : "Approved expected amount"} value={receiptAmount(fee.expected_amount, fee.currency)} /> : null}
   </dl>;
 }
 
@@ -40,29 +40,26 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
 }) {
   const inspection = useReceiptInspection({ item, confirmed, onRefresh, onActivityChange });
   const data = item.receipt_inspection;
-  const mode = item.receipt_identity?.ledger_mode;
-  const status = data ? receiptStatuses[data.status] : receiptStatuses.LEGACY_UNKNOWN;
-  const availability = receiptAvailability(item);
+  const status = data ? receiptStatuses[data.status] : receiptStatuses.MISSING;
   const blocker = receiptBlockerMessage(data?.blocker);
   const history = item.receipt_identity?.history ?? [];
-  const mayOffer = mode === "ACTIVE" && data?.can_verify && confirmed && !editorOpen;
+  const mayOffer = data?.can_verify && confirmed && !editorOpen;
   return <>
     <GoodMoralSection title="Official Receipt" labelledBy="good-moral-receipt-heading" actions={<ContextHelp title="Official Receipt inspection" sections={[
       { heading: "Record, then inspect", content: <p>Save the details printed on the receipt using Correct certificate details. Verification is a separate personal inspection of the physical receipt; it does not confirm Cashier records or cleared funds.</p> },
-      { heading: "Fees and corrections", content: <p>An expected fee appears only when an approved applicable decision is available. A receipt correction needs a new inspection. Other certificate corrections retain an unchanged receipt inspection but require preparation again.</p> },
+      { heading: "Fees and corrections", content: <p>The expected fee is PHP 80.00 for F4 and F6 under the team-reported provisional decision. A receipt correction needs a new inspection. Other certificate corrections retain an unchanged receipt inspection but require preparation again.</p> },
     ]} />}>
       <ReceiptFacts item={item} />
       <div className="mt-5 space-y-2 border-t border-border pt-4">
         <p className={`text-sm font-semibold ${data?.status === "VERIFIED" ? "text-success" : "text-ink"}`}>{status.label}</p>
         <p className="max-w-2xl text-sm leading-6 text-muted">{blocker ?? status.description}</p>
-        {availability ? <p className="max-w-2xl text-sm leading-6 text-muted">{availability}</p> : null}
         {data?.verified_by_id ? <dl className="grid gap-4 pt-2 sm:grid-cols-2">
           <GoodMoralField label="Inspector account reference" value={data.verified_by_id} />
           <GoodMoralField label="Inspected at" value={formatGoodMoralDateTime(data.verified_at)} />
         </dl> : null}
       </div>
       {mayOffer ? <Button id="good-moral-verify-trigger" className="mt-4" disabled={inspection.working} onClick={inspection.begin}>{inspection.uncertain ? "Review inspection retry" : "Verify receipt"}</Button> : null}
-      {editorOpen && mode === "ACTIVE" ? <p className="mt-3 text-sm text-muted">Finish reviewing saved corrections before inspecting the receipt.</p> : null}
+      {editorOpen ? <p className="mt-3 text-sm text-muted">Finish reviewing saved corrections before inspecting the receipt.</p> : null}
       {inspection.error && !inspection.review ? <p role="alert" className="mt-3 text-sm leading-6 text-danger">{inspection.error}</p> : null}
       {inspection.message ? <p role="status" className="mt-3 text-sm leading-6 text-muted">{inspection.message}</p> : null}
       {inspection.uncertain ? <Button className="mt-3" variant="secondary" disabled={inspection.working} onClick={() => void inspection.checkOutcome()}>{inspection.working ? "Checking request…" : "Check current request"}</Button> : null}
@@ -71,7 +68,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
         <p className="my-2 text-xs leading-5 text-muted">Saved change metadata, newest first. Earlier receipt contents and historical inspection details are not included in this view.</p>
         <ol className="divide-y divide-border">
           {history.map((revision) => <li key={revision.id} className="space-y-1 py-3 text-sm">
-            <p className="font-semibold">Revision {revision.sequence} · {({ ASSIGNED: "Receipt recorded", REVISED: "Details revised", REPLACED: "Receipt replaced", REMOVED: "Receipt removed", LEGACY: "Historical observation" } as Record<string, string>)[revision.change_kind] ?? "Receipt change"} · {revision.is_current ? "Current attachment" : "Historical change"}</p>
+            <p className="font-semibold">Revision {revision.sequence} · {({ ASSIGNED: "Receipt recorded", REVISED: "Details revised", REPLACED: "Receipt replaced", REMOVED: "Receipt removed" } as Record<string, string>)[revision.change_kind] ?? "Receipt change"} · {revision.is_current ? "Current attachment" : "Historical change"}</p>
             <p className="text-muted">Recorded in COMPASS: {formatGoodMoralDateTime(revision.recorded_at)}</p>
             {revision.recorded_by_id ? <p className="break-words text-muted">Recorder account reference: {revision.recorded_by_id}</p> : null}
           </li>)}

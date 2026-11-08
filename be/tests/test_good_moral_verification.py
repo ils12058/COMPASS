@@ -31,7 +31,7 @@ from compass.good_moral.services import (
 )
 from compass.notifications.models import Notification
 from tests.test_good_moral import auth_client, csrf, sync_policy
-from tests.test_good_moral_receipts import activate, edit, person, request_for
+from tests.test_good_moral_receipts import edit, person, request_for
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -76,7 +76,6 @@ def scene(approved):
         official_receipt_date=institution_today() - timedelta(days=1),
         official_receipt_amount=Decimal("80.00"),
     )
-    activate()
     return actor, item
 
 
@@ -138,7 +137,6 @@ def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approve
         official_receipt_date=institution_today(),
         official_receipt_amount=Decimal("80.00"),
     )
-    activate()
     with pytest.raises(inspections.ReceiptBlocked, match="inspect"):
         prepare(item, actor)
     assert not Verification.objects.exists()
@@ -193,11 +191,9 @@ def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approve
         ({"official_receipt_amount": Decimal("0.00")}, "fee_mismatch"),
         ({"official_receipt_amount": Decimal("75.00")}, "fee_mismatch"),
         ({"official_receipt_amount": Decimal("100.00")}, "fee_mismatch"),
-        ({"official_receipt_amount": Decimal("-1.00")}, "conflict"),
-        ({"official_receipt_date": date(2098, 1, 1)}, "incomplete"),
     ],
 )
-def test_ineligible_imported_receipts_are_preserved_and_blocked(approved, variant, facts, code):
+def test_ineligible_receipt_facts_are_preserved_and_blocked(approved, variant, facts, code):
     sync_policy()
     actor = person("inspector", "COUNSELOR")
     grant(actor)
@@ -208,7 +204,6 @@ def test_ineligible_imported_receipts_are_preserved_and_blocked(approved, varian
     )
     original.update(facts)
     item = request_for(variant=variant, **original)
-    activate()
     with pytest.raises(inspections.ReceiptBlocked) as caught:
         verify(item, actor)
     assert caught.value.code == f"good_moral_receipt_{code}"
@@ -235,8 +230,8 @@ def test_invalid_amount_input_rejected_before_revision(scene, value):
     [
         ("COUNSELOR", True, True),
         ("GUIDANCE_OFFICE_ASSISTANT", True, True),
-        ("COUNSELOR", False, False),
-        ("GUIDANCE_OFFICE_ASSISTANT", False, False),
+        ("COUNSELOR", False, True),
+        ("GUIDANCE_OFFICE_ASSISTANT", False, True),
         ("STUDENT", True, False),
         ("IT_ADMIN", True, False),
     ],
@@ -253,12 +248,15 @@ def test_explicit_capability_and_role_required(scene, role, explicit, allowed):
     else:
         with pytest.raises(GoodMoralNotPermitted):
             verify(item, actor)
-    assert all(
-        "good_moral.verify_receipt" not in codes for codes in ROLE_CAPABILITY_GRANTS.values()
-    )
+    for role in ("COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"):
+        assert {
+            "good_moral.view",
+            "good_moral.prepare",
+            "good_moral.verify_receipt",
+        } <= ROLE_CAPABILITY_GRANTS[role]
 
 
-@pytest.mark.parametrize("change", ["dependency", "revoked", "expired", "inactive", "audit_actor"])
+@pytest.mark.parametrize("change", ["dependency", "revoked", "inactive", "audit_actor"])
 def test_fresh_authority_dependencies_expiry_and_attribution(scene, change):
     actor, item = scene
     kwargs = {}
@@ -266,8 +264,6 @@ def test_fresh_authority_dependencies_expiry_and_attribution(scene, change):
         grant(actor, "good_moral.prepare", "REVOKE")
     elif change == "revoked":
         grant(actor, effect="REVOKE")
-    elif change == "expired":
-        grant(actor, expires_at=timezone.now() - timedelta(seconds=1))
     elif change == "inactive":
         User.objects.filter(pk=actor.pk).update(is_active=False)
     else:
@@ -282,6 +278,7 @@ def test_head_designation_does_not_imply_inspection(scene):
 
     _, item = scene
     actor = person("head", "COUNSELOR")
+    grant(actor, effect="REVOKE")
     UserDesignation.objects.create(
         user=actor, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
@@ -541,27 +538,6 @@ def test_audit_failure_rolls_back_attestation_transition_and_side_effects(
     assert Verification.objects.count() == (0 if action == "verification" else 1)
 
 
-@pytest.mark.parametrize("mode", ["DORMANT", "FENCED"])
-def test_no_inspection_bypasses_writer_state(approved, mode):
-    from compass.good_moral.legacy_receipts import begin_import
-
-    sync_policy()
-    actor = person("inspector", "COUNSELOR")
-    grant(actor)
-    item = request_for()
-    if mode == "FENCED":
-        begin_import(batch_id=uuid4(), evidence_reference="synthetic")
-    with pytest.raises(receipts.ReceiptCutoverRequired):
-        inspections.verify_receipt(**intent(item, actor, assignment_id=uuid4()))
-    assert not Verification.objects.exists()
-
-
-def test_default_provider_has_no_approval_or_invented_effective_date():
-    assert fees.resolve_approved_fee(item=None, assignment=None) is None
-    assert fees.TEAM_REPORTED_AMOUNT == Decimal("80.00")
-    assert not hasattr(fees, "EFFECTIVE_FROM")
-
-
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -653,33 +629,6 @@ def test_api_explicit_action_and_student_projection(scene):
 
 
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
-def test_legacy_ready_requires_real_inspection_and_deliberate_repreparation(approved, variant):
-    sync_policy()
-    actor = person("legacy-reviewer", "COUNSELOR")
-    grant(actor)
-    item = request_for(
-        variant=variant,
-        official_receipt_number="OR-READY",
-        official_receipt_date=date(2020, 1, 1),
-        official_receipt_amount=Decimal("80.00"),
-    )
-    prepare_request(actor=actor, request_id=item.pk, context=AuditContext.user(actor))
-    item.refresh_from_db()
-    old_prepared_at = item.prepared_at
-    activate()
-    with pytest.raises(inspections.ReceiptBlocked) as caught:
-        issue(item, actor)
-    assert caught.value.code == "good_moral_receipt_unverified"
-    assert not Verification.objects.exists()
-    verify(item, actor)
-    item.refresh_from_db()
-    assert item.status == "REQUESTED" and item.prepared_at is None
-    prepare(item, actor)
-    assert item.prepared_at != old_prepared_at
-    assert issue(item, actor).status == "ISSUED"
-
-
-@pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
 def test_new_revision_can_be_reinspected_and_prepared(scene, variant):
     actor, original = scene
     item = request_for(variant=variant)
@@ -704,7 +653,7 @@ def test_new_revision_can_be_reinspected_and_prepared(scene, variant):
     assert not Verification.objects.filter(assignment__request=original).exists()
 
 
-@pytest.mark.parametrize("condition", ["ambiguous", "disputed", "wrong_owner", "superseded"])
+@pytest.mark.parametrize("condition", ["disputed", "wrong_owner", "superseded"])
 def test_identity_eligibility_cannot_be_bypassed(scene, condition):
     from django.db import connection
 
@@ -721,20 +670,8 @@ def test_identity_eligibility_cannot_be_bypassed(scene, condition):
     else:
         # Protected synthetic fixture for future reconciliation states. No runtime bypass exists.
         identity = original.identity
-        state = (
-            "LEGACY_AMBIGUOUS"
-            if condition == "ambiguous"
-            else "DISPUTED"
-            if condition == "disputed"
-            else "BOUND"
-        )
-        owner = (
-            None
-            if condition == "ambiguous"
-            else request_for().pk
-            if condition == "wrong_owner"
-            else item.pk
-        )
+        state = "DISPUTED" if condition == "disputed" else "BOUND"
+        owner = request_for().pk if condition == "wrong_owner" else item.pk
         with transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(
                 "ALTER TABLE good_moral_goodmoralreceiptidentity "
@@ -753,27 +690,6 @@ def test_identity_eligibility_cannot_be_bypassed(scene, condition):
         with pytest.raises(inspections.ReceiptBlocked) as caught:
             verify(item, actor)
         assert caught.value.code == "good_moral_receipt_conflict"
-    assert not Verification.objects.exists()
-
-
-def test_actual_legacy_duplicate_identity_remains_ambiguous(approved):
-    sync_policy()
-    actor = person("inspector", "COUNSELOR")
-    grant(actor)
-    first = request_for(
-        official_receipt_number="DUPLICATE",
-        official_receipt_date=date(2020, 1, 1),
-        official_receipt_amount=80,
-    )
-    request_for(
-        official_receipt_number="duplicate",
-        official_receipt_date=date(2020, 1, 1),
-        official_receipt_amount=80,
-    )
-    activate()
-    with pytest.raises(inspections.ReceiptBlocked):
-        verify(first, actor)
-    assert receipts.latest_revision(first).identity.bound_request_id is None
     assert not Verification.objects.exists()
 
 
@@ -839,3 +755,32 @@ def test_issued_evidence_remains_historical_when_policy_unavailable(scene, monke
         )
     v.refresh_from_db()
     assert v.invalidated_at is None
+
+
+@pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
+@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"])
+def test_provisional_fee_and_baseline_inspectors_work_without_activation_or_override(variant, role):
+    sync_policy()
+    inspector = person("baseline-inspector", role)
+    counselor = person("baseline-issuer", "COUNSELOR")
+    item = request_for(
+        variant=variant,
+        official_receipt_number="OR-ALWAYS-ON",
+        official_receipt_date=date(2020, 1, 1),
+        official_receipt_amount=Decimal("80.00"),
+    )
+    status = inspections.operational_status(item, inspector)
+    assert status["can_verify"] and status["fee_status"] == "PROVISIONAL"
+    decision = fees.resolve_approved_fee(item=item, assignment=receipts.latest_revision(item))
+    assert decision.applies(item, receipts.latest_revision(item))
+    assert "team-reported provisional" in decision.authority_reference.lower()
+    attestation = verify(item, inspector).receipt_verification_result
+    assert attestation.fee_decision == decision.snapshot()
+    prepare(item, inspector)
+    assert issue(item, counselor).issued_receipt_verification_id == attestation.pk
+
+
+def test_expired_supplemental_grant_keeps_role_baseline(scene):
+    actor, item = scene
+    grant(actor, expires_at=timezone.now() - timedelta(seconds=1))
+    assert verify(item, actor).receipt_verification_result.verified_by_id == actor.pk

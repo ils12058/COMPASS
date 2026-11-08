@@ -39,11 +39,10 @@ function fixture({ item = receiptItem(), account = inspector, behavior = 'succes
           await reply({ error: { code: 'good_moral_conflict', message: diagnosis } }, 409); return true;
         }
         if (behavior === 'already') { verified('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'); await reply({ error: { code: 'good_moral_receipt_already_verified', message: diagnosis } }, 409); return true; }
-        if (['conflict', 'policy', 'fenced', 'cancelled', 'revoked', 'deactivated', 'account-changed'].includes(behavior)) {
+        if (['conflict', 'policy', 'cancelled', 'revoked', 'deactivated', 'account-changed'].includes(behavior)) {
           let code = 'permission_denied'; let status = 403;
           if (behavior === 'conflict') code = 'good_moral_receipt_conflict';
-          if (behavior === 'policy') { code = 'good_moral_receipt_policy_unresolved'; state.item.receipt_inspection = { ...state.item.receipt_inspection, status: 'POLICY_UNAVAILABLE', can_verify: false, expected_amount: null, currency: null, blocker: code }; }
-          if (behavior === 'fenced') { code = 'good_moral_receipt_cutover_required'; state.item.receipt_identity.ledger_mode = 'FENCED'; state.item.receipt_inspection.can_verify = false; state.item.receipt_inspection.blocker = code; }
+          if (behavior === 'policy') { code = 'good_moral_receipt_policy_unresolved'; state.item.receipt_inspection = { ...state.item.receipt_inspection, status: 'POLICY_UNAVAILABLE', can_verify: false, expected_amount: null, fee_status: null, currency: null, blocker: code }; }
           if (behavior === 'cancelled') { code = 'good_moral_conflict'; state.item.status = 'CANCELLED'; state.item.receipt_inspection.can_verify = false; state.item.actions.can_correct = false; state.item.actions.can_prepare = false; }
           if (!['revoked', 'deactivated', 'account-changed'].includes(behavior)) status = 409;
           else state.item.receipt_inspection.can_verify = false;
@@ -93,7 +92,7 @@ async function submitInspection(page, name) {
   await dialog.getByRole('button', { name: 'Verify receipt', exact: true }).click();
 }
 
-for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['POLICY_UNAVAILABLE', 'Fee policy unavailable'], ['LEGACY_CONFLICT', 'Receipt needs GCO review'], ['DISPUTED', 'Receipt disputed']]) {
+for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['POLICY_UNAVAILABLE', 'Fee policy unavailable'], ['DISPUTED', 'Receipt disputed']]) {
   const item = receiptItem(state); const f = fixture({ item });
   await check(`blocker-${state}`, route, f.options, async page => {
     await shown(page.getByText(label, { exact: true }));
@@ -102,21 +101,12 @@ for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Re
     assert.equal(f.state.posts.length, 0);
   });
 }
-for (const mode of ['DORMANT', 'FENCED']) {
-  const f = fixture({ item: receiptItem('LEGACY_UNKNOWN', mode) });
-  await check(`availability-${mode}`, route, f.options, async page => {
-    await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
-    await shown(page.getByText(mode === 'DORMANT' ? /inspection is not enabled/ : /processing is temporarily paused/).first());
-    if (mode === 'FENCED') { await hidden(page.getByRole('button', { name: 'Correct certificate details' })); await hidden(page.getByRole('button', { name: 'Mark ready for issuance' })); }
-    else await shown(page.getByRole('button', { name: 'Mark ready for issuance' }));
-  });
-}
 {
   const item = receiptItem('INCOMPLETE'); item.official_receipt_amount = '75.00'; item.receipt_inspection.blocker = 'good_moral_receipt_fee_mismatch';
-  const f = fixture({ item }); await check('fee-mismatch-keeps-actual-and-approved-expected', route, f.options, async page => {
+  const f = fixture({ item }); await check('fee-mismatch-keeps-actual-and-provisional-expected', route, f.options, async page => {
     await shown(page.getByText(/keep the amount printed/)); const region = page.getByRole('region', { name: 'Official Receipt', exact: true });
     assert.ok((await region.innerText()).includes('75.00'));
-    await shown(page.getByText('Approved expected amount', { exact: true })); await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
+    await shown(page.getByText('Team-reported provisional expected amount', { exact: true })); await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
   });
 }
 {
@@ -142,7 +132,7 @@ for (const mode of ['DORMANT', 'FENCED']) {
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
   });
 }
-for (const behavior of ['stale', 'already', 'conflict', 'policy', 'fenced', 'cancelled', 'revoked', 'deactivated', 'account-changed', 'late-invalidated']) {
+for (const behavior of ['stale', 'already', 'conflict', 'policy', 'cancelled', 'revoked', 'deactivated', 'account-changed', 'late-invalidated']) {
   const f = fixture({ behavior });
   await check(`inspection-recovery-${behavior}`, route, f.options, async page => {
     await submitInspection(page); await f.begun;
@@ -152,7 +142,7 @@ for (const behavior of ['stale', 'already', 'conflict', 'policy', 'fenced', 'can
     else if (behavior === 'deactivated') { await shown(page.getByRole('alert').filter({ hasText: /could not be loaded|can't perform/ }).first()); }
     else { await shown(page.getByRole('alert').filter({ hasText: /receipt|inspection|action|paused/i }).first()); }
     assert.equal(f.state.posts.length, 1); assert.doesNotMatch(await page.locator('body').innerText(), /PRIVATE-RECEIPT-DIAGNOSTIC/);
-    if (['policy', 'fenced', 'cancelled', 'revoked', 'deactivated'].includes(behavior)) await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
+    if (['policy', 'cancelled', 'revoked', 'deactivated'].includes(behavior)) await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
   });
 }
 {
@@ -257,7 +247,7 @@ for (const behavior of ['prepared-elsewhere', 'issued-elsewhere', 'session-chang
   });
 }
 for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
-  const item = receiptItem('MISSING', 'DORMANT'); item.variant = variant;
+  const item = receiptItem('MISSING'); item.variant = variant;
   const studentItem = structuredClone(item);
   for (const field of ['actions', 'receipt_identity', 'receipt_inspection', 'receipt_mutation_result', 'receipt_verification_result', 'initiated_by', 'student_institutional_id', 'cancellation', 'prepared_by', 'prepared_at']) delete studentItem[field];
   const account = { ...inspector, role: 'STUDENT', student_lifecycle_status: variant === 'CURRENT_STUDENT' ? 'CURRENT' : 'GRADUATED', capabilities: ['good_moral.request_self', 'good_moral.view_self', 'exit_interviews.view_self'] };
@@ -279,7 +269,7 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
     await shown(page.getByText(/Pay the applicable certificate fee at UCN Cashier/));
     assert.equal(posts.length, 1); assert.ok(Object.keys(posts[0]).every(k => !/receipt|payment|verification/.test(k)));
     await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
-    assert.doesNotMatch(await page.locator('body').innerText(), /Inspector account reference|Receipt change history|DORMANT|ACTIVE|Fee policy|₱80/);
+    assert.doesNotMatch(await page.locator('body').innerText(), /Inspector account reference|Receipt change history|Fee policy|₱80/);
   });
 }
 {

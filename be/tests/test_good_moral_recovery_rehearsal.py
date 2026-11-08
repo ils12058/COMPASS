@@ -20,8 +20,6 @@ from compass.feedback.models import FeedbackOpportunity
 from compass.good_moral.models import (
     GoodMoralReceiptAssignment,
     GoodMoralReceiptIdentity,
-    GoodMoralReceiptImportBatch,
-    GoodMoralReceiptLedger,
     GoodMoralReceiptMutation,
     GoodMoralReceiptVerification,
     GoodMoralRequest,
@@ -65,8 +63,6 @@ def test_disposable_backup_restore_preserves_evidence_but_loses_later_claims(act
         GoodMoralReceiptIdentity,
         GoodMoralReceiptAssignment,
         GoodMoralReceiptMutation,
-        GoodMoralReceiptImportBatch,
-        GoodMoralReceiptLedger,
         GoodMoralReceiptVerification,
         AuditEvent,
         Notification,
@@ -141,11 +137,9 @@ def test_disposable_backup_restore_preserves_evidence_but_loses_later_claims(act
                     "AND t.tgenabled <> 'D'",
                 ).fetchone()[0]
                 assert guards > 0
-                # Restore retained ACTIVE too: a snapshot cannot know later physical
-                # claims. Keep this clone disconnected; no unsafe write is reopened.
                 assert restored.execute(
-                    "SELECT mode FROM good_moral_goodmoralreceiptledger WHERE id=1"
-                ).fetchone() == ("ACTIVE",)
+                    "SELECT to_regclass('good_moral_goodmoralreceiptledger')"
+                ).fetchone() == (None,)
         finally:
             admin.execute(
                 sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(clone_name))

@@ -13,7 +13,6 @@ from compass.appointments.services import InvalidAppointmentInput, list_my_appoi
 from compass.availability.models import ProviderAvailabilityWindow
 from compass.common.institutional_time import institution_date, institution_today
 from compass.counseling.services import create_encounter
-from compass.good_moral.services import issue_request, prepare_request
 from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.organization.models import AcademicYear
@@ -28,6 +27,7 @@ from tests import test_inventory_counselor_review as inv
 from tests import test_referrals as referrals
 from tests import test_routine_interviews as routine
 from tests.inventory_encryption_helpers import create_inventory_row
+from tests.test_good_moral import issue_request, prepare_request
 
 # Some tests submit Individual Inventories, whose CURRENT location is checked against PSGC.
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("inventory_psgc")]

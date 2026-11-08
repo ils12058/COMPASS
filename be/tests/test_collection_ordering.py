@@ -44,6 +44,7 @@ from tests.test_exit_interviews import make_inventory as make_exit_inventory
 from tests.test_feedback import auth_client as feedback_client
 from tests.test_feedback import post_json as post_feedback
 from tests.test_feedback import valid_csm_payload
+from tests.test_good_moral import make_guarded_good_moral
 from tests.test_graduate_tracer_reports import make_response as make_graduate_response
 from tests.test_inventory_counselor_review import (
     affiliate,
@@ -163,6 +164,8 @@ def _good_moral(student: User, *, name: str, status: str = GoodMoralStatus.REQUE
     )
     values: dict[str, object] = {
         "student": student,
+        "initiation_origin": "STUDENT_SELF",
+        "initiated_by": student,
         "variant": GoodMoralVariant.GRADUATE,
         "status": status,
         "applicant_name_snapshot": name,
@@ -181,7 +184,7 @@ def _good_moral(student: User, *, name: str, status: str = GoodMoralStatus.REQUE
         }
     if status == GoodMoralStatus.CANCELLED:
         values |= {"cancelled_at": times["cancelled_at"], "cancellation_reason": "Duplicate"}
-    item = GoodMoralRequest.objects.create(**values)
+    item = make_guarded_good_moral(**values)
     GoodMoralRequest.objects.filter(pk=item.pk).update(created_at=times["created_at"])
     return item
 

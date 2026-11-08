@@ -220,7 +220,6 @@ class FormRevisionSummary(StrictSchema):
 class GoodMoralInitiationOriginValue(StrEnum):
     STUDENT_SELF = GoodMoralInitiationOrigin.STUDENT_SELF
     GCO_ASSISTED = GoodMoralInitiationOrigin.GCO_ASSISTED
-    LEGACY_UNSPECIFIED = GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED
 
 
 class GoodMoralSummaryResponse(StrictSchema):
@@ -294,11 +293,8 @@ class GoodMoralReceiptHistoryItem(StrictSchema):
 
 
 class GoodMoralReceiptStateResponse(StrictSchema):
-    ledger_mode: Literal["DORMANT", "FENCED", "ACTIVE"]
     revision_id: UUID | None
-    identity_state: Literal[
-        "DORMANT", "ABSENT", "BOUND", "LEGACY_AMBIGUOUS", "DISPUTED", "QUARANTINED"
-    ]
+    identity_state: Literal["ABSENT", "BOUND", "DISPUTED"]
     history: list[GoodMoralReceiptHistoryItem]
 
 
@@ -314,8 +310,6 @@ class GoodMoralReceiptInspectionResponse(StrictSchema):
         "INCOMPLETE",
         "NEEDS_VERIFICATION",
         "VERIFIED",
-        "LEGACY_UNKNOWN",
-        "LEGACY_CONFLICT",
         "DISPUTED",
         "POLICY_UNAVAILABLE",
     ]
@@ -326,6 +320,7 @@ class GoodMoralReceiptInspectionResponse(StrictSchema):
     verified_at: datetime | None
     method: Literal["PHYSICAL_OR_INSPECTION"] | None
     expected_amount: Decimal | None
+    fee_status: Literal["APPROVED", "PROVISIONAL"] | None
     currency: Literal["PHP"] | None
 
 
@@ -397,14 +392,12 @@ def _raise(exc: GoodMoralError) -> NoReturn:
     from .receipt_identity import (
         ReceiptChanged,
         ReceiptConflict,
-        ReceiptCutoverRequired,
         ReceiptOperationConflict,
     )
 
     for cls, code in (
         (ReceiptConflict, "good_moral_receipt_conflict"),
         (ReceiptChanged, "good_moral_receipt_changed"),
-        (ReceiptCutoverRequired, "good_moral_receipt_cutover_required"),
         (ReceiptOperationConflict, "idempotency_key_conflict"),
     ):
         if isinstance(exc, cls):
@@ -516,15 +509,12 @@ def _operational_detail(item, actor) -> dict[str, object]:
 
 
 def _actions(item, actor):
-    from .receipt_identity import ReceiptCutoverRequired
-    from .receipt_verification import ReceiptBlocked, active_mode, gate
+    from .receipt_verification import ReceiptBlocked, gate
 
     receipt_ready = True
     try:
-        if active_mode():
-            gate(item)
-            receipt_ready = True
-    except (ReceiptBlocked, ReceiptCutoverRequired):
+        gate(item)
+    except ReceiptBlocked:
         receipt_ready = False
     preparable = item.status in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}
     prepare = actor.has_capability("good_moral.prepare")
@@ -544,7 +534,7 @@ def _actions(item, actor):
         "can_prepare": prepare and receipt_ready and item.status == GoodMoralStatus.REQUESTED,
         "can_correct": prepare and preparable,
         "can_issue": receipt_ready
-        and (not active_mode() or item.prepared_receipt_verification_id is not None)
+        and item.prepared_receipt_verification_id is not None
         and counselor
         and actor.has_capability("good_moral.issue")
         and item.status == GoodMoralStatus.READY_FOR_ISSUANCE,

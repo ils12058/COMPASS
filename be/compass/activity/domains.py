@@ -287,10 +287,7 @@ def domain_selection_filter(*, user) -> Q:
             source = source.filter(
                 Q(
                     student_id=OuterRef("actor_user_id"),
-                    initiation_origin__in=(
-                        GoodMoralInitiationOrigin.STUDENT_SELF,
-                        GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED,
-                    ),
+                    initiation_origin=GoodMoralInitiationOrigin.STUDENT_SELF,
                 )
                 | Q(
                     initiation_origin=GoodMoralInitiationOrigin.GCO_ASSISTED,

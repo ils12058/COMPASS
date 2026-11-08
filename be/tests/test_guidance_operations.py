@@ -19,7 +19,6 @@ from compass.audit.context import AuditContext
 from compass.call_slips.models import CallSlip
 from compass.counseling.models import CounselingEncounter
 from compass.good_moral.models import GoodMoralRequest
-from compass.good_moral.services import issue_request, prepare_request
 from compass.guidance_messages import services as messages
 from compass.guidance_messages.errors import MessagesConflict, ThreadNotFound
 from compass.guidance_messages.models import GuidanceThread
@@ -34,6 +33,7 @@ from compass.routine_interviews.services import finalize_assigned_evaluation
 from compass.service_catalog.models import Service
 from compass.student_academics.models import StudentAcademicProfile
 from compass.work_queue import services as work
+from tests.test_good_moral import issue_request, prepare_request
 from tests.test_guidance_messages import (  # noqa: F401
     BODY,
     counseling,
@@ -495,7 +495,15 @@ def test_fixed_query_cost_and_counts_beyond_a_work_page(world):
     with CaptureQueriesContext(connection) as small:
         summary(world)
     GoodMoralRequest.objects.bulk_create(
-        [GoodMoralRequest(student=world.student, variant="GRADUATE") for _ in range(150)]
+        [
+            GoodMoralRequest(
+                student=world.student,
+                initiation_origin="STUDENT_SELF",
+                initiated_by=(world.student),
+                variant="GRADUATE",
+            )
+            for _ in range(150)
+        ]
     )
     with CaptureQueriesContext(connection) as large:
         result = summary(world)
@@ -511,9 +519,15 @@ def test_controlled_shared_work_populations_agree_without_paging(world):
     good_moral(world)
     row = good_moral(world)
     GoodMoralRequest.objects.filter(pk=row.pk).update(
-        status="READY_FOR_ISSUANCE",
-        prepared_at=now,
-        prepared_by=world.counselor,
+        applicant_name_snapshot="Synthetic",
+        degree_snapshot="Bachelor of Science",
+        graduation_date=date(2000, 1, 1),
+    )
+    prepare_request(
+        actor=world.counselor,
+        request_id=row.pk,
+        context=AuditContext.user(world.counselor),
+        now=now,
     )
     call_slip(world, now=now)
     from compass.call_slips.work import due_call_slips

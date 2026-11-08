@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from django.db import transaction
+from django.utils import timezone
 
 from compass.announcements.models import Announcement
 from compass.announcements.services import (
@@ -231,6 +232,9 @@ FEEDBACK_TIMES = {
 def _feedback_time(
     session: SeedSession, persona_key: str, *, service_completed_at, offset_minutes: int = 0
 ):
+    if persona_key in {"good_moral", "recent_graduate"}:
+        # Receipt inspection/issuance now use server time; feedback follows them immediately.
+        return timezone.now()
     spec = FEEDBACK_TIMES[persona_key]
     if spec[0] == "on":
         base = session.timeline.on(*spec[1])

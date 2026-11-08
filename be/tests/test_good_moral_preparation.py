@@ -19,18 +19,19 @@ from compass.good_moral.services import (
     InvalidGoodMoralInput,
     cancel_request,
     get_request,
-    issue_request,
     list_requests,
-    prepare_request,
-    update_request,
 )
 from tests.test_good_moral import (
     auth_client,
     csrf,
+    issue_request,
     make_current_request,
     make_graduate_request,
     make_user,
+    prepare_request,
+    record_inspected_receipt,
     sync_policy,
+    update_request,
 )
 
 
@@ -40,10 +41,23 @@ def setup_request(*, graduate=False):
     counselor = make_user("issuer@example.edu", role="COUNSELOR")
     student = make_user("applicant@example.edu", lifecycle="GRADUATED" if graduate else "CURRENT")
     item = make_graduate_request(student) if graduate else make_current_request(student)[0]
+    item = record_inspected_receipt(item, staff)
     return staff, counselor, student, item
 
 
 def post(client, item, action, payload):
+    item.refresh_from_db()
+    if action == "issue":
+        payload = {
+            "expected_resource_version": item.updated_at.isoformat(),
+            "expected_receipt_revision": str(item.prepared_receipt_verification.assignment_id)
+            if item.prepared_receipt_verification_id
+            else None,
+            "expected_receipt_verification": str(item.prepared_receipt_verification_id)
+            if item.prepared_receipt_verification_id
+            else None,
+            **payload,
+        }
     return client.post(
         f"/api/v1/good-moral/requests/{item.pk}/{action}",
         data=json.dumps(payload),

@@ -49,7 +49,12 @@ def routine(world, **kwargs):
 
 
 def good_moral(world, student=None):
-    return GoodMoralRequest.objects.create(student=student or world.student, variant="GRADUATE")
+    return GoodMoralRequest.objects.create(
+        student=student or world.student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student or world.student),
+        variant="GRADUATE",
+    )
 
 
 def call_slip(world, *, now, student=None, **kwargs):
@@ -169,8 +174,16 @@ def test_good_moral_officewide_separate_prepare_and_issue(world):
     assert queue(world, world.goa)[0].kind == WorkKind.GOOD_MORAL_PREPARATION
     deny(world.goa, "good_moral.prepare")
     assert queue(world, world.goa) == []
+    from compass.audit.context import AuditContext
+    from tests.test_good_moral import prepare_request
+
     GoodMoralRequest.objects.filter(pk=row.pk).update(
-        status="READY_FOR_ISSUANCE", prepared_at=timezone.now(), prepared_by=world.counselor
+        applicant_name_snapshot="Synthetic",
+        degree_snapshot="Bachelor of Science",
+        graduation_date=timezone.now().date(),
+    )
+    prepare_request(
+        actor=world.counselor, request_id=row.pk, context=AuditContext.user(world.counselor)
     )
     assert queue(world)[0].kind == WorkKind.GOOD_MORAL_ISSUANCE
     UserCapabilityOverride.objects.create(
@@ -269,7 +282,15 @@ def test_each_source_gets_only_required_prefix_and_failures_propagate(world):
 
 def test_real_source_sql_is_bounded_and_never_counts_whole_sources(world):
     GoodMoralRequest.objects.bulk_create(
-        [GoodMoralRequest(student=world.student, variant="GRADUATE") for _ in range(120)]
+        [
+            GoodMoralRequest(
+                student=world.student,
+                initiation_origin="STUDENT_SELF",
+                initiated_by=(world.student),
+                variant="GRADUATE",
+            )
+            for _ in range(120)
+        ]
     )
     with CaptureQueriesContext(connection) as queries:
         page = services.list_work(actor=world.counselor)
@@ -281,7 +302,7 @@ def test_real_source_sql_is_bounded_and_never_counts_whole_sources(world):
 
 def test_real_good_moral_prepare_and_issue_transitions():
     from compass.audit.context import AuditContext
-    from compass.good_moral.services import issue_request, prepare_request
+    from tests.test_good_moral import issue_request, prepare_request
     from tests.test_good_moral_preparation import setup_request
 
     staff, counselor, _, item = setup_request()

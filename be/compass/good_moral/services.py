@@ -1182,7 +1182,7 @@ def update_request(
         normalized = {
             name: (
                 receipts.receipt_display(value)
-                if intent and name == "official_receipt_number"
+                if name == "official_receipt_number"
                 else _normalize_update(name, value)
             )
             for name, value in changes.items()
@@ -1324,8 +1324,7 @@ def prepare_request(
         evidence = inspection.gate(
             item, expected_resource_version=expected_resource_version, lock=True
         )
-        if evidence:
-            actor = inspection.authority(actor, "good_moral.prepare", context, lock=True)
+        actor = inspection.authority(actor, "good_moral.prepare", context, lock=True)
         if item.status == GoodMoralStatus.READY_FOR_ISSUANCE:
             return _queryset().get(pk=item.pk)
         if item.status != GoodMoralStatus.REQUESTED:
@@ -1334,7 +1333,7 @@ def prepare_request(
         item.status = GoodMoralStatus.READY_FOR_ISSUANCE
         item.prepared_by = actor
         item.prepared_at = prepared_at
-        item.prepared_receipt_verification = evidence[1] if evidence else None
+        item.prepared_receipt_verification = evidence[1]
         item.save(
             update_fields=[
                 "status",
@@ -1352,12 +1351,11 @@ def prepare_request(
             target_id=item.pk,
             metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
         )
-        if evidence:
-            inspection.authority(actor, "good_moral.prepare", context)
-            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
-                raise inspection.ReceiptBlocked(
-                    "policy_unresolved", "The approved fee decision changed during preparation."
-                )
+        inspection.authority(actor, "good_moral.prepare", context)
+        if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+            raise inspection.ReceiptBlocked(
+                "policy_unresolved", "The applicable fee decision changed during preparation."
+            )
         return _queryset().get(pk=item.pk)
 
 
@@ -1461,18 +1459,17 @@ def issue_request(
             issuing=True,
             lock=True,
         )
-        if evidence:
-            if not expected_preparation_version:
-                raise GoodMoralPreparationChanged("Review the current preparation before issuing.")
-            actor = inspection.authority(
-                actor,
-                "good_moral.issue",
-                context,
-                lock=True,
-                student_id=item.student_id
-                if item.variant == GoodMoralVariant.CURRENT_STUDENT
-                else None,
-            )
+        if not expected_preparation_version:
+            raise GoodMoralPreparationChanged("Review the current preparation before issuing.")
+        actor = inspection.authority(
+            actor,
+            "good_moral.issue",
+            context,
+            lock=True,
+            student_id=item.student_id
+            if item.variant == GoodMoralVariant.CURRENT_STUDENT
+            else None,
+        )
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
             locked_student = (
@@ -1516,8 +1513,8 @@ def issue_request(
         if not issuer_name:
             raise GoodMoralConflict("Issuer name is required before issuance.")
 
-        item.issued_receipt_assignment = evidence[0] if evidence else None
-        item.issued_receipt_verification = evidence[1] if evidence else None
+        item.issued_receipt_assignment = evidence[0]
+        item.issued_receipt_verification = evidence[1]
         item.form_revision = revision
         item.document_template_key = template_key
         item.document_template_version = template_version
@@ -1582,12 +1579,11 @@ def issue_request(
             target_type="FEEDBACK",
             target_id=opportunity.pk,
         )
-        if evidence:
-            inspection.authority(actor, "good_moral.issue", context)
-            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
-                raise inspection.ReceiptBlocked(
-                    "policy_unresolved", "The approved fee decision changed during issuance."
-                )
+        inspection.authority(actor, "good_moral.issue", context)
+        if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+            raise inspection.ReceiptBlocked(
+                "policy_unresolved", "The applicable fee decision changed during issuance."
+            )
         return _queryset().get(pk=item.pk)
 
 
@@ -1627,8 +1623,7 @@ def cancel_request(
 
         from . import receipt_verification as inspection
 
-        if inspection.active_mode(lock=True):
-            inspection.invalidate(item=item, actor=actor, context=context, reason="CANCELLED")
+        inspection.invalidate(item=item, actor=actor, context=context, reason="CANCELLED")
         previous_status = item.status
         item.status = GoodMoralStatus.CANCELLED
         item.cancelled_at = cancelled_at

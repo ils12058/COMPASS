@@ -51,17 +51,23 @@ from compass.good_moral.services import (
     build_certificate_render_context,
     cancel_request,
     get_mine,
-    issue_request,
     list_mine,
-    prepare_request,
     render_certificate_pdf,
-    update_request,
 )
 from compass.good_moral.services import (
     create_my_current_student as create_my_current_student_service,
 )
 from compass.good_moral.services import (
     create_my_graduate as create_my_graduate_service,
+)
+from compass.good_moral.services import (
+    issue_request as issue_request_service,
+)
+from compass.good_moral.services import (
+    prepare_request as prepare_request_service,
+)
+from compass.good_moral.services import (
+    update_request as update_request_service,
 )
 from compass.institutional_forms.bootstrap import sync_institutional_forms
 from compass.institutional_forms.models import FormRevision
@@ -71,6 +77,145 @@ from compass.organization.canonical import canonical_program_metadata
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
+
+
+def record_inspected_receipt(item, actor):
+    """Build valid synthetic receipt evidence for tests of other certificate behavior."""
+    from compass.good_moral.receipt_identity import latest_revision
+    from compass.good_moral.receipt_verification import METHOD, current_verification, verify_receipt
+
+    item.refresh_from_db()
+    if item.status in {"ISSUED", "CANCELLED"}:
+        return item
+    revision = latest_revision(item)
+    facts = {
+        "official_receipt_number": item.official_receipt_number or f"TEST-OR-{item.pk.int}",
+        "official_receipt_date": item.official_receipt_date or date(2000, 1, 1),
+        "official_receipt_amount": item.official_receipt_amount
+        if item.official_receipt_amount is not None
+        else Decimal("80.00"),
+    }
+    if revision is None or any(getattr(item, name) != value for name, value in facts.items()):
+        item = update_request_service(
+            actor=actor,
+            request_id=item.pk,
+            changes=facts,
+            context=AuditContext.user(actor),
+            expected_resource_version=item.updated_at.isoformat(),
+            expected_receipt_revision=getattr(revision, "pk", None),
+            operation_id=uuid.uuid4(),
+        )
+        revision = latest_revision(item)
+    if current_verification(revision) is None:
+        item = verify_receipt(
+            actor=actor,
+            request_id=item.pk,
+            context=AuditContext.user(actor),
+            expected_resource_version=item.updated_at.isoformat(),
+            assignment_id=revision.pk,
+            operation_id=uuid.uuid4(),
+            method=METHOD,
+        )
+    return item
+
+
+def prepare_request(**kwargs):
+    item = GoodMoralRequest.objects.get(pk=kwargs["request_id"])
+    item = record_inspected_receipt(item, kwargs["actor"])
+    kwargs.setdefault("expected_resource_version", item.updated_at.isoformat())
+    return prepare_request_service(**kwargs)
+
+
+def issue_request(**kwargs):
+    item = GoodMoralRequest.objects.get(pk=kwargs["request_id"])
+    kwargs.setdefault("expected_resource_version", item.updated_at.isoformat())
+    kwargs.setdefault(
+        "expected_preparation_version", item.prepared_at.isoformat() if item.prepared_at else None
+    )
+    kwargs.setdefault("expected_receipt_verification", item.prepared_receipt_verification_id)
+    kwargs.setdefault(
+        "expected_receipt_revision",
+        item.prepared_receipt_verification.assignment_id
+        if item.prepared_receipt_verification_id
+        else None,
+    )
+    return issue_request_service(**kwargs)
+
+
+def update_request(**kwargs):
+    from compass.good_moral.receipt_identity import RECEIPT_FIELDS, latest_revision
+
+    if RECEIPT_FIELDS.intersection(kwargs["changes"]):
+        item = GoodMoralRequest.objects.get(pk=kwargs["request_id"])
+        kwargs.setdefault("expected_resource_version", item.updated_at.isoformat())
+        kwargs.setdefault("expected_receipt_revision", getattr(latest_revision(item), "pk", None))
+        kwargs.setdefault("operation_id", uuid.uuid4())
+    return update_request_service(**kwargs)
+
+
+def issue_payload(item):
+    item.refresh_from_db()
+    return {
+        "expected_preparation_version": item.prepared_at.isoformat() if item.prepared_at else None,
+        "expected_resource_version": item.updated_at.isoformat(),
+        "expected_receipt_revision": str(item.prepared_receipt_verification.assignment_id)
+        if item.prepared_receipt_verification_id
+        else None,
+        "expected_receipt_verification": str(item.prepared_receipt_verification_id)
+        if item.prepared_receipt_verification_id
+        else None,
+    }
+
+
+def make_guarded_good_moral(*, fixture_actor=None, **values):
+    """Persist queue/email fixtures with real receipt inspection and valid SQL evidence."""
+    status = values.get("status", "REQUESTED")
+    receipt_fields = {
+        name: values.pop(name) for name in list(values) if name.startswith("official_receipt_")
+    }
+    terminal = {
+        name: values.pop(name)
+        for name in list(values)
+        if name
+        in {
+            "status",
+            "prepared_at",
+            "prepared_by",
+            "issued_at",
+            "issued_by",
+            "issued_by_name_snapshot",
+            "document_template_key",
+            "document_template_version",
+            "form_revision",
+            "cancelled_at",
+            "cancelled_by",
+            "cancellation_reason",
+        }
+    }
+    item = GoodMoralRequest.objects.create(**values)
+    actor = fixture_actor or terminal.get("prepared_by") or terminal.get("issued_by")
+    if receipt_fields:
+        item = update_request(
+            actor=actor,
+            request_id=item.pk,
+            changes=receipt_fields,
+            context=AuditContext.user(actor),
+        )
+    if status in {"READY_FOR_ISSUANCE", "ISSUED"}:
+        item = record_inspected_receipt(item, actor)
+        from compass.good_moral.receipt_identity import latest_revision
+        from compass.good_moral.receipt_verification import current_verification
+
+        assignment = latest_revision(item)
+        verification = current_verification(assignment)
+        item.prepared_receipt_verification = verification
+        if status == "ISSUED":
+            item.issued_receipt_assignment = assignment
+            item.issued_receipt_verification = verification
+    for name, value in terminal.items():
+        setattr(item, name, value)
+    item.save()
+    return item
 
 
 def prepare_and_issue(**kwargs):
@@ -738,12 +883,16 @@ def test_structural_database_constraints_do_not_replace_issuance_completeness():
         with transaction.atomic():
             GoodMoralRequest.objects.create(
                 student=student,
+                initiation_origin="STUDENT_SELF",
+                initiated_by=(student),
                 variant=GoodMoralVariant.CURRENT_STUDENT,
                 applicant_name_snapshot="Allowed to be incomplete while requested",
             )
 
     graduate = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.GRADUATE,
         applicant_name_snapshot="Incomplete Graduate",
         degree_snapshot="",
@@ -801,6 +950,17 @@ def test_counselor_corrections_are_variant_local_private_and_locked_after_issue(
             changes={"official_receipt_amount": Decimal("-1.00")},
             context=AuditContext.user(counselor),
         )
+
+    from compass.good_moral.receipt_verification import ReceiptBlocked
+
+    with pytest.raises(ReceiptBlocked):
+        record_inspected_receipt(item, counselor)
+    update_request(
+        actor=counselor,
+        request_id=item.pk,
+        changes={"official_receipt_amount": Decimal("80.00")},
+        context=AuditContext.user(counselor),
+    )
 
     issued = prepare_and_issue(
         actor=counselor,
@@ -931,6 +1091,9 @@ def test_issuance_refuses_a_legacy_future_graduation_date_until_corrected():
         status=GoodMoralStatus.READY_FOR_ISSUANCE,
         prepared_at=before_midnight,
         prepared_by=counselor,
+        prepared_receipt_verification=item.receipt_revisions.get(is_current=True).verifications.get(
+            invalidated_at__isnull=True
+        ),
     )
     with pytest.raises(GoodMoralCertificateDateInFuture, match="Correct the certificate details"):
         issue_request(
@@ -951,7 +1114,7 @@ def test_issuance_refuses_a_legacy_future_graduation_date_until_corrected():
     client = auth_client(counselor)
     blocked = client.post(
         f"/api/v1/good-moral/requests/{item.pk}/issue",
-        data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
+        data=json.dumps(issue_payload(item)),
         content_type="application/json",
         **csrf(client),
     )
@@ -985,14 +1148,15 @@ def test_issuance_accepts_historical_dates_and_refuses_a_future_receipt_date():
     )
     # 16:30 UTC on 31 December is already 1 January 2027 in Manila.
     new_year = datetime(2026, 12, 31, 16, 30, tzinfo=UTC)
-    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_date=date(2027, 1, 2))
-
-    with pytest.raises(GoodMoralCertificateDateInFuture, match="Official Receipt date cannot be"):
-        prepare_request(
-            actor=counselor, request_id=item.pk, context=AuditContext.user(counselor), now=new_year
+    with pytest.raises(
+        InvalidGoodMoralInput, match="official_receipt_date must not be in the future"
+    ):
+        update_request(
+            actor=counselor,
+            request_id=item.pk,
+            changes={"official_receipt_date": date(2027, 1, 2)},
+            context=AuditContext.user(counselor),
         )
-
-    GoodMoralRequest.objects.filter(pk=item.pk).update(official_receipt_date=date(2027, 1, 1))
     prepare_request(
         actor=counselor, request_id=item.pk, context=AuditContext.user(counselor), now=new_year
     )
@@ -1001,7 +1165,7 @@ def test_issuance_accepts_historical_dates_and_refuses_a_future_receipt_date():
     )
     certificate = build_certificate_render_context(issued)["certificate"]
     assert certificate["graduation_date"] == date(2019, 4, 12)
-    assert certificate["official_receipt_date"] == date(2027, 1, 1)
+    assert certificate["official_receipt_date"] == date(2025, 1, 6)
     # The certificate is dated on the Manila day of issuance, not the UTC day.
     assert certificate["issued_on"] == date(2027, 1, 1)
     assert issued.issued_at == new_year
@@ -1213,7 +1377,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
         client = auth_client(user, recent_mfa=True)
         denied = client.post(
             f"/api/v1/good-moral/requests/{item.pk}/issue",
-            data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
+            data=json.dumps(issue_payload(item)),
             content_type="application/json",
             **csrf(client),
         )
@@ -1224,7 +1388,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
     without_step_up = auth_client(counselor)
     issued = without_step_up.post(
         f"/api/v1/good-moral/requests/{item.pk}/issue",
-        data=json.dumps({"expected_preparation_version": item.prepared_at.isoformat()}),
+        data=json.dumps(issue_payload(item)),
         content_type="application/json",
         **csrf(without_step_up),
     )
@@ -1359,6 +1523,8 @@ def test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots(
     inventory = make_inventory(student, academic_year)
     item = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.CURRENT_STUDENT,
         inventory=inventory,
         academic_year=inventory.academic_year,
@@ -2079,6 +2245,8 @@ def test_historical_null_creation_identity_rows_keep_existing_workflows(monkeypa
 
     correctable = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.GRADUATE,
         applicant_name_snapshot=student.get_full_name(),
         degree_snapshot="BS Information Systems",
@@ -2109,6 +2277,8 @@ def test_historical_null_creation_identity_rows_keep_existing_workflows(monkeypa
 
     issuable = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.GRADUATE,
         applicant_name_snapshot=student.get_full_name(),
         degree_snapshot="BS Information Systems",
@@ -2362,6 +2532,8 @@ def test_form_input_1a_idempotent_replay_preserves_older_accepted_fifth_year_req
     # Simulate an older accepted request stored with legacy free-text values
     legacy_item = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.CURRENT_STUDENT,
         inventory=inventory,
         academic_year=academic_year,
@@ -2461,6 +2633,8 @@ def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(
     # Legacy request with historical free-text
     item = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.CURRENT_STUDENT,
         inventory=inventory,
         academic_year=academic_year,
@@ -2642,6 +2816,8 @@ def test_form_input_1a_official_f4_pdf_rendering_scenarios(
 
     item = GoodMoralRequest.objects.create(
         student=student,
+        initiation_origin="STUDENT_SELF",
+        initiated_by=(student),
         variant=GoodMoralVariant.CURRENT_STUDENT,
         inventory=inventory,
         academic_year=academic_year,

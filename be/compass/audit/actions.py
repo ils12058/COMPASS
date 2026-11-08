@@ -96,7 +96,6 @@ GOOD_MORAL_RECEIPT_VERIFICATION_INVALIDATED = "good_moral.receipt_verification_i
 GOOD_MORAL_RECEIPT_ASSIGNED = "good_moral.receipt_assigned"
 GOOD_MORAL_RECEIPT_REVISED = "good_moral.receipt_revised"
 GOOD_MORAL_RECEIPT_REMOVED = "good_moral.receipt_removed"
-GOOD_MORAL_RECEIPT_LEGACY_IMPORTED = "good_moral.receipt_legacy_imported"
 GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
 GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
 GOOD_MORAL_REQUEST_CANCELLED = "good_moral.request.cancelled"
@@ -373,7 +372,6 @@ __all__ = [
     "GOOD_MORAL_RECEIPT_ASSIGNED",
     "GOOD_MORAL_RECEIPT_REVISED",
     "GOOD_MORAL_RECEIPT_REMOVED",
-    "GOOD_MORAL_RECEIPT_LEGACY_IMPORTED",
     "GOOD_MORAL_REQUEST_CREATED",
     "GOOD_MORAL_REQUEST_UPDATED",
     "GOOD_MORAL_REQUEST_CANCELLED",

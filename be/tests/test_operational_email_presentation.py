@@ -17,6 +17,7 @@ from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 from compass.accounts.models import Capability, Role, User, UserCapabilityOverride
+from compass.audit.context import AuditContext
 from compass.call_slips.models import CallSlip
 from compass.good_moral.models import GoodMoralRequest
 from compass.group_sessions.models import GroupSession, GroupSessionRegistration
@@ -27,6 +28,7 @@ from compass.notifications.models import EmailDelivery, Notification
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from tests.test_appointments import active_service, sync_policy
+from tests.test_good_moral import make_guarded_good_moral, prepare_request
 
 POLICY = "operational_v1"
 EVENTS = (
@@ -115,18 +117,28 @@ def intent(world, event, *, recipient=None):
             source_type, source_id = "group_session_schedule_v2", session.pk
         item, target_type = session, "GROUP_SESSION"
     elif event.value.startswith("good_moral."):
-        item = GoodMoralRequest.objects.create(
+        item = make_guarded_good_moral(
+            fixture_actor=staff,
             student=student,
             variant="GRADUATE",
             initiation_origin="GCO_ASSISTED",
             initiated_by=staff,
             official_receipt_number="PRIVATE_OR_NUMBER",
-            official_receipt_amount="999.99",
+            official_receipt_amount="80.00",
             official_receipt_date=at.date(),
             applicant_name_snapshot="PRIVATE_APPLICANT",
             degree_snapshot="PRIVATE_ACADEMIC",
+            graduation_date=at.date(),
         )
         if event == NotificationEvent.GOOD_MORAL_ISSUED:
+            from compass.good_moral.receipt_identity import latest_revision
+            from compass.good_moral.receipt_verification import current_verification
+            from tests.test_good_moral import record_inspected_receipt
+
+            item = record_inspected_receipt(item, staff)
+            item.prepared_receipt_verification = current_verification(latest_revision(item))
+            item.issued_receipt_assignment = latest_revision(item)
+            item.issued_receipt_verification = item.prepared_receipt_verification
             item.status, item.issued_at, item.issued_by = "ISSUED", at, staff
             item.issued_by_name_snapshot = "PRIVATE_ISSUER"
             item.form_revision = form("good_moral_graduate", "UCN-OP-GCO-01F6")
@@ -426,8 +438,9 @@ def test_assisted_request_message_tracks_current_status_without_guessing_issuanc
     notification, item = intent(world, EVENTS[4] if state != "ISSUED" else EVENTS[5])
     notification.event_code = EVENTS[4]
     if state == "READY_FOR_ISSUANCE":
-        item.status, item.prepared_at, item.prepared_by = state, timezone.now(), world["staff"]
-        item.save()
+        item = prepare_request(
+            actor=world["staff"], request_id=item.pk, context=AuditContext.user(world["staff"])
+        )
     elif state == "CANCELLED":
         item.status, item.cancelled_at, item.cancellation_reason = (
             state,
@@ -461,7 +474,9 @@ def test_request_or_preparation_is_not_certificate_issuance(world, settings, sta
     notification, item = intent(world, EVENTS[4])
     notification.event_code = EVENTS[5]
     if state == "READY_FOR_ISSUANCE":
-        item.status, item.prepared_at, item.prepared_by = state, timezone.now(), world["staff"]
+        item = prepare_request(
+            actor=world["staff"], request_id=item.pk, context=AuditContext.user(world["staff"])
+        )
     elif state == "CANCELLED":
         item.status, item.cancelled_at, item.cancellation_reason = (
             state,
@@ -633,6 +648,7 @@ def test_f4_f6_issuance_projection_preserves_variant_and_omits_private_snapshots
             inventory=inventory,
             academic_year=year,
             degree_snapshot="",
+            graduation_date=None,
             form_revision=form("good_moral_current_student", "UCN-OP-GCO-01F4"),
             document_template_key="good_moral_current_student",
             document_template_version=2,
@@ -812,10 +828,21 @@ def test_undisclosed_source_changes_do_not_change_email_projection(world, settin
     notification, item = intent(world, event)
     before = resolve_notification_email_presentation(notification)
     if isinstance(item, GoodMoralRequest):
+        if item.status == "REQUESTED":
+            from compass.audit.context import AuditContext
+            from tests.test_good_moral import update_request
+
+            update_request(
+                actor=world["staff"],
+                request_id=item.pk,
+                changes={
+                    "official_receipt_number": "ANOTHER_PRIVATE_OR",
+                    "official_receipt_amount": "123.45",
+                },
+                context=AuditContext.user(world["staff"]),
+            )
         GoodMoralRequest.objects.filter(pk=item.pk).update(
-            official_receipt_number="ANOTHER_PRIVATE_OR",
-            official_receipt_amount="123.45",
-            applicant_name_snapshot="ANOTHER_PRIVATE_NAME",
+            applicant_name_snapshot="ANOTHER_PRIVATE_NAME"
         )
     else:
         CallSlip.objects.filter(pk=item.pk).update(

@@ -19,12 +19,13 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 
 from compass.appointments.models import Appointment
 from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
 from compass.exit_interviews.opportunities import open_opportunity
 from compass.good_moral.models import CANONICAL_YEAR_LEVELS, GoodMoralRequest
-from compass.good_moral.services import create_my_current_student, prepare_request, update_request
+from compass.good_moral.services import create_my_current_student, prepare_request
 from compass.guidance_messages.models import GuidanceThread
 from compass.guidance_messages.services import open_counseling_thread
 from compass.organization.academic_years import get_current_academic_year
@@ -39,6 +40,7 @@ from ..staff import COUNSELOR_A, COUNSELOR_B, COUNSELOR_C, GOA_A, HEAD_GUIDANCE
 from ..students import STUDENTS_BY_KEY
 from ..support import SeedSession, align_timestamps, idempotency_key, request_fingerprint
 from ..timeline import academic_semester
+from .good_moral_receipts import record_and_inspect
 
 _MESSAGE_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, f"urn:compass:{DATASET_NAMESPACE}:messages")
 COUNSELOR_GREETING = (
@@ -217,22 +219,23 @@ def _good_moral(key: str, counselor: str | None):
             context=session.as_user(key),
         )
         if counselor is not None:
-            prepared = t.past(1, 10, 15)
-            update_request(
+            request = record_and_inspect(
                 actor=session.user(counselor),
                 request_id=request.pk,
                 changes={
                     "official_receipt_number": f"STG-OR-{_student(key).ordinal:04d}",
                     "official_receipt_date": t.business_day(-1),
-                    "official_receipt_amount": Decimal("50.00"),
+                    "official_receipt_amount": Decimal("80.00"),
                 },
                 context=session.as_user(counselor),
             )
-            prepare_request(
+            prepared = timezone.now()
+            request = prepare_request(
                 actor=session.user(counselor),
                 request_id=request.pk,
                 context=session.as_user(counselor),
                 now=prepared,
+                expected_resource_version=request.updated_at.isoformat(),
             )
             align_timestamps(request, created_at=requested, updated_at=prepared)
         else:

@@ -1,7 +1,7 @@
-"""Code-owned expected-fee decisions. No approved institutional schedule is installed.
+"""Code-owned, team-reported provisional PHP 80 fee for F4 and F6.
 
-The operational provider deliberately returns None. Synthetic tests inject a bounded
-approved definition; neither environment flags nor API payloads can approve pricing.
+Definitions are versioned by receipt date. Retain this definition when adding a
+future schedule so inspection and issuance preserve their historical evidence.
 """
 
 from dataclasses import asdict, dataclass
@@ -32,7 +32,7 @@ class FeeDecision:
 
     def applies(self, item, assignment):
         return (
-            self.status == "APPROVED"
+            self.status in {"APPROVED", "PROVISIONAL"}
             and bool(self.policy_id and self.version and self.authority_reference)
             and self.currency == "PHP"
             and self.variant == item.variant
@@ -51,9 +51,22 @@ class FeeDecision:
 
 
 def resolve_approved_fee(*, item, assignment) -> FeeDecision | None:
-    """Release boundary: requires separately reviewed institutional definitions/authority.
+    """Resolve the immutable team-reported definition using the receipt date.
 
-    Retain historical definitions when adding a real schedule. There is deliberately
-    no effective date for the team's PHP 80 report and no operational activation flag.
+    The provisional definition covers all receipt dates until a future versioned
+    schedule supplies a bounded successor. Its status is not institutional approval.
     """
-    return None
+    if item.variant not in TEAM_REPORTED_VARIANTS or assignment.receipt_date is None:
+        return None
+    return FeeDecision(
+        policy_id="GOOD_MORAL_TEAM_REPORTED_PROVISIONAL",
+        version="1",
+        currency=TEAM_REPORTED_CURRENCY,
+        expected_amount=TEAM_REPORTED_AMOUNT,
+        authority_reference="Team-reported provisional PHP 80.00 for F4 and F6",
+        variant=item.variant,
+        reference_date=assignment.receipt_date,
+        applicable_from=date.min,
+        applicable_through=date.max,
+        status="PROVISIONAL",
+    )

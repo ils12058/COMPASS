@@ -75,8 +75,7 @@ export function GoodMoralCounselorDetail({
     return result.isError ? undefined : result.data?.data;
   };
   const confirmedNow = !detail.isError;
-  const fenced = item.receipt_identity?.ledger_mode === "FENCED";
-  const available = confirmedNow && !fenced && !inspecting;
+  const available = confirmedNow && !inspecting;
   // The facts a counselor checks first; the remaining request details follow in the same sheet.
   const keyFacts: RecordFact[] = [
     { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
@@ -145,8 +144,8 @@ export function GoodMoralCounselorDetail({
         </div>
       </GoodMoralSection> : null}
 
-      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !correctionOpen && !inspecting ? <GoodMoralPreparationSection item={item} confirmed={confirmedNow && !fenced} onRefresh={refresh} /> : null}
-      {canIssue && !correctionOpen && !inspecting ? <GoodMoralIssueSection item={item} confirmed={confirmedNow && !fenced} onRefresh={refresh} /> : null}
+      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !correctionOpen && !inspecting ? <GoodMoralPreparationSection item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
+      {canIssue && !correctionOpen && !inspecting ? <GoodMoralIssueSection item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
 
       {item.status === "ISSUED" ? (
         <GoodMoralSection title="Certificate issuance">

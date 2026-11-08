@@ -14,7 +14,7 @@ export function reviewedInspectionIsCurrent(item: GoodMoralOperationalDetailResp
 
 export function inspectionReview(item: GoodMoralOperationalDetailResponse, operationId: string): ReceiptReview | null {
   const assignment = item.receipt_identity?.revision_id;
-  if (!assignment || item.receipt_identity?.ledger_mode !== "ACTIVE" || !item.receipt_inspection?.can_verify) return null;
+  if (!assignment || !item.receipt_inspection?.can_verify) return null;
   return {
     item: structuredClone(item),
     payload: { assignment_id: assignment, expected_resource_version: item.actions.request_version, operation_id: operationId, method: "PHYSICAL_OR_INSPECTION" },

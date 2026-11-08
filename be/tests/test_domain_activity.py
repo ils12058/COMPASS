@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 from django.core.management import call_command
-from django.db import connection
+from django.db import IntegrityError, connection, transaction
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
@@ -111,7 +111,12 @@ def world():
             exit_interview, ExitInterviewConfidentialContent(dean_comments="SECRET ANSWERS")
         )
         exit_interview.save(force_insert=True)
-        request = GoodMoralRequest.objects.create(student=student, variant="GRADUATE")
+        request = GoodMoralRequest.objects.create(
+            student=student,
+            initiation_origin="STUDENT_SELF",
+            initiated_by=(student),
+            variant="GRADUATE",
+        )
         routine_id = uuid4()
         routine = RoutineInterview.objects.create(
             id=routine_id,
@@ -500,13 +505,14 @@ def test_security_registry_is_explicit_and_independent(world, monkeypatch):
     assert "future.domain.action" not in SECURITY_ACTIVITY_PRESENTERS
 
 
-def test_deleted_source_and_spoofed_metadata_cannot_preserve_owner_access(world):
+def test_preserved_source_and_spoofed_metadata_cannot_invent_owner_access(world):
     request = world["rows"]["student"]["goodmoral.request"]
     event = emit(world["head"], actions.GOOD_MORAL_ISSUED, request)
     assert ids(world["student"]) == [event.pk]
-    request.delete()
-    assert ids(world["student"]) == []
-    assert ids(world["head"]) == []
+    with pytest.raises(IntegrityError, match="receipt evidence is preserved"), transaction.atomic():
+        request.delete()
+    assert ids(world["student"]) == [event.pk]
+    assert ids(world["head"]) == [event.pk]
     assert AuditEvent.objects.filter(pk=event.pk).exists()
     record_event(
         context=AuditContext.user(world["head"]),
@@ -516,7 +522,8 @@ def test_deleted_source_and_spoofed_metadata_cannot_preserve_owner_access(world)
         target_id=uuid4(),
         metadata={"student_id": str(world["student"].pk)},
     )
-    assert ids(world["student"]) == []
+    assert ids(world["student"]) == [event.pk]
+    assert ids(world["head"]) == [event.pk]
 
 
 def test_system_and_anonymous_domain_events_are_not_invented_user_actions(world):

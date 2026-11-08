@@ -50,7 +50,6 @@ test('Student history and detail distinguish provenance and preserve cancellatio
   }
   assert.match(detail, /Cancel request/);
   assert.equal(goodMoralInitiationLabel('STUDENT_SELF'), 'Requested by Student');
-  assert.equal(goodMoralInitiationLabel('LEGACY_UNSPECIFIED'), 'Initiator not recorded');
 });
 test('prerequisite and uncertain errors remain safe and actionable', () => {
   for (const code of ['good_moral_inventory_required', 'good_moral_exit_interview_required', 'good_moral_not_found', 'permission_denied']) {

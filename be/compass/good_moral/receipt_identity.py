@@ -1,4 +1,4 @@
-"""GM_OR_V1 reservations and correction receipts; dormant until a database-fenced cutover."""
+"""GM_OR_V1 reservations and correction receipts."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.db import IntegrityError, connection, transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -24,10 +24,6 @@ from .models import (
 )
 from .models import (
     GoodMoralReceiptIdentity as Identity,
-)
-from .models import (
-    GoodMoralReceiptLedger,
-    ReceiptLedgerMode,
 )
 from .models import (
     GoodMoralReceiptMutation as Mutation,
@@ -53,10 +49,6 @@ class ReceiptOperationConflict(GoodMoralConflict):
     pass
 
 
-class ReceiptCutoverRequired(GoodMoralConflict):
-    pass
-
-
 def normalize_number(value: object) -> tuple[str, str]:
     """Return preserved display and byte-comparable identity. Never silently repair input."""
     if not isinstance(value, str) or any(not 32 <= ord(c) <= 126 for c in value):
@@ -72,20 +64,6 @@ def receipt_display(value: object) -> str:
     if value is None or (isinstance(value, str) and not value.strip(" ")):
         return ""
     return normalize_number(value)[0]
-
-
-def ledger_mode(*, lock=False) -> str:
-    if lock:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT mode FROM good_moral_goodmoralreceiptledger WHERE id=1 FOR SHARE"
-            )
-            row = cursor.fetchone()
-        return row[0] if row else ReceiptLedgerMode.DORMANT
-    return (
-        GoodMoralReceiptLedger.objects.filter(pk=1).values_list("mode", flat=True).first()
-        or ReceiptLedgerMode.DORMANT
-    )
 
 
 def latest_revision(item):
@@ -110,10 +88,7 @@ def begin_edit(
     expected_receipt_revision=UNSET,
     operation_id=None,
 ):
-    mode = ledger_mode(lock=True)
-    if mode == ReceiptLedgerMode.FENCED:
-        raise ReceiptCutoverRequired("Good Moral changes are paused for the receipt transition.")
-    if mode != ReceiptLedgerMode.ACTIVE or not RECEIPT_FIELDS.intersection(changes):
+    if not RECEIPT_FIELDS.intersection(changes):
         return None
     # Refresh authority independently of the caller's cached role and require truthful attribution.
     from .services import _validate_operational
@@ -196,12 +171,11 @@ def append_revision(*, item, actor, normalized, intent, context):
     identity = identities.get(key)
     if identity is not None:
         same_revision_identity = previous and previous.identity_id == identity.pk
-        legacy_remediation = previous and previous.origin == "LEGACY_OBSERVED"
         if (
             identity.state != "BOUND"
             or identity.bound_request_id != item.pk
             or not same_revision_identity
-            or not (previous.is_current or legacy_remediation)
+            or not previous.is_current
         ):
             raise ReceiptConflict(
                 "Official Receipt number already recorded. Check the number or ask GCO for review."
@@ -303,14 +277,10 @@ def finish_edit(*, item, actor, intent):
 def operational_receipt_state(item):
     """Restricted, bounded own-request evidence; no global identity lookup or verification claim."""
     revision = latest_revision(item)
-    mode = ledger_mode()
-    state = "DORMANT" if mode == ReceiptLedgerMode.DORMANT else "ABSENT"
+    state = "ABSENT"
     if revision and revision.identity_id:
         state = Identity.objects.get(pk=revision.identity_id).state
-    elif revision and revision.display_number:
-        state = "QUARANTINED"
     return {
-        "ledger_mode": mode,
         "revision_id": revision.pk if revision else None,
         "identity_state": state,
         "history": [

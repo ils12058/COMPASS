@@ -35,6 +35,7 @@ from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
 from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
+from tests.test_good_moral import make_guarded_good_moral
 
 
 def sync_policy() -> None:
@@ -193,6 +194,8 @@ def make_good_moral(
 ) -> GoodMoralRequest:
     values: dict[str, object] = {
         "student": student,
+        "initiation_origin": "STUDENT_SELF",
+        "initiated_by": student,
         "variant": GoodMoralVariant.GRADUATE,
         "status": status,
         "applicant_name_snapshot": student.get_full_name(),
@@ -214,7 +217,7 @@ def make_good_moral(
             document_template_key="good_moral_graduate",
             document_template_version=1,
         )
-    return GoodMoralRequest.objects.create(**values)
+    return make_guarded_good_moral(**values)
 
 
 @pytest.mark.django_db

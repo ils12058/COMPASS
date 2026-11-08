@@ -11,10 +11,10 @@ const nextRevision = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const originalVersion = '2026-10-24T01:00:00.000000+00:00';
 const nextVersion = '2026-10-24T01:01:00.000000+00:00';
 const account = { ...counselor, capabilities: [...counselor.capabilities, 'good_moral.prepare'] };
-function fixture(mode = 'ACTIVE', behavior = 'success') {
+function fixture(behavior = 'success') {
   let item = { ...certificate('REQUESTED', 'GRADUATE'), prepared_at: null, prepared_by: null };
   item.actions = { ...item.actions, request_version: originalVersion, can_correct: true, can_prepare: true, can_issue: false, correction_fields: ['official_receipt_number', 'official_receipt_date', 'official_receipt_amount', 'major'] };
-  item.receipt_identity = { ledger_mode: mode, revision_id: originalRevision, identity_state: mode === 'ACTIVE' ? 'BOUND' : 'DORMANT', history: [] };
+  item.receipt_identity = { revision_id: originalRevision, identity_state: 'BOUND', history: [] };
   const bodies = [];
   return {
     bodies,
@@ -44,21 +44,19 @@ async function enter(page) {
   await page.getByLabel('Receipt number', { exact: true }).fill('OR-MY-DRAFT');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
 }
-for (const mode of ['DORMANT', 'ACTIVE']) {
-  const f = fixture(mode);
-  await check(`${mode} preserves correction contract`, route, f.options, async page => {
+{
+  const f = fixture();
+  await check('receipt correction preserves versioned contract', route, f.options, async page => {
     await enter(page);
     await page.getByRole('button', { name: 'Correct certificate details', exact: true }).waitFor();
     assert.equal(f.bodies.length, 1);
-    if (mode === 'ACTIVE') {
-      assert.equal(f.bodies[0].expected_resource_version, originalVersion);
-      assert.equal(f.bodies[0].expected_receipt_revision, originalRevision);
-      assert.match(f.bodies[0].receipt_operation_id, /^[0-9a-f-]{36}$/);
-    } else assert.deepEqual(f.bodies[0], { official_receipt_number: 'OR-MY-DRAFT' });
+    assert.equal(f.bodies[0].expected_resource_version, originalVersion);
+    assert.equal(f.bodies[0].expected_receipt_revision, originalRevision);
+    assert.match(f.bodies[0].receipt_operation_id, /^[0-9a-f-]{36}$/);
   });
 }
 {
-  const f = fixture('ACTIVE', 'stale');
+  const f = fixture('stale');
   await check('stale receipt preserves draft and requires deliberate review', route, f.options, async page => {
     await enter(page);
     await shown(page.getByText(/Latest saved receipt: OR-OTHER-OPERATOR/));
@@ -76,7 +74,7 @@ for (const mode of ['DORMANT', 'ACTIVE']) {
   });
 }
 {
-  const f = fixture('ACTIVE', 'uncertain');
+  const f = fixture('uncertain');
   await check('uncertain committed correction refreshes without automatic replay', route, f.options, async page => {
     await enter(page);
     await shown(page.getByText(/Latest saved receipt: OR-MY-DRAFT/));
@@ -86,7 +84,7 @@ for (const mode of ['DORMANT', 'ACTIVE']) {
   });
 }
 {
-  const f = fixture('ACTIVE', 'conflict');
+  const f = fixture('conflict');
   await check('duplicate conflict keeps input and displays safe copy', route, f.options, async page => {
     await enter(page);
     await shown(page.getByRole('alert').filter({ hasText: 'Official Receipt number already recorded' }));

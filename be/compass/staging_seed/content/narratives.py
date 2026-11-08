@@ -391,7 +391,7 @@ GRADUATING_EXIT_INTERVIEW_DRAFT = _exit_interview(
 GOOD_MORAL_CURRENT = {
     "year_level": "3rd Year",
 }
-GOOD_MORAL_CURRENT_RECEIPT = {"official_receipt_number": "STG-OR-0142", "amount": "50.00"}
+GOOD_MORAL_CURRENT_RECEIPT = {"official_receipt_number": "STG-OR-0142", "amount": "80.00"}
 GOOD_MORAL_DUPLICATE_CANCEL_REASON = "Duplicate request submitted by mistake."
 GRADUATING_GOOD_MORAL = {"year_level": "4th Year"}
 RECENT_GRADUATE_GOOD_MORAL = {
@@ -399,7 +399,7 @@ RECENT_GRADUATE_GOOD_MORAL = {
     "major": "",
     "graduation_date": date(2026, 6, 26),
     "official_receipt_number": "STG-OR-0087",
-    "amount": "50.00",
+    "amount": "80.00",
 }
 ALUMNI_GOOD_MORAL = {
     "degree": "Bachelor of Secondary Education",

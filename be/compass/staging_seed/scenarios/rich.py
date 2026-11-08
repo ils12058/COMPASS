@@ -15,6 +15,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 
 from compass.appointments.services import (
     cancel_appointment,
@@ -32,7 +33,6 @@ from compass.good_moral.services import (
     create_my_graduate,
     issue_request,
     prepare_request,
-    update_request,
 )
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.graduate_tracer.services import (
@@ -68,6 +68,7 @@ from ..support import (
     settle_notifications,
 )
 from ..timeline import CURRENT_ACADEMIC_YEAR, academic_semester
+from .good_moral_receipts import record_and_inspect
 
 # --- Scenarios -------------------------------------------------------------------------------
 
@@ -505,7 +506,7 @@ def good_moral_student(session: SeedSession) -> None:
 
     # Before issuing, the Counselor records the receipt.
     receipt = narratives.GOOD_MORAL_CURRENT_RECEIPT
-    update_request(
+    request = record_and_inspect(
         actor=session.user(COUNSELOR_B.key),
         request_id=request.pk,
         changes={
@@ -515,18 +516,23 @@ def good_moral_student(session: SeedSession) -> None:
         },
         context=session.as_user(COUNSELOR_B.key),
     )
-    issued_at = t.past(7, 15, 30)
-    prepare_request(
+    issued_at = timezone.now()
+    request = prepare_request(
         actor=session.user(COUNSELOR_B.key),
         request_id=request.pk,
         context=session.as_user(COUNSELOR_B.key),
         now=issued_at,
+        expected_resource_version=request.updated_at.isoformat(),
     )
     issue_request(
         actor=session.user(COUNSELOR_B.key),
         request_id=request.pk,
         context=session.as_user(COUNSELOR_B.key),
         now=issued_at,
+        expected_resource_version=request.updated_at.isoformat(),
+        expected_preparation_version=request.prepared_at.isoformat(),
+        expected_receipt_revision=request.prepared_receipt_verification.assignment_id,
+        expected_receipt_verification=request.prepared_receipt_verification_id,
     )
     align_timestamps(request, created_at=requested, updated_at=issued_at)
     settle_notifications(source_id=request.pk, occurred_at=issued_at)
@@ -541,7 +547,7 @@ def good_moral_student(session: SeedSession) -> None:
         GOOD_MORAL,
         source_id=request.pk,
         event=NotificationEvent.GOOD_MORAL_ISSUED,
-        at=t.past(7, 18),
+        at=timezone.now(),
     )
 
 
@@ -582,7 +588,7 @@ def recent_graduate(session: SeedSession) -> None:
         request_fingerprint=request_fingerprint(record="good-moral", student=RECENT_GRADUATE.key),
         context=session.as_user(RECENT_GRADUATE.key),
     )
-    update_request(
+    request = record_and_inspect(
         actor=session.user(COUNSELOR_A.key),
         request_id=request.pk,
         changes={
@@ -592,18 +598,23 @@ def recent_graduate(session: SeedSession) -> None:
         },
         context=session.as_user(COUNSELOR_A.key),
     )
-    issued_at = t.on(2026, 7, 15, 14)
-    prepare_request(
+    issued_at = timezone.now()
+    request = prepare_request(
         actor=session.user(COUNSELOR_A.key),
         request_id=request.pk,
         context=session.as_user(COUNSELOR_A.key),
         now=issued_at,
+        expected_resource_version=request.updated_at.isoformat(),
     )
     issue_request(
         actor=session.user(COUNSELOR_A.key),
         request_id=request.pk,
         context=session.as_user(COUNSELOR_A.key),
         now=issued_at,
+        expected_resource_version=request.updated_at.isoformat(),
+        expected_preparation_version=request.prepared_at.isoformat(),
+        expected_receipt_revision=request.prepared_receipt_verification.assignment_id,
+        expected_receipt_verification=request.prepared_receipt_verification_id,
     )
     align_timestamps(request, created_at=t.on(2026, 7, 13, 10, 20), updated_at=issued_at)
     settle_notifications(source_id=request.pk, occurred_at=issued_at)

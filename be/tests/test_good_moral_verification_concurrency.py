@@ -326,42 +326,6 @@ def test_policy_changes_during_transaction_roll_back_every_effect(scene, monkeyp
     assert Verification.objects.count() == (0 if transition == "verify" else 1)
 
 
-def test_inspection_waits_for_real_dormant_to_fenced_transition(approved):
-    from compass.good_moral.legacy_receipts import begin_import
-    from compass.good_moral.models import GoodMoralReceiptLedger
-    from tests.test_good_moral import sync_policy
-    from tests.test_good_moral_receipts import person
-
-    sync_policy()
-    actor = person("inspector", "COUNSELOR")
-    grant(actor)
-    item = request_for()
-    locked, resume, attempted = Event(), Event(), Event()
-
-    def fence():
-        with transaction.atomic():
-            begin_import(batch_id=uuid4(), evidence_reference="synthetic-fence")
-            locked.set()
-            assert resume.wait(15)
-
-    def inspection():
-        attempted.set()
-        return outcome(
-            lambda: inspections.verify_receipt(**intent(item, actor, assignment_id=uuid4()))
-        )
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(worker, fence)
-        assert locked.wait(15)
-        second = pool.submit(worker, inspection)
-        assert attempted.wait(15)
-        resume.set()
-        first.result(timeout=25)
-        assert second.result(timeout=25)[0] == "ReceiptCutoverRequired"
-    assert GoodMoralReceiptLedger.objects.get(pk=1).mode == "FENCED"
-    assert not Verification.objects.exists()
-
-
 @pytest.mark.parametrize("lifecycle_first", [True, False])
 def test_active_f4_issue_and_account_lifecycle_share_ordered_identity_fence(
     approved, lifecycle_first
@@ -369,13 +333,12 @@ def test_active_f4_issue_and_account_lifecycle_share_ordered_identity_fence(
     from compass.account_management.services import _lock_users
     from compass.good_moral.services import GoodMoralCurrentStudentRequired
     from tests.test_good_moral import sync_policy
-    from tests.test_good_moral_receipts import activate, person
+    from tests.test_good_moral_receipts import person
 
     sync_policy()
     actor = person("issuer", "COUNSELOR")
     grant(actor)
     item = request_for(variant="CURRENT_STUDENT")
-    activate()
     from datetime import date
 
     edit(
