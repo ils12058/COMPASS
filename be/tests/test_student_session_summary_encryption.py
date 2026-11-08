@@ -47,6 +47,9 @@ from tests.test_student_session_summaries import (
     sync_policy,
 )
 
+# These tests submit Individual Inventories, whose CURRENT location is checked against PSGC.
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 # Public fixed test keys; independent of all deployment and other-domain test keys.
 K1, K2, K3, K4, K5 = [
     base64.urlsafe_b64encode(c * 32).decode() for c in (b"s", b"t", b"u", b"v", b"w")

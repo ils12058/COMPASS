@@ -56,6 +56,9 @@ from tests.test_routine_interviews import (
     sync_policy,
 )
 
+# These tests submit Individual Inventories, whose CURRENT location is checked against PSGC.
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 K1 = Fernet.generate_key().decode("ascii")
 K2 = Fernet.generate_key().decode("ascii")
 TABLE = RoutineInterview._meta.db_table

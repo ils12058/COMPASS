@@ -50,6 +50,9 @@ from tests.test_counseling import (
 )
 from tests.test_routine_interviews import configure_year, submit_inventory
 
+# These tests submit Individual Inventories, whose CURRENT location is checked against PSGC.
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 FINISH_RESPONSE_FIELDS = {
     "appointment_id",
     "appointment_status",

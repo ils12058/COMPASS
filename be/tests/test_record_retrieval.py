@@ -29,7 +29,8 @@ from tests import test_referrals as referrals
 from tests import test_routine_interviews as routine
 from tests.inventory_encryption_helpers import create_inventory_row
 
-pytestmark = pytest.mark.django_db
+# Some tests submit Individual Inventories, whose CURRENT location is checked against PSGC.
+pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("inventory_psgc")]
 
 
 @pytest.fixture(autouse=True)
