@@ -749,6 +749,7 @@ def test_rotation_failure_output_is_bounded_across_both_tables(world):
         [
             Referral(
                 reference_code=f"REF-2000-{i:06d}",
+                submission_channel="GCO_RECORDED",
                 student_id=world[1].pk,
                 student_name_snapshot="Synthetic",
                 course_year_block_snapshot="4A",

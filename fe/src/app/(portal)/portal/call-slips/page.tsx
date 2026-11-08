@@ -40,7 +40,6 @@ export default async function Page({
     destination,
     fromDate,
     toDate,
-    includeVoided: singleValue(query.include_voided) === "true",
     state,
     ordering: readOrdering(singleValue(query.ordering), CallSlipOrdering),
     page,

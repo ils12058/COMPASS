@@ -4402,8 +4402,7 @@
       "CallSlipIssuanceModeValue": {
         "enum": [
           "LIVE",
-          "HISTORICAL",
-          "LEGACY_UNKNOWN"
+          "HISTORICAL"
         ],
         "title": "CallSlipIssuanceModeValue",
         "type": "string"
@@ -26372,12 +26371,7 @@
             "type": "string"
           },
           "submission_channel": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ReferralSubmissionChannel"
-              }
-            ],
-            "default": "LEGACY_UNSPECIFIED"
+            "$ref": "#/components/schemas/ReferralSubmissionChannel"
           },
           "submitted_at": {
             "anyOf": [
@@ -26434,6 +26428,7 @@
           "status_note",
           "voided_at",
           "created_at",
+          "submission_channel",
           "reason",
           "referrer_name",
           "form_revision",
@@ -26739,7 +26734,6 @@
       },
       "ReferralSubmissionChannel": {
         "enum": [
-          "LEGACY_UNSPECIFIED",
           "GCO_RECORDED",
           "FACULTY_PORTAL"
         ],
@@ -26806,12 +26800,7 @@
             "type": "string"
           },
           "submission_channel": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ReferralSubmissionChannel"
-              }
-            ],
-            "default": "LEGACY_UNSPECIFIED"
+            "$ref": "#/components/schemas/ReferralSubmissionChannel"
           },
           "submitted_at": {
             "anyOf": [
@@ -26848,7 +26837,8 @@
           "received_at",
           "status_note",
           "voided_at",
-          "created_at"
+          "created_at",
+          "submission_channel"
         ],
         "title": "ReferralSummaryResponse",
         "type": "object"
@@ -41997,16 +41987,6 @@
                 }
               ],
               "title": "To Date"
-            }
-          },
-          {
-            "in": "query",
-            "name": "include_voided",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Include Voided",
-              "type": "boolean"
             }
           },
           {

@@ -13,7 +13,6 @@ import { FormRevisionFilter } from "@/features/institutional-forms/form-revision
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { SortField } from "@/components/ui/sort-field";
@@ -36,7 +35,6 @@ export type CallSlipListFilters = {
   destination: "" | CallSlipDestinationType;
   fromDate: string;
   toDate: string;
-  includeVoided: boolean;
   state: "" | CallSlipLifecycleStateValue;
   // A chosen order; absent means the default for the selected status (ADR-090).
   ordering?: CallSlipOrdering;
@@ -61,7 +59,6 @@ function operationalFiltersToUrl(filters: CallSlipListFilters): string {
   if (filters.destination) params.set("destination", filters.destination);
   if (filters.fromDate) params.set("from_date", filters.fromDate);
   if (filters.toDate) params.set("to_date", filters.toDate);
-  if (filters.includeVoided) params.set("include_voided", "true");
   if (filters.state) params.set("state", filters.state);
   if (filters.ordering) params.set("ordering", filters.ordering);
   if (filters.page > 1) params.set("page", String(filters.page));
@@ -191,7 +188,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
   );
 }
 
-// Voided records stay limited to operational managers, as with the Include voided toggle.
+// The status filter exposes voided records to operational managers.
 function effectiveState(
   filters: CallSlipListFilters,
   canManage: boolean,
@@ -204,7 +201,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const { user } = usePortalSession();
   const access = getCallSlipAccess(user);
   const referralAccess = getReferralAccess(user);
-  const [draft, setDraft] = useState(() => access.canManageOperational ? filters : { ...filters, includeVoided: false });
+  const [draft, setDraft] = useState(() => ({ ...filters, state: effectiveState(filters, access.canManageOperational) }));
   const state = effectiveState(filters, access.canManageOperational);
   const slips = useCallSlipsList(
     {
@@ -213,7 +210,6 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
       ...(filters.destination ? { destination_type: filters.destination } : {}),
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
       ...(filters.toDate ? { to_date: filters.toDate } : {}),
-      ...(filters.includeVoided && access.canManageOperational ? { include_voided: true } : {}),
       ...(state ? { state } : {}),
       ...(filters.ordering ? { ordering: filters.ordering } : {}),
       page: filters.page,
@@ -225,7 +221,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (draft.fromDate && draft.toDate && draft.fromDate > draft.toDate) return;
-    const normalizedDraft = access.canManageOperational ? draft : { ...draft, includeVoided: false };
+    const normalizedDraft = { ...draft, state: effectiveState(draft, access.canManageOperational) };
     router.push(operationalFiltersToUrl({ ...normalizedDraft, page: 1 }), { scroll: false });
   }
 
@@ -233,9 +229,9 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
   const items = data?.items ?? [];
   const effectiveFilters = access.canManageOperational
     ? filters
-    : { ...filters, includeVoided: false, state: effectiveState(filters, false) };
-  const hasFilters = Boolean(effectiveFilters.formRevisionId || effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.includeVoided || effectiveFilters.state || effectiveFilters.page > 1);
-  const advancedCount = [effectiveFilters.formRevisionId, effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate, effectiveFilters.includeVoided].filter(Boolean).length;
+    : { ...filters, state: effectiveState(filters, false) };
+  const hasFilters = Boolean(effectiveFilters.formRevisionId || effectiveFilters.search || effectiveFilters.destination || effectiveFilters.fromDate || effectiveFilters.toDate || effectiveFilters.state || effectiveFilters.page > 1);
+  const advancedCount = [effectiveFilters.formRevisionId, effectiveFilters.destination, effectiveFilters.state, effectiveFilters.fromDate, effectiveFilters.toDate].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = filters.ordering ?? data?.ordering;
@@ -276,12 +272,6 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           </FilterField>
           <FilterField label="From" htmlFor="call-slips-from"><Input id="call-slips-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} /></FilterField>
           <FilterField label="To" htmlFor="call-slips-to"><Input id="call-slips-to" type="date" value={draft.toDate} onChange={(event) => setDraft({ ...draft, toDate: event.target.value })} /></FilterField>
-          {access.canManageOperational ? (
-            <div className="flex min-h-11 items-center gap-3 self-end">
-              <input id="call-slips-include-voided" className="h-4 w-4 accent-brand" type="checkbox" checked={draft.includeVoided} onChange={(event) => setDraft({ ...draft, includeVoided: event.target.checked })} />
-              <Label htmlFor="call-slips-include-voided">Include voided</Label>
-            </div>
-          ) : null}
           {draftRangeInvalid ? <p role="alert" className="text-sm text-danger sm:col-span-full">From date must not be after To date.</p> : null}
             </>
           }

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.call_slips.models import CallSlip, CallSlipIssuanceMode
@@ -112,8 +113,6 @@ def test_operational_api_projects_provenance_and_void_consequence_only_to_guidan
     counselor, _other, _goa, student, _student_b = setup_scope()
     live = create_for(counselor, student, key="api-live", fingerprint="7" * 64, notify_student=True)
     quiet = create_for(counselor, student, key="api-quiet", fingerprint="8" * 64)
-    legacy = create_for(counselor, student, key="api-legacy", fingerprint="9" * 64)
-    CallSlip.objects.filter(pk=legacy.pk).update(issuance_mode=CallSlipIssuanceMode.LEGACY_UNKNOWN)
 
     operational = auth_client(counselor)
     rows = {
@@ -124,22 +123,19 @@ def test_operational_api_projects_provenance_and_void_consequence_only_to_guidan
     assert rows[str(live.pk)]["void_notifies_student"] is True
     assert rows[str(quiet.pk)]["issuance_mode"] == "HISTORICAL"
     assert rows[str(quiet.pk)]["void_notifies_student"] is False
-    assert rows[str(legacy.pk)]["issuance_mode"] == "LEGACY_UNKNOWN"
-    assert rows[str(legacy.pk)]["void_notifies_student"] is True
 
     self_view = auth_client(student).get("/api/v1/call-slips/me").json()["items"]
     assert all("issuance_mode" not in item for item in self_view)
     assert all("void_notifies_student" not in item for item in self_view)
 
     voided = operational.post(
-        f"/api/v1/call-slips/{legacy.pk}/void",
-        data={"reason": "Legacy correction"},
+        f"/api/v1/call-slips/{live.pk}/void",
+        data={"reason": "Issuance correction"},
         content_type="application/json",
         **csrf(operational),
     )
     assert voided.status_code == 200
-    # Legacy rows keep the pre-provenance withdrawal notification behavior.
-    assert voided_notice_exists(legacy)
+    assert voided_notice_exists(live)
 
 
 @pytest.mark.django_db
@@ -171,6 +167,8 @@ def test_lifecycle_state_filters_discover_active_completed_and_voided_call_slips
 
     api = auth_client(counselor).get("/api/v1/call-slips?state=ACTIVE").json()["items"]
     assert [item["id"] for item in api] == [str(active.pk)]
+    api_voided = auth_client(counselor).get("/api/v1/call-slips?state=VOIDED").json()["items"]
+    assert [item["id"] for item in api_voided] == [str(voided.pk)]
     mine = auth_client(student).get("/api/v1/call-slips/me?state=VOIDED").json()["items"]
     assert [item["id"] for item in mine] == [str(voided.pk)]
     assert auth_client(student).get("/api/v1/call-slips/me?state=OPEN").status_code == 422
@@ -179,6 +177,20 @@ def test_lifecycle_state_filters_discover_active_completed_and_voided_call_slips
     assert student_overview["active_call_slip_count"] == 1
     guidance_overview = auth_client(counselor).get("/api/v1/overview").json()["guidance"]
     assert guidance_overview["active_call_slip_count"] == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["LEGACY_UNKNOWN", "", "INVALID"])
+def test_issuance_mode_requires_live_or_historical_at_database_boundary(mode):
+    sync_policy()
+    counselor, _other, _goa, student, _student_b = setup_scope()
+    slip = create_for(counselor, student, key="valid-mode", fingerprint="a" * 64)
+    field = CallSlip._meta.get_field("issuance_mode")
+    assert not field.has_default() and not field.has_db_default()
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CallSlip.objects.filter(pk=slip.pk).update(issuance_mode=mode)
+    slip.refresh_from_db()
+    assert slip.issuance_mode == CallSlipIssuanceMode.HISTORICAL
 
 
 @pytest.mark.django_db

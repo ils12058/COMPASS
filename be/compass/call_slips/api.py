@@ -88,7 +88,6 @@ class CallSlipLifecycleStateValue(StrEnum):
 class CallSlipIssuanceModeValue(StrEnum):
     LIVE = CallSlipIssuanceMode.LIVE
     HISTORICAL = CallSlipIssuanceMode.HISTORICAL
-    LEGACY_UNKNOWN = CallSlipIssuanceMode.LEGACY_UNKNOWN
 
 
 class CallSlipCreateRequest(StrictSchema):
@@ -493,7 +492,6 @@ def call_slips_list(
     search: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
-    include_voided: bool = False,
     state: CallSlipLifecycleStateValue | None = None,
     form_revision_id: UUID | None = None,
     ordering: CallSlipOrdering | None = None,
@@ -511,7 +509,6 @@ def call_slips_list(
             search=search,
             from_date=from_date,
             to_date=to_date,
-            include_voided=include_voided,
             state=state.value if state is not None else None,
             form_revision_id=form_revision_id,
             ordering=ordering,

@@ -415,19 +415,19 @@ def test_request_or_preparation_is_not_certificate_issuance(world, settings, sta
     assert resolve_notification_email_presentation(notification).suppress
 
 
-@pytest.mark.parametrize("mode", ["LIVE", "HISTORICAL", "LEGACY_UNKNOWN"])
+@pytest.mark.parametrize("mode", ["LIVE", "HISTORICAL"])
 @pytest.mark.parametrize("event", [EVENTS[6], EVENTS[7]])
-def test_call_slip_original_issuance_intent_and_legacy_void_contract(world, settings, event, mode):
+def test_call_slip_original_issuance_intent_governs_email(world, settings, event, mode):
     notification, item = intent(world, event)
     CallSlip.objects.filter(pk=item.pk).update(issuance_mode=mode)
     plan = resolve_notification_email_presentation(notification)
-    if mode == "HISTORICAL" or (mode == "LEGACY_UNKNOWN" and event == EVENTS[6]):
+    if mode == "HISTORICAL":
         assert plan.suppress
     else:
         message = render_notification_email(event, presentation=plan)
-        assert plan.reason == ("rich_available" if mode == "LIVE" else "link_available")
+        assert plan.reason == "rich_available"
         assert "PRIVATE" not in message.text_body
-        assert ("Status:" in message.text_body) is (mode == "LIVE")
+        assert "Status:" in message.text_body
 
 
 @pytest.mark.parametrize("change", ["voided", "completed"])
@@ -859,7 +859,6 @@ EXAMPLES = (
     ("unauthorized-recipient", EVENTS[6]),
     ("superseded-session", EVENTS[3]),
     ("long-sensitive-title-omitted", EVENTS[0]),
-    ("legacy-void-minimal", EVENTS[7]),
 )
 
 
@@ -877,8 +876,6 @@ def test_synthetic_operational_previews(world, settings, tmp_path, name, event):
         GroupSession.objects.filter(pk=item.pk).update(
             title=("SENSITIVE_LABEL_" * 17)[:255], venue_or_meeting_url=""
         )
-    elif name == "legacy-void-minimal":
-        CallSlip.objects.filter(pk=item.pk).update(issuance_mode="LEGACY_UNKNOWN")
     plan = resolve_notification_email_presentation(notification)
     output = Path(os.environ.get("COMPASS_OPERATIONAL_EMAIL_PREVIEW_DIR", str(tmp_path)))
     output.mkdir(parents=True, exist_ok=True)

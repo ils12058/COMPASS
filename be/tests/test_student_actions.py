@@ -231,9 +231,7 @@ def test_call_slip_live_future_due_overdue_completed_voided_and_provenance(world
     future = call_slip(world, now=now + timedelta(days=1))
     old = call_slip(world, now=now - timedelta(days=1))
     historical = call_slip(world, now=now)
-    legacy = call_slip(world, now=now)
     CallSlip.objects.filter(pk=historical.pk).update(issuance_mode="HISTORICAL")
-    CallSlip.objects.filter(pk=legacy.pk).update(issuance_mode="LEGACY_UNKNOWN")
     call_slip(world, now=now, student=world.other_student)
     with patch.object(services.timezone, "now", return_value=now):
         items = actions(world)

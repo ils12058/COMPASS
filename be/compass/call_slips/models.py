@@ -23,15 +23,10 @@ class CallSlipLifecycleState(models.TextChoices):
 
 
 class CallSlipIssuanceMode(models.TextChoices):
-    """Durable provenance of the original issuance intent.
-
-    LIVE and HISTORICAL are recorded explicitly at creation. LEGACY_UNKNOWN marks rows created
-    before provenance was persisted when no durable evidence shows how they were issued.
-    """
+    """Original live or historical issuance intent, recorded explicitly at creation."""
 
     LIVE = "LIVE", "Live issuance"
     HISTORICAL = "HISTORICAL", "Historical entry"
-    LEGACY_UNKNOWN = "LEGACY_UNKNOWN", "Not recorded"
 
 
 class CallSlip(models.Model):
@@ -89,13 +84,9 @@ class CallSlip(models.Model):
 
     @property
     def void_notifies_student(self) -> bool:
-        """Whether a void sends the Student withdrawal notification.
+        """Live issuance notifies the Student; historical entry stays quiet throughout."""
 
-        Historical/back-entry issuance stays quiet for its whole lifecycle. Legacy rows keep the
-        pre-provenance behavior because their original intent was never recorded.
-        """
-
-        return self.issuance_mode != CallSlipIssuanceMode.HISTORICAL
+        return self.issuance_mode == CallSlipIssuanceMode.LIVE
 
     @property
     def lifecycle_state(self) -> str:

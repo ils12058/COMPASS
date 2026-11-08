@@ -171,7 +171,7 @@ class ReferralSummaryResponse(StrictSchema):
     status_note: str
     voided_at: datetime | None
     created_at: datetime
-    submission_channel: ReferralSubmissionChannel = ReferralSubmissionChannel.LEGACY_UNSPECIFIED
+    submission_channel: ReferralSubmissionChannel
     submitted_at: datetime | None = None
     administrative_state: FacultyReferralSubmissionState | None = None
 

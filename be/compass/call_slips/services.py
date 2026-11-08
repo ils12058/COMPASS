@@ -818,7 +818,6 @@ def list_call_slips(
     search: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
-    include_voided: bool = False,
     state: str | CallSlipLifecycleState | None = None,
     form_revision_id: UUID | None = None,
     ordering: str | CallSlipOrdering | None = None,
@@ -832,9 +831,8 @@ def list_call_slips(
     if form_revision_id is not None:
         qs = qs.filter(form_revision_id=form_revision_id)
     if state is not None:
-        # An explicit lifecycle state is authoritative over the legacy include_voided toggle.
         qs = _apply_state_filter(qs, state)
-    elif not include_voided:
+    else:
         qs = qs.filter(voided_at__isnull=True)
     if student_id is not None:
         qs = qs.filter(student_id=student_id)

@@ -40,7 +40,7 @@ export function ReferralCallSlipSection({
   );
   const isVoided = Boolean(referral.voided_at);
   const history = useCallSlipsList(
-    { referral_id: referral.id, include_voided: true, page: historyPage, page_size: 20 },
+    { referral_id: referral.id, state: CallSlipLifecycleStateValue.VOIDED, page: historyPage, page_size: 20 },
     { query: { enabled: canViewCallSlips, retry: false } },
   );
 

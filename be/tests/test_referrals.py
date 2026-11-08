@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.management import call_command
-from django.db import close_old_connections
+from django.db import IntegrityError, close_old_connections, transaction
 from django.test import Client, override_settings
 from django.utils import timezone
 from pypdf import PdfReader
@@ -53,6 +53,35 @@ from compass.student_academics.models import StudentAcademicProfile
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("channel", ["LEGACY_UNSPECIFIED", "", "INVALID"])
+def test_submission_channel_is_required_and_rejects_noncanonical_values(channel):
+    field = Referral._meta.get_field("submission_channel")
+    assert not field.has_default() and not field.has_db_default()
+    assert not field.null and not field.blank
+    sync_policy()
+    head = make_head()
+    student = make_user("required-channel@example.edu", "STUDENT")
+    ensure_referral_form_revision()
+    item = create_referral(
+        actor=head,
+        student_id=student.pk,
+        course_year_block="BSIS 4A",
+        referred_on=institution_today(),
+        received_at=None,
+        reason="Synthetic reason",
+        referrer_name="Synthetic referrer",
+        idempotency_key="required-channel",
+        request_fingerprint="f" * 64,
+        context=context(head),
+    )
+    assert item.submission_channel == "GCO_RECORDED"
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Referral.objects.filter(pk=item.pk).update(submission_channel=channel)
+    item.refresh_from_db()
+    assert item.submission_channel == "GCO_RECORDED"
 
 
 def ensure_referral_form_revision() -> None:

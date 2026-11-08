@@ -5,8 +5,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { CallSlipDetailPage } from "../src/features/call-slips/call-slip-detail-page.tsx";
+import CallSlipListRoute from "../src/app/(portal)/portal/call-slips/page.tsx";
+import { ReferralCallSlipSection } from "../src/features/referrals/referral-call-slip-section.tsx";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
-import { getCallSlipsGetQueryKey, getCallSlipsGetMyQueryKey } from "../src/lib/api/generated/call-slips/call-slips.ts";
+import { getCallSlipsGetQueryKey, getCallSlipsGetMyQueryKey, getCallSlipsListQueryKey } from "../src/lib/api/generated/call-slips/call-slips.ts";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 import { user, slip } from "./support/ui-hierarchy-fixtures.mjs";
 
@@ -74,3 +76,39 @@ test("authorized linked Referral remains available to a view-only Counselor", ()
   const html = render("COUNSELOR", ["call_slips.view"], "ACTIVE", { referralAccess: true });
   assert.match(html, /Open Referral<span class="sr-only"> REF-TEST<\/span>/); assertNoManagement(html);
 });
+
+test("Call Slip route keeps lifecycle state without the removed void toggle", async () => {
+  const element = await CallSlipListRoute({ searchParams: Promise.resolve({ state: "VOIDED", page: "2" }) });
+  const filters = element.props.children.props.operationalFilters;
+  assert.equal(filters.state, "VOIDED");
+  assert.equal(filters.page, 2);
+  assert.equal(Object.hasOwn(filters, "includeVoided"), false);
+});
+
+for (const hasCurrent of [false, true]) {
+  test(`Referral linked history queries voided slips while current slip is ${hasCurrent ? "present" : "absent"}`, () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+    const referral = { id: "referral-history", voided_at: null, actions: [] };
+    const voided = { ...slip, id: "voided-history-slip", state: "VOIDED" };
+    client.setQueryData(getCallSlipsListQueryKey({ referral_id: referral.id, state: "VOIDED", page: 1, page_size: 20 }), {
+      data: { items: [voided], page: 1, page_size: 20, has_next: false }, status: 200, headers: {},
+    });
+    try {
+      const html = renderToStaticMarkup(h(QueryClientProvider, { client }, h(ReferralCallSlipSection, {
+        referral, canManageReferral: false, canViewCallSlips: true, canManageCallSlips: true,
+        currentItems: hasCurrent ? [slip] : [], currentPending: false, currentError: null,
+        retryCurrent: () => {}, onRefresh: async () => referral,
+      })));
+      assert.match(html, /Linked Call Slip history/);
+      assert.match(html, /voided-history-slip/);
+      assert.doesNotMatch(html, /Loading linked Call Slip history/);
+      if (hasCurrent) {
+        assert.match(html, /slip-density-test/);
+        assert.doesNotMatch(html, /Issue another linked Call Slip/);
+      } else {
+        assert.match(html, /No current linked Call Slip/);
+        assert.match(html, /Issue another linked Call Slip/);
+      }
+    } finally { client.clear(); }
+  });
+}

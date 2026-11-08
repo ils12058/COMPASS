@@ -129,6 +129,7 @@ def world():
         referral = Referral(
             student=student,
             reference_code=f"ACT2-{name}",
+            submission_channel="GCO_RECORDED",
             referred_on=timezone.localdate(),
             form_revision=FormRevision.objects.get(family__key="referral_slip", status="ACTIVE"),
         )

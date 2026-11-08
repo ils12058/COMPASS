@@ -65,7 +65,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     query: { enabled: referralAccess.canView, retry: false },
   });
   const linkedCurrent = useCallSlipsList(
-    { referral_id: referralId, include_voided: false, page: 1, page_size: 1 },
+    { referral_id: referralId, page: 1, page_size: 1 },
     { query: { enabled: referralAccess.canView && callSlipAccess.canViewOperational, retry: false } },
   );
 

@@ -94,8 +94,7 @@ def resolve_call_slip_email_facts(
         if item.voided_at is None or not item.void_notifies_student:
             return CallSlipEmailResolution(EmailSourceEligibility.SOURCE_STALE)
         status = "Call Slip voided"
-    # Existing LEGACY_UNKNOWN void intent remains minimal; never infer LIVE issuance.
-    rich_allowed = item.issuance_mode == CallSlipIssuanceMode.LIVE
+    rich_allowed = True
     return CallSlipEmailResolution(
         EmailSourceEligibility.ALLOWED,
         CallSlipEmailFacts(

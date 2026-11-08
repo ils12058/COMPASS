@@ -482,7 +482,7 @@ def test_referral_and_call_slip_void_preserve_history_and_enable_corrected_reiss
     )
     assert voided.lifecycle_state == "VOIDED"
     assert first.pk not in {row.pk for row in list_call_slips(actor=head).items}
-    assert first.pk in {row.pk for row in list_call_slips(actor=head, include_voided=True).items}
+    assert first.pk in {row.pk for row in list_call_slips(actor=head, state="VOIDED").items}
     notice = Notification.objects.get(
         recipient=student,
         event_code="call_slip.voided",

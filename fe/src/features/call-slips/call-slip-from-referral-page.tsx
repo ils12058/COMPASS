@@ -46,11 +46,11 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
   const canUse = referralAccess.canView && callSlipAccess.canManageOperational;
   const referral = useReferralsGet(referralId, { query: { enabled: canUse, retry: false } });
   const current = useCallSlipsList(
-    { referral_id: referralId, include_voided: false, page: 1, page_size: 1 },
+    { referral_id: referralId, page: 1, page_size: 1 },
     { query: { enabled: canUse, retry: false } },
   );
   const history = useCallSlipsList(
-    { referral_id: referralId, include_voided: true, page: 1, page_size: 20 },
+    { referral_id: referralId, state: CallSlipLifecycleStateValue.VOIDED, page: 1, page_size: 20 },
     { query: { enabled: canUse, retry: false } },
   );
 

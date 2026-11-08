@@ -11,7 +11,6 @@ from compass.institutional_forms.models import FormRevision
 
 
 class ReferralSubmissionChannel(models.TextChoices):
-    LEGACY_UNSPECIFIED = "LEGACY_UNSPECIFIED", "Legacy origin unspecified"
     GCO_RECORDED = "GCO_RECORDED", "GCO recorded"
     FACULTY_PORTAL = "FACULTY_PORTAL", "Faculty digital submission"
 
@@ -48,8 +47,6 @@ class Referral(models.Model):
     submission_channel = models.CharField(
         max_length=24,
         choices=ReferralSubmissionChannel.choices,
-        default=ReferralSubmissionChannel.LEGACY_UNSPECIFIED,
-        db_default="LEGACY_UNSPECIFIED",
     )
     submitted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

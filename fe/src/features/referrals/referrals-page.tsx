@@ -120,7 +120,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
             <>
           <FilterField label="Origin" htmlFor="referrals-origin">
             <Select id="referrals-origin" value={draft.origin ?? ""} onChange={(event) => setDraft({ ...draft, origin: (event.target.value || undefined) as ReferralSubmissionChannel | undefined })}>
-              <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">GCO recorded</option><option value="LEGACY_UNSPECIFIED">Legacy unspecified</option>
+              <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">GCO recorded</option>
             </Select>
           </FilterField>
           <FormRevisionFilter id="referrals-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />

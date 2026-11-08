@@ -3336,6 +3336,25 @@ def test_record_retrieval_contracts_are_narrow_and_historical_filters_are_domain
         }
 
 
+def test_call_slip_and_referral_provenance_and_filters_are_canonical():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert schemas["CallSlipIssuanceModeValue"]["enum"] == ["LIVE", "HISTORICAL"]
+    assert schemas["ReferralSubmissionChannel"]["enum"] == ["GCO_RECORDED", "FACULTY_PORTAL"]
+    for name in ("ReferralSummaryResponse", "ReferralDetailResponse"):
+        assert "submission_channel" in schemas[name]["required"]
+        assert "default" not in schemas[name]["properties"]["submission_channel"]
+    parameters = {
+        param["name"] for param in _operation(schema, "/api/v1/call-slips", "get")["parameters"]
+    }
+    assert "state" in parameters
+    assert "include_voided" not in parameters
+    referral_parameters = {
+        param["name"] for param in _operation(schema, "/api/v1/referrals", "get")["parameters"]
+    }
+    assert "include_voided" in referral_parameters
+
+
 def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency():
     schema = _generated_schema()
     schemas = schema["components"]["schemas"]

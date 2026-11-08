@@ -176,5 +176,4 @@ export function callSlipDestinationLabel(
 export const callSlipIssuanceModeLabels: Record<CallSlipIssuanceModeValue, string> = {
   [CallSlipIssuanceModeValue.LIVE]: "Live issuance",
   [CallSlipIssuanceModeValue.HISTORICAL]: "Historical / back-entry",
-  [CallSlipIssuanceModeValue.LEGACY_UNKNOWN]: "Not recorded (created before COMPASS tracked issuance mode)",
 };

@@ -597,6 +597,7 @@ def test_profile_edit_does_not_rewrite_inventory_referral_or_call_slip_history()
     )
     referral = Referral(
         reference_code="REF-2099-999998",
+        submission_channel="GCO_RECORDED",
         student=student,
         student_name_snapshot="Historical Referral Student",
         course_year_block_snapshot="Historical Course / 4 / A",
