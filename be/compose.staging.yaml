@@ -32,6 +32,8 @@ x-app: &app
 services:
   web:
     <<: *app
+    environment:
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE: /run/secrets/counselor_handoff_summary_encryption_keys
     secrets:
       - django_secret_key
       - postgres_password

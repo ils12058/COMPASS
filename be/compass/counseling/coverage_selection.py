@@ -14,7 +14,11 @@ from compass.counseling.continuity_locks import (
     lock_policy_for_selected_read,
 )
 from compass.counseling.continuity_policy import ContinuityError, require_policy
-from compass.counseling.coverage_policy import ApprovedOfficeCase, require_workflow_policy
+from compass.counseling.coverage_policy import (
+    office_can_select,
+    office_college_ids,
+    require_workflow_policy,
+)
 from compass.counseling.models import CounselingEncounter
 from compass.routine_interviews.continuity import _lock_evaluation
 from compass.routine_interviews.models import RoutineInterview
@@ -28,6 +32,28 @@ def _policies(actor, action="request"):
     return policy, workflow
 
 
+def _office_cases(actor, policy, workflow):
+    # Only structurally eligible cases in this requester's live responsibility. No plaintext.
+    students = grants.StudentAcademicProfile.objects.filter(
+        current_college_id__in=office_college_ids(actor, policy, workflow),
+        student__is_active=True,
+        student__role__code="STUDENT",
+        student__student_lifecycle_status="CURRENT",
+    ).values("student_id")
+    cases = (
+        CounselingEncounter.objects.filter(
+            student_id__in=students, counselor__role__code="COUNSELOR"
+        )
+        .values_list("student_id", "counselor_id")
+        .distinct()
+        .order_by("student_id", "counselor_id")
+    )
+    return [
+        {"student_id": student_id, "original_counselor_id": original_id}
+        for student_id, original_id in cases[:200]
+    ]
+
+
 @transaction.atomic(durable=True)
 def configuration(*, actor):
     lock_policy_for_selected_read()
@@ -36,9 +62,6 @@ def configuration(*, actor):
     actor = User.objects.select_related("role").get(pk=actor.pk)
     policy, workflow = _policies(actor, "view")
     office = actor.pk in policy.office_requester_ids
-    if office:
-        # Exact policy-named Head, never capability-only office enumeration.
-        grants._head(actor, policy, timezone.now())
     return {
         "server_now": timezone.now(),
         "valid_until": min(policy.valid_until, workflow.valid_until),
@@ -51,21 +74,7 @@ def configuration(*, actor):
             user=actor, designation__code="HEAD_GUIDANCE_COUNSELOR"
         ).exists()
         and actor.has_capability("counseling.continuity.approve"),
-        "office_cases": [
-            {"student_id": c.student_id, "original_counselor_id": c.original_counselor_id}
-            for c in workflow.office_cases
-            if office
-            and c.requester_id == actor.pk
-            and grants.StudentAcademicProfile.objects.filter(
-                student_id=c.student_id,
-                current_college_id__in=workflow.college_ids.intersection(policy.college_ids),
-                current_college__is_active=True,
-                current_college__campus__is_active=True,
-                student__is_active=True,
-                student__role__code="STUDENT",
-                student__student_lifecycle_status="CURRENT",
-            ).exists()
-        ],
+        "office_cases": _office_cases(actor, policy, workflow) if office else [],
     }
 
 
@@ -89,12 +98,7 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                 raise ContinuityError("source_not_found", 404)
             office = actor.pk != original_counselor_id
             if office:
-                grants._head(actor, policy, timezone.now())
-                if (
-                    actor.pk not in policy.office_requester_ids
-                    or ApprovedOfficeCase(actor.pk, student_id, original_counselor_id)
-                    not in workflow.office_cases
-                ):
+                if not office_can_select(actor, student_id, policy, workflow):
                     raise ContinuityError("source_not_found", 404)
             original = users.get(original_counselor_id)
             if original is None or original.role.code != "COUNSELOR":
@@ -165,7 +169,7 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                     if exc.status != 404:
                         raise
             # No legitimate source relationship means no receiver directory disclosure either.
-            if not candidates and not office:
+            if not candidates:
                 raise ContinuityError("source_not_found", 404)
             receivers = []
             for receiver in (

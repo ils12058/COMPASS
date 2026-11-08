@@ -465,6 +465,7 @@ ASSESSMENT_TYPE_DEACTIVATED = "assessment_type.deactivated"
 ASSESSMENT_TYPE_REACTIVATED = "assessment_type.reactivated"
 
 # Metadata-only case-continuity lifecycle; no source-content release events yet.
+CONTINUITY_POLICY_RECORDED = "counseling.continuity.policy_recorded"
 CONTINUITY_REQUESTED = "counseling.continuity.requested"
 CONTINUITY_APPROVED = "counseling.continuity.approved"
 CONTINUITY_DECLINED = "counseling.continuity.declined"

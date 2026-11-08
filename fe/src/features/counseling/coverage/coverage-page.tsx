@@ -14,7 +14,7 @@ export function CoveragePage() {
     const params = useSearchParams();
     const [page, setPage] = useState(1);
     const [requestOpen, setRequestOpen] = useState(Boolean(params.get("student")));
-    const allowed = user.role === "COUNSELOR" && user.capabilities.includes("counseling.continuity.view");
+    const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.view");
     const config = api.useCounselingCoverageGetConfiguration({ query: { enabled: allowed, retry: false, refetchOnWindowFocus: "always", gcTime: 0, queryKey: [...api.getCounselingCoverageGetConfigurationQueryKey(), user.id] } });
     const list = api.useCounselingContinuityListGrants({ page, page_size: 20 }, { query: { enabled: allowed && config.isSuccess, retry: false, refetchInterval: 15000, refetchOnWindowFocus: "always", queryKey: [...api.getCounselingContinuityListGrantsQueryKey({ page, page_size: 20 }), user.id], gcTime: 0 } });
     const groups = [

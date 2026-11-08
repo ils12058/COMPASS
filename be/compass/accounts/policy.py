@@ -725,6 +725,13 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "COUNSELOR": frozenset(
         {
+            "counseling.continuity.view",
+            "counseling.continuity.request",
+            "counseling.continuity.approve",
+            "counseling.continuity.revoke",
+            "counseling.continuity.read_selected",
+            "counseling.handoff.manage_own",
+            "counseling.handoff.read_received",
             "guidance_followups.view",
             "guidance_followups.manage",
             "guidance_messages.view",
@@ -773,6 +780,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "GUIDANCE_OFFICE_ASSISTANT": frozenset(
         {
+            "counseling.continuity.view",
+            "counseling.continuity.request",
             "guidance_followups.view",
             "guidance_followups.manage",
             "guidance_messages.view",

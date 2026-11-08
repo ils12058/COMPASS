@@ -13,7 +13,14 @@ from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserCapabilityOverride, UserDesignation
+from compass.accounts.models import (
+    Designation,
+    Role,
+    RoleCapability,
+    User,
+    UserCapabilityOverride,
+    UserDesignation,
+)
 from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.confidential_data import crypto
@@ -41,14 +48,15 @@ from tests import test_continuity as foundation_tests
 from tests.test_continuity import client, decide, request
 
 metadata_case = foundation_tests.case
+synthetic_case = foundation_tests.synthetic_case
 
 pytestmark = pytest.mark.django_db(transaction=True)
 SENTINEL = "SYNTHETIC-PROFESSIONAL-CONTENT-NOT-FOR-ERRORS"
 
 
 @pytest.fixture
-def selected_case(metadata_case, monkeypatch):
-    c = metadata_case
+def mutable_selected_case(synthetic_case, monkeypatch):
+    c = synthetic_case
     c.service.code = "COUNSELING"
     c.service.save(update_fields=["code"])
     c.values = content.empty_evaluation() | {
@@ -85,6 +93,25 @@ def selected_case(metadata_case, monkeypatch):
     c.control = SimpleNamespace(operational=c.policy, disclosure=c.disclosure)
     monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: c.control.operational)
     monkeypatch.setattr(disclosure, "get_approved_disclosure_policy", lambda: c.control.disclosure)
+    return c
+
+
+@pytest.fixture
+def selected_case(metadata_case):
+    c = metadata_case
+    c.service.code = "COUNSELING"
+    c.service.save(update_fields=["code"])
+    c.values = content.empty_evaluation() | {
+        "academic_adjustment_rating": 7,
+        "recommendations": SENTINEL,
+        "other_adjustment": "UNAPPROVED-OTHER-SENTINEL",
+        "special_concern": "UNAPPROVED-CONCERN-SENTINEL",
+    }
+    content.write_evaluation(c.routine, c.values)
+    c.routine.save(update_fields=["counselor_evaluation_ciphertext", "updated_at"])
+    c.disclosure = disclosure.get_approved_disclosure_policy()
+    c.policy = continuity_policy.get_approved_policy()
+    c.control = SimpleNamespace(operational=c.policy, disclosure=c.disclosure)
     return c
 
 
@@ -174,8 +201,8 @@ def test_unsupported_roles_with_unusual_capabilities(selected_case, role, monkey
         read(c, g, actor=user)
 
 
-def test_cross_college_and_legitimate_head_receiver(selected_case):
-    c = selected_case
+def test_cross_college_and_legitimate_head_receiver(mutable_selected_case):
+    c = mutable_selected_case
     CounselorResponsibility.objects.create(college=c.college_b, counselor=c.receiver)
     g = approved(c)
     assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
@@ -203,8 +230,8 @@ def test_cross_college_and_legitimate_head_receiver(selected_case):
         "head_designation",
     ],
 )
-def test_current_authority_rechecked_before_decrypt(selected_case, monkeypatch, change):
-    c = selected_case
+def test_current_authority_rechecked_before_decrypt(mutable_selected_case, monkeypatch, change):
+    c = mutable_selected_case
     g = approved(c)
     if change == "inactive":
         User.objects.filter(pk=c.receiver.pk).update(is_active=False)
@@ -222,6 +249,9 @@ def test_current_authority_rechecked_before_decrypt(selected_case, monkeypatch, 
             user=c.receiver, capability=cap, effect="REVOKE", reason="Synthetic revoke"
         )
     elif change == "override_expired":
+        RoleCapability.objects.filter(
+            role__code="COUNSELOR", capability__code="counseling.continuity.read_selected"
+        ).delete()
         UserCapabilityOverride.objects.filter(
             user=c.receiver, capability__code="counseling.continuity.read_selected"
         ).update(expires_at=c.now - timedelta(seconds=1))
@@ -285,8 +315,10 @@ def test_noneffective_grant_concealed_before_decryption(selected_case, monkeypat
         "rebound_without_new_request",
     ],
 )
-def test_both_policies_independently_required_and_sealed(selected_case, monkeypatch, change):
-    c = selected_case
+def test_both_policies_independently_required_and_sealed(
+    mutable_selected_case, monkeypatch, change
+):
+    c = mutable_selected_case
     g = approved(c)
     if change == "operational_missing":
         c.control.operational = None
@@ -325,8 +357,8 @@ def test_both_policies_independently_required_and_sealed(selected_case, monkeypa
         "coordination_evidence_reference",
     ],
 )
-def test_required_evidence_absence_denies_before_decrypt(selected_case, monkeypatch, field):
-    c = selected_case
+def test_required_evidence_absence_denies_before_decrypt(mutable_selected_case, monkeypatch, field):
+    c = mutable_selected_case
     g = approved(c)
     c.control.disclosure = replace(c.disclosure, **{field: ""})
     monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
@@ -338,8 +370,8 @@ def test_required_evidence_absence_denies_before_decrypt(selected_case, monkeypa
     "fields",
     [frozenset(), frozenset({"student_intake"}), frozenset({"recommendations", "future_field"})],
 )
-def test_empty_unknown_or_excluded_field_lists_denied(selected_case, monkeypatch, fields):
-    c = selected_case
+def test_empty_unknown_or_excluded_field_lists_denied(mutable_selected_case, monkeypatch, fields):
+    c = mutable_selected_case
     g = approved(c)
     item = ApprovedSourceProjection("ROUTINE_EVALUATION", "FINALIZED_EVALUATION_V1", fields)
     c.control.disclosure = replace(c.disclosure, projections=(item,))
@@ -348,8 +380,8 @@ def test_empty_unknown_or_excluded_field_lists_denied(selected_case, monkeypatch
         read(c, g)
 
 
-def test_all_nine_fields_only_with_explicit_bound_projection(selected_case):
-    c = selected_case
+def test_all_nine_fields_only_with_explicit_bound_projection(mutable_selected_case):
+    c = mutable_selected_case
     item = ApprovedSourceProjection(
         "ROUTINE_EVALUATION", "FINALIZED_EVALUATION_V1", EVALUATION_FIELDS_V1
     )
@@ -656,8 +688,8 @@ def test_http_projection_omission_no_store_and_read_only(selected_case, monkeypa
     assert reads().count() == 2
 
 
-def test_old_metadata_policy_digest_is_preserved_and_cannot_disclose(metadata_case):
-    c = metadata_case
+def test_old_metadata_policy_digest_is_preserved_and_cannot_disclose(synthetic_case):
+    c = synthetic_case
     values = asdict(c.policy)
     values.pop("disclosure_policy_digest")
     values.pop("workflow_policy_digest")
@@ -678,9 +710,9 @@ def test_old_metadata_policy_digest_is_preserved_and_cannot_disclose(metadata_ca
 
 @pytest.mark.parametrize("missing", ["operational", "disclosure"])
 def test_policy_http_denial_before_decrypt_and_content_free_error(
-    selected_case, monkeypatch, missing, caplog
+    mutable_selected_case, monkeypatch, missing, caplog
 ):
-    c = selected_case
+    c = mutable_selected_case
     g = approved(c)
     http = client(c.receiver)
     setattr(c.control, missing, None)
@@ -739,8 +771,8 @@ def test_authorized_http_failure_never_returns_prepared_body(
         "partial_encounter",
     ],
 )
-def test_invalid_disclosure_projection_contract_denied(selected_case, monkeypatch, change):
-    c = selected_case
+def test_invalid_disclosure_projection_contract_denied(mutable_selected_case, monkeypatch, change):
+    c = mutable_selected_case
     g = approved(c)
     if change == "college_scope":
         p = replace(c.disclosure, college_ids=frozenset())
@@ -763,8 +795,8 @@ def test_invalid_disclosure_projection_contract_denied(selected_case, monkeypatc
         read(c, g)
 
 
-def test_provider_drift_during_decryption_is_not_released(selected_case, monkeypatch):
-    c = selected_case
+def test_provider_drift_during_decryption_is_not_released(mutable_selected_case, monkeypatch):
+    c = mutable_selected_case
     g = approved(c)
     original = content.read_evaluation
 

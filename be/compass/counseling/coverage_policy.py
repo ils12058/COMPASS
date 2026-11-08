@@ -1,4 +1,4 @@
-"""Separate evidence for metadata selection and confidential Handoff; never enabled by flags."""
+"""Policy contract with a code-owned provisional production provider."""
 
 import hashlib
 import json
@@ -13,13 +13,6 @@ from compass.counseling.continuity_policy import ContinuityError
 
 
 @dataclass(frozen=True, slots=True)
-class ApprovedOfficeCase:
-    requester_id: UUID
-    student_id: UUID
-    original_counselor_id: UUID
-
-
-@dataclass(frozen=True, slots=True)
 class ApprovedCoverageWorkflowPolicy:
     version: str
     evidence_reference: str
@@ -31,12 +24,13 @@ class ApprovedCoverageWorkflowPolicy:
     valid_from: datetime
     valid_until: datetime
     college_ids: frozenset[UUID]
-    office_cases: tuple[ApprovedOfficeCase, ...]
     source_kinds: frozenset[str]
     author_rule: str = "ACTIVE_ORIGINAL_ONLY"
     post_expiry_rule: str = "DENY_ALL"
     acknowledgment_rule: str = "DEFERRED"
     notification_rule: str = "DEFERRED"
+    membership_rule: str = "EXPLICIT_IDS"
+    office_selection_rule: str = "REQUESTER_RESPONSIBILITY"
 
     def validate(self, now):
         refs = [
@@ -60,16 +54,10 @@ class ApprovedCoverageWorkflowPolicy:
             or timezone.is_naive(self.valid_until)
             or not self.valid_from <= now < self.valid_until
             or not isinstance(self.college_ids, frozenset)
-            or not self.college_ids
+            or self.membership_rule not in {"EXPLICIT_IDS", "LIVE_ROLES_AND_COLLEGES"}
+            or (self.membership_rule == "EXPLICIT_IDS" and not self.college_ids)
             or any(not isinstance(i, UUID) for i in self.college_ids)
-            or not isinstance(self.office_cases, tuple)
-            or len(self.office_cases) > 200
-            or any(
-                not isinstance(c, ApprovedOfficeCase)
-                or any(not isinstance(i, UUID) for i in asdict(c).values())
-                for c in self.office_cases
-            )
-            or len(set(self.office_cases)) != len(self.office_cases)
+            or self.office_selection_rule != "REQUESTER_RESPONSIBILITY"
             or not isinstance(self.source_kinds, frozenset)
             or not self.source_kinds
             or not self.source_kinds <= {"ENCOUNTER", "ROUTINE_EVALUATION"}
@@ -85,14 +73,13 @@ class ApprovedCoverageWorkflowPolicy:
         values = asdict(self)
         values["college_ids"] = sorted(str(i) for i in self.college_ids)
         values["source_kinds"] = sorted(self.source_kinds)
-        values["office_cases"] = sorted(
-            tuple(str(v) for v in asdict(c).values()) for c in self.office_cases
-        )
         return hashlib.sha256(json.dumps(values, default=str, sort_keys=True).encode()).hexdigest()
 
 
 def get_approved_workflow_policy() -> ApprovedCoverageWorkflowPolicy | None:
-    return None
+    from compass.counseling.provisional_continuity import workflow_policy
+
+    return workflow_policy()
 
 
 def require_workflow_policy(policy, now):
@@ -103,3 +90,26 @@ def require_workflow_policy(policy, now):
     if not policy.workflow_policy_digest or policy.workflow_policy_digest != workflow.digest:
         raise ContinuityError("workflow_policy_unconfirmed")
     return workflow
+
+
+def office_college_ids(actor, policy, workflow):
+    """Live responsibility only; designation/role never grants confidential content."""
+    from compass.organization.access_scope import resolve_operational_responsibility_scope
+
+    if not actor.is_active or actor.pk not in policy.office_requester_ids:
+        return frozenset()
+    return frozenset(resolve_operational_responsibility_scope(actor).college_ids).intersection(
+        policy.college_ids, workflow.college_ids
+    )
+
+
+def office_can_select(actor, student_id, policy, workflow):
+    from compass.student_academics.models import StudentAcademicProfile
+
+    return StudentAcademicProfile.objects.filter(
+        student_id=student_id,
+        current_college_id__in=office_college_ids(actor, policy, workflow),
+        student__is_active=True,
+        student__role__code="STUDENT",
+        student__student_lifecycle_status="CURRENT",
+    ).exists()

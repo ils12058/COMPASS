@@ -21,6 +21,8 @@ AUTHORITY_TABLES = (
     "accounts_userdesignation",
     "accounts_usercapabilityoverride",
     "student_academics_studentacademicprofile",
+    "organization_counselorresponsibility",
+    "organization_staffsupervision",
     "organization_college",
     "organization_campus",
 )

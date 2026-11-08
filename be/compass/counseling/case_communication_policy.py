@@ -1,10 +1,4 @@
-"""Small domain policy boundary for case communication. No approved policy is deployed.
-
-A future reviewed provider must resolve verified evidence, effective dates and the permitted
-communication purposes. Environment flags/overrides are not evidence. Tests replace the provider
-with explicit isolated synthetic fixtures; the production provider stays `None`, so no grant can
-carry a communication purpose and no case conversation can be opened or read.
-"""
+"""Policy contract with a code-owned provisional production provider."""
 
 import hashlib
 import json
@@ -53,8 +47,9 @@ class ApprovedCaseCommunicationPolicy:
 
 
 def get_approved_case_communication_policy() -> ApprovedCaseCommunicationPolicy | None:
-    # Deliberately no settings-based activation, invented purpose or delegation fallback.
-    return None
+    from compass.counseling.provisional_continuity import communication_policy
+
+    return communication_policy()
 
 
 def require_case_communication_policy(now):

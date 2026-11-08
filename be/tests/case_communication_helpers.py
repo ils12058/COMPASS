@@ -1,8 +1,4 @@
-"""Synthetic case-communication fixtures; no approved policy is deployed.
-
-The deployed provider stays `None`, so these helpers replace it only inside a test. Nothing here
-represents GCO/DPO approval, an institution-wide purpose or production evidence.
-"""
+"""Real provisional communication with explicit seams for policy-variation tests."""
 
 from __future__ import annotations
 
@@ -63,11 +59,9 @@ def patch_communication_policy(monkeypatch, policy):
 
 
 @pytest.fixture
-def communication(case, monkeypatch):
-    """A live synthetic communication policy beside the synthetic continuity policy."""
-    case.communication_policy = patch_communication_policy(
-        monkeypatch, approved_communication_policy(case)
-    )
+def communication(case):
+    """The real provisional communication policy beside the real continuity policy."""
+    case.communication_policy = case_communication_policy.get_approved_case_communication_policy()
     return case
 
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getCounselingAccess } from '../src/features/counseling/counseling-access.ts';
 import { CoverageGeneration, presentApprovedEvaluation } from '../src/features/counseling/coverage/coverage-safety.ts';
 
 test('approved Evaluation distinguishes omission, null, empty and numeric values',()=>{
@@ -20,3 +21,16 @@ for(const reason of ['revocation','expiry','account switch','logout','hidden tab
 }
 test('request cancellation rejects a response even in the current generation',()=>{const barrier=new CoverageGeneration(),controller=new AbortController();controller.abort();assert.throws(()=>barrier.assertCurrent(barrier.current(),controller.signal));});
 test('generation never reuses an invalidated response after a deliberate check',()=>{const barrier=new CoverageGeneration(),old=barrier.current();barrier.invalidate();barrier.invalidate();assert.throws(()=>barrier.assertCurrent(old));barrier.assertCurrent(barrier.current());});
+
+for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) {
+ test(`${role} can enter coverage with metadata authority`, () => {
+  const access = getCounselingAccess({role, capabilities:['counseling.continuity.view']});
+  assert.equal(access.canViewCoverage, true);
+  assert.equal(access.hasWorkspace, true);
+  assert.equal(access.canViewAssigned, false);
+  assert.equal(access.canViewAssignedStudentSessionSummaries, false);
+ });
+}
+test('coverage metadata capability cannot give an unsupported role a workspace', () => {
+ assert.equal(getCounselingAccess({role:'IT_ADMIN', capabilities:['counseling.continuity.view']}).hasWorkspace, false);
+});

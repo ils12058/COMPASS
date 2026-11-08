@@ -48,20 +48,17 @@ def expect(code):
     return pytest.raises(ContinuityError, match=rf"\({code}\)")
 
 
-def test_deployed_provider_stays_none_and_denies_purpose_requests(case):
-    assert case_communication_policy.get_approved_case_communication_policy() is None
-    with expect("communication_policy_unconfirmed"):
-        require_case_communication_policy(timezone.now())
-    with expect("communication_policy_unconfirmed"):
-        request_case_grant(case)
-    assert not Grant.objects.exists()
+def test_real_provider_allows_purpose_requests(case):
+    policy = require_case_communication_policy(timezone.now())
+    assert policy.version == "code_owned_provisional_v1"
+    assert request_case_grant(case)["communication_purpose"] == PURPOSE
 
 
 def test_policy_digest_is_deterministic_and_covers_reviewed_fields(communication):
     policy = communication.communication_policy
     policy.validate(timezone.now())
     assert len(policy.digest) == 64
-    assert policy.digest == approved_communication_policy(communication).digest
+    assert policy.digest == require_case_communication_policy(timezone.now()).digest
     for changed in (
         approved_communication_policy(communication, version="synthetic-c2"),
         approved_communication_policy(communication, evidence="TEST-ONLY-GMSG5-B"),

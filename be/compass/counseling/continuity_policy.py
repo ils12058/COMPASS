@@ -1,9 +1,4 @@
-"""Small domain policy boundary. No approved institutional policy is deployed.
-
-A future reviewed provider must resolve verified evidence, effective dates, exact office
-scope, authorized identities and bounds. Environment flags/overrides are not evidence.
-Tests replace the provider with explicit isolated synthetic fixtures.
-"""
+"""Policy contract with a code-owned provisional production provider."""
 
 import hashlib
 import json
@@ -41,6 +36,7 @@ class ApprovedContinuityPolicy:
     metadata_review_approved: bool
     disclosure_policy_digest: str = ""
     workflow_policy_digest: str = ""
+    membership_rule: str = "EXPLICIT_IDS"
 
     @property
     def digest(self):
@@ -71,8 +67,9 @@ class ApprovedContinuityPolicy:
             or not self.valid_from <= now < self.valid_until
             or self.maximum_duration <= timedelta(0)
             or self.maximum_advance < timedelta(0)
-            or not self.college_ids
-            or not self.approver_ids
+            or self.membership_rule not in {"EXPLICIT_IDS", "LIVE_ROLES_AND_COLLEGES"}
+            or (self.membership_rule == "EXPLICIT_IDS" and not self.college_ids)
+            or (self.membership_rule == "EXPLICIT_IDS" and not self.approver_ids)
             or not self.reason_categories
             or not self.reason_categories <= set(ContinuityReason.values)
             or self.overlap_rule not in {"REJECT_ALL_RECEIVERS", "ALLOW_DIFFERENT_RECEIVERS"}
@@ -97,8 +94,9 @@ class ApprovedContinuityPolicy:
 
 
 def get_approved_policy() -> ApprovedContinuityPolicy | None:
-    # Deliberately no settings-based activation, invented duration or delegation fallback.
-    return None
+    from compass.counseling.provisional_continuity import continuity_policy
+
+    return continuity_policy()
 
 
 def require_policy(now):

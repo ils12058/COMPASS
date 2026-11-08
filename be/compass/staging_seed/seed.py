@@ -58,6 +58,7 @@ from .psgc import seeded_psgc
 from .publications import seed_feedback, seed_privacy_governance, seed_publications
 from .scenarios.action_ready import ACTION_UNITS, run_action_unit
 from .scenarios.background import seed_population_forms, seed_secondary_stories
+from .scenarios.continuity import seed_demo_coverage
 from .scenarios.rich import RICH_STORIES, run_story
 from .staff import FORMER_STAFF
 from .students import STUDENTS
@@ -244,6 +245,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
         "Population Feedback and CSM",
         lambda: feedback_population.seed_population_feedback(session),
     )
+    _unit("Demo Case coverage", lambda: seed_demo_coverage(session))
     _unit("Account state", lambda: finalize_account_state(session))
 
 

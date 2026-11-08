@@ -54,7 +54,10 @@ def _users(*ids):
 
 
 def _actor(user, action, now):
-    if user is None or not user.is_active or user.role.code != "COUNSELOR":
+    roles = {"COUNSELOR"}
+    if action in {"view", "request"}:
+        roles.add("GUIDANCE_OFFICE_ASSISTANT")
+    if user is None or not user.is_active or user.role.code not in roles:
         raise ContinuityError("invalid_role")
     if not user.has_capability("counseling.continuity." + action, at=now):
         raise ContinuityError("missing_capability")
@@ -249,7 +252,10 @@ def _effective(grant, scopes, users, policy, now):
         _receiver(users.get(grant.receiving_counselor_id), now)
         if _student(users.get(grant.student_id), policy) != grant.student_placement_marker:
             return "UNAVAILABLE"
-        _head(users.get(grant.decision_by_id), policy, now)
+        # A completed provisional approval survives ordinary Head/staff turnover.
+        # Approval/revocation still require the current Head; receiver rights remain live.
+        if policy.membership_rule != "LIVE_ROLES_AND_COLLEGES":
+            _head(users.get(grant.decision_by_id), policy, now)
         if not grant.starts_at <= now < grant.expires_at:
             return "SCHEDULED" if now < grant.starts_at else "EXPIRED"
     except ContinuityError:
@@ -314,8 +320,14 @@ def _visible(grant, actor, policy, now):
         from compass.counseling.coverage_policy import require_workflow_policy
 
         workflow = require_workflow_policy(policy, now)
+        try:
+            student = User.objects.select_related("role").filter(pk=grant.student_id).first()
+            placement_matches = _student(student, policy) == grant.student_placement_marker
+        except ContinuityError:
+            placement_matches = False
         if (
             grant.policy_digest == policy.digest
+            and placement_matches
             and actor.has_capability("counseling.handoff.manage_own", at=now)
             and StudentAcademicProfile.objects.filter(
                 student_id=grant.student_id,
@@ -380,7 +392,7 @@ def request_coverage(
             raise ContinuityError("invalid_purpose", 422)
         if original_counselor_id is None or original_counselor_id == receiving_counselor_id:
             raise ContinuityError("invalid_original_counselor", 422)
-        # Fail closed while no reviewed provider is deployed.
+        # Bind the purpose to the current Audit-backed communication policy.
         communication_policy_digest = require_case_communication_policy(now).digest
     if not isinstance(request_id, UUID):
         raise ContinuityError("invalid_request_id", 422)

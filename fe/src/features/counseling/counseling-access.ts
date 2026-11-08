@@ -28,7 +28,7 @@ export function getCounselingAccess(user: UserSummary): CounselingAccess {
     isCounselor && capabilities.has("student_session_summaries.manage_assigned");
   const canViewOwnStudentSessionSummaries =
     isStudent && capabilities.has("student_session_summaries.view_self");
-  const canViewCoverage = isCounselor && capabilities.has("counseling.continuity.view");
+  const canViewCoverage = (isCounselor || user.role === "GUIDANCE_OFFICE_ASSISTANT") && capabilities.has("counseling.continuity.view");
   const hasCounselorWorkspace = canViewAssigned || canViewCoverage;
   const hasStudentWorkspace = canViewOwnStudentSessionSummaries;
 

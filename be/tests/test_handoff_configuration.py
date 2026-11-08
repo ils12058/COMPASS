@@ -66,3 +66,20 @@ def test_file_backed_ring_no_conflicting_direct_setting(monkeypatch, tmp_path):
     with pytest.raises(ValueError, match="cannot both be set"):
         runpy.run_path(str(SETTINGS))
     assert os.environ["COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS"] == key
+
+
+def test_live_preflight_requires_nonempty_handoff_keyring(tmp_path):
+    from tests.test_runtime_secrets import load_script
+
+    runtime = load_script("runtime_secrets.py")
+    name = "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS"
+    assert name in runtime.REQUIRED_SECRETS
+    source = tmp_path / runtime.SECRET_FILES[name]
+    source.write_text("")
+    source.chmod(0o444)
+    with pytest.raises(runtime.SecretCheckError, match="must not be empty"):
+        runtime.check_file(tmp_path, name, os.getuid())
+    source.chmod(0o644)
+    source.write_text("synthetic-nonempty-keyring")
+    source.chmod(0o444)
+    runtime.check_file(tmp_path, name, os.getuid())

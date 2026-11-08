@@ -26,10 +26,9 @@ export function CoverageError({ error, retry }: {
     retry?: () => void;
 }) {
     const code = counselingErrorCode(error) ?? "";
-    const policy = code.includes("policy");
     const conflict = code.includes("version") || code.includes("changed") || code.includes("busy");
-    return <Notice role="alert" title={policy ? "Case coverage is unavailable" : conflict ? "Coverage needs review" : "Access could not be confirmed"} action={retry ? <Button variant="secondary" onClick={retry}>Check again</Button> : undefined}>
-    {policy ? "An approved institutional procedure is required before this workflow can be used." : conflict ? "The request, record or access conditions changed. Review the latest information before trying again." : code.includes("handoff_unavailable") ? "The encrypted handoff is unavailable. Contact the guidance office." : "Protected content has been cleared. Your guidance office can help with coverage access."}
+    return <Notice role="alert" title={conflict ? "Coverage needs review" : "Access could not be confirmed"} action={retry ? <Button variant="secondary" onClick={retry}>Check again</Button> : undefined}>
+    {conflict ? "The request, record or access conditions changed. Review the latest information before trying again." : code.includes("handoff_unavailable") ? "The encrypted handoff is unavailable. Contact the guidance office." : "Protected content has been cleared. Your guidance office can help with coverage access."}
   </Notice>;
 }
 export function CoverageFacts({ grant }: {

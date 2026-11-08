@@ -741,7 +741,7 @@ if keyring_reuses_secret(
 ):
     raise ValueError("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS must not reuse existing keys or SECRET_KEY")
 
-# Optional at startup: confidential Handoff operations deny without a separately provisioned ring.
+# Optional at startup; the live host preflight requires this independent web keyring.
 _handoff_keys = env("COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS", "")
 COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS = (
     parse_fernet_keyring(_handoff_keys, setting="COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS")

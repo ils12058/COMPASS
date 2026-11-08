@@ -1,4 +1,4 @@
-"""Evidence-bound field projections. Both deployed policy providers remain empty."""
+"""Policy contract with a code-owned provisional production provider."""
 
 import hashlib
 import json
@@ -63,6 +63,7 @@ class ApprovedDisclosurePolicy:
     valid_until: datetime
     college_ids: frozenset[UUID]
     projections: tuple[ApprovedSourceProjection, ...]
+    membership_rule: str = "EXPLICIT_IDS"
 
     def validate(self, now):
         tokens = [
@@ -86,7 +87,8 @@ class ApprovedDisclosurePolicy:
             or timezone.is_naive(self.valid_until)
             or not self.valid_from <= now < self.valid_until
             or not isinstance(self.college_ids, frozenset)
-            or not self.college_ids
+            or self.membership_rule not in {"EXPLICIT_IDS", "LIVE_ROLES_AND_COLLEGES"}
+            or (self.membership_rule == "EXPLICIT_IDS" and not self.college_ids)
             or any(not isinstance(i, UUID) for i in self.college_ids)
             or not isinstance(self.projections, tuple)
             or not self.projections
@@ -144,8 +146,9 @@ class ApprovedDisclosurePolicy:
 
 
 def get_approved_disclosure_policy() -> ApprovedDisclosurePolicy | None:
-    # No verified institutional field/basis/retention/monitoring approval exists.
-    return None
+    from compass.counseling.provisional_continuity import disclosure_policy
+
+    return disclosure_policy()
 
 
 def require_disclosure_policy(now):

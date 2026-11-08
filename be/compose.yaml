@@ -9,6 +9,8 @@ x-app: &app
 services:
   web:
     <<: *app
+    environment:
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS: ${COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS:-}
     pull_policy: build
     build:
       context: .

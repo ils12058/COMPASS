@@ -20,8 +20,11 @@ from tests.test_continuity_access import approved
 from tests.test_continuity_release_concurrency import run, wait_for_pg_lock
 
 metadata_case = cases.metadata_case
+synthetic_case = cases.synthetic_case
+mutable_selected_case = cases.mutable_selected_case
 selected_case = cases.selected_case
 workflow_case = cases.workflow_case
+mutable_workflow_case = cases.mutable_workflow_case
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
@@ -100,8 +103,8 @@ def test_concurrent_draft_update_or_duplicate_submission(workflow_case, operatio
 
 
 @pytest.mark.parametrize("writer", ["grant", "user", "ciphertext", "policy"])
-def test_writer_first_denies_without_decrypt(workflow_case, monkeypatch, writer):
-    c = workflow_case
+def test_writer_first_denies_without_decrypt(mutable_workflow_case, monkeypatch, writer):
+    c = mutable_workflow_case
     g = approved(c)
     cases.submitted(c, g)
     entered, release = Event(), Event()
@@ -149,8 +152,8 @@ def test_writer_first_denies_without_decrypt(workflow_case, monkeypatch, writer)
         assert future.result(timeout=5)[0] == "ok"
 
 
-def test_policy_invalidation_cannot_publish_during_read(workflow_case, monkeypatch):
-    c = workflow_case
+def test_policy_invalidation_cannot_publish_during_read(mutable_workflow_case, monkeypatch):
+    c = mutable_workflow_case
     g = approved(c)
     cases.submitted(c, g)
     entered, release = Event(), Event()

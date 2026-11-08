@@ -1,4 +1,4 @@
-"""Synthetic policy fixtures are isolated here; deployed provider stays fail closed."""
+"""Real provisional coverage; explicit synthetic seams for policy-variation tests."""
 
 import hashlib
 import json
@@ -20,6 +20,7 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    RoleCapability,
     User,
     UserCapabilityOverride,
     UserDesignation,
@@ -56,8 +57,7 @@ def grant_caps(user, codes=CAPS):
         )
 
 
-@pytest.fixture
-def case(monkeypatch):
+def _case_data():
     call_command("sync_identity_policy", verbosity=0)
 
     def user(name, role="COUNSELOR"):
@@ -102,7 +102,7 @@ def case(monkeypatch):
         student_intake_ciphertext="UNREADABLE-SYNTHETIC-INTAKE",
         counselor_evaluation_ciphertext="UNREADABLE-SYNTHETIC-EVALUATION",
     )
-    policy = ApprovedContinuityPolicy(
+    synthetic_policy = ApprovedContinuityPolicy(
         version="synthetic-v1",
         evidence_reference="TEST-ONLY-D01-D13",
         valid_from=now - timedelta(days=1),
@@ -117,7 +117,7 @@ def case(monkeypatch):
         student_transfer_rule="REQUIRE_NEW_REQUEST",
         metadata_review_approved=True,
     )
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: policy)
+    policy = continuity_policy.get_approved_policy()
     payload = dict(
         actor=author,
         student_id=student.pk,
@@ -135,6 +135,20 @@ def case(monkeypatch):
         ],
     )
     return SimpleNamespace(**locals())
+
+
+@pytest.fixture
+def case():
+    return _case_data()
+
+
+@pytest.fixture
+def synthetic_case(monkeypatch):
+    """Only tests varying the policy contract use this provider seam."""
+    case = _case_data()
+    case.policy = case.synthetic_policy
+    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: case.policy)
+    return case
 
 
 def request(case, **changes):
@@ -164,9 +178,18 @@ def test_lifecycle_exact_boundaries_version_and_idempotency(case, monkeypatch):
     assert g["effective_status"] == "PENDING" and g["version"] == 1
     g = decide(case, g)
     assert g["effective_status"] == "SCHEDULED" and g["version"] == 2
-    count = AuditEvent.objects.filter(action__startswith="counseling.continuity.").count()
+    count = (
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
+        .exclude(action="counseling.continuity.policy_recorded")
+        .count()
+    )
     assert decide(case, g)["version"] == 2
-    assert AuditEvent.objects.filter(action__startswith="counseling.continuity.").count() == count
+    assert (
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
+        .exclude(action="counseling.continuity.policy_recorded")
+        .count()
+        == count
+    )
     for now, status in [
         (g["starts_at"], "ACTIVE"),
         (g["expires_at"] - timedelta(microseconds=1), "ACTIVE"),
@@ -198,7 +221,8 @@ def test_terminal_transitions(case, decision):
 
 
 @pytest.mark.parametrize("who", ["author", "receiver"])
-def test_self_approval_denied_even_head(case, monkeypatch, who):
+def test_self_approval_denied_even_head(synthetic_case, monkeypatch, who):
+    case = synthetic_case
     actor = getattr(case, who)
     UserDesignation.objects.create(
         user=actor, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
@@ -220,7 +244,14 @@ def test_self_approval_denied_even_head(case, monkeypatch, who):
 def test_unsupported_roles_with_all_capabilities(case, role, operation):
     actor = case.user("unsupported", role)
     g = request(case)
-    with expect("invalid_role"):
+    expected = (
+        "source_not_found"
+        if role == "GUIDANCE_OFFICE_ASSISTANT" and operation == "request"
+        else "not_found"
+        if role == "GUIDANCE_OFFICE_ASSISTANT" and operation == "detail"
+        else "invalid_role"
+    )
+    with expect(expected):
         if operation == "request":
             request(case, actor=actor)
         elif operation == "detail":
@@ -246,7 +277,8 @@ def test_inactive_actor_and_stale_user_object(case, operation):
 @pytest.mark.parametrize(
     "change", ["no_head", "missing_cap", "expired_cap", "explicit_revoke", "unnamed_head"]
 )
-def test_current_head_authority_and_no_acting_override(case, change, monkeypatch):
+def test_current_head_authority_and_no_acting_override(synthetic_case, change, monkeypatch):
+    case = synthetic_case
     g = request(case)
     if change == "no_head":
         UserDesignation.objects.filter(user=case.head).delete()
@@ -258,6 +290,9 @@ def test_current_head_authority_and_no_acting_override(case, change, monkeypatch
             reason="Synthetic revoke",
         )
     if change == "expired_cap":
+        RoleCapability.objects.filter(
+            role__code="COUNSELOR", capability__code="counseling.continuity.approve"
+        ).delete()
         UserCapabilityOverride.objects.filter(
             user=case.head, capability__code="counseling.continuity.approve"
         ).update(expires_at=case.now - timedelta(seconds=1))
@@ -287,9 +322,12 @@ def test_current_head_authority_and_no_acting_override(case, change, monkeypatch
         ("student_transfer_rule", "ALLOW_TRANSFER"),
     ],
 )
-def test_policy_incomplete_remains_denied(case, monkeypatch, field, value):
+def test_policy_incomplete_remains_denied(synthetic_case, monkeypatch, field, value):
+    case = synthetic_case
     monkeypatch.setattr(
-        continuity_policy, "get_approved_policy", lambda: replace(case.policy, **{field: value})
+        continuity_policy,
+        "get_approved_policy",
+        lambda: replace(case.policy, **{field: value}),
     )
     with expect("policy_unconfirmed"):
         request(case)
@@ -305,18 +343,20 @@ def test_default_provider_and_missing_approval_policy(case, monkeypatch):
         svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])
     with expect("policy_unconfirmed"):
         request(case)
-    from pathlib import Path
-
-    assert "return None" in Path(continuity_policy.__file__).read_text()
 
 
 @pytest.mark.parametrize("seconds", [0, -1, 8 * 3600 + 1])
-def test_invalid_intervals(case, seconds):
+def test_invalid_intervals(synthetic_case, seconds):
+    case = synthetic_case
     with expect("invalid_interval"):
-        request(case, expires_at=case.payload["starts_at"] + timedelta(seconds=seconds))
+        request(
+            case,
+            expires_at=case.payload["starts_at"] + timedelta(seconds=seconds),
+        )
 
 
-def test_naive_and_unbounded_advance_intervals(case):
+def test_naive_and_unbounded_advance_intervals(synthetic_case):
+    case = synthetic_case
     with expect("invalid_interval"):
         request(case, starts_at=case.now.replace(tzinfo=None))
     with expect("invalid_interval"):
@@ -454,7 +494,8 @@ def test_post_approval_scope_widening_is_denied(case):
         "policy",
     ],
 )
-def test_effective_eligibility_revalidated(case, monkeypatch, change):
+def test_effective_eligibility_revalidated(synthetic_case, monkeypatch, change):
+    case = synthetic_case
     g = decide(case, request(case))
     if change == "inactive":
         User.objects.filter(pk=case.receiver.pk).update(is_active=False)
@@ -470,6 +511,9 @@ def test_effective_eligibility_revalidated(case, monkeypatch, change):
             reason="Synthetic revoke",
         )
     elif change == "override_expired":
+        RoleCapability.objects.filter(
+            role__code="COUNSELOR", capability__code="counseling.continuity.read_selected"
+        ).delete()
         UserCapabilityOverride.objects.filter(
             user=case.receiver, capability__code="counseling.continuity.read_selected"
         ).update(expires_at=case.now - timedelta(seconds=1))
@@ -494,8 +538,9 @@ def test_effective_eligibility_revalidated(case, monkeypatch, change):
 
 
 def test_original_departure_is_historical_only_and_absence_has_no_required_original(
-    case, monkeypatch
+    synthetic_case, monkeypatch
 ):
+    case = synthetic_case
     g = decide(case, request(case))
     User.objects.filter(pk=case.author.pk).update(is_active=False)
     assert (
@@ -609,9 +654,9 @@ def test_metadata_never_loads_or_decrypts_content(case, monkeypatch):
     )
     assert "ciphertext" not in selected_sql
     events = list(
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.").values(
-            "action", "metadata"
-        )
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
+        .exclude(action="counseling.continuity.policy_recorded")
+        .values("action", "metadata")
     )
     assert len(events) == 2
     assert "UNREADABLE-SYNTHETIC" not in json.dumps(events)
@@ -773,7 +818,12 @@ def test_postgresql_concurrent_approval_decisions(case, second):
     assert sum(o[0] == "ok" for o in outcomes) == 1
     assert ("error", "continuity_stale_version") in outcomes
     assert Grant.objects.get(pk=g["id"]).version == 2
-    assert AuditEvent.objects.filter(action__startswith="counseling.continuity.").count() == 2
+    assert (
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
+        .exclude(action="counseling.continuity.policy_recorded")
+        .count()
+        == 2
+    )
 
 
 def test_postgresql_stale_approval_vs_revocation_and_metadata(case):
@@ -826,13 +876,14 @@ def test_postgresql_authority_mutation_serializes(case, change):
     if stored.decision == "APPROVED":
         assert (
             svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])["effective_status"]
-            == "UNAVAILABLE"
+            == "ACTIVE"
         )
     else:
         assert stored.decision == "REQUESTED"
 
 
-def test_adjacent_intervals_and_different_receiver_policy(case, monkeypatch):
+def test_adjacent_intervals_and_different_receiver_policy(synthetic_case, monkeypatch):
+    case = synthetic_case
     request(case)
     request(
         case,
@@ -850,13 +901,23 @@ def test_adjacent_intervals_and_different_receiver_policy(case, monkeypatch):
     request(case, receiving_counselor_id=case.outsider.pk, request_id=uuid4())
 
 
-def test_capability_registration_has_no_automatic_role_or_designation_grants(case):
+def test_capability_registration_grants_only_supported_roles(case):
     from compass.accounts.models import DesignationCapability, RoleCapability
 
     assert Capability.objects.filter(code__startswith="counseling.continuity.").count() == 5
-    assert not RoleCapability.objects.filter(
-        capability__code__startswith="counseling.continuity."
-    ).exists()
+    assert (
+        RoleCapability.objects.filter(
+            role__code="COUNSELOR", capability__code__startswith="counseling.continuity."
+        ).count()
+        == 5
+    )
+    assert (
+        RoleCapability.objects.filter(
+            role__code="GUIDANCE_OFFICE_ASSISTANT",
+            capability__code__startswith="counseling.continuity.",
+        ).count()
+        == 2
+    )
     assert not DesignationCapability.objects.filter(
         capability__code__startswith="counseling.continuity."
     ).exists()
@@ -883,7 +944,8 @@ def test_request_requires_verified_relationship_even_with_capability(case):
         decide(case, g, "CANCELLED", actor=case.receiver)
 
 
-def test_unverified_acting_head_with_expiring_override_denied(case, monkeypatch):
+def test_unverified_acting_head_with_expiring_override_denied(synthetic_case, monkeypatch):
+    case = synthetic_case
     actor = case.outsider
     monkeypatch.setattr(
         continuity_policy,
@@ -900,6 +962,9 @@ def test_unverified_acting_head_with_expiring_override_denied(case, monkeypatch)
     g = request(case)
     with expect("approval_authority_missing"):
         decide(case, g, actor=actor)
+    RoleCapability.objects.filter(
+        role__code="COUNSELOR", capability__code="counseling.continuity.approve"
+    ).delete()
     UserCapabilityOverride.objects.filter(
         user=actor, capability__code="counseling.continuity.approve"
     ).update(expires_at=case.now - timedelta(seconds=1))
@@ -907,7 +972,8 @@ def test_unverified_acting_head_with_expiring_override_denied(case, monkeypatch)
         decide(case, g, actor=actor)
 
 
-def test_policy_expiry_and_approval_scope_changed(case, monkeypatch):
+def test_policy_expiry_and_approval_scope_changed(synthetic_case, monkeypatch):
+    case = synthetic_case
     g = request(case)
     monkeypatch.setattr(
         continuity_policy,
@@ -954,6 +1020,9 @@ def test_postgresql_busy_source_fails_without_deadlock(case):
 
 def test_override_expiry_during_selection_is_rechecked_before_approval(case, monkeypatch):
     g = request(case)
+    RoleCapability.objects.filter(
+        role__code="COUNSELOR", capability__code="counseling.continuity.approve"
+    ).delete()
     expires = timezone.now() + timedelta(minutes=1)
     UserCapabilityOverride.objects.filter(
         user=case.head, capability__code="counseling.continuity.approve"
@@ -1146,11 +1215,9 @@ def test_metadata_only_grant_keeps_the_legacy_digest_bytes(case):
     assert legacy_snapshot_digest(grant, scopes) == grant.snapshot_digest
 
 
-def test_purpose_request_is_denied_while_no_communication_policy_is_deployed(case):
-    assert case_communication_policy.get_approved_case_communication_policy() is None
-    with expect("communication_policy_unconfirmed"):
-        purpose_request(case)
-    assert not Grant.objects.exists()
+def test_real_policy_records_case_coordination_purpose(case):
+    g = purpose_request(case)
+    assert g["communication_purpose"] == "CASE_COORDINATION"
 
 
 def test_synthetic_policy_records_digest_metadata_and_audit(case, monkeypatch):
@@ -1166,9 +1233,9 @@ def test_synthetic_policy_records_digest_metadata_and_audit(case, monkeypatch):
         == ContinuityCommunicationPurpose.CASE_COORDINATION
     )
     metadata = list(
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.").values_list(
-            "metadata", flat=True
-        )
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
+        .exclude(action="counseling.continuity.policy_recorded")
+        .values_list("metadata", flat=True)
     )
     assert len(metadata) == 2
     assert all(

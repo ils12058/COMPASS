@@ -31,7 +31,7 @@ from compass.counseling import continuity_access as access
 from compass.counseling.continuity_locks import AUTHORITY_TABLES, continuity_policy_change
 from compass.counseling.continuity_policy import ContinuityError
 from compass.counseling.models import CounselingEncounter
-from compass.organization.models import Campus, College
+from compass.organization.models import Campus, College, CounselorResponsibility, StaffSupervision
 from compass.routine_interviews import content
 from compass.routine_interviews.models import RoutineInterview
 from compass.student_academics.models import StudentAcademicProfile
@@ -41,6 +41,8 @@ from tests.test_continuity import decide
 from tests.test_continuity_access import SENTINEL, approved, read, reads
 
 metadata_case = selected_tests.metadata_case
+synthetic_case = selected_tests.synthetic_case
+mutable_selected_case = selected_tests.mutable_selected_case
 selected_case = selected_tests.selected_case
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -105,8 +107,10 @@ def wait_for_pg_lock(application_name):
         "source_revision",
     ],
 )
-def test_read_linearizes_before_real_supported_mutation(selected_case, monkeypatch, mutation):
-    c = selected_case
+def test_read_linearizes_before_real_supported_mutation(
+    mutable_selected_case, monkeypatch, mutation
+):
+    c = mutable_selected_case
     g = approved(c)
     manager = c.user("manager", "IT_ADMIN")
     # Existing governance capability needed for formal Head assignment/removal.
@@ -202,6 +206,11 @@ def authority_mutation(c, table):
         return lambda: StudentAcademicProfile.objects.filter(student=c.student).update(
             current_college=c.college_b, updated_at=timezone.now()
         )
+    if table == "organization_counselorresponsibility":
+        return lambda: CounselorResponsibility.objects.create(college=c.college, counselor=c.author)
+    if table == "organization_staffsupervision":
+        assistant = c.user("fenced-assistant", "GUIDANCE_OFFICE_ASSISTANT")
+        return lambda: StaffSupervision.objects.create(staff=assistant, supervisor=c.author)
     if table == "organization_college":
         return lambda: College.objects.filter(pk=c.college.pk).update(is_active=False)
     if table == "organization_campus":
@@ -240,8 +249,8 @@ def test_every_authority_relation_is_fenced_against_ordinary_dml(selected_case, 
         "organization_campus",
     ],
 )
-def test_authority_writer_first_denies_before_decryption(selected_case, monkeypatch, table):
-    c = selected_case
+def test_authority_writer_first_denies_before_decryption(mutable_selected_case, monkeypatch, table):
+    c = mutable_selected_case
     g = approved(c)
     monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
     mutate = authority_mutation(c, table)
@@ -257,9 +266,9 @@ def test_authority_writer_first_denies_before_decryption(selected_case, monkeypa
 
 @pytest.mark.parametrize("policy_kind", ["operational", "disclosure"])
 def test_policy_invalidation_is_coordinated_by_postgresql_fence(
-    selected_case, monkeypatch, policy_kind
+    mutable_selected_case, monkeypatch, policy_kind
 ):
-    c = selected_case
+    c = mutable_selected_case
     g = approved(c)
     entered, release = gated_decryption(monkeypatch)
     with ThreadPoolExecutor(max_workers=1) as pool:
@@ -279,8 +288,8 @@ def test_policy_invalidation_is_coordinated_by_postgresql_fence(
     assert reads().count() == 1
 
 
-def test_policy_invalidation_first_prevents_read(selected_case, monkeypatch):
-    c = selected_case
+def test_policy_invalidation_first_prevents_read(mutable_selected_case, monkeypatch):
+    c = mutable_selected_case
     g = approved(c)
     monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
     with continuity_policy_change():

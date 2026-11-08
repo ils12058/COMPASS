@@ -21,7 +21,7 @@ function CoverageDetailForAccount({ grantId }: {
 }) {
     const { user } = usePortalSession();
     const privacy = useCoveragePrivacy(user.id, grantId);
-    const allowed = user.role === "COUNSELOR" && user.capabilities.includes("counseling.continuity.view");
+    const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.view");
     const grantQuery = api.useCounselingContinuityGetGrant(grantId, { query: { enabled: allowed, retry: false, gcTime: 0, refetchInterval: 15000, refetchOnWindowFocus: "always", refetchOnReconnect: "always", queryKey: [...api.getCounselingContinuityGetGrantQueryKey(grantId), user.id] } });
     const config = api.useCounselingCoverageGetConfiguration({ query: { enabled: allowed, retry: false, gcTime: 0, queryKey: [...api.getCounselingCoverageGetConfigurationQueryKey(), user.id] } });
     const grant = grantQuery.data?.data;
