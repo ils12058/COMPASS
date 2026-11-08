@@ -112,7 +112,7 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "inventory_invalid":
       return "Some required Individual Inventory details need attention. Review the form and try submitting again.";
     case "psgc_reference_unavailable":
-      return "Your Inventory is still saved as a draft. Official location verification is temporarily unavailable. Please try submitting again later.";
+      return "We can't check your location right now. Your draft is saved; try submitting again later.";
     case "inventory_not_submitted":
       return "This Individual Inventory is currently a draft and is not available for Counselor review.";
     case "inventory_document_unavailable":

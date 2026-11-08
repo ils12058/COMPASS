@@ -28,7 +28,7 @@ from compass.organization.models import (
 from compass.student_academics.models import StudentAcademicProfile
 from tests.catalog_test_helpers import authority, hierarchy, manager, run_serialized_race, student
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("inventory_psgc")]
 
 
 @pytest.fixture

@@ -3,8 +3,8 @@
 Each Student has one stable background profile plus per-Academic-Year answers, so a Student's
 Inventories change believably from year to year (year level, living arrangement, organizations,
 concerns) without contradicting each other. Every choice value is an existing Inventory enum.
-Geography stays ``not_specified``: structured locations need live PSGC validation, and the seeder
-never invents PSGC codes.
+Geography uses the deterministic offline answers in ``compass.staging_seed.psgc`` (Bicol Region,
+Camarines Norte, Daet), so seeding never calls the live PSA service.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from .inventory_fixtures import (
     Sibling,
     _hours,
     _parent,
+    _stable_suffix,
 )
 
 PROFILES: dict[str, InventoryProfile] = {
@@ -1250,6 +1251,35 @@ def _sibling_rows(
     return [{"sort_order": index, **row} for index, row in enumerate(ordered, start=1)]
 
 
+_CURRENT_LOCATION = {
+    "kind": "CURRENT",
+    "not_specified": False,
+    "region_psgc_code": "0500000000",
+    "region_name_snapshot": "Bicol Region",
+    "province_psgc_code": "0501600000",
+    "province_name_snapshot": "Camarines Norte",
+    "city_municipality_psgc_code": "0501607000",
+    "city_municipality_name_snapshot": "Daet",
+    "barangay_psgc_code": "0501607001",
+    "barangay_name_snapshot": "Barangay I",
+}
+
+
+def _identity_answer_defaults(persona: StudentSpec, profile: InventoryProfile) -> dict[str, object]:
+    """Required F5 answers that depend only on the synthetic identity."""
+
+    suffix = _stable_suffix(persona.full_name)
+    mother_name = str(profile.mother.get("name") or f"Teresa {persona.last_name}")
+    return {
+        "contact_number": f"STG-CONTACT-{suffix}",
+        "guardian_name": mother_name,
+        "guardian_relationship": "Mother",
+        "guardian_address": persona.home_address,
+        "guardian_contact_number": f"STG-GUARDIAN-{suffix}",
+        "emergency_contact_number": f"STG-EMERGENCY-{suffix}",
+    }
+
+
 def inventory_values(
     persona: StudentSpec,
     academic_year: str,
@@ -1283,6 +1313,7 @@ def inventory_values(
     boarding = year.fields.get("living_arrangement") == "BOARDING_HOUSE"
     current_address = str(year.fields["boarding_address"]) if boarding else persona.home_address
     return {
+        **_identity_answer_defaults(persona, profile),
         **profile.base,
         **year.fields,
         "full_name_snapshot": persona.full_name,
@@ -1319,7 +1350,7 @@ def inventory_values(
             {"mode": mode, "frequency_category": frequency, "fare": Decimal(fare)}
             for mode, frequency, fare in year.transportation
         ],
-        "geographic_locations": [{"kind": "CURRENT", "not_specified": True}],
+        "geographic_locations": [{**_CURRENT_LOCATION}],
         "support_profile": dict(profile.support),
     }
 

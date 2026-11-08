@@ -44,8 +44,6 @@ from tests.inventory_test_helpers import (
     ensure_inventory_form_revision,
     minimum_normalized_inventory_values,
 )
-
-pytestmark = pytest.mark.usefixtures("inventory_psgc")
 from tests.test_inventory_counselor_review import (
     affiliate,
     auth_client,
@@ -58,6 +56,8 @@ from tests.test_inventory_counselor_review import (
     submit_inventory,
     sync_policy,
 )
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 
 T = InventoryCorrectionTarget
 K1, K2 = (base64.urlsafe_b64encode(bytes([n]) * 32).decode() for n in (131, 132))

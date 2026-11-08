@@ -251,7 +251,8 @@ def test_deceased_or_unknown_parent_details_are_not_required():
 
     values["support_profile"]["father_life_status"] = "DECEASED"
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 @pytest.mark.django_db
@@ -261,7 +262,8 @@ def test_unknown_parent_life_status_never_requires_that_parents_details():
     values["family_members"] = values["family_members"][:1]
     values["support_profile"]["mother_life_status"] = "UNKNOWN"
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 @pytest.mark.django_db
@@ -284,7 +286,8 @@ def test_prior_counseling_details_are_required_only_when_the_answer_is_yes():
         prior_counseling_where="Synthetic Guidance Office",
     )
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 @pytest.mark.django_db
@@ -298,7 +301,8 @@ def test_an_unsatisfied_schedule_requires_an_explanation():
 
     values["schedule_satisfaction_reason"] = "The subjects overlap."
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 @pytest.mark.django_db
@@ -312,7 +316,8 @@ def test_accident_and_operation_effects_are_required_for_an_actual_experience():
 
     values["accidents_effect"] = "A broken arm."
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 @pytest.mark.django_db
@@ -326,7 +331,8 @@ def test_a_none_accident_and_operation_answer_needs_no_effect():
         operations_effect="",
     )
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
 
 # --- Historical records and corrections ------------------------------------------------------
@@ -406,7 +412,8 @@ def test_reopened_correction_is_not_blocked_by_non_target_answers():
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values["guardian_contact_number"] = ""
     replace_current_inventory(student=student, values=values)
-    assert submit_current_inventory(student=student, context=context(student)).submitted_at is not None
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.submitted_at is not None
 
     item.refresh_from_db()
     reopen_inventory_for_correction(

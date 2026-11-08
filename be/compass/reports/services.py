@@ -93,7 +93,8 @@ PARENT_INCOME_BAND_LABELS = {
     ParentIncomeBand.UPPER_INCOME: "Upper Income",
     ParentIncomeBand.RICH: "Rich",
     ParentIncomeBand.NONE: "None",
-    ParentIncomeBand.NOT_SPECIFIED: "Not specified",
+    # The combined-income status intentionally folds UNKNOWN answers into this bucket.
+    ParentIncomeBand.NOT_SPECIFIED: "Not specified or unknown",
 }
 
 
@@ -125,7 +126,7 @@ def parent_income_bracket_legend() -> list[tuple[str, str]]:
             ),
             (
                 PARENT_INCOME_BAND_LABELS[ParentIncomeBand.NOT_SPECIFIED],
-                "At least one parent's annual income was marked Not specified.",
+                "At least one parent's annual income was marked Not specified or unknown.",
             ),
             (LEGACY_LABEL, "Structured parent income is not available for the Inventory."),
         ]

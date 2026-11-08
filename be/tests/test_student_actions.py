@@ -35,7 +35,7 @@ from tests.test_notifications import auth_client
 from tests.test_work_queue import call_slip
 
 # ruff: noqa: F811
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("inventory_psgc")]
 
 
 def actions(world, actor=None, **kwargs):

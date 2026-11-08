@@ -490,7 +490,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         "father_life_status": None,
     }
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="Student Support fields"):
+    with pytest.raises(InvalidInventoryInput, match="Choose your 4Ps status."):
         submit_current_inventory(
             student=student,
             context=AuditContext.user(student),
@@ -503,12 +503,25 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         "father_life_status": "NOT_SPECIFIED",
     }
     replace_current_inventory(student=student, values=values)
+    with pytest.raises(InvalidInventoryInput, match="Choose your 4Ps status."):
+        submit_current_inventory(
+            student=student,
+            context=AuditContext.user(student),
+        )
+
+    values["support_profile"] = {
+        "four_ps_status": "NOT_BENEFICIARY",
+        "indigenous_peoples_status": "NOT_MEMBER",
+        "mother_life_status": "LIVING",
+        "father_life_status": "LIVING",
+    }
+    replace_current_inventory(student=student, values=values)
     submitted = submit_current_inventory(
         student=student,
         context=AuditContext.user(student),
     )
     assert submitted.submitted_at is not None
-    assert submitted.support_profile.four_ps_status == FourPsStatus.NOT_SPECIFIED
+    assert submitted.support_profile.four_ps_status == FourPsStatus.NOT_BENEFICIARY
 
 
 @pytest.mark.django_db

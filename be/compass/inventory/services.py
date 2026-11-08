@@ -1046,13 +1046,19 @@ def _member_requirements(
         f"Add your {label}'s business telephone. Write None if there is none.",
         content.business_telephone,
     )
-    require_text("languages_spoken", f"Add the languages your {label} speaks.", content.languages_spoken)
+    require_text(
+        "languages_spoken",
+        f"Add the languages your {label} speaks.",
+        content.languages_spoken,
+    )
     require_text(
         "religion_raised_with",
         f"Add the religion you were raised with by your {label}.",
         content.religion_raised_with,
     )
-    require_text("current_religion", f"Add your {label}'s current religion.", content.current_religion)
+    require_text(
+        "current_religion", f"Add your {label}'s current religion.", content.current_religion
+    )
     return requirements
 
 
@@ -1102,7 +1108,9 @@ def _submission_requirements(
         "Add the languages you are most fluent in.",
         content.languages_most_fluent,
     )
-    require_text("religion_from_birth", "Add your religion from birth.", content.religion_from_birth)
+    require_text(
+        "religion_from_birth", "Add your religion from birth.", content.religion_from_birth
+    )
     require_choice(
         "current_religion_category",
         "Choose your current religion.",
@@ -1136,7 +1144,9 @@ def _submission_requirements(
         )
     require_text("guardian_name", "Add your guardian's name.", content.guardian_name)
     require_text(
-        "guardian_relationship", "Add your guardian's relationship to you.", content.guardian_relationship
+        "guardian_relationship",
+        "Add your guardian's relationship to you.",
+        content.guardian_relationship,
     )
     require_text("guardian_address", "Add your guardian's address.", content.guardian_address)
     require_text(
@@ -1154,7 +1164,9 @@ def _submission_requirements(
         "Add your emergency contact's number.",
         content.emergency_contact_number,
     )
-    require_choice("support_profile.four_ps_status", "Choose your 4Ps status.", profile.four_ps_status)
+    require_choice(
+        "support_profile.four_ps_status", "Choose your 4Ps status.", profile.four_ps_status
+    )
     require_choice(
         "support_profile.indigenous_peoples_status",
         "Choose whether you are an Indigenous Peoples member.",
@@ -1194,14 +1206,10 @@ def _submission_requirements(
     if item.civil_status_category == CivilStatusCategory.MARRIED:
         spouse = parents.get(FamilyMemberKind.SPOUSE)
         if spouse is None:
-            requirements.append(
-                ("family_members.SPOUSE.name", "Add your spouse's details.")
-            )
+            requirements.append(("family_members.SPOUSE.name", "Add your spouse's details."))
         else:
             requirements.extend(
-                _member_requirements(
-                    FamilyMemberKind.SPOUSE, spouse, private.children[spouse.pk]
-                )
+                _member_requirements(FamilyMemberKind.SPOUSE, spouse, private.children[spouse.pk])
             )
 
     # Page 2 — siblings, unique features, living arrangement, health.
@@ -1224,9 +1232,13 @@ def _submission_requirements(
     )
     require_text("special_interest", "Add your special interests.", content.special_interest)
     require_text(
-        "special_skills_talents", "Add your special skills or talents.", content.special_skills_talents
+        "special_skills_talents",
+        "Add your special skills or talents.",
+        content.special_skills_talents,
     )
-    require_text("hobbies_recreation", "Add your hobbies and recreation.", content.hobbies_recreation)
+    require_text(
+        "hobbies_recreation", "Add your hobbies and recreation.", content.hobbies_recreation
+    )
     require_text("ambition_goal", "Add your ambition or goal.", content.ambition_goal)
     require_text("characteristics", "Add your characteristics.", content.characteristics)
 
@@ -1236,9 +1248,7 @@ def _submission_requirements(
             ("present_place_people_count", "Add how many people live in your present place.")
         )
     if item.room_sharing_people_count is None:
-        requirements.append(
-            ("room_sharing_people_count", "Add how many people share your room.")
-        )
+        requirements.append(("room_sharing_people_count", "Add how many people share your room."))
     if item.living_arrangement == LivingArrangement.BOARDING_HOUSE:
         if item.boarding_exclusive is None:
             requirements.append(
@@ -1332,7 +1342,9 @@ def _submission_requirements(
             ("course_first_choice", "Answer whether your enrolled course was your first choice.")
         )
     if not item.course_choice_reasons:
-        requirements.append(("course_choice_reasons", "Choose at least one reason for your course choice."))
+        requirements.append(
+            ("course_choice_reasons", "Choose at least one reason for your course choice.")
+        )
     for row in item.transportation_entries.all():
         if _missing_choice(row.frequency_category):
             requirements.append(
@@ -1356,11 +1368,17 @@ def _submission_requirements(
         "Add your inclination for the performing arts.",
         content.inclination_performing_arts,
     )
-    require_text("inclination_sports", "Add your inclination for sports.", content.inclination_sports)
     require_text(
-        "inclination_leadership", "Add your inclination for leadership.", content.inclination_leadership
+        "inclination_sports", "Add your inclination for sports.", content.inclination_sports
     )
-    require_text("other_skills_hobbies", "Add your other skills and hobbies.", content.other_skills_hobbies)
+    require_text(
+        "inclination_leadership",
+        "Add your inclination for leadership.",
+        content.inclination_leadership,
+    )
+    require_text(
+        "other_skills_hobbies", "Add your other skills and hobbies.", content.other_skills_hobbies
+    )
     require_text(
         "desired_extracurricular_activities",
         "Add the extracurricular activities you would like to join.",
@@ -1388,17 +1406,23 @@ def _submission_requirements(
         "Choose your ideal monthly allowance.",
         item.ideal_monthly_allowance,
     )
-    require_choice("intended_work_field", "Choose your intended work field.", item.intended_work_field)
+    require_choice(
+        "intended_work_field", "Choose your intended work field.", item.intended_work_field
+    )
     if content.prior_counseling_experience is None:
         requirements.append(
             ("prior_counseling_experience", "Answer whether you have had previous counseling.")
         )
     if content.prior_counseling_experience is True:
         require_text(
-            "prior_counselor_name", "Add your previous counselor's name.", content.prior_counselor_name
+            "prior_counselor_name",
+            "Add your previous counselor's name.",
+            content.prior_counselor_name,
         )
         require_text(
-            "prior_counseling_when", "Add when you had previous counseling.", content.prior_counseling_when
+            "prior_counseling_when",
+            "Add when you had previous counseling.",
+            content.prior_counseling_when,
         )
         require_text(
             "prior_counseling_where",
@@ -1489,23 +1513,17 @@ def _validate_submission(
         )
 
     if ImmunizationType.OTHER in content.immunizations and not content.immunization_other.strip():
-        raise InvalidInventoryInput(
-            "Add the other immunization you received."
-        )
+        raise InvalidInventoryInput("Add the other immunization you received.")
     if (
         CourseChoiceReason.OTHER in item.course_choice_reasons
         and not content.course_choice_other.strip()
     ):
-        raise InvalidInventoryInput(
-            "Add the other reason for your course choice."
-        )
+        raise InvalidInventoryInput("Add the other reason for your course choice.")
     if (
         item.intended_work_field == PostGraduationField.OTHER
         and not content.intended_work_other.strip()
     ):
-        raise InvalidInventoryInput(
-            "Add the other work field you intend to pursue."
-        )
+        raise InvalidInventoryInput("Add the other work field you intend to pursue.")
 
     requirements = _submission_requirements(item, profile, private)
     unmet = [

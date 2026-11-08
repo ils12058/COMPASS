@@ -54,6 +54,7 @@ from .organization import (
     offboard_former_staff,
     program_for,
 )
+from .psgc import seeded_psgc
 from .publications import seed_feedback, seed_privacy_governance, seed_publications
 from .scenarios.action_ready import ACTION_UNITS, run_action_unit
 from .scenarios.background import seed_population_forms, seed_secondary_stories
@@ -257,7 +258,7 @@ def seed_staging_dataset(*, anchor: date | None = None) -> SeedReport:
     # One correlation ID for the whole run: every audit event the run causes carries it.
     token = set_current_request_id(session.run_id)
     try:
-        with exclusive_dataset_operation():
+        with exclusive_dataset_operation(), seeded_psgc():
             _run(session, config)
         return SeedReport(
             app_env=app_env,

@@ -184,3 +184,95 @@ correction issue filter.
 
 Not run, by design: the full backend suite and browser regression specs. The frontend CI browser
 bundle is unchanged.
+
+## 7. Fix-up (2026-11-08)
+
+FORM-REQ-1's rules are unchanged. This fix-up makes the staging seed, the other backend suites, and
+lint obey them again.
+
+### Staging seed
+
+- Every seeded Inventory now carries a complete synthetic F5 answer set. Identity-derived answers
+  (contact number, guardian, emergency contact) and parent details are deterministic and consistent
+  with each seeded Student; no real people's data is used.
+- Seeded Inventories record a real CURRENT location (Bicol Region / Camarines Norte / Daet /
+  Barangay I). Seeding resolves PSGC answers offline through `be/compass/staging_seed/psgc.py`,
+  which patches the client only for the seed run. Production PSGC validation is untouched, and no
+  submit rule was lowered or bypassed.
+
+### Cross-domain tests
+
+- `tests/inventory_test_helpers.py` produces a complete F5 answer baseline with a valid CURRENT
+  location.
+- Test modules that submit Inventories apply the shared `inventory_psgc` fixture
+  (`pytest.mark.usefixtures("inventory_psgc")`): `test_counseling_context.py`,
+  `test_routine_interviews.py`, `test_student_actions.py`, `test_institutional_identity.py`,
+  `test_student_session_summaries.py`, `test_catalog_final_integration.py`, `test_program_policy.py`,
+  and the Inventory suites.
+- `tests/test_student_support.py` had an outdated expectation that `NOT_SPECIFIED` support-profile
+  answers submit successfully; it now asserts the F5 rule that they must be answered.
+
+### Lint and formatting
+
+- E501 lines wrapped in `compass/inventory/services.py`; E402 markers moved after imports in
+  `test_program_policy.py`, `test_inventory_confidential_content_encryption.py`, and
+  `test_inventory_correction_targets.py`; all changed files formatted.
+- `uv run ruff check .` from `be/` reports only the six pre-existing errors in untouched files
+  (`compass/referrals/provisional_activation.py`, `tests/test_fup3a_faculty_referral_journey.py`,
+  `tests/test_guidance_followups.py` ×2, `tests/test_guidance_messages_faculty.py`,
+  `tests/test_guidance_messages_migration.py`).
+
+### Reports
+
+- `combine_parent_annual_income()` still folds an `UNKNOWN` parent income into the same no-amount
+  bucket as `NOT_SPECIFIED`. The bucket is now labelled "Not specified or unknown" in the report
+  rows and legend, so the report no longer misstates "Unknown" answers. Old `NOT_SPECIFIED` data
+  stays counted; the report contract and OpenAPI did not change.
+
+### PSGC unavailable at submit
+
+- A PSGC outage during submission returns 503 `psgc_reference_unavailable` with one plain message:
+  "We can't check your location right now. Your draft is saved; try submitting again later." The
+  frontend maps the code to the same text. The draft stays saved.
+- `tests/test_inventory_frontend_readiness.py::test_psgc_outage_submission_shows_one_plain_message_and_keeps_the_draft`
+  covers the message and the preserved draft.
+
+### Verification
+
+Backend targeted run, from `be/` (each file also confirmed individually):
+
+| Test file | Result |
+| --- | --- |
+| `tests/test_inventory.py` | 17 passed |
+| `tests/test_inventory_confidential_content_encryption.py` | 260 passed |
+| `tests/test_inventory_correction_targets.py` | 28 passed |
+| `tests/test_inventory_counseling_regression.py` | 2 passed |
+| `tests/test_inventory_counselor_review.py` | 4 passed |
+| `tests/test_inventory_documents.py` | 5 passed |
+| `tests/test_inventory_form_req_1.py` | 28 passed |
+| `tests/test_inventory_frontend_readiness.py` | 7 passed |
+| `tests/test_inventory_profiling_normalization.py` | 90 passed |
+| `tests/test_program_inventory_academic_context.py` | 8 passed |
+| `tests/test_routine_inventory_decoupling.py` | 9 passed |
+| `tests/test_openapi_contract.py` | 44 passed |
+| `tests/test_canonical_baseline.py` | 5 passed |
+| `tests/test_staging_seed.py` | 51 passed |
+| `tests/test_counseling_context.py` | 31 passed |
+| `tests/test_routine_interviews.py` | 24 passed |
+| `tests/test_student_actions.py` | 55 passed |
+| `tests/test_institutional_identity.py` | 5 passed |
+| `tests/test_student_session_summaries.py` | 7 passed |
+| `tests/test_student_support.py` | 15 passed |
+| `tests/test_catalog_final_integration.py` | 17 passed |
+| `tests/test_catalog_concurrency.py` | 26 passed |
+| `tests/test_program_policy.py` | 37 passed |
+| `tests/test_handoff.py` | 101 passed |
+| `tests/test_exit_interviews.py` | 27 passed |
+| **Total** | **903 passed, 0 failed** |
+
+`tests/test_student_profiling_reports.py`: 19 passed after the label update; the PDF income-legend
+test also passed. `makemigrations --check` and `export_openapi --check` are clean.
+
+Frontend, from `fe/`: `pnpm -s typecheck` and `pnpm -s exec eslint src/features/inventory` clean;
+the four Inventory unit-test files report **57 passed, 0 failed**.
+

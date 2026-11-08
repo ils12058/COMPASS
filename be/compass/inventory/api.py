@@ -676,7 +676,10 @@ def _raise(exc: InventoryError) -> NoReturn:
         raise APIError(
             503,
             "psgc_reference_unavailable",
-            "Official PSGC validation is temporarily unavailable.",
+            (
+                "We can't check your location right now. "
+                "Your draft is saved; try submitting again later."
+            ),
         ) from exc
     if isinstance(exc, InventoryConflict):
         raise APIError(409, "inventory_conflict", str(exc)) from exc

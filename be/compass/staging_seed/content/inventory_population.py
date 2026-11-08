@@ -66,6 +66,7 @@ def population_profiles():
             occupation="None" if single_income else "Maintenance technician",
             category="NONE" if single_income else "PRIVATE_EMPLOYEE",
             income="180000.00" if not single_income else None,
+            address=p.home_address,
         )
         mother = _parent(
             f"Teresa {p.last_name}",
@@ -73,6 +74,7 @@ def population_profiles():
             occupation="Market vendor" if single_income else "Office clerk",
             category="SELF_EMPLOYED" if single_income else "PRIVATE_EMPLOYEE",
             income="96000.00" if single_income else "192000.00",
+            address=p.home_address,
         )
         years = {}
         for label, _year_level in p.year_levels:

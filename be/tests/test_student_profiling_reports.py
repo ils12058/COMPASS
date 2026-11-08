@@ -575,6 +575,9 @@ def test_parent_income_legend_is_derived_from_the_canonical_brackets():
         ("Upper Income", "₱1,577,808 through ₱2,626,680"),
         ("Rich", "Above ₱2,626,680"),
         ("None", "Both parents reported no annual income (combined ₱0)."),
-        ("Not specified", "At least one parent's annual income was marked Not specified."),
+        (
+            "Not specified or unknown",
+            "At least one parent's annual income was marked Not specified or unknown.",
+        ),
         ("Not recorded / legacy", "Structured parent income is not available for the Inventory."),
     ]

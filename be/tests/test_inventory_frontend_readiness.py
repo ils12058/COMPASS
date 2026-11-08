@@ -184,6 +184,45 @@ def test_psgc_outage_does_not_block_inventory_draft_save_but_blocks_submission(m
 
 
 @pytest.mark.django_db
+def test_psgc_outage_submission_shows_one_plain_message_and_keeps_the_draft(monkeypatch):
+    sync_policy()
+    admin = make_user("psgc-message-admin@example.edu", "IT_ADMIN")
+    student = make_user("psgc-message-student@example.edu", "STUDENT")
+    configure_year(admin)
+    program = configure_program()
+    ensure_current_inventory(student=student, context=context(student))
+    replace_current_inventory(
+        student=student,
+        values=minimum_normalized_inventory_values(program_id=program.pk),
+    )
+
+    monkeypatch.setattr(
+        inventory_services.PSGCClient,
+        "from_settings",
+        classmethod(
+            lambda cls: (_ for _ in ()).throw(
+                PSGCConfigurationError("test configuration unavailable")
+            )
+        ),
+    )
+
+    client = auth_client(student)
+    response = client.post(
+        "/api/v1/inventory/me/current/submit",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "psgc_reference_unavailable"
+    assert response.json()["error"]["message"] == (
+        "We can't check your location right now. Your draft is saved; try submitting again later."
+    )
+    assert get_current_inventory_status(student).status == InventoryStatus.DRAFT
+
+
+@pytest.mark.django_db
 def test_inventory_submission_validates_hierarchy_and_canonicalizes_psgc_names(monkeypatch):
     sync_policy()
     admin = make_user("psgc-valid-admin@example.edu", "IT_ADMIN")

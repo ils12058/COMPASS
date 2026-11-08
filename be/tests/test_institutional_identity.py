@@ -23,6 +23,8 @@ from compass.organization.models import Campus, College, Program
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 from tests.profile_fixtures import initialized_user
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)

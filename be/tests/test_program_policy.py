@@ -2,8 +2,6 @@
 
 import pytest
 from django.core.exceptions import ValidationError
-
-pytestmark = pytest.mark.usefixtures("inventory_psgc")
 from django.db import IntegrityError, connection, transaction
 
 from compass.good_moral.services import F4AcademicEligibility, _f4_academic_context
@@ -11,6 +9,8 @@ from compass.inventory.services import InvalidInventoryInput, _validate_program_
 from compass.organization.models import Campus, College, Program
 from compass.organization.program_policy import get_program_policy, validate_program_policy
 from compass.organization.selection import active_programs
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 
 
 def program(**policy):

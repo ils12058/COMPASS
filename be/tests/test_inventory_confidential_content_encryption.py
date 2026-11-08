@@ -31,8 +31,6 @@ from compass.routine_interviews.services import list_direct_student_candidates
 from compass.student_support.services import get_student_support_context
 from tests.encryption_oracles import inventory_confidential_content_v1 as frozen
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
-
-pytestmark = pytest.mark.usefixtures("inventory_psgc")
 from tests.test_inventory_counselor_review import (
     affiliate,
     auth_client,
@@ -43,6 +41,8 @@ from tests.test_inventory_counselor_review import (
     make_user,
     sync_policy,
 )
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 
 K1, K2, K3, K4, K5, K6, K7, K8 = (
     base64.urlsafe_b64encode(bytes([n]) * 32).decode() for n in range(111, 119)
@@ -294,9 +294,7 @@ def make_world():
         }
         for kind in ("FATHER", "MOTHER")
     ]
-    values["siblings"] = [
-        {"sort_order": 0, "is_self": True, **private_payload("InventorySibling")}
-    ]
+    values["siblings"] = [{"sort_order": 0, "is_self": True, **private_payload("InventorySibling")}]
     values["education_entries"] = [
         {
             "level": level,
