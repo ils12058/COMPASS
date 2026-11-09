@@ -74,6 +74,15 @@ class AccountSpec:
 
 
 @dataclass(frozen=True)
+class FacultySpec(AccountSpec):
+    role: str = "FACULTY"
+    campus_code: str = ""
+    college_code: str = ""
+    fresh_student: str = ""
+    received_student: str = ""
+
+
+@dataclass(frozen=True)
 class StudentSpec(AccountSpec):
     role: str = "STUDENT"
     group: StudentGroup = StudentGroup.BACKGROUND
@@ -110,6 +119,7 @@ class StudentSpec(AccountSpec):
 __all__ = [
     "AccountSpec",
     "AuthPlan",
+    "FacultySpec",
     "Lifecycle",
     "StudentGroup",
     "StudentSpec",

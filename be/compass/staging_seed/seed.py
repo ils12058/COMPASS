@@ -28,7 +28,7 @@ from compass.organization.bootstrap import (
     CatalogInitializationError,
     check_organization_catalog,
 )
-from compass.organization.integrity import catalog_dependent_write
+from compass.organization.integrity import catalog_gate
 from compass.service_catalog.bootstrap import (
     CanonicalIdentityPolicyMissing,
     canonical_counseling_readiness,
@@ -42,6 +42,7 @@ from .accounts import disable_account, plan_accounts, provision_accounts
 from .config import StagingSeedConfig, StagingSeedConfigurationError, load_config
 from .content import feedback_population
 from .encryption import verify_encryption_keyrings
+from .faculty import check_faculty_conflicts, seed_faculty_affiliations
 from .guard import ensure_seeding_allowed_by_settings
 from .history import check_history_preconditions, run_academic_timeline, seed_profiles
 from .identities import AuthPlan
@@ -59,6 +60,7 @@ from .publications import seed_feedback, seed_privacy_governance, seed_publicati
 from .scenarios.action_ready import ACTION_UNITS, run_action_unit
 from .scenarios.background import seed_population_forms, seed_secondary_stories
 from .scenarios.continuity import seed_demo_coverage
+from .scenarios.faculty import seed_faculty_referrals
 from .scenarios.rich import RICH_STORIES, run_story
 from .staff import FORMER_STAFF
 from .students import STUDENTS
@@ -192,6 +194,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     plans = _unit("Account preflight", lambda: plan_accounts(config))
     session.users.update({plan.persona.key: plan.existing for plan in plans if plan.existing})
     _unit("Organization preflight", lambda: check_organization_conflicts(dict(session.users)))
+    _unit("Faculty preflight", lambda: check_faculty_conflicts(dict(session.users)))
     _unit("Academic Year preflight", lambda: check_history_preconditions(session))
 
     created_keys = {plan.persona.key for plan in plans if plan.existing is None}
@@ -206,6 +209,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     def organization() -> None:
         with transaction.atomic():
             ensure_organization(session)
+            seed_faculty_affiliations(session)
 
     _unit("Organization relationships", organization)
 
@@ -227,6 +231,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
             seed_academic_history(session)
 
     _unit("Student academic history", academic_history)
+    _unit("Faculty Referrals and notices", lambda: seed_faculty_referrals(session))
     _unit("Announcements and Resources", lambda: seed_publications(session))
     _unit("Privacy Governance", lambda: seed_privacy_governance(session))
     _unit("Customer Feedback and CSM", lambda: seed_feedback(session))
@@ -238,7 +243,9 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     _unit("Account state", lambda: finalize_account_state(session))
 
 
-@catalog_dependent_write
+# Acknowledgment takes the exclusive catalog gate. Acquire it at entry, before all account
+# locks, so the seed never upgrades a dependent writer's shared gate mid-transaction.
+@catalog_gate(exclusive=True)
 def seed_staging_dataset(*, anchor: date | None = None) -> SeedReport:
     """Seed or reconcile Staging Dataset v1 and return a secret-free report."""
 

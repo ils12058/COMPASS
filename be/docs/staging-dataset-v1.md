@@ -2,7 +2,7 @@
 
 `seed_staging_dataset` builds, verifies and documents **COMPASS Staging Dataset v1**: a
 deterministic, synthetic, UAT-ready world for the reset-only release baseline (ADR-117). It
-contains a fictional Guidance and Counseling Office, 14 staff and negative-test accounts, and 102
+contains a fictional Guidance and Counseling Office, 19 Faculty, staff and negative-test accounts, and 103
 Students designed for stakeholder testing. The decision record is
 [ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md) for the dataset decision
 and [ADR-117](decisions/ADR-117-release-baseline.md) for the current reset-only migration graph.
@@ -12,50 +12,91 @@ whose historical notes remain in git history) and never upgrades it: a database 
 contains `DEMO-2026-…` accounts is refused. The dataset version (1) is independent of the COMPASS
 application and API versions.
 
-> **Synthetic data only.** Every name, `STG-S-…`/`STG-E-…` identifier, address, receipt number
+> **Synthetic data only.** Every name, `STG-S-…`/`STG-E-…`/`STG-F-…` identifier, address, receipt number
 > (`STG-OR-…`), narrative and policy text is fictional. Never load institutional records into the
 > dataset, and never use it as production data.
 
 The command is operator tooling. There is no API, page, middleware or model flag for it, and no
 production code path knows whether a record was seeded. It never runs at application startup.
 
-## Independent 40-person allocation
+## Independent 50-person allocation
 
-The additive participant expansion appends `it_admin_3` (`STG-E-0014`, canonical `IT_ADMIN`),
-`ar_25` and `ar_26` (`STG-S-0125`/`STG-S-0126`, canonical `STUDENT`, `GRADUATED`). The Alumni
-fixtures use historical Inventory/Exit Interview records and draft/submitted Graduate Tracers;
-their scenarios cover Tracer completion and a new graduate Good Moral request. Existing 113
-identities, 91 scenario definitions and all 65 background Students are retained. There are now
-116 accounts and 94 scenarios (91 executable, three pending); no migration is needed.
+Phase E E5 retains all 116 earlier identities and every earlier record/scenario definition.
+It appends five Faculty (`STG-F-0001`…`STG-F-0005`) and one current COTT Student, `ar_27`
+(`STG-S-0127`). The dataset now has **122 accounts and 113 scenarios (110 executable, three
+pending)**. The earlier runbook's 102-scenario total was stale: the E5 base has 101 scenarios.
+No model or migration changes are needed.
 
-The allocation (`UAT_40_ALLOCATION` in `compass/staging_seed/manifest.py`) assigns distinct keys
-to 1 Head, 3 Counselors, 2 GOA, 25 current Students, five graduated Alumni, 3 ITSO personnel and
-1 DPO. The 25 current Students follow the finalized College distribution
-(`UAT_40_STUDENT_QUOTA`): 3 each from CCMS, CAS, CBPA, COENG, COED, CFAST and CANR, and 2 each
-from COTT and Entienza. The manifest refuses an allocation whose counts, College affiliations,
-lifecycles or credential plans disagree with it.
+`UAT_50_ALLOCATION` in `compass/staging_seed/manifest.py` assigns 50 distinct participants:
 
-To reach that distribution, seven background Students are promoted to UAT-ready
-(`PROMOTED_BACKGROUND` in `students.py`): `bg_47` (COENG), `bg_54` and `bg_55` (CFAST), `bg_56`
-(CANR), `bg_58` and `bg_59` (COTT) and `bg_60` (Entienza). Promotion changes only catalog text and
-assignment suitability, which seeding never reads; each account keeps its identity, College
-affiliation, enrollment, Inventory and existing records. Their eight scenarios (STU-APT-07..10,
-STU-GM-08/09, STU-MSG-03, STU-FB-02) start from those existing records, so an already-seeded
-database needs no write. Seven over-represented Main Campus Students (`first_year`, `second_year`,
-`ar_06`, `ar_11`, `ar_17`, `ar_18`, `ar_21`) stay UAT-ready reserves outside the 40. There are 116
-accounts and 102 scenarios (99 executable, three pending).
+| Category | Count | Keys |
+| --- | ---: | --- |
+| Head Guidance Counselor | 1 | `head_guidance` |
+| Guidance Counselor | 3 | `counselor_a`, `counselor_b`, `counselor_c` |
+| Guidance Office Assistant | 2 | `goa_a`, `goa_b` |
+| Current Student | 30 | See the College allocation below |
+| Faculty | 5 | `faculty_ccms`, `faculty_cas`, `faculty_cbpa`, `faculty_coed`, `faculty_coeng` |
+| Alumni | 5 | `recent_graduate`, `alumni`, `ar_13`, `ar_25`, `ar_26` |
+| ITSO Personnel | 3 | `it_admin`, `it_admin_2`, `it_admin_3` |
+| Data Protection Officer | 1 | `dpo` |
 
-Shared catalog and staff/Student scenario dependencies still need scheduling. Reserve participant
-accounts remain listed in the full Assignment Template; `COMPASS-UAT-40-ASSIGNMENTS.csv` lists
-exactly the 40 allocated accounts.
+The 30 current Students satisfy `UAT_50_STUDENT_QUOTA`:
 
-This repository expansion does **not** apply itself to live staging. After a separate owner
-authorization, an incremental seed on the deployed canonical revision creates only missing
-accounts and fixtures; it preserves completed UAT work and existing credentials. Keep the same
-email domain/onboarding settings. Use `verify --allow-uat-changes` and `report --allow-uat-changes`
-for an active dataset. Obtain approval for exact participant keys before the separate
-`issue-credentials --account KEY` step; never use an unrestricted issuance command for this cohort.
-The Selection Guide prints the exact 40 `--account` arguments.
+| College / academic unit | Count | Keys |
+| --- | ---: | --- |
+| CCMS | 4 | `ar_01`, `ar_05`, `ar_14`, `ar_11` |
+| CAS | 4 | `ar_03`, `ar_09`, `ar_12`, `ar_21` |
+| CBPA | 4 | `ar_02`, `ar_10`, `ar_22`, `ar_06` |
+| COENG | 3 | `ar_07`, `ar_19`, `bg_47` |
+| COED | 3 | `ar_04`, `ar_15`, `ar_20` |
+| CFAST | 3 | `ar_23`, `bg_54`, `bg_55` |
+| CANR | 3 | `ar_08`, `ar_16`, `bg_56` |
+| COTT | 3 | `bg_58`, `bg_59`, `ar_27` |
+| Entienza | 3 | `ar_24`, `bg_60`, `bg_61` |
+
+The three former reserves `ar_11`, `ar_21` and `ar_06` become allocated. `bg_61` is promoted
+through `PROMOTED_BACKGROUND`, changing only label, summary, limitations and suitability.
+The eight promoted background Students keep their identities, placement, enrollment, Inventory
+and existing records. Reserves `first_year`, `second_year`, `ar_17`, `ar_18` and the other
+UAT-ready accounts outside the allocation remain listed as reserves in the Selection Guide and
+full Assignment Template. `COMPASS-UAT-50-ASSIGNMENTS.csv` contains exactly the 50 allocated
+accounts; the Selection Guide prints exactly their 50 `--account` arguments.
+
+### Faculty coverage and activation
+
+Faculty accounts are active, email verified, canonical `FACULTY`, and `CREDENTIAL` planned;
+seeding never sets passwords. Home Colleges are assigned through Account Management's
+`validate_faculty_college` and `write_faculty_affiliation` with a synthetic assignment basis and
+SYSTEM audit context, under the catalog gate and locked target account. Existing conflicting
+Faculty affiliations fail preflight rather than being reassigned.
+
+| Faculty key / institutional ID | College | Fresh-submit background Student | Received background Student | Scenarios |
+| --- | --- | --- | --- | --- |
+| `faculty_ccms` / `STG-F-0001` | CCMS | `bg_01` | `bg_05` | FAC-REF-01, FAC-REF-02 |
+| `faculty_cas` / `STG-F-0002` | CAS | `bg_02` | `bg_06` | FAC-REF-03, FAC-REF-04 |
+| `faculty_cbpa` / `STG-F-0003` | CBPA | `bg_03` | `bg_07` | FAC-REF-05, FAC-REF-06 |
+| `faculty_coed` / `STG-F-0004` | COED | `bg_04` | `bg_08` | FAC-REF-07, FAC-REF-08 |
+| `faculty_coeng` / `STG-F-0005` | COENG | `bg_48` | `bg_49` | FAC-REF-09, FAC-REF-10 |
+
+Each pair uses different enrolled background Students of the Faculty's home College, never a
+participant Student. Fresh submission has no preceding Guidance Office dependency. The even
+scenario opens an unread receipt notice and an own submission already `RECEIVED_BY_GCO`.
+No existing Guidance Office scenario depends on these new Referrals; their original Students
+and initial states remain intact. `ar_27` owns STU-APT-11; `bg_61` owns STU-GM-10.
+
+Digital Referrals, receipt/closure notices and tracking are **active** through the product's
+code-owned provisional providers (`provisional_activation`), whose fixed audit decisions say
+`PROVISIONAL`, never institutionally `APPROVED`. The seeder calls the real lookup/submission
+and administrative policy services, `confirm_student`, `submit_referral`, and the GCO
+`administration.transition` acknowledgment service. It acquires the exclusive catalog gate at
+entry before account locks, avoiding a shared-to-exclusive gate upgrade during acknowledgment.
+Bounded service sessions carry no MFA assertion and are revoked through the authentication
+service immediately after the seed unit. No participant credentials are issued or exported.
+The notification service creates the received notice; only its unsent email intent is removed.
+
+This package proves a fresh local dataset for the separately authorized Phase E reset. It never
+applies itself to live staging. Credential issuance and participant registers remain separate
+owner operations; no real participant handoff is read or edited.
 
 ## Modes
 
@@ -242,7 +283,7 @@ available in git history:
 | `UAT-ACCOUNT-SELECTION-GUIDE.md` | Recommended accounts per stakeholder role, conflicts and rules |
 | `UAT-SCENARIO-MATRIX.md` | Every scenario with route, initial state, action, expected result and readiness |
 | `UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv` | Blank assignment worksheet for every UAT-ready account, reserves included (no evaluator identities) |
-| `COMPASS-UAT-40-ASSIGNMENTS.csv` | The exact 40-person allocation: reference, stakeholder, College / unit, key, ID, login email, role and scenarios; evaluator columns blank |
+| `COMPASS-UAT-50-ASSIGNMENTS.csv` | The exact 50-person allocation: reference, stakeholder, College / unit, key, ID, login email, role and scenarios; evaluator columns blank |
 | `STAGING-DATASET-v1-SUMMARY.md` | Counts and distributions read from the database |
 
 Documents never contain passwords, MFA secrets, tokens, confidential answers or counseling
@@ -282,8 +323,9 @@ before commit, so no other session observes a historical year as current.
 | Group | Count | Purpose |
 | --- | ---: | --- |
 | Rich scenario Students | 11 | Multi-domain stories (counseling, referrals, Call Slips, certificates, Exit Interviews, Graduate Tracer, onboarding, a former Student) |
-| Action-ready Students (`ar_01`…`ar_26`) | 26 | One evaluator-owned pending action each |
-| Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled; seven are promoted to UAT-ready for the College distribution |
+| Action-ready Students (`ar_01`…`ar_27`) | 27 | One evaluator-owned pending action each |
+| Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled; eight are promoted to UAT-ready for the College distribution |
+| Faculty (participants) | 5 | One each for CCMS, CAS, CBPA, COED and COENG; digital Referrals and received notices |
 | Staff (participants) | 11 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Office Assistant ×2, DPO ×2 |
 | Staff (restricted) | 3 | Disabled former staff, a Counselor without responsibility, an undesignated Institutional Officer |
 
@@ -292,9 +334,9 @@ Counselor routing: `counselor_a` — Main CCMS, CAS, COENG; `counselor_b` — Ma
 no responsibility and no seeded Students. Good Moral preparation and issuance are office-wide by
 design.
 
-To use a smaller cohort, mark accounts as background or remove rows from `students.py` and
-regenerate; every scenario still references a valid account (the manifest validates this at
-import) and no record is chosen at random.
+For a smaller evaluation session, schedule a subset of the allocated accounts and keep the
+others as reserves. Preserve every dataset identity and record. Every scenario references a
+valid account (the manifest validates this at import); no record is chosen at random.
 
 ## Seed-only writes and side effects
 
@@ -303,6 +345,9 @@ Everything goes through domain services, with these documented exceptions:
 - **Accounts** use `User.objects.create_user` (no password) plus a SYSTEM `account.created` event,
   like `create_it_admin`, because Account Management services need an administrator session with
   recent MFA. Designations, lifecycle changes and disabling mirror Account Management invariants.
+- **Faculty service sessions.** Bounded, non-MFA sessions use the authentication service and
+  are revoked before the seed unit completes. They never enable participant sign-in. Faculty
+  affiliation and policy activation follow the services described above.
 - **Historical timestamps.** Back-entered records have allowlisted business timestamps moved onto
   the dataset timeline; status, relationships and content are never touched. Audit events are
   never rewritten and keep the real run time and one run ID.

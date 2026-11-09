@@ -39,6 +39,7 @@ from compass.accounts.models import (
 from compass.accounts.policy import (
     CAPABILITY_CODES,
     DESIGNATION_CAPABILITY_GRANTS,
+    FACULTY_CAPABILITY_CEILING,
     ROLE_CAPABILITY_GRANTS,
 )
 from compass.accounts.services import effective_capabilities
@@ -66,11 +67,13 @@ from compass.institutional_forms.services import (
 )
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, PushDelivery
+from compass.notifications.policy import NotificationEvent
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.bootstrap import CatalogInitializationError, check_organization_catalog
 from compass.organization.models import (
     College,
     CounselorResponsibility,
+    FacultyAffiliation,
     StaffSupervision,
 )
 from compass.privacy_governance.models import PrivacyNoticeRevision
@@ -82,6 +85,7 @@ from compass.student_academics.models import StudentAcademicProfile
 
 from . import DATASET_NAME, DATASET_VERSION
 from .config import load_config
+from .faculty import FACULTY
 from .guard import ensure_seeding_allowed_by_settings
 from .identities import AccountSpec, AuthPlan, Lifecycle, StudentGroup, StudentSpec, Suitability
 from .manifest import (
@@ -221,11 +225,75 @@ def _upcoming(lookup: Lookup, user, mode: str | None = None):
     return rows.filter(delivery_mode=mode) if mode else rows
 
 
+def _faculty_active(user) -> bool:
+    from compass.referrals import administrative_policy, faculty_policy
+    from compass.referrals import provisional_activation as provisional
+
+    # Providers get_or_create their decision records. Refuse missing records before resolving
+    # them, so verify stays read-only even when a policy activation is absent.
+    if not all(AuditEvent.objects.filter(pk=pk).exists() for pk in provisional.EVENT_IDS.values()):
+        return False
+    now = timezone.now()
+    try:
+        lookup = faculty_policy.require_lookup_policy(now)
+        submission = faculty_policy.require_submission_policy(now)
+        tracking = administrative_policy.require_policy("FACULTY_TRACKING", now)
+        notice = administrative_policy.require_policy("FACULTY_NOTICES", now)
+        return (
+            user.pk in lookup.faculty_ids & submission.faculty_ids
+            and user.pk in tracking.actor_ids & notice.actor_ids
+            and submission.lookup_policy_digest == lookup.digest
+        )
+    except (faculty_policy.FacultyReferralError, administrative_policy.AdministrativeReferralError):
+        return False
+
+
+def _faculty_predicate(lookup, user, key, arg):
+    from compass.referrals.notification_contract import faculty_notice_is_current
+
+    spec = next(item for item in FACULTY if item.key == key)
+    if not _faculty_active(user):
+        return False
+    if arg == "active":
+        return _faculty_active(user)
+    if arg == "fresh_target":
+        target = lookup.user(spec.fresh_student)
+        profile = StudentAcademicProfile.objects.filter(student=target).first()
+        return (
+            target is not None
+            and target.is_active
+            and target.student_lifecycle_status == "CURRENT"
+            and profile is not None
+            and profile.current_college is not None
+            and profile.current_college.code == spec.college_code
+            and not Referral.objects.filter(submitted_by=user, student=target).exists()
+        )
+    if arg == "received_notice":
+        rows = Referral.objects.filter(
+            submitted_by=user,
+            student=lookup.user(spec.received_student),
+            submission_channel="FACULTY_PORTAL",
+            acknowledged_by__isnull=False,
+            administratively_closed_at__isnull=True,
+            voided_at__isnull=True,
+        )
+        notices = Notification.objects.filter(
+            recipient=user,
+            source_id__in=rows.values("pk"),
+            event_code=NotificationEvent.FACULTY_REFERRAL_RECEIVED,
+            read_at__isnull=True,
+        )
+        return any(faculty_notice_is_current(item) for item in notices)
+    return False
+
+
 def _predicate(lookup: Lookup, key: str, name: str) -> bool:
     user = lookup.user(key)
     if user is None:
         return False
     kind, _, arg = name.partition(":")
+    if kind == "faculty":
+        return _faculty_predicate(lookup, user, key, arg)
     if kind == "lifecycle":
         return user.student_lifecycle_status == arg
     if kind == "role":
@@ -518,6 +586,20 @@ def _accounts(section: Section, lookup: Lookup, domain, onboarding, allow) -> di
             fact.college = account.college_code
             fact.program = account.program_code
             fact.year_level = str(year or "")
+        if account.role == "FACULTY":
+            affiliation = (
+                FacultyAffiliation.objects.select_related("college__campus")
+                .filter(faculty=user, college__is_active=True, college__campus__is_active=True)
+                .first()
+            )
+            section.check(
+                affiliation is not None
+                and (affiliation.college.campus.code, affiliation.college.code)
+                == (account.campus_code, account.college_code),
+                f"{account.key}: Faculty home College differs from the manifest.",
+            )
+            section.check(_faculty_active(user), f"{account.key}: Faculty policies are not active.")
+            fact.campus, fact.college = account.campus_code, account.college_code
         facts[account.key] = fact
     known = {account.institutional_id for account in ACCOUNTS}
     strays = User.objects.filter(institutional_id__startswith="STG-").exclude(
@@ -696,6 +778,11 @@ def _privacy(section: Section, lookup: Lookup) -> None:
                 ),
                 f"{account.key}: a Student holds a non-self capability.",
             )
+        elif account.role == "FACULTY":
+            section.check(
+                capabilities == FACULTY_CAPABILITY_CEILING,
+                f"{account.key}: Faculty capabilities differ from the product ceiling.",
+            )
         elif account.role == "GUIDANCE_OFFICE_ASSISTANT":
             section.check(
                 not _counseling_content(capabilities),
@@ -755,6 +842,11 @@ def _side_effects(section: Section, lookup: Lookup, allow) -> None:
 
 def _preloaded(lookup: Lookup, account: AccountSpec) -> tuple[str, ...]:
     user = lookup.user(account.key)
+    if user is not None and account.role == "FACULTY":
+        count = Referral.objects.filter(
+            submitted_by=user, submission_channel="FACULTY_PORTAL"
+        ).count()
+        return (f"Own digital Referrals: {count}; received notice available",)
     if user is None or not account.is_student:
         return ()
     items = []

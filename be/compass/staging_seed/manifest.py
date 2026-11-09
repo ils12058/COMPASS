@@ -21,56 +21,59 @@ from compass.accounts.policy import (
     designation_role_compatible,
 )
 
+from .faculty import FACULTY
 from .identities import AccountSpec, AuthPlan, Lifecycle, StudentSpec, Suitability
 from .staff import STAFF
 from .students import STUDENTS
 
-ACCOUNTS: tuple[AccountSpec, ...] = (*STAFF, *STUDENTS)
+ACCOUNTS: tuple[AccountSpec, ...] = (*STAFF, *STUDENTS, *FACULTY)
 ACCOUNTS_BY_KEY = {account.key: account for account in ACCOUNTS}
 
-# The finalized 40-person UAT: participants per stakeholder category, and the 25 current Students
+# The finalized 50-person UAT: participants per stakeholder category, and the 30 current Students
 # per College / academic unit (Entienza is the Entienza Campus academic unit).
-UAT_40_STAKEHOLDER_COUNTS = {
+UAT_50_STAKEHOLDER_COUNTS = {
     "Head Guidance Counselor": 1,
     "Guidance Counselor": 3,
     "Guidance Office Assistant": 2,
-    "Current Student": 25,
+    "Current Student": 30,
+    "Faculty": 5,
     "Alumni": 5,
     "ITSO Personnel": 3,
     "Data Protection Officer": 1,
 }
-UAT_40_STUDENT_QUOTA = {
-    "CCMS": 3,
-    "CAS": 3,
-    "CBPA": 3,
+UAT_50_STUDENT_QUOTA = {
+    "CCMS": 4,
+    "CAS": 4,
+    "CBPA": 4,
     "COENG": 3,
     "COED": 3,
     "CFAST": 3,
     "CANR": 3,
-    "COTT": 2,
-    "ENTIENZA": 2,
+    "COTT": 3,
+    "ENTIENZA": 3,
 }
 # Each key is a current Student seeded in that College. bg_… accounts are promoted background
 # Students (see students.PROMOTED_BACKGROUND); the other UAT-ready Students stay reserves.
-UAT_40_STUDENT_COLLEGES = {
-    "CCMS": ("ar_01", "ar_05", "ar_14"),
-    "CAS": ("ar_03", "ar_09", "ar_12"),
-    "CBPA": ("ar_02", "ar_10", "ar_22"),
+UAT_50_STUDENT_COLLEGES = {
+    "CCMS": ("ar_01", "ar_05", "ar_14", "ar_11"),
+    "CAS": ("ar_03", "ar_09", "ar_12", "ar_21"),
+    "CBPA": ("ar_02", "ar_10", "ar_22", "ar_06"),
     "COENG": ("ar_07", "ar_19", "bg_47"),
     "COED": ("ar_04", "ar_15", "ar_20"),
     "CFAST": ("ar_23", "bg_54", "bg_55"),
     "CANR": ("ar_08", "ar_16", "bg_56"),
-    "COTT": ("bg_58", "bg_59"),
-    "ENTIENZA": ("ar_24", "bg_60"),
+    "COTT": ("bg_58", "bg_59", "ar_27"),
+    "ENTIENZA": ("ar_24", "bg_60", "bg_61"),
 }
 
 # Proposed ownership only: no evaluator identities, credential issuance or live assignment.
 # Alumni retain the canonical STUDENT role; ITSO participants retain IT_ADMIN.
-UAT_40_ALLOCATION = {
+UAT_50_ALLOCATION = {
     "Head Guidance Counselor": ("head_guidance",),
     "Guidance Counselor": ("counselor_a", "counselor_b", "counselor_c"),
     "Guidance Office Assistant": ("goa_a", "goa_b"),
-    "Current Student": tuple(key for keys in UAT_40_STUDENT_COLLEGES.values() for key in keys),
+    "Current Student": tuple(key for keys in UAT_50_STUDENT_COLLEGES.values() for key in keys),
+    "Faculty": tuple(spec.key for spec in FACULTY),
     "Alumni": ("recent_graduate", "alumni", "ar_13", "ar_25", "ar_26"),
     "ITSO Personnel": ("it_admin", "it_admin_2", "it_admin_3"),
     "Data Protection Officer": ("dpo",),
@@ -82,6 +85,7 @@ ROLE_LABELS = {
     "GUIDANCE_OFFICE_ASSISTANT": "Guidance Office Assistant",
     "INSTITUTIONAL_OFFICER": "Institutional Officer",
     "STUDENT": "Student",
+    "FACULTY": "Faculty",
 }
 
 
@@ -1373,7 +1377,7 @@ SCENARIOS: tuple[Scenario, ...] = (
         related=("ar_07",),
         checks=(("counselor_c", "responsibility:4"),),
     ),
-    # --- Independent participants added for the 40-person UAT allocation --------------------
+    # --- Independent participants added for the 50-person UAT allocation --------------------
     _s(
         "STU-GT-03",
         "Graduate Tracer",
@@ -1576,6 +1580,72 @@ SCENARIOS: tuple[Scenario, ...] = (
         restrictions="Feature not implemented on this baseline; no model or workspace exists.",
     ),
 )
+# Additive E5 scenarios retain every earlier scenario definition unchanged.
+SCENARIOS += (
+    _s(
+        "STU-APT-11",
+        "Appointments",
+        "Book Counseling (COTT)",
+        "Student",
+        "ar_27",
+        "/portal/appointments/book",
+        "Submitted Inventory; no Appointments.",
+        "Book Counseling with counselor_c.",
+        "A SCHEDULED Appointment appears in My appointments.",
+        related=("counselor_c",),
+        restrictions=_LIVE_EMAIL,
+        checks=(("ar_27", "appointment:none"), ("ar_27", "inventory:submitted")),
+    ),
+    _s(
+        "STU-GM-10",
+        "Good Moral",
+        "Request current-Student Good Moral (Entienza)",
+        "Student",
+        "bg_61",
+        "/portal/good-moral/request",
+        "Submitted Inventory; no Good Moral request.",
+        "Request a current-Student certificate.",
+        "A REQUESTED request appears in the office-wide queue.",
+        checks=(("bg_61", "good_moral:none"), ("bg_61", "inventory:submitted")),
+    ),
+    *(
+        scenario
+        for number, spec in enumerate(FACULTY, 1)
+        for scenario in (
+            _s(
+                f"FAC-REF-{number * 2 - 1:02d}",
+                "Faculty Referrals",
+                f"Submit a digital Referral ({spec.college_code})",
+                "Faculty",
+                spec.key,
+                "/portal/faculty/referrals/new",
+                f"Active Faculty home College; {spec.fresh_student} is an enrolled background "
+                "Student with no submission by this Faculty.",
+                f"Confirm exact institutional ID of {spec.fresh_student}; submit the digital form.",
+                "An own submission reference appears with SUBMITTED state.",
+                related=(spec.fresh_student,),
+                restrictions="Use only the named background Student. One evaluator per Faculty.",
+                checks=((spec.key, "faculty:active"), (spec.key, "faculty:fresh_target")),
+            ),
+            _s(
+                f"FAC-REF-{number * 2:02d}",
+                "Faculty notices",
+                f"Open received notice and own submission ({spec.college_code})",
+                "Faculty",
+                spec.key,
+                "/portal/notifications",
+                f"A pre-seeded digital Referral for {spec.received_student} is received by GCO; "
+                "its unread Faculty notice is visible.",
+                "Open the received notice and its own submission; review receipt status.",
+                "The own submission displays RECEIVED_BY_GCO and receipt time "
+                "without guidance content.",
+                related=(spec.received_student,),
+                fresh_state=False,
+                checks=((spec.key, "faculty:received_notice"),),
+            ),
+        )
+    ),
+)
 SCENARIOS_BY_ID = {scenario.id: scenario for scenario in SCENARIOS}
 
 
@@ -1640,18 +1710,39 @@ def validate_manifest() -> None:
     for account in ACCOUNTS:
         if account.suitability == Suitability.PARTICIPANT and account.key not in actors:
             raise ManifestError(f"{account.key}: a UAT-ready account needs at least one scenario.")
-    allocated = [key for keys in UAT_40_ALLOCATION.values() for key in keys]
-    if len(allocated) != 40 or len(set(allocated)) != 40:
-        raise ManifestError("The 40-person allocation requires 40 distinct accounts.")
-    if {category: len(keys) for category, keys in UAT_40_ALLOCATION.items()} != (
-        UAT_40_STAKEHOLDER_COUNTS
+    targets = []
+    for faculty in FACULTY:
+        for key in (faculty.fresh_student, faculty.received_student):
+            student = ACCOUNTS_BY_KEY[key]
+            if (
+                not isinstance(student, StudentSpec)
+                or student.suitability != Suitability.BACKGROUND
+                or student.lifecycle != Lifecycle.CURRENT
+                or not student.active
+                or not student.affiliated
+                or not student.year_levels
+                or (student.campus_code, student.college_code)
+                != (faculty.campus_code, faculty.college_code)
+            ):
+                raise ManifestError(
+                    f"{faculty.key}: target {key} must be an enrolled "
+                    "home-College background Student."
+                )
+            targets.append(key)
+    if len(set(targets)) != len(targets):
+        raise ManifestError("Faculty scenarios need separate background Students.")
+    allocated = [key for keys in UAT_50_ALLOCATION.values() for key in keys]
+    if len(allocated) != 50 or len(set(allocated)) != 50:
+        raise ManifestError("The 50-person allocation requires 50 distinct accounts.")
+    if {category: len(keys) for category, keys in UAT_50_ALLOCATION.items()} != (
+        UAT_50_STAKEHOLDER_COUNTS
     ):
-        raise ManifestError("The 40-person allocation must match the stakeholder distribution.")
-    if {college: len(keys) for college, keys in UAT_40_STUDENT_COLLEGES.items()} != (
-        UAT_40_STUDENT_QUOTA
+        raise ManifestError("The 50-person allocation must match the stakeholder distribution.")
+    if {college: len(keys) for college, keys in UAT_50_STUDENT_COLLEGES.items()} != (
+        UAT_50_STUDENT_QUOTA
     ):
         raise ManifestError("The current-Student allocation must match the College distribution.")
-    for college, keys in UAT_40_STUDENT_COLLEGES.items():
+    for college, keys in UAT_50_STUDENT_COLLEGES.items():
         for key in keys:
             account = ACCOUNTS_BY_KEY.get(key)
             if (
@@ -1660,7 +1751,7 @@ def validate_manifest() -> None:
                 or not account.affiliated
             ):
                 raise ManifestError(f"{key}: not a current {college} Student.")
-    for category, keys in UAT_40_ALLOCATION.items():
+    for category, keys in UAT_50_ALLOCATION.items():
         for key in keys:
             account = ACCOUNTS_BY_KEY.get(key)
             if (
@@ -1694,10 +1785,10 @@ __all__ = [
     "Readiness",
     "SCENARIOS",
     "SCENARIOS_BY_ID",
-    "UAT_40_ALLOCATION",
-    "UAT_40_STAKEHOLDER_COUNTS",
-    "UAT_40_STUDENT_COLLEGES",
-    "UAT_40_STUDENT_QUOTA",
+    "UAT_50_ALLOCATION",
+    "UAT_50_STAKEHOLDER_COUNTS",
+    "UAT_50_STUDENT_COLLEGES",
+    "UAT_50_STUDENT_QUOTA",
     "Scenario",
     "email_for",
     "scenarios_for",

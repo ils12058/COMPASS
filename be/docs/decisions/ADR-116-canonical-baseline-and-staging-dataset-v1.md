@@ -94,3 +94,14 @@ that did not support independent stakeholder UAT.
   normal deployment does not dispose of them.
 - Good Moral `LEGACY_UNSPECIFIED` initiation and Call Slip `LEGACY_UNKNOWN` issuance values remain
   model-owned enum members; removing them is a separate contract change.
+
+## 2026-11-09 — Phase E E5 allocation expansion
+
+The UAT allocation grows from 40 to 50: five Faculty (CCMS, CAS, CBPA, COED, COENG) and five
+more current Students. All 116 existing identities and prior records are preserved; only five
+Faculty and `ar_27` are added, `bg_61` gains catalog-only participant suitability, and reserves
+`ar_11`, `ar_21`, `ar_06` join the allocation. Totals are 122 accounts and 113 scenarios (110
+executable, three pending). Faculty home affiliation uses Account Management services; digital
+Referrals and notices stay active through the existing code-owned PROVISIONAL policy path,
+without claiming institutional approval. No schema change, live operation or credential issuance
+is authorized by this package. Participant credentials and registers remain owner-controlled.

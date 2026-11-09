@@ -633,6 +633,18 @@ ACTION_READY_ROWS = (
         "Graduate: ready to request Good Moral",
         "Graduated June 2026 with submitted Exit Interview and Tracer; no Good Moral request.",
     ),
+    (
+        "Hana",
+        "Dimaculangan",
+        "FEMALE",
+        "BSINDTECH",
+        2,
+        "SUBMITTED",
+        "ordinary",
+        Lifecycle.CURRENT,
+        "COTT Student ready to book Counseling",
+        "Submitted Inventory and no Appointment: books Counseling with counselor_c.",
+    ),
 )
 
 # Existing ar_13 keeps its not-started Tracer. Only the two appended Alumni get new fixtures.
@@ -715,6 +727,10 @@ PREVIOUS_YEAR_ORDINALS = frozenset({6, 11, 16, 48, 51})
 # per-College Student distribution. Only suitability and catalog text change: each keeps its seeded
 # identity, College affiliation, enrollment, Inventory and existing records. (label, summary)
 PROMOTED_BACKGROUND = {
+    "bg_61": (
+        "Entienza Student eligible to request Good Moral",
+        "Submitted Inventory and no Good Moral request: requests a current-Student certificate.",
+    ),
     "bg_47": (
         "COENG Student ready to book a first Counseling session",
         "Submitted Inventory and no Appointment: books Counseling with counselor_a.",

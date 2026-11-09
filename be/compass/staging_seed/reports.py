@@ -20,8 +20,8 @@ from .manifest import (
     ACCOUNTS,
     ACCOUNTS_BY_KEY,
     SCENARIOS,
-    UAT_40_ALLOCATION,
-    UAT_40_STUDENT_COLLEGES,
+    UAT_50_ALLOCATION,
+    UAT_50_STUDENT_COLLEGES,
     Readiness,
     scenarios_for,
     stakeholder,
@@ -36,7 +36,7 @@ ACCOUNTS_CSV = "staging-accounts.csv"
 GUIDE = "UAT-ACCOUNT-SELECTION-GUIDE.md"
 MATRIX = "UAT-SCENARIO-MATRIX.md"
 ASSIGNMENT = "UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv"
-UAT_40_ASSIGNMENTS = "COMPASS-UAT-40-ASSIGNMENTS.csv"
+UAT_50_ASSIGNMENTS = "COMPASS-UAT-50-ASSIGNMENTS.csv"
 SUMMARY = "STAGING-DATASET-v1-SUMMARY.md"
 
 CSV_COLUMNS = (
@@ -71,9 +71,9 @@ ASSIGNMENT_COLUMNS = (
     "testing_status",
     "notes",
 )
-# The exact 40-person allocation. Prefilled from the manifest and the verified database; the
+# The exact 50-person allocation. Prefilled from the manifest and the verified database; the
 # research team fills the blank columns privately and never commits a completed copy.
-UAT_40_COLUMNS = (
+UAT_50_COLUMNS = (
     "participant_reference",
     "stakeholder_category",
     "college_academic_unit",
@@ -100,6 +100,7 @@ SUITABILITY_LABELS = {
 }
 STAKEHOLDER_ORDER = (
     "Student",
+    "Faculty",
     "Guidance Counselor",
     "Guidance Office Assistant",
     "Head Guidance Counselor",
@@ -191,6 +192,7 @@ def _catalog(result) -> str:
         "Email",
         "Role",
         "Designation",
+        "Campus/College",
         "Auth state",
         "Suitability",
         "Scenarios",
@@ -234,6 +236,7 @@ def _catalog(result) -> str:
                     row["email"],
                     row["role"],
                     row["designation"] or "—",
+                    f"{row['campus']}/{row['college']}" if row["college"] else "—",
                     row["authentication_state"],
                     row["assignment_suitability"],
                     row["scenario_ids"] or "—",
@@ -295,10 +298,16 @@ def _accounts_csv(result) -> str:
 
 
 GUIDE_NOTES = {
+    "Faculty": (
+        "Five Faculty have active home Colleges (CCMS, CAS, CBPA, COED, COENG), digital Referrals "
+        "and received notices through the product provisional policy. Each fresh-submit scenario "
+        "uses its named background Student, separate from its received submission and from every "
+        "participant Student. Own submissions disclose only the product Faculty projection."
+    ),
     "Student": (
         "Give each Student evaluator their own action-ready or rich account. Action-ready "
         "accounts (`ar_…`) each start from one pending action, so two evaluators never need the "
-        "same Student. Rich accounts carry multi-domain history for exploratory testing. Seven "
+        "same Student. Rich accounts carry multi-domain history for exploratory testing. Eight "
         "background Students are promoted to UAT-ready so every College is represented; they "
         "start from their seeded records."
     ),
@@ -343,12 +352,12 @@ def _guide(result) -> str:
         "use one, add it to the manifest as a participant and regenerate.",
         "- Restricted accounts are for negative-authorization tests only. Disabled accounts "
         "cannot receive credentials; the others need `issue-credentials --account <key>`.",
-        f"- Record assignments only in a private copy of `{UAT_40_ASSIGNMENTS}` (or "
+        f"- Record assignments only in a private copy of `{UAT_50_ASSIGNMENTS}` (or "
         f"`{ASSIGNMENT}` for reserves); never commit evaluator names or contact details.",
         "- Credentials are delivered privately from the protected handoff file; this guide and "
         "the catalog never contain them.",
         "",
-        "## 40-person UAT allocation",
+        "## 50-person UAT allocation",
         "",
         "Each key below belongs to a different participant. Alumni use the STUDENT role with "
         "GRADUATED lifecycle; ITSO personnel use IT_ADMIN. This allocation is not authorization "
@@ -362,7 +371,7 @@ def _guide(result) -> str:
             ("Participant category", "Count", "Exact account keys"),
             [
                 (category, len(keys), ", ".join(f"`{key}`" for key in keys))
-                for category, keys in UAT_40_ALLOCATION.items()
+                for category, keys in UAT_50_ALLOCATION.items()
             ],
         ),
         "",
@@ -377,21 +386,21 @@ def _guide(result) -> str:
                     len(keys),
                     ", ".join(f"`{key}`" for key in keys),
                 )
-                for college, keys in UAT_40_STUDENT_COLLEGES.items()
+                for college, keys in UAT_50_STUDENT_COLLEGES.items()
             ],
         ),
         "",
         "Keep one evaluator per account. Confirm mailbox ownership and staff authenticator "
         f"enrollment before issuance; record actual assignments only in a private copy of "
-        f"`{UAT_40_ASSIGNMENTS}`, which lists exactly these 40 accounts. Reserve UAT-ready "
+        f"`{UAT_50_ASSIGNMENTS}`, which lists exactly these 50 accounts. Reserve UAT-ready "
         "accounts outside the allocation: " + ", ".join(f"`{key}`" for key in _reserves()) + ".",
         "",
-        "Issue credentials for exactly these 40 keys, never with an unrestricted command:",
+        "Issue credentials for exactly these 50 keys, never with an unrestricted command:",
         "",
         "```",
         "seed_staging_dataset issue-credentials --output <new protected handoff file> \\",
         *(
-            f"  --account {key}" + (" \\" if number < 40 else "")
+            f"  --account {key}" + (" \\" if number < 50 else "")
             for number, key in enumerate(_allocated(), 1)
         ),
         "```",
@@ -430,7 +439,7 @@ def _guide(result) -> str:
                 "ID",
                 "Why recommended",
                 "Assignable",
-                "40-person UAT",
+                "50-person UAT",
                 "Scenarios",
                 "Initial state changes?",
                 "What it starts with",
@@ -554,7 +563,7 @@ def _college_label(code: str) -> str:
 
 
 def _allocated() -> list[str]:
-    return [key for keys in UAT_40_ALLOCATION.values() for key in keys]
+    return [key for keys in UAT_50_ALLOCATION.values() for key in keys]
 
 
 def _reserves() -> list[str]:
@@ -577,7 +586,9 @@ def _caseload(counselor_key: str) -> str:
     return f"{', '.join(colleges)} caseload"
 
 
-def _uat_40_unit(account: AccountSpec) -> str:
+def _uat_50_unit(account: AccountSpec) -> str:
+    if account.role == "FACULTY":
+        return _college_label(account.college_code)
     if isinstance(account, StudentSpec):
         label = _college_label(account.college_code)
         return label if account.lifecycle == Lifecycle.CURRENT else f"{label} (graduated)"
@@ -593,18 +604,18 @@ def _uat_40_unit(account: AccountSpec) -> str:
     return "Data Protection Office"
 
 
-def uat_40_rows(result) -> list[dict[str, str]]:
-    """The 40 assignment rows in allocation order; evaluator columns stay blank."""
+def uat_50_rows(result) -> list[dict[str, str]]:
+    """The 50 assignment rows in allocation order; evaluator columns stay blank."""
 
     rows = []
-    entries = [(category, key) for category, keys in UAT_40_ALLOCATION.items() for key in keys]
+    entries = [(category, key) for category, keys in UAT_50_ALLOCATION.items() for key in keys]
     for number, (category, key) in enumerate(entries, 1):
         account = ACCOUNTS_BY_KEY[key]
         facts = result.accounts[key]
         prefilled = {
-            "participant_reference": f"UAT40-{number:02d}",
+            "participant_reference": f"UAT50-{number:02d}",
             "stakeholder_category": category,
-            "college_academic_unit": _uat_40_unit(account),
+            "college_academic_unit": _uat_50_unit(account),
             "account_key": key,
             "institutional_id": account.institutional_id,
             "login_email": facts.email,
@@ -613,15 +624,15 @@ def uat_40_rows(result) -> list[dict[str, str]]:
                 s.id for s in scenarios_for(key) if s.readiness == Readiness.EXECUTABLE
             ),
         }
-        rows.append({column: prefilled.get(column, "") for column in UAT_40_COLUMNS})
+        rows.append({column: prefilled.get(column, "") for column in UAT_50_COLUMNS})
     return rows
 
 
-def _uat_40_csv(result) -> str:
+def _uat_50_csv(result) -> str:
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=UAT_40_COLUMNS, lineterminator="\n")
+    writer = csv.DictWriter(buffer, fieldnames=UAT_50_COLUMNS, lineterminator="\n")
     writer.writeheader()
-    writer.writerows(uat_40_rows(result))
+    writer.writerows(uat_50_rows(result))
     return buffer.getvalue()
 
 
@@ -647,14 +658,15 @@ def _summary(result) -> str:
         f"{', '.join(result.preparation_dates) or 'none'}.",
         f"- Accounts: **{counts['accounts']}** ({counts['students']} Students, "
         f"{counts['staff']} staff).",
-        "- UAT allocation: **40 independent participants** — 1 Head, 3 Counselors, "
-        "2 Guidance Office Assistant, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. "
+        "- UAT allocation: **50 independent participants** — 1 Head, 3 Counselors, "
+        "2 Guidance Office Assistant, 30 current Students, 5 Faculty, "
+        "5 graduated Alumni, 3 ITSO and 1 DPO. "
         "Current Students by College: "
         + ", ".join(
             f"{_college_label(college)} {len(keys)}"
-            for college, keys in UAT_40_STUDENT_COLLEGES.items()
+            for college, keys in UAT_50_STUDENT_COLLEGES.items()
         )
-        + f". See the Selection Guide and `{UAT_40_ASSIGNMENTS}` for exact account keys; "
+        + f". See the Selection Guide and `{UAT_50_ASSIGNMENTS}` for exact account keys; "
         "credential issuance remains separate.",
         f"- Executable UAT scenarios: **{counts['scenarios_executable']}**; "
         f"pending-implementation scenarios: **{counts['scenarios_pending']}**.",
@@ -736,7 +748,7 @@ def render_reports(result) -> dict[str, str]:
         GUIDE: _guide(result),
         MATRIX: _matrix(result),
         ASSIGNMENT: _assignment_template(),
-        UAT_40_ASSIGNMENTS: _uat_40_csv(result),
+        UAT_50_ASSIGNMENTS: _uat_50_csv(result),
         SUMMARY: _summary(result),
     }
     for name, text in documents.items():
@@ -767,9 +779,9 @@ __all__ = [
     "MATRIX",
     "ReportError",
     "SUMMARY",
-    "UAT_40_ASSIGNMENTS",
-    "UAT_40_COLUMNS",
+    "UAT_50_ASSIGNMENTS",
+    "UAT_50_COLUMNS",
     "render_reports",
-    "uat_40_rows",
+    "uat_50_rows",
     "write_reports",
 ]
