@@ -1,7 +1,7 @@
 {% extends "compass/email/base.html" %}
-{% block preheader %}A COMPASS Appointment has been rescheduled.{% endblock %}
+{% block preheader %}Your Appointment time changed.{% endblock %}
 {% block heading %}Appointment rescheduled{% endblock %}
 {% block content %}
-<p>A COMPASS Appointment has been rescheduled.</p>
-{% if appointment_details %}{% include "notifications/partials/appointment_details.html" %}{% include "notifications/partials/appointment_action.html" %}{% else %}<p>Sign in to review the revised schedule and any updated instructions.</p>{% endif %}
+<p>Your Appointment time changed.</p>
+{% if appointment_details %}{% include "notifications/partials/appointment_details.html" %}{% include "notifications/partials/appointment_action.html" %}{% else %}<p>Sign in to check the new schedule and instructions.</p>{% endif %}
 {% endblock %}

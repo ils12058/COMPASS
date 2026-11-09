@@ -1,7 +1,7 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}Your Good Moral certificate has been issued in COMPASS.
+{% block content %}You can now review your Good Moral Certificate in COMPASS.
 
-Sign in to review your certificate and the actions available to you.
+Sign in to check your certificate and next steps.
 
-If you need help accessing it, contact the Guidance and Counseling Office through an official university channel.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+Questions? Contact the Guidance Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
 {% include "notifications/partials/operational_action.txt" %}{% endblock %}

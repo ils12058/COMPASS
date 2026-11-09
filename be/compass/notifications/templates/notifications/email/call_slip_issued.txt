@@ -1,7 +1,7 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A Call Slip has been issued to your COMPASS account.
+{% block content %}You have a new Call Slip.
 
-Sign in to review the Call Slip and any instructions for the requested office visit.
+Sign in to check when and where to report.
 
-For questions, contact the Guidance and Counseling Office through an official university channel.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+Questions? Contact the Guidance Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
 {% include "notifications/partials/operational_action.txt" %}{% endblock %}

@@ -9,9 +9,9 @@ const id = "12345678-1234-4234-8234-123456789abc";
 const noticeId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const center = "/portal/notifications";
 const families = [
-  ["APPOINTMENT", "Appointment Scheduled", "Open Appointment", "appointments", appointment.reference_code],
-  ["GROUP_SESSION", "Group Session Updated", "Open Group Session", "group-sessions", "Synthetic Group Session"],
-  ["GOOD_MORAL", "Good Moral Certificate Issued", "Open Good Moral request", "good-moral", "Synthetic Applicant"],
+  ["APPOINTMENT", "Appointment scheduled", "Open Appointment", "appointments", appointment.reference_code],
+  ["GROUP_SESSION", "Group Session updated", "Open Group Session", "group-sessions", "Synthetic Group Session"],
+  ["GOOD_MORAL", "Good Moral Certificate issued", "Open Good Moral request", "good-moral", "Synthetic Applicant"],
   ["CALL_SLIP", "New Call Slip", "Open Call Slip", "call-slips", slip.student_name_snapshot],
 ];
 const failed = { error: { code: "synthetic_failure", message: "Synthetic failure" } };

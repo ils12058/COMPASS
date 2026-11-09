@@ -1,9 +1,9 @@
 {% extends "compass/email/base.html" %}
-{% block preheader %}A Good Moral request has been started for you.{% endblock %}
-{% block heading %}Good Moral request started{% endblock %}
+{% block preheader %}The Guidance Office started your Good Moral Certificate request.{% endblock %}
+{% block heading %}Good Moral Certificate request started{% endblock %}
 {% block content %}
-<p>The Guidance and Counseling Office has started a Good Moral certificate request for you.</p>
-<p>Sign in to review the request status and any instructions.</p>
-<p>If you need help, contact the Guidance and Counseling Office through an official university channel.</p>
+<p>The Guidance Office started your Good Moral Certificate request.</p>
+<p>Sign in to check your request and instructions.</p>
+<p>Questions? Contact the Guidance Office.</p>
 {% if email_details %}{% include "notifications/partials/detail_rows.html" %}{% endif %}
 {% include "notifications/partials/operational_action.html" %}{% endblock %}

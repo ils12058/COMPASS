@@ -1,4 +1,4 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}Your recent GCO service has been completed.
+{% block content %}You can now give feedback on your recent Guidance Office Service.
 
-You may submit the appropriate Feedback/CSM form in COMPASS.{% endblock %}
+Sign in to complete the feedback or Client Satisfaction Measurement form.{% endblock %}

@@ -124,7 +124,7 @@ def test_authorized_link_and_operational_fields_have_html_text_parity(case, reci
     assert links.destinations == [expected] and not links.resources
     assert rendered.text_body.count(expected) == 1
     for body in (rendered.text_body, rendered.html_body):
-        assert "View Appointment in COMPASS" in body
+        assert "View Appointment" in body
         assert "may have changed since this notice" in body
         for value in (
             student.email,

@@ -1,6 +1,6 @@
 {% extends "compass/email/security.txt" %}
 {% block content %}Your COMPASS sign-in email was changed.
 
-If you did not expect this change, contact the UCN Guidance and Counseling Office or your authorized COMPASS administrator immediately.
+Didn't expect this change? Contact your IT Administrator.
 
-No action is required if you expected this change.{% endblock %}
+You can ignore this notice if you expected the change.{% endblock %}

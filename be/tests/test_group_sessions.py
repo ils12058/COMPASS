@@ -383,7 +383,7 @@ def test_student_registration_and_capacity_enforcement(group_service, counselor,
         recipient=student, event_code="group_session.registered"
     ).first()
     assert notif is not None
-    assert "Registration Confirmed" in notif.title
+    assert "Group Session registration confirmed" in notif.title
 
     # Duplicate registration rejected
     with pytest.raises(ValidationError, match="already registered"):

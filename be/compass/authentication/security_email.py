@@ -5,14 +5,14 @@ from __future__ import annotations
 from compass.common.email import RenderedEmail, render_email
 
 SECURITY_CODE_SUBJECT = "Your COMPASS security code"
-EMAIL_CHANGED_SUBJECT = "Your COMPASS sign-in email was changed"
+EMAIL_CHANGED_SUBJECT = "COMPASS sign-in email changed"
 
 
 def render_security_code_email(code: str, *, purpose: str | None = None) -> RenderedEmail:
     """Render the transient Email OTP in memory only; never log, store, or link the result."""
 
     instructions = (
-        "Sign in to COMPASS, open Account Security, then choose Verify email to finish "
+        "Sign in to COMPASS, open Account security, then choose Verify email to finish "
         "changing your sign-in email."
         if purpose == "email_change"
         else "Use this code in COMPASS to continue."

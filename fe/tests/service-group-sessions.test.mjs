@@ -481,7 +481,7 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
     {
       id: "notif-gs-1",
       event_code: "group_session.registered",
-      title: "Group Session Registration Confirmed",
+      title: "Group Session registration confirmed",
       body: "Confirmed",
       target_type: NotificationTargetType.GROUP_SESSION,
       target_id: "gs-1",

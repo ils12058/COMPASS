@@ -1,7 +1,7 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}You have an upcoming COMPASS appointment.
+{% block content %}You have an upcoming Appointment.
 
 {% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}
-{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to review the scheduled time and any instructions before your session.{% endif %}
+{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check the time and instructions before your session.{% endif %}
 
-If you need help, contact the Guidance and Counseling Office through an official university channel.{% endblock %}
+Questions? Contact the Guidance Office.{% endblock %}

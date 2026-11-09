@@ -17,7 +17,7 @@ const item = (id, is_read = false) => ({
   id,
   event_code: "appointment.scheduled",
   policy: "MANDATORY_OPERATIONAL",
-  title: "Appointment Scheduled",
+  title: "Appointment scheduled",
   message: "Sign in to review details.",
   target_type: null,
   target_id: null,

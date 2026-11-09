@@ -577,6 +577,16 @@ def test_f4_f6_issuance_projection_preserves_variant_and_omits_private_snapshots
     plan, message = resolve_render(notification)
     assert plan.good_moral_facts.variant == variant
     assert "Certificate issued" in message.text_body
+    assert {
+        "CURRENT_STUDENT": "Good Moral Certificate for current Students",
+        "GRADUATE": "Good Moral Certificate for UCN Bachelor's graduates",
+    }[variant] in message.text_body
+    assert {
+        "CURRENT_STUDENT": "Good Moral Certificate for current Students",
+        "GRADUATE": "Good Moral Certificate for UCN Bachelor's graduates",
+    }[variant] in message.html_body.replace("&#x27;", "'")
+    assert "F4" not in message.text_body + message.html_body
+    assert "F6" not in message.text_body + message.html_body
     for forbidden in ("PRIVATE", "999.99", "Receipt", "dry seal", "payment verified"):
         assert forbidden not in message.subject + message.text_body + message.html_body
 

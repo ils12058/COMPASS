@@ -16,7 +16,7 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.FACULTY_REFERRAL_RECEIVED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED: (PushDecision.IN_APP_ONLY, ""),
     **{
-        event: (PushDecision.PUSH, "You have a Guidance follow-up update.")
+        event: (PushDecision.PUSH, "You have a Guidance Follow-Up update.")
         for event in (
             NotificationEvent.FOLLOWUP_ASSIGNED,
             NotificationEvent.FOLLOWUP_REASSIGNED,
@@ -28,15 +28,15 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an appointment update."),
     NotificationEvent.APPOINTMENT_REMINDER_24H: (
         PushDecision.PUSH,
-        "You have an upcoming appointment.",
+        "You have an upcoming Appointment.",
     ),
     NotificationEvent.APPOINTMENT_REMINDER_3H: (
         PushDecision.PUSH,
-        "You have an upcoming appointment.",
+        "You have an upcoming Appointment.",
     ),
     NotificationEvent.APPOINTMENT_REMINDER_MANUAL: (
         PushDecision.PUSH,
-        "You have an upcoming appointment.",
+        "You have an upcoming Appointment.",
     ),
     NotificationEvent.APPOINTMENT_CANCELLED: (PushDecision.PUSH, "You have an appointment update."),
     NotificationEvent.APPOINTMENT_RESCHEDULED: (
@@ -49,19 +49,19 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     ),
     NotificationEvent.GROUP_SESSION_REGISTERED: (
         PushDecision.PUSH,
-        "You have a group session update.",
+        "You have a Group Session update.",
     ),
     NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED: (
         PushDecision.PUSH,
-        "You have a group session update.",
+        "You have a Group Session update.",
     ),
     NotificationEvent.GROUP_SESSION_CANCELLED: (
         PushDecision.PUSH,
-        "You have a group session update.",
+        "You have a Group Session update.",
     ),
     NotificationEvent.GROUP_SESSION_RESCHEDULED: (
         PushDecision.PUSH,
-        "You have a group session update.",
+        "You have a Group Session update.",
     ),
     NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GOOD_MORAL_ISSUED: (

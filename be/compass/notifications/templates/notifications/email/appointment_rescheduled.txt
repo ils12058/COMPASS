@@ -1,5 +1,5 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A COMPASS Appointment has been rescheduled.
+{% block content %}Your Appointment time changed.
 
 {% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}
-{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to review the revised schedule and any updated instructions.{% endif %}{% endblock %}
+{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check the new schedule and instructions.{% endif %}{% endblock %}

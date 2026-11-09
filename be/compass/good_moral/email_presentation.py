@@ -139,7 +139,13 @@ def resolve_good_moral_email_facts(*, event_code, source_type, source_id, reques
             return GoodMoralEmailResolution(EmailSourceEligibility.PROVENANCE_UNAVAILABLE)
         status = "Certificate issued"
     rows = [
-        GoodMoralEmailDetail(GoodMoralEmailField.REQUEST, "Good Moral request"),
+        GoodMoralEmailDetail(
+            GoodMoralEmailField.REQUEST,
+            {
+                GoodMoralVariant.CURRENT_STUDENT: "Good Moral Certificate for current Students",
+                GoodMoralVariant.GRADUATE: "Good Moral Certificate for UCN Bachelor's graduates",
+            }.get(item.variant, "Good Moral Certificate request"),
+        ),
         GoodMoralEmailDetail(GoodMoralEmailField.STATUS, status),
     ]
     if event_code == NotificationEvent.GOOD_MORAL_ISSUED:

@@ -400,9 +400,9 @@ def test_admin_initiated_request_is_discoverable_only_by_owner_and_reports_compl
         assert deliver_email_otp.run(challenge_id, "123456") == 1
     email_body = send.call_args.kwargs["body"]
     email_html = send.call_args.kwargs["html_body"]
-    assert "Account Security" in email_body
+    assert "Account security" in email_body
     assert "Verify email" in email_body
-    assert "Account Security" in email_html
+    assert "Account security" in email_html
     assert "Verify email" in email_html
     assert "status-new@example.edu" not in email_body + email_html
 

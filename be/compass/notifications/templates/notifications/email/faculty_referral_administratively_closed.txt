@@ -1,8 +1,8 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}Your Referral has been administratively closed.
+{% block content %}The Guidance Office closed your Referral record.
 
-{% if action_url %}View Referral in COMPASS: {{ action_url }}{% else %}Sign in to COMPASS to review your Referral.{% endif %}
+{% if action_url %}View Referral: {{ action_url }}{% else %}Sign in to COMPASS to review your Referral.{% endif %}
 
-Administrative closure does not certify that clinical care or every linked Follow-Up is complete.
+Care or linked Follow-Ups may still be ongoing.
 
-For assistance, contact the Guidance Office through an official university channel.{% endblock %}
+Questions? Contact the Guidance Office.{% endblock %}

@@ -1,5 +1,5 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A COMPASS Appointment has been cancelled.
+{% block content %}Your Appointment is cancelled.
 
 {% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}
-{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check the current appointment status and any next steps.{% endif %}{% endblock %}
+{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check your Appointment and next steps.{% endif %}{% endblock %}

@@ -36,16 +36,15 @@ _GROUP_COPY = {
     ),
     NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED: (
         "Group Session registration cancelled",
-        "Your Group Session registration has been cancelled.",
+        "Your Group Session registration is cancelled.",
     ),
     NotificationEvent.GROUP_SESSION_CANCELLED: (
         "Group Session cancelled",
-        "The Group Session has been cancelled. "
-        "There is no active attendance instruction for this session.",
+        "Your Group Session is cancelled. You no longer need to attend.",
     ),
     NotificationEvent.GROUP_SESSION_RESCHEDULED: (
         "Group Session rescheduled",
-        "Your Group Session has been rescheduled. Review the latest schedule in COMPASS.",
+        "Your Group Session time changed. Check the new schedule in COMPASS.",
     ),
 }
 
@@ -80,7 +79,7 @@ def operational_email_context(event_code, presentation):
         )
         fields, action = (
             GROUP_SESSION_EMAIL_FIELD_POLICY[event_code],
-            "View Group Session in COMPASS",
+            "View Group Session",
         )
     elif event_code in GOOD_MORAL_EMAIL_EVENTS:
         facts = presentation.good_moral_facts
@@ -93,7 +92,7 @@ def operational_email_context(event_code, presentation):
         )
         fields, action = (
             GOOD_MORAL_EMAIL_FIELD_POLICY[event_code],
-            "View Good Moral request in COMPASS",
+            "View Good Moral Certificate request",
         )
     elif event_code in CALL_SLIP_EMAIL_EVENTS:
         facts = presentation.call_slip_facts
@@ -104,7 +103,7 @@ def operational_email_context(event_code, presentation):
             CallSlipEmailRecipient.STUDENT,
             CallSlipEmailDetail,
         )
-        fields, action = CALL_SLIP_EMAIL_FIELD_POLICY[event_code], "View Call Slip in COMPASS"
+        fields, action = CALL_SLIP_EMAIL_FIELD_POLICY[event_code], "View Call Slip"
     rich = presentation.reason == "rich_available"
     if (
         facts.event_code != event_code

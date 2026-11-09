@@ -57,7 +57,7 @@ FOOTER_LINES = ("This is an automated COMPASS message.",)
 INSTITUTION_LINES = (
     "COMPASS",
     "University of Camarines Norte",
-    "Guidance and Counseling Office",
+    "Guidance Office",
 )
 EMAIL_EVENTS = tuple(
     event
@@ -143,7 +143,7 @@ def test_every_message_uses_the_branded_shell(name, message):
     heading = re.search(r"<h1 [^>]*>([^<]+)</h1>", message.html_body)
     assert heading
     # Reading order: institutional header, then the message, then the footer.
-    header_at = text.index("COMPASS University of Camarines Norte Guidance and Counseling Office")
+    header_at = text.index("COMPASS University of Camarines Norte Guidance Office")
     heading_at = text.index(heading.group(1))
     footer_at = text.index("This is an automated COMPASS message.")
     assert header_at < heading_at < footer_at
@@ -195,21 +195,21 @@ def test_messages_load_nothing_remote_and_run_nothing(name, message):
 @pytest.mark.parametrize(
     ("event", "required_copy"),
     [
-        (NotificationEvent.APPOINTMENT_SCHEDULED, "date, time, and any instructions"),
+        (NotificationEvent.APPOINTMENT_SCHEDULED, "date, time, and instructions"),
         (NotificationEvent.APPOINTMENT_REMINDER_24H, "before your session"),
-        (NotificationEvent.APPOINTMENT_RESCHEDULED, "revised schedule"),
-        (NotificationEvent.APPOINTMENT_CANCELLED, "current appointment status"),
-        (NotificationEvent.CALL_SLIP_ISSUED, "instructions for the requested office visit"),
-        (NotificationEvent.GOOD_MORAL_ISSUED, "actions available to you"),
+        (NotificationEvent.APPOINTMENT_RESCHEDULED, "new schedule"),
+        (NotificationEvent.APPOINTMENT_CANCELLED, "your Appointment and next steps"),
+        (NotificationEvent.CALL_SLIP_ISSUED, "when and where to report"),
+        (NotificationEvent.GOOD_MORAL_ISSUED, "certificate and next steps"),
         (NotificationEvent.ECOUNSELING_CONSENT_REQUESTED, "record your decision"),
-        (NotificationEvent.GROUP_SESSION_REGISTERED, "registration status, session details"),
+        (NotificationEvent.GROUP_SESSION_REGISTERED, "registration, Group Session details"),
     ],
 )
 def test_operational_email_copy_gives_a_clear_next_step(event, required_copy):
     rendered = render_notification_email(event)
     assert required_copy in rendered.text_body
     assert required_copy in visible_text(rendered.html_body)
-    assert "Guidance and Counseling Office through an official university channel" in (
+    assert "Questions? Contact the Guidance Office." in (
         rendered.text_body + visible_text(rendered.html_body)
     ) or event in {
         NotificationEvent.APPOINTMENT_RESCHEDULED,
@@ -224,7 +224,7 @@ def test_template_autoescapes_subject_and_renders_without_optional_context():
     rendered = render_email("<script>alert(1)</script>", "notifications/email/appointment_reminder")
     assert "<script>alert(1)</script>" not in rendered.html_body
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered.html_body
-    assert "You have an upcoming COMPASS appointment." in rendered.text_body
+    assert "You have an upcoming Appointment." in rendered.text_body
 
 
 @pytest.mark.parametrize(("name", "message"), ALL_MESSAGES, ids=message_ids())
@@ -254,13 +254,21 @@ def test_security_email_instructions_and_warnings_remain_intact():
     assert "Never share this code." in code_message.text_body
 
     expectations = {
-        NotificationEvent.SECURITY_PASSWORD_CHANGED: "If you did not perform this action",
-        NotificationEvent.SECURITY_PASSWORD_RESET: "If you did not perform this action",
-        NotificationEvent.SECURITY_MFA_DISABLED: (
-            "contact the appropriate university office immediately"
+        NotificationEvent.SECURITY_PASSWORD_CHANGED: (
+            "Didn't expect this change? Contact your IT Administrator."
         ),
-        NotificationEvent.SECURITY_MFA_ADMIN_RESET: "You may need to configure MFA again.",
-        NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED: "review your account security",
+        NotificationEvent.SECURITY_PASSWORD_RESET: (
+            "Didn't expect this change? Contact your IT Administrator."
+        ),
+        NotificationEvent.SECURITY_MFA_DISABLED: (
+            "Didn't expect this change? Contact your IT Administrator."
+        ),
+        NotificationEvent.SECURITY_MFA_ADMIN_RESET: (
+            "You may need to set up multi-factor authentication again."
+        ),
+        NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED: (
+            "Didn't expect this change? Contact your IT Administrator."
+        ),
     }
     for event, instruction in expectations.items():
         rendered = render_notification_email(event)
@@ -538,11 +546,11 @@ def test_email_change_alert_is_multipart_and_names_neither_address_nor_actor():
     assert message.subject == EMAIL_CHANGED_SUBJECT
     assert message.to == ["alert-before@example.edu"]
     assert "Your COMPASS sign-in email was changed." in message.body
-    assert "No action is required if you expected this change." in message.body
+    assert "You can ignore this notice if you expected the change." in message.body
     assert len(message.alternatives) == 1
     html_body, mimetype = message.alternatives[0]
     assert mimetype == "text/html"
-    assert "contact the UCN Guidance and Counseling Office" in visible_text(html_body)
+    assert "Didn't expect this change? Contact your IT Administrator." in visible_text(html_body)
     for content in (message.subject, message.body, html_body):
         for withheld in (
             "alert-before@example.edu",

@@ -1,5 +1,5 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A COMPASS Appointment assignment has changed.
+{% block content %}Your Appointment assignment changed.
 
 {% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}
-{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to review the current assignment and appointment details.{% endif %}{% endblock %}
+{% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check your Appointment details.{% endif %}{% endblock %}

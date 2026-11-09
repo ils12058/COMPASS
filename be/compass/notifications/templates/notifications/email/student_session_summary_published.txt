@@ -1,4 +1,4 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A Student Session Summary is now available in COMPASS.
+{% block content %}You have a Student Session Summary to review in COMPASS.
 
 Sign in to review it.{% endblock %}

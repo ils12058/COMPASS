@@ -1,10 +1,10 @@
 {% extends "compass/email/base.html" %}
-{% block preheader %}A COMPASS Appointment has been scheduled.{% endblock %}
+{% block preheader %}Your Appointment is booked.{% endblock %}
 {% block heading %}Appointment scheduled{% endblock %}
 {% block content %}
-<p>A COMPASS Appointment has been scheduled.</p>
-{% if appointment_details %}{% include "notifications/partials/appointment_details.html" %}{% else %}<p>Sign in to review its date, time, and any instructions before the session.</p>{% endif %}
-{% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Appointment in COMPASS</a></p>
+<p>Your Appointment is booked.</p>
+{% if appointment_details %}{% include "notifications/partials/appointment_details.html" %}{% else %}<p>Sign in to check the date, time, and instructions.</p>{% endif %}
+{% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Appointment</a></p>
 <p>Sign in to review the latest details. The Appointment may have changed since this notice.</p>{% endif %}
-<p>For assistance, contact the Guidance and Counseling Office through an official university channel.</p>
+<p>Questions? Contact the Guidance Office.</p>
 {% endblock %}
