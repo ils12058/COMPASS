@@ -115,7 +115,7 @@ export function MyAvailabilityPage() {
     status.dismiss();
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
-      "Your weekly Availability could not be saved.",
+      "Couldn't save your weekly Availability. Try again.",
     );
     if (!response) return false;
     status.show("Weekly schedule saved.");
@@ -130,7 +130,7 @@ export function MyAvailabilityPage() {
     status.dismiss();
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
-      "Your unavailability could not be added.",
+      "Couldn't add your unavailability. Try again.",
     );
     if (!response) return false;
     status.show("Unavailability added.");
@@ -145,7 +145,7 @@ export function MyAvailabilityPage() {
     status.dismiss();
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
-      "Your unavailability could not be removed.",
+      "Couldn't remove your unavailability. Try again.",
     );
     if (!response) return false;
     await exceptions.refetch();
@@ -156,8 +156,8 @@ export function MyAvailabilityPage() {
   return (
     <section>
       <AvailabilityPageHeading
-        title="My availability"
-        description="Set your weekly hours and unavailable dates."
+        title="My Availability"
+        description="Set your weekly hours and time off."
         help={<AvailabilityHelp />}
       />
 
@@ -170,7 +170,7 @@ export function MyAvailabilityPage() {
             ) : !weeklyData ? (
               <AvailabilityQueryError
                 error={weekly.error}
-                fallback="Your weekly Availability could not be loaded."
+                fallback="Couldn't load your weekly Availability. Try again."
                 onRetry={() => void weekly.refetch()}
               />
             ) : (
@@ -194,7 +194,7 @@ export function MyAvailabilityPage() {
             ) : !exceptionData ? (
               <AvailabilityQueryError
                 error={exceptions.error}
-                fallback="Your unavailability could not be loaded."
+                fallback="Couldn't load your unavailability. Try again."
                 onRetry={() => void exceptions.refetch()}
               />
             ) : (
@@ -247,7 +247,7 @@ export function OfficeAvailabilityPage() {
     status.dismiss();
     const response = await weeklyAction.run(
       () => replaceWeekly.mutateAsync({ data: { windows } }),
-      "Office weekly Availability could not be saved.",
+      "Couldn't save Guidance Office weekly Availability. Try again.",
     );
     if (!response) return false;
     status.show("Office weekly schedule saved.");
@@ -261,10 +261,10 @@ export function OfficeAvailabilityPage() {
     status.dismiss();
     const response = await exceptionAction.run(
       () => createException.mutateAsync({ data: payload }),
-      "Office unavailability could not be added.",
+      "Couldn't add Guidance Office unavailability. Try again.",
     );
     if (!response) return false;
-    status.show("Office unavailability added.");
+    status.show("Guidance Office unavailability added.");
     await exceptions.refetch();
     return true;
   }
@@ -275,7 +275,7 @@ export function OfficeAvailabilityPage() {
     status.dismiss();
     const response = await exceptionAction.run(
       () => removeException.mutateAsync({ exceptionId }),
-      "Office unavailability could not be removed.",
+      "Couldn't remove Guidance Office unavailability. Try again.",
     );
     if (!response) return false;
     await exceptions.refetch();
@@ -299,7 +299,7 @@ export function OfficeAvailabilityPage() {
             ) : !weeklyData ? (
               <AvailabilityQueryError
                 error={weekly.error}
-                fallback="Office weekly Availability could not be loaded."
+                fallback="Couldn't load Guidance Office weekly Availability. Try again."
                 onRetry={() => void weekly.refetch()}
               />
             ) : (
@@ -323,7 +323,7 @@ export function OfficeAvailabilityPage() {
             ) : !exceptionData ? (
               <AvailabilityQueryError
                 error={exceptions.error}
-                fallback="Office unavailability could not be loaded."
+                fallback="Couldn't load Guidance Office unavailability. Try again."
                 onRetry={() => void exceptions.refetch()}
               />
             ) : (
@@ -389,7 +389,7 @@ function ProviderWorkspace({
           providerId: provider.id,
           data: { windows },
         }),
-      "The Counselor's weekly Availability could not be saved.",
+      "Couldn't save the Counselor's weekly Availability. Try again.",
     );
     if (!response) return false;
     await weekly.refetch();
@@ -413,7 +413,7 @@ function ProviderWorkspace({
           providerId: provider.id,
           data: payload,
         }),
-      "The Counselor's unavailability could not be added.",
+      "Couldn't add the Counselor's unavailability. Try again.",
     );
     if (!response) return false;
     status.show("Unavailability added.");
@@ -432,7 +432,7 @@ function ProviderWorkspace({
           providerId: provider.id,
           exceptionId,
         }),
-      "The Counselor's unavailability could not be removed.",
+      "Couldn't remove the Counselor's unavailability. Try again.",
     );
     if (!response) return false;
     await exceptions.refetch();
@@ -461,7 +461,7 @@ function ProviderWorkspace({
         <Notice tone="warning" className="mb-5 max-w-3xl">
           <span className="text-muted">
             {legacy
-              ? "This is historical Guidance Office Assistant Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
+              ? "You can review or remove saved Guidance Office Assistant Availability. You can no longer add Availability for this account."
               : "This Counselor is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be added."}
           </span>
         </Notice>
@@ -476,7 +476,7 @@ function ProviderWorkspace({
             ) : !weeklyData ? (
               <AvailabilityQueryError
                 error={weekly.error}
-                fallback="The Counselor's weekly Availability could not be loaded."
+                fallback="Couldn't load the Counselor's weekly Availability. Try again."
                 onRetry={() => void weekly.refetch()}
               />
             ) : operational ? (
@@ -508,7 +508,7 @@ function ProviderWorkspace({
             ) : !exceptionData ? (
               <AvailabilityQueryError
                 error={exceptions.error}
-                fallback="The Counselor's unavailability could not be loaded."
+                fallback="Couldn't load the Counselor's unavailability. Try again."
                 onRetry={() => void exceptions.refetch()}
               />
             ) : (
@@ -623,7 +623,7 @@ export function ProviderAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="Counselor schedules"
-        description="Find a counselor to manage their availability."
+        description="Find a Counselor to manage their Availability."
         help={<AvailabilityHelp office />}
       />
 
@@ -651,16 +651,16 @@ export function ProviderAvailabilityPage() {
               : null}
         />
         {providers.isPending ? (
-          <RowsSkeleton label="Loading counselors…" />
+          <RowsSkeleton label="Loading Counselors…" />
         ) : !providersData ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void providers.refetch()}>Retry</Button>}>
-            {availabilityErrorMessage(providers.error, "Counselors could not be loaded.")}
+            {availabilityErrorMessage(providers.error, "Couldn't load Counselors. Try again.")}
           </PanelMessage>
         ) : providersData.data.items.length === 0 ? (
           <PanelMessage>
             {search
-              ? "No counselors match the current search."
-              : "No counselors are available."}
+              ? "No Counselors match the current search."
+              : "No Counselors are available."}
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
@@ -726,11 +726,11 @@ export function ProviderAvailabilityDetailPage({ providerId }: { providerId: str
   });
   // An unconfirmed eligibility summary cannot enable configuration mutations.
   if (!allowed) return <AvailabilityRouteUnavailable management />;
-  if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading counselor availability…" />;
+  if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading Counselor Availability…" />;
   if (summary.isError || !summary.data) return (
     <section>
       <AvailabilityPageHeading title="Counselor schedules" />
-      <AvailabilityQueryError error={summary.error} fallback="The Counselor could not be loaded." onRetry={() => void summary.refetch()} />
+      <AvailabilityQueryError error={summary.error} fallback="Couldn't load this Counselor. Try again." onRetry={() => void summary.refetch()} />
       <Link href="/portal/availability/providers" className="mt-4 inline-block text-sm text-brand hover:underline">← Counselors</Link>
     </section>
   );

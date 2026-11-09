@@ -188,13 +188,13 @@ test("Staff panel renders group sessions, metrics, and management controls", () 
     }
   );
 
-  assert.match(html, /Group Sessions &amp; Events/);
+  assert.match(html, /Group Sessions and events/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
   assert.match(html, /Schedule Group Session/);
   assert.match(html, /PUBLISHED/);
-  assert.match(html, /Total Sessions/);
+  assert.match(html, /Total Group Sessions/);
   assert.match(html, /95%/);
-  assert.match(html, /Roster &amp; Attendance/);
+  assert.match(html, /Roster and attendance/);
   assert.match(html, /Former facilitators: Former Counselor/);
 });
 
@@ -252,7 +252,7 @@ test("Facilitator session controls follow resource capabilities", () => {
     }
   );
 
-  assert.match(html, /Roster &amp; Attendance/);
+  assert.match(html, /Roster and attendance/);
   assert.doesNotMatch(html, /Publish Draft/);
   assert.doesNotMatch(html, /Withdraw/);
 });
@@ -304,7 +304,7 @@ test("Student panel renders discoverable group sessions with registration action
     }
   );
 
-  assert.match(html, /Upcoming Group Sessions &amp; Workshops/);
+  assert.match(html, /Upcoming Group Sessions and workshops/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
   assert.match(html, /15 of 25 seats remaining/);
   assert.match(html, /Register/);
@@ -323,10 +323,10 @@ test("Student Group Session discovery is available outside the staff-only Servic
     }
   );
 
-  assert.match(html, /Group Sessions &amp; Workshops/);
+  assert.match(html, /Group Sessions and workshops/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
-  assert.match(html, /My Registrations/);
-  assert.doesNotMatch(html, /Services unavailable/);
+  assert.match(html, /My registrations/);
+  assert.doesNotMatch(html, /Service access/);
 });
 
 test("Group Session discovery stays unavailable outside Student scheduling scope", () => {
@@ -335,7 +335,7 @@ test("Group Session discovery stays unavailable outside Student scheduling scope
     { ...student, role: "IT_ADMIN", capabilities: ["appointments.view_self"] }
   );
 
-  assert.match(html, /Group Sessions unavailable/);
+  assert.match(html, /Group Session access/);
   assert.doesNotMatch(html, /Upcoming Group Sessions/);
 });
 
@@ -359,7 +359,7 @@ test("Student registration action follows server-derived overlap eligibility", (
     }
   );
 
-  assert.match(html, /Registration unavailable/);
+  assert.match(html, /You can&#x27;t register now/);
   assert.match(html, /overlaps another Appointment or registered Group Session/);
   assert.doesNotMatch(html, />Register<\/button>/);
 });
@@ -385,7 +385,7 @@ test("Student history and direct event details remain reachable outside the Serv
   const history = renderWithUser(h(GroupSessionsHistoryPage), student, (client) => {
     client.setQueryData(getGroupSessionsGetMyRegistrationsQueryKey(), ok([registration]));
   });
-  assert.match(history, /My Registrations/);
+  assert.match(history, /My registrations/);
   assert.match(history, /Cancelled/);
   assert.match(history, /Facilitator illness/);
   assert.match(history, /href="\/portal\/group-sessions\/gs-1"/);
@@ -448,7 +448,7 @@ test("ServiceDetailPage integrates group sessions staff panel when pathway is co
     );
   });
 
-  assert.match(html, /Group Sessions &amp; Events/);
+  assert.match(html, /Group Sessions and events/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
 });
 
@@ -474,7 +474,7 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
       client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
     });
     assert.doesNotMatch(html, /Schedule Group Session/);
-    assert.doesNotMatch(html, /Upcoming Group Sessions &amp; Workshops/);
+    assert.doesNotMatch(html, /Upcoming Group Sessions and workshops/);
   }
 
   const dest = notificationDestination(
@@ -548,12 +548,12 @@ test("one Group Sessions sidebar entry follows scheduling role and capability, i
 test("Student and staff workspace tabs mark the current route", () => {
   const html = renderWithUser(h(GroupSessionsNavigation), student, () => {}, "/portal/group-sessions/my");
   assert.match(html, /aria-current="page"[^>]*href="\/portal\/group-sessions\/my"/);
-  assert.match(html, /Browse Sessions/);
-  assert.match(html, /My Registrations/);
+  assert.match(html, /Browse Group Sessions/);
+  assert.match(html, /My registrations/);
   const staff = renderWithUser(h(GroupSessionsNavigation), manager, () => {}, "/portal/group-sessions/attendance");
   assert.match(staff, /aria-current="page"[^>]*href="\/portal\/group-sessions\/attendance"/);
-  assert.match(staff, /Manage Sessions/);
-  assert.doesNotMatch(staff, /Browse Sessions/);
+  assert.match(staff, /Manage Group Sessions/);
+  assert.doesNotMatch(staff, /Browse Group Sessions/);
 });
 
 test("centralized management reuses scoped session projections without Services management", () => {
@@ -564,7 +564,7 @@ test("centralized management reuses scoped session projections without Services 
   assert.match(html, /Resume &amp; Interview Masterclass/);
   assert.match(html, /Schedule Group Session/);
   assert.match(html, /Help: Group Sessions/);
-  assert.doesNotMatch(html, /Services unavailable/);
+  assert.doesNotMatch(html, /Service access/);
 });
 
 test("attendance entry shows only participant-authorized summaries and no lifecycle controls", () => {
@@ -572,11 +572,11 @@ test("attendance entry shows only participant-authorized summaries and no lifecy
     client.setQueryData(getGroupSessionsListStaffQueryKey(), ok([sampleSessions[0], { ...sampleSessions[0], id: "hidden", title: "No participant authority", can_access_participants: false }]));
     client.setQueryData(getGroupSessionsGetMetricsQueryKey(), ok(sampleMetrics));
   });
-  assert.match(html, /Roster &amp; Attendance/);
+  assert.match(html, /Roster and attendance/);
   assert.doesNotMatch(html, /No participant authority|Schedule Group Session|>Edit<|>Cancel<|>Publish</);
   const denied = renderWithUser(h(GroupSessionsStaffPage), { ...manager, role: "IT_ADMIN" });
-  assert.match(denied, /Group Sessions unavailable/);
-  assert.doesNotMatch(denied, /Participant Roster|Manage Sessions/);
+  assert.match(denied, /Group Session access/);
+  assert.doesNotMatch(denied, /Participant Roster|Manage Group Sessions/);
 });
 
 test("discovery failures never become empty sessions, and distinguish access denial", () => {

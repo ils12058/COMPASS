@@ -30,7 +30,7 @@ export function FixedSlotsManagementPage() {
   if (!access.canManageSlots) {
     return (
       <Notice role="alert" tone="danger">
-        Appointment slot management is unavailable to this account.
+        You don&apos;t have access to manage Appointment slots.
       </Notice>
     );
   }
@@ -40,23 +40,22 @@ export function FixedSlotsManagementPage() {
     <section aria-labelledby="appointment-slots-heading" className="space-y-5">
       <AppointmentsLocalNavigation />
       <PageHeader
-        title="Manage appointment slots"
-        description="Publish and maintain scheduled individual appointment opportunities within your authorized provider scope."
+        title="Manage Appointment slots"
+        description="Publish Appointment slots for the Services you manage."
       />
       <Panel>
         <PanelSection title="Select a Service" titleId="appointment-slots-heading">
           <p className="text-sm text-muted">
-            Select an active Service to review its fixed-date slots. Pathway configuration and
-            provider eligibility are checked again by the protected slot operations.
+            Choose an active Service to review its scheduled Appointment slots.
           </p>
           {services.isError ? (
             <Notice role="alert" tone="danger" className="mt-4">
-              {appointmentErrorMessage(services.error, "Services could not be loaded. Try again.")}
+              {appointmentErrorMessage(services.error, "Couldn't load Services. Try again.")}
             </Notice>
           ) : (
             <>
               <Select
-                aria-label="Service for appointment slots"
+                aria-label="Service for Appointment slots"
                 value={serviceId}
                 onChange={(event) => setServiceId(event.target.value)}
                 className="mt-4 max-w-xl"
@@ -96,14 +95,13 @@ export function FixedSlotsManagementPage() {
             </>
           )}
           <p className="mt-2 text-xs text-muted">
-            This selector uses bounded catalog pages; an empty page is not treated as proof that no
-            other Service has scheduled slots.
+            If no Services appear on this page, try another page.
           </p>
         </PanelSection>
       </Panel>
       {service.isError ? (
         <Notice role="alert" tone="danger">
-          {appointmentErrorMessage(service.error, "The selected Service could not be loaded.")}
+          {appointmentErrorMessage(service.error, "Couldn't load the selected Service. Try again.")}
         </Notice>
       ) : service.data?.data ? (
         service.data.data.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) ? (
@@ -112,7 +110,7 @@ export function FixedSlotsManagementPage() {
           </Panel>
         ) : (
           <Notice role="status">
-            This Service has no scheduled appointment-slot pathway configured.
+            Add the scheduled Appointment slot pathway to this Service before publishing slots.
           </Notice>
         )
       ) : null}

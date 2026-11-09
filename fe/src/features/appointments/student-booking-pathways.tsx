@@ -18,17 +18,17 @@ export function StudentBookingPathways({ illustration }: { illustration?: string
         <div className="flex flex-wrap items-center gap-x-2">
           <h2 id="booking-pathways-heading" className="font-heading text-lg font-semibold text-ink">Ways to get support</h2>
           <ContextHelp title="Choosing a booking" sections={[
-            { heading: "Appointments", content: <p>Choose an individual time with a counselor, or select a scheduled slot published by the office. The times shown are checked before booking.</p> },
-            { heading: "Group sessions", content: <p>Group activities have their own registration and capacity. A published session may not be open to every student.</p> },
-            { heading: "After booking", content: <p>Find individual appointments in My appointments and group activities in My Registrations. If a result cannot be confirmed, check your records before trying again.</p> },
+            { heading: "Appointments", content: <p>Choose an individual time with a Counselor, or select a scheduled slot published by the office. The times shown are checked before booking.</p> },
+            { heading: "Group Sessions", content: <p>Group activities have their own registration and capacity. A published session may not be open to every Student.</p> },
+            { heading: "After booking", content: <p>Find individual Appointments in My Appointments and group activities in My registrations. If a result cannot be confirmed, check your records before trying again.</p> },
           ]} />
         </div>
-        <p className="mt-1 text-sm text-muted">Choose how you would like to meet. Times and registration depend on current schedules and eligibility.</p>
+        <p className="mt-1 text-sm text-muted">Choose how you would like to meet. Times and registration depend on the schedules and events open to you.</p>
         <nav aria-label="Booking and registrations" className="mt-1 flex flex-wrap items-center gap-x-5">
-          <a href="#booking-service-heading" className={pathwayLink}>Find an appointment</a>
-          {fixed ? <Link href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" className={pathwayLink}>View scheduled slots</Link> : <p className="py-2 text-sm text-muted">Scheduled slot browsing is unavailable to this account.</p>}
-          {group ? <Link href="/portal/group-sessions/discover" className={pathwayLink}>Browse group sessions</Link> : <p className="py-2 text-sm text-muted">Group session browsing is unavailable to this account.</p>}
-          {group && user.capabilities.includes("appointments.view_self") ? <Link className={pathwayLink} href="/portal/group-sessions/my">My Registrations</Link> : null}
+          <a href="#booking-service-heading" className={pathwayLink}>Find an Appointment</a>
+          {fixed ? <Link href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" className={pathwayLink}>View scheduled slots</Link> : <p className="py-2 text-sm text-muted">You don&apos;t have access to scheduled slots.</p>}
+          {group ? <Link href="/portal/group-sessions/discover" className={pathwayLink}>Browse Group Sessions</Link> : <p className="py-2 text-sm text-muted">You don&apos;t have access to browse Group Sessions.</p>}
+          {group && user.capabilities.includes("appointments.view_self") ? <Link className={pathwayLink} href="/portal/group-sessions/my">My registrations</Link> : null}
         </nav>
       </IllustratedIntroduction>
     </section>

@@ -435,7 +435,7 @@ function ServiceForm({
         </fieldset>
         {bookingClearsSavedSettings ? (
           <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
-            Saving clears this Service&rsquo;s Appointment duration, cutoff, and Inventory
+            Saving clears this Service&rsquo;s Appointment duration, cutoff, and Individual Inventory
             requirement. Existing Appointments keep their saved timing and cutoff.
           </p>
         ) : null}
@@ -485,8 +485,7 @@ function ServiceForm({
               }
             />
             <p className="text-xs leading-5 text-muted">
-              Optional. Student self-service changes stop this many minutes before the
-              Appointment.
+              Optional. Student self-service changes stop this many minutes before the Appointment.
             </p>
           </div>
         </div>
@@ -511,8 +510,7 @@ function ServiceForm({
 
       <PanelSection title="Additional booking pathways" titleId="service-additional-pathways-heading">
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Choose which future booking options this Service may offer. These settings do not
-          create appointment slots, sessions, or registrations.
+          Choose which future booking options this Service may offer. These settings do not create Appointment slots, sessions, or registrations.
         </p>
         <fieldset className="mt-4 space-y-4">
           <legend className="sr-only">Additional booking pathways</legend>
@@ -520,7 +518,7 @@ function ServiceForm({
             <input type="checkbox" className="mt-1 h-4 w-4 accent-brand"
               checked={values.fixedDateSlots}
               onChange={(event) => setValues((current) => ({ ...current, fixedDateSlots: event.target.checked }))} />
-            <span><strong>Fixed-date appointment slots</strong>
+            <span><strong>Fixed-date Appointment slots</strong>
               <span className="block text-muted">Students can book once an eligible Counselor publishes a slot and the Service is active.</span>
             </span>
           </label>
@@ -528,24 +526,22 @@ function ServiceForm({
             <input type="checkbox" className="mt-1 h-4 w-4 accent-brand"
               checked={values.groupSessions}
               onChange={(event) => setValues((current) => ({ ...current, groupSessions: event.target.checked }))} />
-            <span><strong>Group sessions and events</strong>
+            <span><strong>Group Sessions and events</strong>
               <span className="block text-muted">Students can register once an event is published, registration is open, and the Service is active.</span>
             </span>
           </label>
         </fieldset>
         <p className="mt-4 text-xs leading-5 text-muted">
-          Options can be selected together. Existing appointments are not changed.
-          Flexible individual booking is controlled above.
+          Options can be selected together. Existing Appointments are not changed. Flexible individual booking is controlled above.
         </p>
       </PanelSection>
 
-      <PanelSection title="Provider coverage" titleId="service-provider-heading">
+      <PanelSection title="Who provides this Service" titleId="service-provider-heading">
         <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
-          Counselor coverage applies to individual appointments and future fixed-date
-          appointments. Group-session organizers and facilitators will be managed separately.
+          These Counselors provide individual Appointments and scheduled Appointment slots. Assign Group Session organizers and facilitators separately.
         </p>
         <dl className="mt-4">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provider type</dt>
+          <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provided by</dt>
           <dd className="mt-1 text-sm text-ink">Counselor</dd>
         </dl>
         <fieldset className="mt-5">
@@ -642,7 +638,7 @@ export function CreateServicePage() {
     };
     const response = await action.run(
       () => create.mutateAsync({ data }),
-      "The Service could not be created.",
+      "Couldn't create a Service. Try again.",
     );
     if (!response) return;
     await queryClient.invalidateQueries({
@@ -737,7 +733,7 @@ export function EditServicePage() {
     return (
       <ServicesQueryError
         error={detailData ? providers.error : detail.error}
-        fallback="The Service could not be loaded."
+        fallback="Couldn't load this Service. Try again."
         onRetry={() => {
           void detail.refetch();
           void providers.refetch();
@@ -803,7 +799,7 @@ export function EditServicePage() {
 
     const response = await action.run(
       () => update.mutateAsync({ serviceId, data: changes }),
-      "The Service could not be updated.",
+      "Couldn't update this Service. Try again.",
       {
         onError: (caught, code) => {
           if (code !== "service_scheduling_consequence_review_required") {
@@ -850,7 +846,7 @@ export function EditServicePage() {
             acknowledge_scheduling_consequences: true,
           },
         }),
-      "The Service could not be updated.",
+      "Couldn't update this Service. Try again.",
       {
         onStepUpRequired: () => setReview(null),
         onError: (caught, code) => {
@@ -863,7 +859,7 @@ export function EditServicePage() {
             return true;
           }
           setReviewError(
-            servicesErrorMessage(caught, "The Service could not be updated."),
+            servicesErrorMessage(caught, "Couldn't update this Service. Try again."),
           );
           return true;
         },
@@ -886,7 +882,7 @@ export function EditServicePage() {
       </ServicesPageHeading>
       {refreshFailed ? (
         <RefreshFailureNotice
-          message="The latest Service details could not be refreshed. Your changes are kept here, and you can save them once the details refresh."
+          message="Couldn't refresh the latest Service details. Your changes are kept here; you can save them after the details refresh."
           retrying={detail.isFetching || providers.isFetching}
           onRetry={() => {
             if (detail.isError) void detail.refetch();

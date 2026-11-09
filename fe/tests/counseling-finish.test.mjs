@@ -136,12 +136,12 @@ test("Finish conflicts explain themselves instead of repeating the server messag
 test("Appointment Detail replaces Complete with Finish and states the documentation fact", () => {
   const open = detailPage(detail(), finishActor);
   assert.match(open, />Finish counseling</);
-  assert.doesNotMatch(open, /Complete appointment/);
-  assert.match(open, />Counseling encounter<\/dt><dd[^>]*>Not recorded</);
+  assert.doesNotMatch(open, /Complete Appointment/);
+  assert.match(open, />Counseling Encounter<\/dt><dd[^>]*>Not recorded</);
 
   const documented = detailPage(detail({ counseling_encounter_recorded: true }), finishActor);
-  assert.match(documented, />Counseling encounter<\/dt><dd[^>]*>Recorded</);
-  assert.match(documented, /Complete appointment/);
+  assert.match(documented, />Counseling Encounter<\/dt><dd[^>]*>Recorded</);
+  assert.match(documented, /Complete Appointment/);
   assert.doesNotMatch(documented, />Finish counseling</);
 });
 
@@ -156,11 +156,11 @@ test("a completed Appointment without its Encounter is offered Finish and says s
 
 test("the documentation fact and Finish stay hidden where the fact is not exposed", () => {
   const asStudent = detailPage(detail({ counseling_encounter_recorded: null }), studentActor);
-  assert.doesNotMatch(asStudent, /Counseling encounter|Finish counseling/);
+  assert.doesNotMatch(asStudent, /Counseling Encounter|Finish counseling/);
 
   const ordinary = detailPage(detail({ service: careerService }), finishActor);
-  assert.doesNotMatch(ordinary, /Finish counseling|Counseling encounter/);
-  assert.match(ordinary, /Complete appointment/);
+  assert.doesNotMatch(ordinary, /Finish counseling|Counseling Encounter/);
+  assert.match(ordinary, /Complete Appointment/);
 });
 
 test("the Counseling Workspace offers Finish instead of Record in an Appointment context", () => {
@@ -213,7 +213,7 @@ test("a completed Appointment with no link keeps the missing-record warning and 
   );
   assert.match(html, />Finish counseling</);
   assert.match(html, /This Appointment is marked completed, but no Counseling Encounter is recorded for it\./);
-  assert.match(html, />Counseling encounter<\/dt><dd[^>]*>Not recorded</);
+  assert.match(html, />Counseling Encounter<\/dt><dd[^>]*>Not recorded</);
 });
 
 test("a completed Appointment with a non-matching link asks for review instead of offering Finish", () => {
@@ -232,7 +232,7 @@ test("a completed Appointment with a non-matching link asks for review instead o
   );
   assert.doesNotMatch(html, /no Counseling Encounter is recorded for it/);
   assert.doesNotMatch(html, /Finish counseling/);
-  assert.match(html, />Counseling encounter<\/dt><dd[^>]*>Linked, needs review</);
+  assert.match(html, />Counseling Encounter<\/dt><dd[^>]*>Linked, needs review</);
 });
 
 test("a still-scheduled Appointment with its Encounter recorded points at Complete", () => {
@@ -244,6 +244,6 @@ test("a still-scheduled Appointment with its Encounter recorded points at Comple
     html,
     /This Counseling Encounter is already recorded\. Complete the Appointment to reconcile it; this won’t create another Encounter\./,
   );
-  assert.match(html, /Complete appointment/);
+  assert.match(html, /Complete Appointment/);
   assert.doesNotMatch(html, />Finish counseling</);
 });

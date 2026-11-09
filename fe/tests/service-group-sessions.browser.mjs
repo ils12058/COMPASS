@@ -146,14 +146,14 @@ await check(
   "/portal/group-sessions/discover",
   { role: "STUDENT", handler: handlerFor(), device: "phone" },
   async (page, { requests }) => {
-    await shown(page.getByRole("heading", { name: "Upcoming Group Sessions & Workshops" }));
+    await shown(page.getByRole("heading", { name: "Upcoming Group Sessions and workshops" }));
     await shown(page.getByRole("link", { name: event.title }));
-    await shown(page.getByText("Registration unavailable", { exact: true }));
+    await shown(page.getByText("You can't register now", { exact: true }));
     await shown(page.getByText(event.registration_block_reason, { exact: true }));
     await hidden(page.getByRole("button", { name: "Register", exact: true }));
     assert.equal(requests.some((request) => request.method !== "GET"), false);
     assert.equal(
-      await page.getByRole("link", { name: "My Registrations", exact: true }).getAttribute("href"),
+      await page.getByRole("link", { name: "My registrations", exact: true }).getAttribute("href"),
       "/portal/group-sessions/my",
     );
     await noHorizontalOverflow(page);
@@ -263,7 +263,7 @@ await check(
       assert.equal(state.publishAttempts.length, 1);
       await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
       await dialog.getByRole("button", { name: "Verify", exact: true }).click();
-      await shown(page.getByText(`Session "${draft.title}" published for student registration.`, { exact: true }));
+      await shown(page.getByText(`Session "${draft.title}" published for Student registration.`, { exact: true }));
       assert.equal(state.publishAttempts.length, 2);
       assert.equal(state.committed, 1);
       await noHorizontalOverflow(page);

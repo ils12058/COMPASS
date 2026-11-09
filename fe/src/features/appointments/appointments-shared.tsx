@@ -32,38 +32,38 @@ const statusClasses: Record<string, string> = {
 };
 
 const knownErrors: Record<string, string> = {
-  current_student_required: "Only a current student can book or reschedule an appointment.",
+  current_student_required: "Only a current Student can book or reschedule an Appointment.",
   current_academic_year_not_configured:
-    "Booking is unavailable until the current academic year is set up for this service.",
+    "The Guidance Office must set up the current Academic Year before you can book this Service.",
   current_inventory_required:
-    "Submit your Individual Inventory for the current academic year before booking this service.",
-  appointment_not_found: "This appointment is unavailable.",
-  invalid_appointment_request: "Some appointment details need attention. Review them and try again.",
+    "Submit your Individual Inventory for the current Academic Year before booking this Service.",
+  appointment_not_found: "You can't open this Appointment.",
+  invalid_appointment_request: "Some Appointment details need attention. Review them and try again.",
   appointment_default_provider_unresolved:
-    "A counselor could not be selected. Choose an eligible counselor and try again.",
+    "Couldn't select a Counselor. Choose a listed Counselor and try again.",
   appointment_default_provider_not_qualified:
-    "Your default counselor does not provide this service. Choose one of the listed counselors.",
+    "Your default Counselor does not provide this Service. Choose one of the listed Counselors.",
   appointment_time_unavailable: "That time was just taken. Choose another available time.",
   appointment_time_conflict: "That time was just taken. Choose another available time.",
   appointment_lifecycle_conflict:
-    "This appointment was updated before your action completed.",
+    "This Appointment was updated before your action completed.",
   appointment_cancellation_cutoff_passed:
-    "The deadline to cancel or reschedule this appointment has passed.",
+    "The deadline to cancel or reschedule this Appointment has passed.",
   appointment_cancellation_conflict:
-    "This appointment can no longer be cancelled.",
+    "This Appointment can no longer be cancelled.",
   ecounseling_access_started:
-    "This Appointment can no longer be cancelled because its online counseling access period has begun.",
+    "You can no longer cancel this Appointment because the E-Counseling session has started.",
   ecounseling_access_open:
-    "Wait until the online counseling access or rejoin period has ended before completing this Appointment or marking it as no-show.",
+    "Wait until the E-Counseling session and rejoin period have ended before completing this Appointment or marking it as no-show.",
   ecounseling_room_linked:
     "This Appointment cannot be cancelled because an E-Counseling room is already linked.",
   appointment_not_schedulable:
     "This Service is not currently available for scheduling.",
   idempotency_unavailable:
-    "Booking could not be safely verified. Keep the same booking details and try again.",
+    "Couldn't verify your booking. Keep the same details and try again.",
   idempotency_key_conflict:
     "This booking attempt no longer matches its original details. Review them and submit again.",
-  permission_denied: "You can't perform this appointment action.",
+  permission_denied: "You can't perform this Appointment action.",
 };
 
 export function appointmentErrorCode(error: unknown): string | undefined {
@@ -83,7 +83,7 @@ export function appointmentErrorMessage(
 }
 
 export function appointmentStatusLabel(status: string): string {
-  return statusLabels[status] ?? "Status unavailable";
+  return statusLabels[status] ?? "Status not shown";
 }
 
 export function AppointmentStatusBadge({ status }: { status: string }) {
@@ -155,12 +155,12 @@ export function formatAppointmentTime(value: string, timeZone?: string): string 
 }
 
 export function AppointmentsUnavailable({
-  children = "Appointments are unavailable to this account.",
+  children = "You don't have access to Appointments.",
 }: {
   children?: ReactNode;
 }) {
   return (
-    <WorkspaceUnavailable title="Appointments unavailable">
+    <WorkspaceUnavailable title="Appointment access">
       {children}
     </WorkspaceUnavailable>
   );
@@ -172,16 +172,16 @@ export function AppointmentsLocalNavigation() {
   const access = getAppointmentAccess(user);
   const links = [
     ...(access.canViewSelf
-      ? [{ href: "/portal/appointments/my", label: "My appointments" }]
+      ? [{ href: "/portal/appointments/my", label: "My Appointments" }]
       : []),
     ...(access.canBook
-      ? [{ href: "/portal/appointments/book", label: "Book appointment" }]
+      ? [{ href: "/portal/appointments/book", label: "Book Appointment" }]
       : []),
     ...(access.canManage
-      ? [{ href: "/portal/appointments/manage", label: "Manage appointments" }]
+      ? [{ href: "/portal/appointments/manage", label: "Manage Appointments" }]
       : []),
     ...(access.canManageSlots
-      ? [{ href: "/portal/appointments/slots", label: "Manage appointment slots" }]
+      ? [{ href: "/portal/appointments/slots", label: "Manage Appointment slots" }]
       : []),
   ];
 
@@ -206,14 +206,14 @@ export function AppointmentsLocalNavigation() {
 }
 
 export function AppointmentListSkeleton({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading appointments…" framed={framed} />;
+  return <RowsSkeleton label="Loading Appointments…" framed={framed} />;
 }
 
 export function AppointmentDetailSkeleton() {
   return (
     <>
       <AppointmentsLocalNavigation />
-      <LoadingRegion label="Loading appointment details…">
+      <LoadingRegion label="Loading Appointment details…">
         <Skeleton className="h-9 w-2/5" />
         <Skeleton className="mt-5 h-24 w-full" />
         <Skeleton className="mt-5 h-48 w-full" />

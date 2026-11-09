@@ -266,11 +266,11 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
     setSuccessMessage(null);
 
     if (!title.trim()) {
-      setErrorMessage("Please enter a session title.");
+      setErrorMessage("Enter a session title.");
       return;
     }
     if (!startDateTime || !endDateTime) {
-      setErrorMessage("Please specify both start and end dates/times.");
+      setErrorMessage("Specify both start and end dates/times.");
       return;
     }
     const startsAtIso = institutionalDateTimeInputToISO(startDateTime);
@@ -351,7 +351,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
               ...(facilitatorsTouched ? { facilitators: facilitatorAssignments } : {}),
             },
           }),
-          "Could not save the Group Session.",
+          "Couldn't save the Group Session. Try again.",
         )) !== undefined;
       } else {
         saved = (await runStaffAction(
@@ -359,7 +359,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
             serviceId: formService!.id,
             data: { ...common, facilitators: facilitatorAssignments },
           }),
-          "Could not save the Group Session.",
+          "Couldn't save the Group Session. Try again.",
         )) !== undefined;
       }
       if (!saved) return;
@@ -374,7 +374,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
       setScheduleReviewOpen(false);
       resetForm();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not save the Group Session.";
+      const msg = err instanceof Error ? err.message : "Couldn't save the Group Session. Try again.";
       setErrorMessage(msg);
     }
   };
@@ -384,11 +384,11 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
     setSuccessMessage(null);
     const result = await runStaffAction(
       () => publishMutation.mutateAsync({ sessionId: session.id }),
-      "Failed to publish session.",
+      "Couldn't publish this Group Session. Try again.",
     );
     if (!result) return;
     await invalidateAll();
-    setSuccessMessage(`Session "${session.title}" published for student registration.`);
+    setSuccessMessage(`Session "${session.title}" published for Student registration.`);
   };
 
   const handleComplete = async (session: GroupSessionResponse) => {
@@ -396,7 +396,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
     setSuccessMessage(null);
     const result = await runStaffAction(
       () => completeMutation.mutateAsync({ sessionId: session.id }),
-      "Failed to complete session.",
+      "Couldn't complete this Group Session. Try again.",
     );
     if (!result) return;
     await invalidateAll();
@@ -413,7 +413,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
     const reason = cancelReason.trim();
     const result = await runStaffAction(
       () => cancelMutation.mutateAsync({ sessionId: target.id, data: { reason } }),
-      "Failed to cancel session.",
+      "Couldn't cancel this Group Session. Try again.",
     );
     if (!result) return;
     await invalidateAll();
@@ -427,7 +427,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
     const target = withdrawSession;
     const result = await runStaffAction(
       () => withdrawMutation.mutateAsync({ sessionId: target.id, data: { reason: "Draft withdrawn by staff." } }),
-      "Failed to withdraw session.",
+      "Couldn't withdraw this Group Session. Try again.",
     );
     if (!result) return;
     await invalidateAll();
@@ -437,7 +437,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
   return (
     <PanelSection
-      title={attendanceOnly ? "Registrations & Attendance" : "Group Sessions & Events"}
+      title={attendanceOnly ? "Registrations and attendance" : "Group Sessions and events"}
       titleId="service-group-sessions-heading"
     >
       <div className="flex flex-col gap-4">
@@ -458,11 +458,11 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
         ) : null}
 
         {/* Operational Metrics Cards */}
-        {!attendanceOnly && metricsQuery.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void metricsQuery.refetch()}>Retry summary</Button>}>{groupSessionsError(metricsQuery.error, "The session summary could not be loaded.")}</Notice> : null}
+        {!attendanceOnly && metricsQuery.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void metricsQuery.refetch()}>Retry summary</Button>}>{groupSessionsError(metricsQuery.error, "Couldn't load the Group Session summary. Try again.")}</Notice> : null}
         {!attendanceOnly && metrics && !metricsQuery.isError && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 rounded-sm border border-border bg-subtle p-3">
             <div>
-              <p className="text-xs font-semibold uppercase text-muted">Total Sessions</p>
+              <p className="text-xs font-semibold uppercase text-muted">Total Group Sessions</p>
               <p className="mt-1 text-xl font-bold text-ink">{metrics.total_sessions}</p>
             </div>
             <div>
@@ -478,13 +478,13 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
               <p className="mt-1 text-xl font-bold text-ink">{metrics.total_registrations}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase text-muted">Capacity Used</p>
+              <p className="text-xs font-semibold uppercase text-muted">Capacity used</p>
               <p className="mt-1 text-xl font-bold text-ink">
                 {metrics.capacity_utilization_percent}%
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase text-muted">Attendance Rate</p>
+              <p className="text-xs font-semibold uppercase text-muted">Attendance rate</p>
               <p className="mt-1 text-xl font-bold text-ink">
                 {metrics.attendance_rate_percent}%
               </p>
@@ -512,14 +512,14 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
         </div> : null}
 
         {sessionsQuery.isPending ? (
-          <p className="text-sm text-muted">Loading group sessions…</p>
+          <p className="text-sm text-muted">Loading Group Sessions…</p>
         ) : sessionsQuery.isError ? (
           <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void sessionsQuery.refetch()}>Retry</Button>}>
-            {groupSessionsError(sessionsQuery.error, "Group sessions could not be loaded. Try again.")}
+            {groupSessionsError(sessionsQuery.error, "Couldn't load Group Sessions. Try again.")}
           </Notice>
         ) : sessions.length === 0 ? (
           <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
-            No group sessions match this view.
+            No Group Sessions match this view.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -619,7 +619,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                           onClick={() => setRosterSession(sess)}
                         >
                           <Users className="mr-1.5 h-3.5 w-3.5" />
-                          Roster & Attendance ({sess.active_registrations_count}/{sess.capacity})
+                          Roster and attendance ({sess.active_registrations_count}/{sess.capacity})
                         </Button>
                       ) : null}
                     </div>
@@ -640,7 +640,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                         <MapPin className="h-3.5 w-3.5 text-muted" />
                       )}
                       <span>
-                        {sess.delivery_mode === "ONLINE" ? "Online" : "In-Person"}
+                        {sess.delivery_mode === "ONLINE" ? "Online" : "In person"}
                         {sess.venue_or_meeting_url && ` · ${sess.venue_or_meeting_url}`}
                       </span>
                     </div>
@@ -711,7 +711,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="session-delivery">Delivery Mode</Label>
+                <Label htmlFor="session-delivery">Delivery mode</Label>
                 <Select
                   id="session-delivery"
                   value={deliveryMode}
@@ -719,7 +719,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                 >
                   {deliveryModes.map((mode) => (
                     <option key={mode} value={mode}>
-                      {mode === "ONLINE" ? "Online" : "In-Person"}
+                      {mode === "ONLINE" ? "Online" : "In person"}
                     </option>
                   ))}
                 </Select>
@@ -740,7 +740,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
             <div>
               <Label htmlFor="session-venue">
-                {deliveryMode === "ONLINE" ? "Meeting URL / Link" : "Venue / Room"}
+                {deliveryMode === "ONLINE" ? "Meeting link" : "Venue or room"}
               </Label>
               <Input
                 id="session-venue"
@@ -756,7 +756,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="session-start">Start Time *</Label>
+                <Label htmlFor="session-start">Start time *</Label>
                 <Input
                   id="session-start"
                   type="datetime-local"
@@ -766,7 +766,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                 />
               </div>
               <div>
-                <Label htmlFor="session-end">End Time *</Label>
+                <Label htmlFor="session-end">End time *</Label>
                 <Input
                   id="session-end"
                   type="datetime-local"
@@ -786,7 +786,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                 <p className="text-sm text-muted">Loading eligible internal facilitators…</p>
               ) : facilitatorCandidatesQuery.isError ? (
                 <Notice role="alert" tone="danger">
-                  Facilitators could not be loaded. {" "}
+                  Couldn&apos;t load Facilitators. Try again. {" "}
                   <Button
                     type="button"
                     variant="quiet"
@@ -917,7 +917,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="reg-opens">Reg. Opens (Optional)</Label>
+                <Label htmlFor="reg-opens">Registration opens (optional)</Label>
                 <Input
                   id="reg-opens"
                   type="datetime-local"
@@ -926,7 +926,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                 />
               </div>
               <div>
-                <Label htmlFor="reg-closes">Reg. Closes (Optional)</Label>
+                <Label htmlFor="reg-closes">Registration closes (optional)</Label>
                 <Input
                   id="reg-closes"
                   type="datetime-local"
@@ -945,7 +945,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                   ? "Saving…"
                   : editingSession
                     ? "Save changes"
-                    : "Create Session (Draft)"}
+                    : "Create draft Group Session"}
               </Button>
             </div>
           </form>
@@ -954,7 +954,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
 
       <ConsequentialActionDialog
         open={scheduleReviewOpen}
-        title="Notify registered students about this change?"
+        title="Notify registered Students about this change?"
         confirmLabel="Save and notify"
         pendingLabel="Saving…"
         pending={updateMutation.isPending}
@@ -963,7 +963,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
         onConfirm={() => void handleSaveForm(undefined, true)}
       >
         <p className="text-sm text-muted">
-          Registered students will receive an in-app notice to review the current event details. The schedule change will be rejected if it conflicts with a facilitator or a student’s existing booking.
+          Registered Students will receive an in-app notice to review the current event details. The schedule change will be rejected if it conflicts with a facilitator or a Student’s existing booking.
         </p>
       </ConsequentialActionDialog>
 
@@ -971,7 +971,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
       <ConsequentialActionDialog
         open={cancelModalSession !== null}
         title="Cancel Group Session"
-        confirmLabel="Yes, Cancel Session"
+        confirmLabel="Cancel Group Session"
         pendingLabel="Cancelling session..."
         error={errorMessage}
         variant="danger"
@@ -983,8 +983,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
       >
         <div>
           <p className="text-sm text-muted">
-            Are you sure you want to cancel &quot;{cancelModalSession?.title}&quot;? All registered participants
-            will have their registrations cancelled and will receive operational notifications.
+            Cancel &quot;{cancelModalSession?.title}&quot;? All registrations will be cancelled, and participants will receive a cancellation notice.
           </p>
           <div className="mt-3">
             <Label htmlFor="cancel-reason">Cancellation Reason *</Label>
@@ -1002,8 +1001,8 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
       {/* WITHDRAW DRAFT SESSION DIALOG */}
       <ConsequentialActionDialog
         open={withdrawSession !== null}
-        title="Withdraw Draft Session"
-        confirmLabel="Withdraw Draft"
+        title="Withdraw draft Group Session"
+        confirmLabel="Withdraw draft"
         pendingLabel="Withdrawing..."
         error={errorMessage}
         variant="danger"
@@ -1014,8 +1013,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
         onConfirm={handleWithdraw}
       >
         <p className="text-sm text-muted">
-          Withdraw draft session &quot;{withdrawSession?.title}&quot; from the active workflow? Its identifier,
-          facilitator assignments, and audit history will be retained.
+          Withdraw draft Group Session &quot;{withdrawSession?.title}&quot;? Its record, facilitator assignments, and history will stay in COMPASS.
         </p>
       </ConsequentialActionDialog>
 
@@ -1089,13 +1087,13 @@ function GroupSessionRosterModal({
 
     const result = await continuation.run(
       () => attendanceMutation.mutateAsync({ sessionId: session.id, data: { records } }),
-      { onFailure: () => setSaveStatus("Failed to save attendance.") },
+      { onFailure: () => setSaveStatus("Couldn't save attendance. Try again.") },
     );
     if (!result) return;
     await queryClient.invalidateQueries({
       queryKey: getGroupSessionsListRegistrationsQueryKey(session.id),
     });
-    setSaveStatus("Attendance saved successfully.");
+    setSaveStatus("Attendance saved.");
   };
 
   const handleExportCsv = async () => {
@@ -1117,7 +1115,7 @@ function GroupSessionRosterModal({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      setExportError("The participant roster could not be exported. Try again.");
+      setExportError("Couldn't export the participant roster. Try again.");
     } finally {
       setIsExporting(false);
     }
@@ -1128,7 +1126,7 @@ function GroupSessionRosterModal({
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogTitle className="flex items-center justify-between">
-          <span>Participant Roster & Attendance</span>
+          <span>Participant roster and attendance</span>
           {session.can_export_roster ? (
             <Button
               className="min-h-8 px-2.5 py-1 text-xs"
@@ -1137,7 +1135,7 @@ function GroupSessionRosterModal({
               disabled={isExporting}
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
-              {isExporting ? "Exporting..." : "Export CSV Roster"}
+              {isExporting ? "Exporting..." : "Export roster as CSV"}
             </Button>
           ) : null}
         </DialogTitle>
@@ -1175,11 +1173,11 @@ function GroupSessionRosterModal({
             <p className="text-sm text-muted">Loading roster…</p>
           ) : regsQuery.isError ? (
             <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void regsQuery.refetch()}>Retry roster</Button>}>
-              {groupSessionsError(regsQuery.error, "The participant roster could not be loaded.")}
+              {groupSessionsError(regsQuery.error, "Couldn't load the participant roster. Try again.")}
             </Notice>
           ) : regs.length === 0 ? (
             <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
-              No students have registered for this session yet.
+              No Students have registered for this session yet.
             </div>
           ) : (
             <table className="w-full text-left text-xs border-collapse">
@@ -1187,7 +1185,7 @@ function GroupSessionRosterModal({
                 <tr className="border-b border-border bg-subtle text-muted uppercase font-semibold">
                   <th className="py-2 px-3">Student</th>
                   <th className="py-2 px-3">Status</th>
-                  {session.can_manage ? <th className="py-2 px-3">Registered At</th> : null}
+                  {session.can_manage ? <th className="py-2 px-3">Registered at</th> : null}
                   <th className="py-2 px-3 text-center">Attended</th>
                   {session.can_manage ? <th className="py-2 px-3">Notes</th> : null}
                 </tr>
@@ -1274,7 +1272,7 @@ function GroupSessionRosterModal({
               !session.can_record_attendance || !["PUBLISHED", "COMPLETED"].includes(session.status) || regsQuery.isError || attendanceMutation.isPending || !regs.some((registration) => registration.status === "REGISTERED")
             }
           >
-            {attendanceMutation.isPending ? "Saving..." : "Save Attendance"}
+            {attendanceMutation.isPending ? "Saving..." : "Save attendance"}
           </Button>
         </div>
       </DialogContent>
@@ -1337,15 +1335,15 @@ export function ServiceGroupSessionsStudentPanel({
       const records = await groupSessionsGetMyRegistrations();
       if (hasActiveRegistrationForSession(records.data, session.id)) {
         setConfirmedId(session.id);
-        setSuccessMessage(`You are registered for "${session.title}".`);
+        setSuccessMessage(`You're registered for "${session.title}".`);
         setErrorMessage(null);
         setUncertain(null);
         await refreshAfterRegistration(session.id);
       } else {
-        setErrorMessage("Your registration is not shown yet. The result is still unconfirmed; check My Registrations again before trying to register.");
+        setErrorMessage("Your registration is not shown yet. Check My registrations again before trying to register.");
       }
     } catch {
-      setErrorMessage("The registration result could not be checked. Try checking again or open My Registrations.");
+      setErrorMessage("Couldn't check your registration. Try checking again or open My registrations.");
     } finally {
       setRegisteringId(null);
     }
@@ -1360,23 +1358,23 @@ export function ServiceGroupSessionsStudentPanel({
     try {
       try {
         const result = (await registerMutation.mutateAsync({ sessionId: session.id })).data;
-        if (!result || result.session_id !== session.id || result.status !== "REGISTERED") throw new Error("Unconfirmed registration response");
+        if (!result || result.session_id !== session.id || result.status !== "REGISTERED") throw new Error("Registration not confirmed");
       } catch (err: unknown) {
         if (bookingResultIsUncertain(err)) {
           setRegisteringSession(null);
           setUncertain(session);
-          setErrorMessage("We could not confirm your registration. Check your registrations before trying again.");
+          setErrorMessage("Couldn't confirm your registration. Check My registrations before trying again.");
           await checkRegistration(session);
         } else if (err instanceof CompassApiError) {
           setRegisteringSession(null);
-          setErrorMessage(err.message || "Registration could not be completed.");
+          setErrorMessage(err.message || "Couldn't complete your registration. Try again.");
           void discoverQuery.refetch();
         }
         return;
       }
       setRegisteringSession(null);
       setConfirmedId(session.id);
-      setSuccessMessage(`Successfully registered for "${session.title}"!`);
+      setSuccessMessage(`You're registered for "${session.title}".`);
       await refreshAfterRegistration(session.id);
     } finally {
       setRegisteringId(null);
@@ -1400,14 +1398,14 @@ export function ServiceGroupSessionsStudentPanel({
       setSuccessMessage(`Your registration for "${cancellingSession.title}" has been cancelled.`);
       setCancellingSession(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to cancel registration.";
+      const msg = err instanceof Error ? err.message : "Couldn't cancel your registration. Try again.";
       setErrorMessage(msg);
     }
   };
 
   return (
     <PanelSection
-      title="Upcoming Group Sessions & Workshops"
+      title="Upcoming Group Sessions and workshops"
       titleId="group-sessions-student-heading"
     >
       <div className="flex flex-col gap-4">
@@ -1419,26 +1417,26 @@ export function ServiceGroupSessionsStudentPanel({
         {successMessage && (
           <Notice role="status" tone="success" className="mb-2">
             {successMessage}
-            {confirmedId ? <p className="mt-2"><Link className="font-semibold underline" href={`/portal/group-sessions/${confirmedId}?from=discover${service ? `&service_id=${encodeURIComponent(service.id)}` : ""}`}>View session</Link> · <Link className="font-semibold underline" href="/portal/group-sessions/my">My Registrations</Link></p> : null}
+            {confirmedId ? <p className="mt-2"><Link className="font-semibold underline" href={`/portal/group-sessions/${confirmedId}?from=discover${service ? `&service_id=${encodeURIComponent(service.id)}` : ""}`}>View session</Link> · <Link className="font-semibold underline" href="/portal/group-sessions/my">My registrations</Link></p> : null}
           </Notice>
         )}
 
-        {refreshFailed ? <Notice role="alert" action={<Button variant="secondary" onClick={() => { if (confirmedId) void refreshAfterRegistration(confirmedId); }}>Refresh</Button>}>Your registration was confirmed, but the latest information could not be refreshed.</Notice> : null}
-        {uncertain ? <Notice role="alert" tone="warning" action={<><Button variant="secondary" disabled={Boolean(registeringId)} onClick={() => void checkRegistration(uncertain)}>Check registration</Button> <Link className="font-semibold underline" href="/portal/group-sessions/my">My Registrations</Link></>}>The result for {uncertain.title} is unconfirmed. {errorMessage} Checking only reads your registrations; it does not submit another registration.</Notice> : null}
-        {!canRegister ? <p className="text-sm text-muted">Registration is available to current students with booking access. You can still view your registrations.</p> : null}
-        {service ? <Link href="/portal/group-sessions/my" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">My Registrations</Link> : null}
+        {refreshFailed ? <Notice role="alert" action={<Button variant="secondary" onClick={() => { if (confirmedId) void refreshAfterRegistration(confirmedId); }}>Refresh</Button>}>Your registration was confirmed, but we couldn&apos;t refresh the latest information. Try refreshing again.</Notice> : null}
+        {uncertain ? <Notice role="alert" tone="warning" action={<><Button variant="secondary" disabled={Boolean(registeringId)} onClick={() => void checkRegistration(uncertain)}>Check registration</Button> <Link className="font-semibold underline" href="/portal/group-sessions/my">My registrations</Link></>}>The result for {uncertain.title} is unconfirmed. {errorMessage} Checking only reads your registrations; it does not submit another registration.</Notice> : null}
+        {!canRegister ? <p className="text-sm text-muted">Registration is available to current Students with booking access. You can still view your registrations.</p> : null}
+        {service ? <Link href="/portal/group-sessions/my" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">My registrations</Link> : null}
 
         {discoverQuery.isPending ? (
-          <p className="text-sm text-muted">Loading upcoming group sessions…</p>
+          <p className="text-sm text-muted">Loading upcoming Group Sessions…</p>
         ) : discoverQuery.isError ? (
           <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void discoverQuery.refetch()}>Retry</Button>}>
-            {groupSessionsError(discoverQuery.error, "Upcoming group sessions could not be loaded. Try again.")}
+            {groupSessionsError(discoverQuery.error, "Couldn't load upcoming Group Sessions. Try again.")}
           </Notice>
         ) : sessions.length === 0 ? (
           <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
             {service
-              ? "No upcoming group sessions are currently scheduled for this Service."
-              : "No upcoming group sessions are currently scheduled."}
+              ? "No upcoming Group Sessions are currently scheduled for this Service."
+              : "No upcoming Group Sessions are currently scheduled."}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -1475,7 +1473,7 @@ export function ServiceGroupSessionsStudentPanel({
                           variant="secondary"
                           onClick={() => setCancellingSession(sess)}
                         >
-                          Cancel Registration
+                          Cancel registration
                         </Button> : null}
                       </div>
                     ) : sess.can_register && canRegister ? (
@@ -1489,7 +1487,7 @@ export function ServiceGroupSessionsStudentPanel({
                     ) : (
                       <div className="text-right">
                         <span className="inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted">
-                          {sess.is_full ? "Session Full" : "Registration unavailable"}
+                          {sess.is_full ? "Session full" : "You can't register now"}
                         </span>
                         {sess.registration_block_reason ? (
                           <p className="mt-1 max-w-56 text-xs text-muted">
@@ -1514,7 +1512,7 @@ export function ServiceGroupSessionsStudentPanel({
                       <MapPin className="h-3.5 w-3.5 text-muted" />
                     )}
                     <span>
-                      {sess.delivery_mode === "ONLINE" ? "Online" : "In-Person"}
+                      {sess.delivery_mode === "ONLINE" ? "Online" : "In person"}
                       {sess.venue_or_meeting_url && ` · ${sess.venue_or_meeting_url}`}
                     </span>
                   </div>
@@ -1536,20 +1534,20 @@ export function ServiceGroupSessionsStudentPanel({
 
       <ConsequentialActionDialog
         open={registeringSession !== null}
-        title="Register for this group session?"
+        title="Register for this Group Session?"
         confirmLabel="Register"
         pendingLabel="Registering…"
         pending={Boolean(registeringId)}
         error={errorMessage}
         onOpenChange={(open) => { if (!open) { setRegisteringSession(null); setErrorMessage(null); } }}
         onConfirm={() => { if (registeringSession) void handleRegister(registeringSession); }}
-      ><p>Register for <strong>{registeringSession?.title}</strong> on {registeringSession ? formatInstitutionalDateTime(registeringSession.starts_at) : ""}? Registration depends on eligibility and remaining seats.</p></ConsequentialActionDialog>
+      ><p>Register for <strong>{registeringSession?.title}</strong> on {registeringSession ? formatInstitutionalDateTime(registeringSession.starts_at) : ""}? You can register if the session is open to you and has seats left.</p></ConsequentialActionDialog>
 
       {/* CONFIRM REGISTRATION CANCELLATION */}
       <ConsequentialActionDialog
         open={cancellingSession !== null}
-        title="Cancel Registration"
-        confirmLabel="Yes, Cancel My Registration"
+        title="Cancel registration"
+        confirmLabel="Cancel registration"
         pendingLabel="Cancelling..."
         error={errorMessage}
         variant="danger"
@@ -1560,7 +1558,7 @@ export function ServiceGroupSessionsStudentPanel({
         onConfirm={handleCancelRegistration}
       >
         <p className="text-sm text-muted">
-          Are you sure you want to cancel your registration for &quot;{cancellingSession?.title}&quot;? Your seat will be released to other students.
+          Cancel your registration for &quot;{cancellingSession?.title}&quot;? Your seat will be released to other Students.
         </p>
       </ConsequentialActionDialog>
     </PanelSection>
@@ -1585,7 +1583,7 @@ function GroupSessionServicePicker({ selected, onSelect }: { selected: ServiceRe
       {selected && !choices.some((item) => item.id === selected.id) ? <option value={selected.id}>{selected.name}</option> : null}
       {choices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
     </Select>
-    {catalog.isPending ? <p role="status" className="text-sm text-muted">Loading Services…</p> : catalog.isError ? <Notice role="alert" tone="danger" action={<Button type="button" variant="secondary" onClick={() => void catalog.refetch()}>Retry Services</Button>}>{groupSessionsError(catalog.error, "Services could not be loaded.")}</Notice> : choices.length === 0 ? <p className="text-sm text-muted">No Services offering Group Sessions on this page. Try another search or page.</p> : null}
+    {catalog.isPending ? <p role="status" className="text-sm text-muted">Loading Services…</p> : catalog.isError ? <Notice role="alert" tone="danger" action={<Button type="button" variant="secondary" onClick={() => void catalog.refetch()}>Retry Services</Button>}>{groupSessionsError(catalog.error, "Couldn't load Services. Try again.")}</Notice> : choices.length === 0 ? <p className="text-sm text-muted">No Services offering Group Sessions on this page. Try another search or page.</p> : null}
     <div className="flex gap-3"><Button type="button" variant="quiet" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous Services</Button><Button type="button" variant="quiet" disabled={!catalog.data?.data.has_next} onClick={() => setPage((value) => value + 1)}>More Services</Button></div>
   </div>;
 }

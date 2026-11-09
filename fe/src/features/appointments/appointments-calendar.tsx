@@ -240,7 +240,7 @@ function CalendarEvent({
   const startLabel = localDateLabel(start);
   const timeLabel = formatTimeRange(appointment);
   const statusLabel = appointmentStatusLabel(appointment.status);
-  const accessibleName = `${startLabel}, ${timeLabel}, ${title}${service ? `, ${service}` : ""}, ${statusLabel}. Open appointment details.`;
+  const accessibleName = `${startLabel}, ${timeLabel}, ${title}${service ? `, ${service}` : ""}, ${statusLabel}. Open Appointment details.`;
 
   return (
     <Link
@@ -280,7 +280,7 @@ function MonthCalendar({
   const monthName = localDateLabel(anchor, { month: "long", year: "numeric" });
 
   return (
-    <div className="hidden min-w-0 md:block" role="region" aria-label={`${monthName} appointment calendar`}>
+    <div className="hidden min-w-0 md:block" role="region" aria-label={`${monthName} Appointment calendar`}>
       <ol aria-label="Days of the week" className="grid grid-cols-7 border-b border-brand-line bg-brand-wash">
         {WEEKDAYS.map((weekday) => (
           <li key={weekday} aria-label={weekday} className="px-2 py-2 text-center text-xs font-semibold text-brand sm:px-3 sm:text-sm">
@@ -316,7 +316,7 @@ function MonthCalendar({
                   <Button
                     variant="quiet"
                     className="min-h-8 w-full justify-start px-1.5 text-xs"
-                    aria-label={`Show ${(eventsByDay.get(dateKey(day))?.length ?? 0) - 3} more appointments for ${localDateLabel(day)}`}
+                    aria-label={`Show ${(eventsByDay.get(dateKey(day))?.length ?? 0) - 3} more Appointments for ${localDateLabel(day)}`}
                     onClick={() => onShowWeek(day)}
                   >
                     +{(eventsByDay.get(dateKey(day))?.length ?? 0) - 3} more
@@ -345,7 +345,7 @@ function AgendaCalendar({
   label: string;
 }) {
   return (
-    <ol className="divide-y divide-border md:hidden" aria-label={`${label} appointment agenda`}>
+    <ol className="divide-y divide-border md:hidden" aria-label={`${label} Appointment agenda`}>
       {days.map((day) => {
         const key = dateKey(day);
         const events = eventsByDay.get(key) ?? [];
@@ -363,7 +363,7 @@ function AgendaCalendar({
                   </li>
                 ))}
               </ul>
-            ) : <p className="mt-1 text-sm text-muted">No appointments</p>}
+            ) : <p className="mt-1 text-sm text-muted">No Appointments</p>}
           </li>
         );
       })}
@@ -435,7 +435,7 @@ export function AppointmentsCalendar({
       <PanelHeader
         title="Calendar"
         titleId="appointment-calendar-heading"
-        context={anchor ? (query.isFetchingNextPage ? "Loading more appointments…" : null) : null}
+        context={anchor ? (query.isFetchingNextPage ? "Loading more Appointments…" : null) : null}
       />
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-line px-4 py-3 sm:px-5">
         <div role="group" aria-label="Calendar navigation" className="flex flex-wrap items-center gap-2">
@@ -473,14 +473,14 @@ export function AppointmentsCalendar({
           tone="danger"
           action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}
         >
-          {appointmentErrorMessage(query.error, "Appointments for this period could not be loaded.")}
+          {appointmentErrorMessage(query.error, "Couldn't load Appointments for this period. Try again.")}
         </PanelMessage>
       ) : queryDates?.isEmpty ? (
-        <PanelMessage>No appointments in this period.</PanelMessage>
+        <PanelMessage>No Appointments in this period.</PanelMessage>
       ) : !anchor || loadingAllPages ? (
-        <PanelMessage role="status">Loading appointments for this period…</PanelMessage>
+        <PanelMessage role="status">Loading Appointments for this period…</PanelMessage>
       ) : empty ? (
-        <PanelMessage>No appointments in this period.</PanelMessage>
+        <PanelMessage>No Appointments in this period.</PanelMessage>
       ) : null}
 
       {anchor && !query.isError && !loadingAllPages && !queryDates?.isEmpty ? (
@@ -553,7 +553,7 @@ function WeekCalendar({
                   <CalendarEvent appointment={appointment} isStudent={isStudent} />
                 </li>
               ))}
-              {events.length === 0 ? <li className="py-1 text-center text-xs text-muted">No appointments</li> : null}
+              {events.length === 0 ? <li className="py-1 text-center text-xs text-muted">No Appointments</li> : null}
             </ul>
           </li>
         );

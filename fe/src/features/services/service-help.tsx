@@ -3,15 +3,15 @@
 import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 export const serviceHelpSections: readonly HelpSection[] = [
-  { heading: "Booking pathways", content: "Flexible appointments use Counselor availability. Scheduled appointment slots are specific opportunities published by authorized staff. Group Sessions are separate events with their own registration and attendance lifecycle. Enabling a pathway does not publish an offering." },
-  { heading: "Appointment booking", content: "Flexible appointment settings apply only to flexible appointments. Duration, cancellation cutoff, and Inventory requirements apply to new Appointments; existing Appointments keep their saved settings." },
-  { heading: "Delivery", content: "An active Service needs at least one delivery mode. Removing a mode stops new work in that mode. Existing Appointments keep their saved mode. Changes that affect scheduled work require a consequence review." },
-  { heading: "Provider coverage", content: "All active Counselors permits any active Counselor to provide new work. Selected Counselors limits new work to those selected. College responsibility supplies default routing; it does not restrict student choice to one College counselor." },
+  { heading: "Booking pathways", content: "Flexible Appointments use Counselor Availability; staff publish Appointment slots for specific times. Group Sessions have separate registration and attendance, and enabling a pathway does not publish slots or events." },
+  { heading: "Appointment booking", content: "Flexible Appointment settings apply only to flexible Appointments. Duration, cancellation cutoff, and Individual Inventory requirements apply to new Appointments; existing Appointments keep their saved settings." },
+  { heading: "Delivery", content: "An active Service needs at least one delivery mode; removing a mode stops new work in that mode, while existing Appointments keep their saved mode. Review any changes that affect scheduled work before saving." },
+  { heading: "Who provides this Service", content: "Choose all active Counselors or only selected Counselors for new work. College responsibility sets the default Counselor; Students can choose another listed Counselor." },
   { heading: "Required Counseling Service", content: "Counseling also supports Routine Interviews and E-Counseling and must stay active. Other settings can be changed." },
-  { heading: "Online counseling", content: "Scheduled Online Counseling appointments use E-Counseling. Enabling Online delivery permits scheduling; video availability still depends on separate video-service settings." },
+  { heading: "Online counseling", content: "Enabling E-Counseling allows you to schedule online Appointments. Video calls also need the video calling to be set up." },
 ];
 
 export function ServiceHelp({ counseling = false }: { counseling?: boolean }) {
   const sections = counseling ? serviceHelpSections : serviceHelpSections.filter((section) => section.heading !== "Required Counseling Service" && section.heading !== "Online counseling");
-  return <ContextHelp title="About Service configuration" sections={sections} />;
+  return <ContextHelp title="About Service configuration" sections={sections.map((section) => ({ ...section, heading: section.heading.replace("Online counseling", "E-Counseling") }))} />;
 }

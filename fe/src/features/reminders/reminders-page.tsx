@@ -100,7 +100,7 @@ function RemindersHelp() {
           ),
         },
         {
-          heading: "When a manual reminder can be sent",
+          heading: "When you can send a manual reminder",
           content: (
             <p>
               The Appointment must still be scheduled, start in more than 15 minutes, and not have
@@ -113,15 +113,13 @@ function RemindersHelp() {
           heading: "Sent reminders and delivery",
           content: (
             <p>
-              Sent shows the reminders issued for Appointments you manage. Email and browser
-              notifications follow when available. Sent means handed to the delivery service; it does
-              not confirm that the Student read it.
+              Sent shows reminders issued for Appointments you manage; email and browser notifications follow when available. Sent means handed off for delivery; it does not confirm that the Student read it.
             </p>
           ),
         },
         {
-          heading: "Your scope",
-          content: <p>Only Appointments you manage appear here. Other staff see their own scope.</p>,
+          heading: "Appointments you manage",
+          content: <p>Only Appointments you manage appear here.</p>,
         },
       ]}
     />
@@ -208,7 +206,7 @@ function UpcomingFilters({
             htmlFor="reminder-upcoming-counselor"
             hint={
               counselorsFailed ? (
-                <p className="text-xs text-warning">Counselor choices could not be loaded.</p>
+                <p className="text-xs text-warning">Couldn&apos;t load Counselor choices. Try again.</p>
               ) : null
             }
           >
@@ -218,10 +216,10 @@ function UpcomingFilters({
               disabled={counselorsPending && !applied.counselor}
               onChange={(event) => set("counselor", event.target.value)}
             >
-              <option value="">All counselors</option>
+              <option value="">All Counselors</option>
               {applied.counselor && !appliedCounselorKnown ? (
                 <option value={applied.counselor}>
-                  {counselorsPending ? "Loading counselor…" : "Selected counselor"}
+                  {counselorsPending ? "Loading Counselor…" : "Selected Counselor"}
                 </option>
               ) : null}
               {counselorOptions.map((option) => (
@@ -577,7 +575,7 @@ function RemindersWorkspace() {
                   </Button>
                 }
               >
-                {appointmentErrorMessage(upcoming.error, "Upcoming reminders could not be loaded.")}
+                {appointmentErrorMessage(upcoming.error, "Couldn't load upcoming reminders. Try again.")}
               </PanelMessage>
             ) : upcomingItems.length === 0 ? (
               <PanelMessage
@@ -688,7 +686,7 @@ function RemindersWorkspace() {
                             }
                             onChange={(event) => toggleSelection(item.appointment_id, event.target.checked)}
                           />
-                          Select appointment
+                          Select Appointment
                         </label>
                         <div className="min-w-0">
                           <Link
@@ -785,7 +783,7 @@ function RemindersWorkspace() {
                   </Button>
                 }
               >
-                {appointmentErrorMessage(activity.error, "Sent reminders could not be loaded.")}
+                {appointmentErrorMessage(activity.error, "Couldn't load sent reminders. Try again.")}
               </PanelMessage>
             ) : activityItems.length === 0 ? (
               <PanelMessage
@@ -935,8 +933,8 @@ export function RemindersPage() {
   const canViewTracer = getGraduateTracerAccess(user).canViewOperational;
   if (!canManage && !canViewTracer) {
     return (
-      <WorkspaceUnavailable title="Reminders unavailable">
-        Reminders are available to staff who manage Appointments or review Graduate Tracer responses.
+      <WorkspaceUnavailable title="Reminder access">
+        You don&apos;t have access to reminders.
       </WorkspaceUnavailable>
     );
   }

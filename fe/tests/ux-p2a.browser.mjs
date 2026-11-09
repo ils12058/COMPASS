@@ -248,12 +248,12 @@ await check("P2A Student Call Slip keeps the PDF action near the mobile heading"
 
 await check("P2A Service detail preserves distinct booking pathways and management access", `/portal/services/${p2aService.id}`, { handler: serviceHandler }, async (page) => {
   await shown(page.getByRole("heading", { level: 1, name: p2aService.name, exact: true }));
-  for (const label of ["Flexible individual appointments", "Fixed-date appointment slots", "Group sessions and events"]) await shown(page.getByText(label, { exact: true }).first());
+  for (const label of ["Flexible individual Appointments", "Fixed-date Appointment slots", "Group Sessions and events"]) await shown(page.getByText(label, { exact: true }).first());
   await shown(page.getByRole("button", { name: "Disable Service", exact: true }));
-  await shown(page.getByRole("heading", { name: "Fixed-date appointment slots", exact: true }));
-  await shown(page.getByRole("heading", { name: "Group Sessions & Events", exact: true }));
-  await shown(page.getByText("No fixed-date appointment slots published yet.", { exact: true }));
-  await shown(page.getByText("No group sessions match this view.", { exact: true }));
+  await shown(page.getByRole("heading", { name: "Fixed-date Appointment slots", exact: true }));
+  await shown(page.getByRole("heading", { name: "Group Sessions and events", exact: true }));
+  await shown(page.getByText("No fixed-date Appointment slots published yet.", { exact: true }));
+  await shown(page.getByText("No Group Sessions match this view.", { exact: true }));
   for (const width of widths) {
     await page.setViewportSize({ width, height: width < 400 ? 820 : 900 });
     await assertActionPlacement(page, "Service page actions", [["link", "Edit Service"]], width);

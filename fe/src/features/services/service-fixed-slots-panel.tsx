@@ -112,11 +112,11 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
     setSuccessMessage(null);
 
     if (!providerId) {
-      setErrorMessage("Please select a qualified Counselor.");
+      setErrorMessage("Select a qualified Counselor.");
       return;
     }
     if (!startDateTime) {
-      setErrorMessage("Please enter a slot start date and time.");
+      setErrorMessage("Enter a slot start date and time.");
       return;
     }
 
@@ -139,11 +139,11 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
         queryKey: getServicesListSlotsQueryKey(service.id),
       });
 
-      setSuccessMessage("Appointment slot published successfully.");
+      setSuccessMessage("Slot published.");
       setCreateOpen(false);
       setStartDateTime("");
     } catch (err: unknown) {
-      handleMutationError(err, "Failed to publish appointment slot.");
+      handleMutationError(err, "Couldn't publish this Appointment slot. Try again.");
     }
   };
 
@@ -161,7 +161,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
         queryKey: getServicesListSlotsQueryKey(service.id),
       });
     } catch (err: unknown) {
-      handleMutationError(err, "Failed to update slot publication.");
+      handleMutationError(err, "Couldn't update slot publication. Try again.");
     }
   };
 
@@ -177,14 +177,14 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
         queryKey: getServicesListSlotsQueryKey(service.id),
       });
       setWithdrawSlot(null);
-      setSuccessMessage("Slot withdrawn from future booking. Its record and appointment history are preserved.");
+      setSuccessMessage("Slot withdrawn from future booking. Its record and Appointment history are preserved.");
     } catch (err: unknown) {
-      handleMutationError(err, "Failed to withdraw slot.");
+      handleMutationError(err, "Couldn't withdraw this slot. Try again.");
     }
   };
 
   return (
-    <PanelSection title="Fixed-date appointment slots" titleId="service-fixed-slots-heading">
+    <PanelSection title="Fixed-date Appointment slots" titleId="service-fixed-slots-heading">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted">
           Publish specific consultation dates and times for Students to book individually.
@@ -214,12 +214,12 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       ) : null}
       {!service.is_active ? (
         <p className="mt-3 text-xs text-muted">
-          Existing appointments remain on record. Enable this Service before publishing new slots.
+          Existing Appointments remain on record. Enable this Service before publishing new slots.
         </p>
       ) : null}
       {providersQuery.isError ? (
         <Notice role="alert" tone="danger" className="mt-4">
-          Eligible Counselors could not be loaded. Retry before publishing a slot. {" "}
+          Couldn&apos;t load Counselors. Retry before publishing a slot. {" "}
           <Button variant="quiet" onClick={() => void providersQuery.refetch()}>
             Retry
           </Button>
@@ -227,13 +227,13 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       ) : null}
 
       <div className="mt-4 overflow-hidden rounded-md border border-line">
-        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading appointment slots…</p> : slotsQuery.isError ? (
+        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading Appointment slots…</p> : slotsQuery.isError ? (
           <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Retry slots</Button>}>
-            {appointmentErrorMessage(slotsQuery.error, "Appointment slots could not be loaded. Try again.")}
+            {appointmentErrorMessage(slotsQuery.error, "Couldn't load Appointment slots. Try again.")}
           </Notice>
         ) : slots.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted">
-            No fixed-date appointment slots published yet.
+            No fixed-date Appointment slots published yet.
           </div>
         ) : (
           <table className="min-w-full divide-y divide-line text-sm">
@@ -317,20 +317,20 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
           <form onSubmit={handleCreate}>
-            <DialogTitle>Publish appointment slot</DialogTitle>
+            <DialogTitle>Publish Appointment slot</DialogTitle>
             <div className="grid gap-4 py-4">
               <div>
-                <Label htmlFor="slot-provider">Counselor Provider</Label>
+                <Label htmlFor="slot-provider">Counselor</Label>
                 <Input
                   id="slot-provider-search"
-                  aria-label="Search eligible Counselors"
+                  aria-label="Search Counselors"
                   value={providerSearch}
                   onChange={(event) => {
                     setProviderSearch(event.target.value);
                     setProviderId("");
                     setProviderPage(1);
                   }}
-                  placeholder="Search eligible Counselors"
+                  placeholder="Search Counselors"
                   className="mt-1 w-full"
                 />
                 <Select
@@ -343,7 +343,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                   <option value="">
                     {providersQuery.isPending
                       ? "Loading Counselors…"
-                      : "Select a qualified Counselor…"}
+                      : "Select a Counselor…"}
                   </option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -373,12 +373,12 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                   </div>
                 ) : null}
                 <p className="mt-1 text-xs text-muted">
-                  The list follows your Appointment responsibility scope and this Service’s current provider eligibility.
+                  Only Counselors who provide this Service and whose Appointments you manage are listed.
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="slot-delivery-mode">Delivery Mode</Label>
+                <Label htmlFor="slot-delivery-mode">Delivery mode</Label>
                 <Select
                   id="slot-delivery-mode"
                   value={deliveryMode}
@@ -394,7 +394,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
               </div>
 
               <div>
-                <Label htmlFor="slot-datetime">Date & Time</Label>
+                <Label htmlFor="slot-datetime">Date and time</Label>
                 <Input
                   id="slot-datetime"
                   type="datetime-local"
@@ -434,7 +434,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       {/* Withdraw confirmation dialog */}
       <ConsequentialActionDialog
         open={Boolean(withdrawSlot)}
-        title="Withdraw appointment slot?"
+        title="Withdraw Appointment slot?"
         confirmLabel="Withdraw slot"
         pendingLabel="Withdrawing…"
         error={errorMessage}
@@ -487,12 +487,12 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
     setChecking(true);
     try {
       if (checkService && !(await checkService())) {
-        setErrorMessage("This Service could not be confirmed for scheduled slots. Check the Service and try again.");
+        setErrorMessage("Couldn't confirm this Service for scheduled slots. Check the Service and try again.");
         return;
       }
       const current = await slotsQuery.refetch();
       if (current.isError) {
-        setErrorMessage("The available slots could not be checked. Retry the slot refresh before booking.");
+        setErrorMessage("Couldn't check available slots. Retry the slot refresh before booking.");
         return;
       }
       if (!current.data?.data.some(slot => slot.id === slotId)) {
@@ -503,22 +503,22 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
       let appt;
       try {
         appt = (await bookMutation.mutateAsync({ serviceId: service.id, slotId })).data;
-        if (!appt || typeof appt.appointment_id !== "string" || !appt.appointment_id || typeof appt.reference_code !== "string" || !appt.reference_code) throw new Error("Unconfirmed booking response");
+        if (!appt || typeof appt.appointment_id !== "string" || !appt.appointment_id || typeof appt.reference_code !== "string" || !appt.reference_code) throw new Error("Booking not confirmed");
       } catch (err: unknown) {
         if (bookingResultIsUncertain(err)) {
           setUncertainSlot(slotId);
-          setErrorMessage("We could not confirm whether this appointment was booked. Check My appointments before making another booking. Refreshing slots cannot confirm who booked this time.");
+          setErrorMessage("Couldn't confirm your booking. Check My Appointments before booking again; refreshing slots can't show who booked this time.");
         } else if (err instanceof CompassApiError) {
           const code = readApiErrorCode(err.body);
           setErrorMessage(code === "slot_already_booked" || code === "slot_unavailable" || code === "slot_not_found"
             ? "This slot is no longer available. Close this dialog and choose another time."
-            : appointmentErrorMessage(err, "The appointment could not be booked. Review the details and try again."));
+            : appointmentErrorMessage(err, "Couldn't book this Appointment. Review the details and try again."));
           if (err.status === 409 || err.status === 404) void slotsQuery.refetch();
         }
         return;
       }
       setBookedApptId(appt.appointment_id);
-      setBookSuccess(`Appointment booked successfully! Reference code: ${appt.reference_code}`);
+      setBookSuccess(`Appointment booked. Reference code: ${appt.reference_code}`);
       setSelectedSlot(null);
       const refresh = await Promise.allSettled([
         invalidateStudentScheduling(queryClient),
@@ -531,9 +531,9 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
   };
 
   return (
-    <PanelSection title="Available appointment slots" titleId="student-fixed-slots-heading">
+    <PanelSection title="Available Appointment slots" titleId="student-fixed-slots-heading">
       <p className="text-sm text-muted">
-        Choose a published date and time to reserve an individual appointment directly.
+        Choose a published date and time to reserve an individual Appointment directly.
       </p>
 
       {service.requires_current_inventory ? <p className="mt-3 text-sm text-muted">A submitted Individual Inventory for the current Academic Year is required to book this Service.</p> : null}
@@ -548,11 +548,11 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
               View your confirmed Appointment
             </Link>
           ) : null}
-          <Link href="/portal/appointments/my" className="mt-1 block font-semibold underline">My appointments</Link>
+          <Link href="/portal/appointments/my" className="mt-1 block font-semibold underline">My Appointments</Link>
         </Notice>
       ) : null}
-      {refreshFailed ? <Notice role="alert" className="mt-4" action={<Button variant="secondary" onClick={() => void Promise.allSettled([invalidateStudentScheduling(queryClient), queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }, { throwOnError: true })]).then(results => setRefreshFailed(results.some(result => result.status === "rejected")))}>Refresh</Button>}>Your appointment was booked, but the latest booking information could not be refreshed.</Notice> : null}
-      {uncertainSlot ? <Notice role="alert" tone="warning" className="mt-4" action={<><Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Refresh slots</Button> <Link href="/portal/appointments/my" className="font-semibold underline">My appointments</Link></>}>The booking outcome is unconfirmed. A slot refresh cannot identify who booked it. Check My appointments before making another booking.</Notice> : null}
+      {refreshFailed ? <Notice role="alert" className="mt-4" action={<Button variant="secondary" onClick={() => void Promise.allSettled([invalidateStudentScheduling(queryClient), queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }, { throwOnError: true })]).then(results => setRefreshFailed(results.some(result => result.status === "rejected")))}>Refresh</Button>}>Your Appointment was booked, but we couldn&apos;t refresh the latest booking information. Try refreshing again.</Notice> : null}
+      {uncertainSlot ? <Notice role="alert" tone="warning" className="mt-4" action={<><Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Refresh slots</Button> <Link href="/portal/appointments/my" className="font-semibold underline">My Appointments</Link></>}>The booking outcome is unconfirmed. A slot refresh cannot identify who booked it. Check My Appointments before making another booking.</Notice> : null}
 
       {errorMessage && !selectedSlot ? (
         <Notice role="alert" tone="danger" className="mt-4">
@@ -561,9 +561,9 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading appointment slots…</p> : slotsQuery.isError ? (
+        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading Appointment slots…</p> : slotsQuery.isError ? (
           <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Retry slots</Button>}>
-            {appointmentErrorMessage(slotsQuery.error, "Appointment slots could not be loaded. Try again.")}
+            {appointmentErrorMessage(slotsQuery.error, "Couldn't load Appointment slots. Try again.")}
           </Notice>
         ) : slots.length === 0 ? (
           <div className="col-span-full rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
@@ -608,7 +608,7 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
       {/* Booking confirmation dialog */}
       <ConsequentialActionDialog
         open={Boolean(selectedSlot)}
-        title="Confirm appointment booking"
+        title="Confirm Appointment booking"
         confirmLabel="Confirm booking"
         pendingLabel="Booking…"
         error={errorMessage}
@@ -623,7 +623,7 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
         }}
       >
         <p>
-          You are booking an appointment for <strong>{service.name}</strong> with{" "}
+          You are booking an Appointment for <strong>{service.name}</strong> with{" "}
           <strong>{selectedSlot?.provider_name}</strong> on{" "}
           <strong>{selectedSlot ? formatInstitutionalDateTime(selectedSlot.starts_at) : ""}</strong>.
         </p>

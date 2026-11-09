@@ -45,9 +45,9 @@ await check("Student canonical entry opens tabs and accessible Help", "/portal/g
   },
 }, async page => {
   const nav = page.getByRole("navigation", { name: "Group Sessions navigation" });
-  await shown(nav.getByRole("link", { name: "Browse Sessions" }));
-  assert.equal(await nav.getByRole("link", { name: "Browse Sessions" }).getAttribute("aria-current"), "page");
-  await shown(nav.getByRole("link", { name: "My Registrations" }));
+  await shown(nav.getByRole("link", { name: "Browse Group Sessions" }));
+  assert.equal(await nav.getByRole("link", { name: "Browse Group Sessions" }).getAttribute("aria-current"), "page");
+  await shown(nav.getByRole("link", { name: "My registrations" }));
   const help = page.getByRole("button", { name: "Help: Group Sessions", exact: true });
   await help.focus(); await page.keyboard.press("Enter");
   await shown(page.getByRole("dialog"));
@@ -67,11 +67,11 @@ for (const status of [403, 500, 503]) {
     },
   }, async page => {
     await shown(page.getByRole("alert"));
-    await hidden(page.getByText("No upcoming group sessions are currently scheduled.", { exact: true }));
+    await hidden(page.getByText("No upcoming Group Sessions are currently scheduled.", { exact: true }));
     await hidden(page.getByText("Internal implementation details"));
     if (status === 403) await shown(page.getByText("You don’t have access to this Group Sessions view.", { exact: true }));
     await page.getByRole("button", { name: "Retry", exact: true }).click();
-    await shown(page.getByText("No upcoming group sessions are currently scheduled.", { exact: true }));
+    await shown(page.getByText("No upcoming Group Sessions are currently scheduled.", { exact: true }));
     assert.equal(attempts, 2);
   });
 }
@@ -87,8 +87,8 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
     await shown(dialog.getByText("Synthetic Student", { exact: true }));
     await dialog.getByLabel("Attended: Synthetic Student", { exact: true }).check();
     assert.equal(await dialog.getByLabel("Attended: Cancelled Student", { exact: true }).isDisabled(), true);
-    await dialog.getByRole("button", { name: "Save Attendance", exact: true }).click();
-    await shown(dialog.getByText("Attendance saved successfully.", { exact: true }));
+    await dialog.getByRole("button", { name: "Save attendance", exact: true }).click();
+    await shown(dialog.getByText("Attendance saved.", { exact: true }));
     assert.deepEqual(f.state.attendance[0].records.map(r => r.registration_id), ["registration-0"]);
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await noHorizontalOverflow(page); await screenshot(page, `staff-attendance-${role}`);
@@ -104,9 +104,9 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
     assert.equal(await dialog.getByLabel("Service *", { exact: true }).locator("option").count(), 2);
     await dialog.getByLabel("Service *", { exact: true }).selectOption(service.id);
     await dialog.getByLabel("Title *", { exact: true }).fill("Synthetic new workshop");
-    await dialog.getByLabel("Start Time *", { exact: true }).fill("2026-11-12T09:00");
-    await dialog.getByLabel("End Time *", { exact: true }).fill("2026-11-12T10:00");
-    await dialog.getByRole("button", { name: "Create Session (Draft)", exact: true }).click();
+    await dialog.getByLabel("Start time *", { exact: true }).fill("2026-11-12T09:00");
+    await dialog.getByLabel("End time *", { exact: true }).fill("2026-11-12T10:00");
+    await dialog.getByRole("button", { name: "Create draft Group Session", exact: true }).click();
     await shown(page.getByText("Group Session created in Draft status.", { exact: true }));
     assert.equal(f.state.created.length, 1);
     assert.equal(f.state.created[0].starts_at, "2026-11-12T01:00:00.000Z");
@@ -120,7 +120,7 @@ await check("IT Admin does not obtain operational Group Sessions or participant 
     return false;
   },
 }, async (page, { requests }) => {
-  await shown(page.getByRole("heading", { name: "Group Sessions unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Group Session access", exact: true }));
   assert.equal(requests.some(r => r.pathname.startsWith("/api/v1/group-sessions")), false);
 });
 
@@ -131,8 +131,8 @@ await check("Counselor directory keeps concise copy and keyboard-accessible sche
     return false;
   },
 }, async page => {
-  await shown(page.getByText("Find a counselor to manage their availability.", { exact: true }));
-  const help = page.getByRole("button", { name: "Help: Office and Counselor availability", exact: true });
+  await shown(page.getByText("Find a Counselor to manage their Availability.", { exact: true }));
+  const help = page.getByRole("button", { name: "Help: Office and Counselor Availability", exact: true });
   await help.focus(); await page.keyboard.press("Enter");
   await shown(page.getByRole("heading", { name: "Managing a Counselor’s schedule", exact: true }));
   await page.keyboard.press("Escape");
@@ -149,7 +149,7 @@ await check("supervision or authority denial does not offer staff creation", "/p
 }, async page => {
   await shown(page.getByRole("alert").first());
   assert.equal(await page.getByRole("button", { name: "Schedule Group Session", exact: true }).isDisabled(), true);
-  await hidden(page.getByText("No group sessions match this view.", { exact: true }));
+  await hidden(page.getByText("No Group Sessions match this view.", { exact: true }));
   await hidden(page.getByText("Internal policy detail", { exact: true }));
 });
 
@@ -166,7 +166,7 @@ await check("fixed-slot API failure is visible and Retry restores the list", "/p
   })(),
 }, async page => {
   await page.getByLabel("Service", { exact: true }).selectOption(service.id);
-  await shown(page.getByText("Appointment slots could not be loaded. Try again.", { exact: true }));
+  await shown(page.getByText("Couldn't load Appointment slots. Try again.", { exact: true }));
   await hidden(page.getByText("No fixed consultation slots are currently available for this Service.", { exact: true }));
   await page.getByRole("button", { name: "Retry slots", exact: true }).click();
   await shown(page.getByText("No fixed consultation slots are currently available for this Service.", { exact: true }));

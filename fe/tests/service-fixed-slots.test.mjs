@@ -137,7 +137,7 @@ test("Staff panel renders published and unpublished fixed slots with controls", 
     }
   );
 
-  assert.match(html, /Fixed-date appointment slots/);
+  assert.match(html, /Fixed-date Appointment slots/);
   assert.match(html, /Publish slot/);
   assert.match(html, /Dr\. Santos/);
   assert.match(html, /Available/);
@@ -171,7 +171,7 @@ test("Student panel renders available bookable slots with Book action", () => {
     }
   );
 
-  assert.match(html, /Available appointment slots/);
+  assert.match(html, /Available Appointment slots/);
   assert.match(html, /Dr\. Santos/);
   assert.match(html, /Book this slot/);
 });
@@ -186,7 +186,7 @@ test("ServiceDetailPage integrates fixed slots staff panel when pathway is confi
     );
   });
 
-  assert.match(html, /Fixed-date appointment slots/);
+  assert.match(html, /Fixed-date Appointment slots/);
   assert.match(html, /Dr\. Santos/);
 });
 
@@ -215,7 +215,7 @@ test("ServiceDetailPage hides fixed slots panels for IT_ADMIN and INSTITUTIONAL_
       client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
     });
     assert.doesNotMatch(html, /Publish slot/);
-    assert.doesNotMatch(html, /Available appointment slots/);
+    assert.doesNotMatch(html, /Available Appointment slots/);
   }
 
   const counselorHtml = renderWithUser(h(ServiceDetailPage), regularCounselor, (client) => {
@@ -230,7 +230,7 @@ test("ServiceDetailPage hides fixed slots panels for IT_ADMIN and INSTITUTIONAL_
 
 test("fixed-slot pending and failed reads are not presented as no availability", () => {
   const pending = renderWithUser(h(ServiceFixedSlotsStudentPanel, { service }), student);
-  assert.match(pending, /Loading appointment slots/);
+  assert.match(pending, /Loading Appointment slots/);
   assert.doesNotMatch(pending, /No fixed consultation slots/);
   for (const [Panel, key, account] of [
     [ServiceFixedSlotsStudentPanel, [...getServicesListBookableSlotsQueryKey(SERVICE_ID), studentSchedulingScope(student)], student],
@@ -239,7 +239,7 @@ test("fixed-slot pending and failed reads are not presented as no availability",
     const html = renderWithUser(h(Panel, { service }), account, client => {
       client.getQueryCache().build(client, { queryKey: key }).setState({ status: "error", fetchStatus: "idle", error: new Error("Synthetic failure") });
     });
-    assert.match(html, /Appointment slots could not be loaded/);
+    assert.match(html, /Couldn&#x27;t load Appointment slots/);
     assert.match(html, /Retry slots/);
     assert.doesNotMatch(html, /No fixed.*slots/);
   }
@@ -249,10 +249,10 @@ test("fixed-slot pending and failed reads are not presented as no availability",
 test("scheduled slots are reachable through Student booking without Services management", () => {
   const account = { ...student, student_lifecycle_status: "CURRENT", capabilities: ["appointments.view_self", "appointments.manage_self", "services.catalog.view"] };
   const html = renderWithUser(h(AppointmentBookingPage, { scheduledSlots: true }), account);
-  assert.match(html, /Scheduled appointment slots/);
+  assert.match(html, /Scheduled Appointment slots/);
   assert.match(html, /Search Services/);
-  assert.doesNotMatch(html, /Services unavailable|Booking unavailable/);
+  assert.doesNotMatch(html, /Service access|Appointment booking access/);
   const denied = renderWithUser(h(AppointmentBookingPage, { scheduledSlots: true }), { ...account, student_lifecycle_status: "GRADUATED" });
-  assert.match(denied, /Booking unavailable/);
-  assert.doesNotMatch(denied, /Scheduled appointment slots/);
+  assert.match(denied, /Appointment booking access/);
+  assert.doesNotMatch(denied, /Scheduled Appointment slots/);
 });

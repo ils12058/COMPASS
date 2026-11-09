@@ -16,7 +16,7 @@ import { useGroupSessionsGetMyRegistrations } from "@/lib/api/generated/group-se
 function registrationStatusLabel(status: string): string {
   if (status === "REGISTERED") return "Registered";
   if (status === "CANCELLED") return "Cancelled";
-  return "Status unavailable";
+  return "Status not shown";
 }
 
 export function GroupSessionsHistoryPage() {
@@ -25,7 +25,7 @@ export function GroupSessionsHistoryPage() {
   const registrations = useGroupSessionsGetMyRegistrations({ query: { retry: false, enabled: allowed } });
   const rows = registrations.data?.data ?? [];
 
-  if (!allowed) return <WorkspaceUnavailable title="Group Sessions unavailable">You don’t have access to Student registrations.</WorkspaceUnavailable>;
+  if (!allowed) return <WorkspaceUnavailable title="Group Session access">You don’t have access to Student registrations.</WorkspaceUnavailable>;
 
   return (
     <>
@@ -38,7 +38,7 @@ export function GroupSessionsHistoryPage() {
           context={registrations.isFetching && !registrations.isPending ? "Refreshing…" : undefined}
         />
         {registrations.isPending ? (
-          <PanelBody className="space-y-3" aria-label="Loading group session registrations">
+          <PanelBody className="space-y-3" aria-label="Loading Group Session registrations">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
           </PanelBody>
@@ -52,10 +52,10 @@ export function GroupSessionsHistoryPage() {
               </Button>
             }
           >
-            {groupSessionsError(registrations.error, "Your group session registrations could not be loaded. Try again.")}
+            {groupSessionsError(registrations.error, "Couldn't load your Group Session registrations. Try again.")}
           </PanelMessage>
         ) : rows.length === 0 ? (
-          <PanelMessage>You have no group session registrations yet.</PanelMessage>
+          <PanelMessage>You have no Group Session registrations yet.</PanelMessage>
         ) : (
           <div className="divide-y divide-brand-line">
             {rows.map((registration) => (
@@ -74,7 +74,7 @@ export function GroupSessionsHistoryPage() {
                       {formatAppointmentDateTime(registration.starts_at, registration.ends_at)}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      Registered {registration.registered_at ? formatInstitutionalDateTime(registration.registered_at) : "date unavailable"}
+                      Registered {registration.registered_at ? formatInstitutionalDateTime(registration.registered_at) : "date not recorded"}
                     </p>
                   </div>
                   <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-surface-muted px-2.5 text-xs font-semibold text-muted">

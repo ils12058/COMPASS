@@ -18,7 +18,7 @@ export type BookingFailure =
   | { step: "review"; message: string; uncertain: boolean; keepIntent: boolean };
 
 export const BOOKING_UNCONFIRMED =
-  "The booking response could not be confirmed. Retry the same booking details to check the result safely.";
+  "Couldn't confirm your booking. Retry with the same details to check the result.";
 
 export function classifyBookingFailure(caught: unknown): BookingFailure {
   const code = appointmentErrorCode(caught);
@@ -33,7 +33,7 @@ export function classifyBookingFailure(caught: unknown): BookingFailure {
     // The previous attempt's key no longer matches; the next attempt starts a new one.
     return {
       step: "review",
-      message: appointmentErrorMessage(caught, "The booking attempt could not be verified. Review the details and submit again."),
+      message: appointmentErrorMessage(caught, "Couldn't verify your booking. Review the details and submit again."),
       uncertain: false,
       keepIntent: false,
     };
@@ -46,7 +46,7 @@ export function classifyBookingFailure(caught: unknown): BookingFailure {
     }
     return {
       step: "review",
-      message: appointmentErrorMessage(caught, "The Appointment could not be booked."),
+      message: appointmentErrorMessage(caught, "Couldn't book this Appointment. Try again."),
       uncertain: false,
       keepIntent: true,
     };
@@ -80,7 +80,7 @@ export function bookedAppointmentFromResponse(
       { label: "Service", value: appointment.service.name },
       {
         label: "Counselor",
-        value: appointment.provider.display_name + (context.assignedCounselor ? " · Assigned counselor" : ""),
+        value: appointment.provider.display_name + (context.assignedCounselor ? " · Assigned Counselor" : ""),
       },
       {
         label: "Schedule",

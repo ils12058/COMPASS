@@ -76,7 +76,7 @@ test("the Service form offers two-state booking and Counselor coverage, not poli
   assert.match(html, />Available</);
   assert.doesNotMatch(html, /Appointment optional|Appointment required|Appointment policy/);
   assert.doesNotMatch(html, /Provider eligibility/);
-  assert.match(html, /Provider type/);
+  assert.match(html, /Provided by/);
   assert.match(html, /Who may provide this Service\?/);
   assert.match(html, /All active Counselors/);
   assert.match(html, /Selected Counselors/);
@@ -97,10 +97,10 @@ test("an inactive Service explains exactly what blocks enabling it", () => {
   assert.match(html, new RegExp(activationBlockerLabels.APPOINTMENT_DURATION_MISSING));
   assert.match(html, /no active Counselor is selected/);
   assert.match(html, /<button[^>]*disabled=""[^>]*>Enable Service<\/button>/);
-  assert.match(html, /Provider type/);
-  assert.match(html, /Coverage/);
+  assert.match(html, /Provided by/);
+  assert.match(html, /Counselors/);
   assert.match(html, /No Counselors are selected\./);
-  assert.match(html, /Configured · unavailable while the Service is inactive/);
+  assert.match(html, /Enable the Service to use this pathway/);
   assert.doesNotMatch(html, /Appointment optional|Appointment required/);
 });
 
@@ -136,7 +136,7 @@ test("the provider picker lists active Counselors without any College filter", (
   assert.match(html, /Counselor Two/);
   assert.match(html, />Selected<span class="sr-only"> Counselor One/);
   assert.match(html, />Add<span class="sr-only"> Counselor Two/);
-  assert.match(html, /Inactive account · not eligible/);
+  assert.match(html, /Inactive account · cannot provide new work/);
 });
 
 test("consequence review explains that existing Appointments stay as booked", () => {
@@ -153,8 +153,8 @@ test("consequence review explains that existing Appointments stay as booked", ()
 
 test("Service editor displays independently configurable future pathways with clear availability", () => {
   const html = render(h(CreateServicePage));
-  assert.match(html, /Fixed-date appointment slots/);
-  assert.match(html, /Group sessions and events/);
+  assert.match(html, /Fixed-date Appointment slots/);
+  assert.match(html, /Group Sessions and events/);
   assert.match(html, /Students can book once an eligible Counselor publishes a slot and the Service is active/);
   assert.match(html, /Students can register once an event is published, registration is open, and the Service is active/);
   assert.doesNotMatch(html, /coming later|not available yet/i);
@@ -174,7 +174,7 @@ test("Service details distinguish saved pathway configuration from a working boo
       }));
     },
   });
-  assert.match(html, /Enabled; availability depends on Counselor schedules/);
+  assert.match(html, /Enabled; times depend on Counselor schedules/);
   assert.match(html, /Enabled; no published slot confirmed/);
   assert.match(html, /Enabled; no published event confirmed/);
   assert.doesNotMatch(html, /coming later|not yet available to Students/i);

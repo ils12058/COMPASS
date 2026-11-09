@@ -130,8 +130,8 @@ function reminderKindLabel(kind: string): string {
 }
 
 function transportStateLabel(state: string): string {
-  if (state === "SENT") return "Sent to provider";
-  if (state === "PENDING") return "Pending send";
+  if (state === "SENT") return "Sent";
+  if (state === "PENDING") return "Waiting to send";
   if (state === "FAILED") return "Send failed";
   if (state === "CANCELLED") return "Cancelled";
   if (state === "NOT_REQUESTED") return "Not requested";
@@ -171,7 +171,7 @@ function eventContext(entry: {
 const actionNames: Record<keyof AppointmentActionsResponse, string> = {
   cancel: "Cancel",
   reschedule: "Reschedule",
-  reassign: "Reassign counselor",
+  reassign: "Reassign Counselor",
   complete: "Complete",
   mark_no_show: "Mark no-show",
 };
@@ -179,16 +179,16 @@ const actionNames: Record<keyof AppointmentActionsResponse, string> = {
 // NOT_PERMITTED and NOT_SCHEDULED are not explained here: the actor's access and the
 // status badge already say why nothing can be changed.
 const blockerExplanations: Partial<Record<AppointmentActionBlocker, string>> = {
-  [AppointmentActionBlocker.ALREADY_STARTED]: "The appointment has already started.",
-  [AppointmentActionBlocker.NOT_STARTED]: "Available once the appointment starts.",
-  [AppointmentActionBlocker.NOT_ENDED]: "Available once the appointment ends.",
-  [AppointmentActionBlocker.CUTOFF_PASSED]: "The deadline to change this appointment has passed.",
-  [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current student can reschedule an appointment.",
+  [AppointmentActionBlocker.ALREADY_STARTED]: "The Appointment has already started.",
+  [AppointmentActionBlocker.NOT_STARTED]: "Available once the Appointment starts.",
+  [AppointmentActionBlocker.NOT_ENDED]: "Available once the Appointment ends.",
+  [AppointmentActionBlocker.CUTOFF_PASSED]: "The deadline to change this Appointment has passed.",
+  [AppointmentActionBlocker.CURRENT_STUDENT_REQUIRED]: "Only a current Student can reschedule an Appointment.",
   [AppointmentActionBlocker.ECOUNSELING_ROOM_LINKED]: "An E-Counseling room is already linked to this Appointment.",
-  [AppointmentActionBlocker.ECOUNSELING_ACCESS_STARTED]: "This Appointment can no longer be cancelled because its online counseling access period has begun.",
-  [AppointmentActionBlocker.ECOUNSELING_ACCESS_OPEN]: "Wait until the online counseling access or rejoin period has ended.",
+  [AppointmentActionBlocker.ECOUNSELING_ACCESS_STARTED]: "You can no longer cancel this Appointment because the E-Counseling session has started.",
+  [AppointmentActionBlocker.ECOUNSELING_ACCESS_OPEN]: "Wait until the E-Counseling session and rejoin period have ended.",
   [AppointmentActionBlocker.ROUTINE_INTERVIEW_LINKED]: "A Routine Interview is already linked to this Appointment.",
-  [AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED]: "A Counseling encounter is already linked to this Appointment.",
+  [AppointmentActionBlocker.COUNSELING_ENCOUNTER_LINKED]: "A Counseling Encounter is already linked to this Appointment.",
 };
 
 function unavailableActions(actions: AppointmentActionsResponse): { action: string; reason: string }[] {
@@ -224,22 +224,22 @@ function ActionConfirmation({
     cancel: {
       title: `Cancel Appointment ${referenceCode}?`,
       description: selfCancellation
-        ? "This scheduled appointment will be cancelled. You can still view it in your appointment history."
-        : "This scheduled appointment will be cancelled. You can still view its record afterward.",
-      confirm: "Cancel appointment",
+        ? "This scheduled Appointment will be cancelled. You can still view it in your Appointment history."
+        : "This scheduled Appointment will be cancelled. You can still view its record afterward.",
+      confirm: "Cancel Appointment",
       pending: "Cancelling…",
       variant: "danger",
     },
     complete: {
       title: `Complete Appointment ${referenceCode}?`,
       description: completeConfirmationDescription({ reconciliation }),
-      confirm: "Complete appointment",
+      confirm: "Complete Appointment",
       pending: "Completing…",
       variant: "primary",
     },
     "no-show": {
       title: `Mark Appointment ${referenceCode} as no-show?`,
-      description: "This appointment will be marked no-show and will no longer be scheduled.",
+      description: "This Appointment will be marked no-show and will no longer be scheduled.",
       confirm: "Mark no-show",
       pending: "Marking no-show…",
       variant: "danger",
@@ -257,7 +257,7 @@ function ActionConfirmation({
       pending={busy}
       error={error}
       variant={selected.variant}
-      cancelLabel={action === "cancel" ? "Keep appointment" : "Back to appointment"}
+      cancelLabel={action === "cancel" ? "Keep Appointment" : "Back to Appointment"}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
@@ -438,7 +438,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       setError(null);
       await refreshAppointmentQueries();
       const reloaded = queryClient.getQueryState(getAppointmentsGetQueryKey(appointmentId))?.status !== "error";
-      const reason = appointmentErrorMessage(caught, "This appointment was updated before your action completed.");
+      const reason = appointmentErrorMessage(caught, "This Appointment was updated before your action completed.");
       setUpdatedNotice(reloaded ? `${reason} The latest details are now shown.` : reason);
       return;
     }
@@ -486,7 +486,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       }
       setConfirmAction(null);
     } catch (caught) {
-      await handleMutationError(caught, "The Appointment could not be updated.", "confirm");
+      await handleMutationError(caught, "Couldn't update this Appointment. Try again.", "confirm");
     } finally {
       setConfirming(false);
     }
@@ -531,7 +531,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         void rescheduleSlots.refetch();
         return;
       }
-      await handleMutationError(caught, "The Appointment could not be rescheduled.", "reschedule");
+      await handleMutationError(caught, "Couldn't reschedule this Appointment. Try again.", "reschedule");
     } finally {
       setRescheduling(false);
     }
@@ -558,7 +558,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       setReassignmentReason("");
       setNotice("Counselor reassigned.");
     } catch (caught) {
-      await handleMutationError(caught, "The Counselor could not be reassigned.", "reassign");
+      await handleMutationError(caught, "Couldn't reassign the Counselor. Try again.", "reassign");
     } finally {
       setReassigning(false);
     }
@@ -611,14 +611,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           className="max-w-2xl px-5 py-6 sm:px-6"
           title={
             <h1 className="font-heading text-2xl font-bold text-ink">
-              {notFound ? "Appointment not available" : "Appointment could not be loaded"}
+              {notFound ? "Appointment not available" : "Couldn't load Appointment"}
             </h1>
           }
           action={<Button variant="secondary" onClick={() => void appointmentQuery.refetch()}>Retry</Button>}
         >
           {notFound
-            ? "This appointment is unavailable."
-            : appointmentErrorMessage(appointmentQuery.error, "Appointment details could not be loaded.")}
+            ? "You can't open this Appointment."
+            : appointmentErrorMessage(appointmentQuery.error, "Couldn't load Appointment details. Try again.")}
         </Notice>
       </section>
     );
@@ -703,7 +703,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       {updatedNotice ? <Notice role="status" tone="info" className="mb-4">{updatedNotice}</Notice> : null}
       {detailsUnconfirmed ? (
         <RefreshFailureNotice
-          message="The latest appointment details could not be loaded. Showing the last confirmed details; actions are unavailable until they load."
+          message="Couldn't load the latest Appointment details. You're seeing the last confirmed details; actions return when the latest details load."
           onRetry={() => void appointmentQuery.refetch()}
           retrying={appointmentQuery.isFetching}
         />
@@ -750,14 +750,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
             {counseling && appointment.counseling_encounter_recorded !== null ? (
-              <div><dt className="text-xs font-semibold text-muted">Counseling encounter</dt><dd className="mt-1 text-sm text-ink">{encounterRecorded ? "Recorded" : encounterMismatch ? "Linked, needs review" : "Not recorded"}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Counseling Encounter</dt><dd className="mt-1 text-sm text-ink">{encounterRecorded ? "Recorded" : encounterMismatch ? "Linked, needs review" : "Not recorded"}</dd></div>
             ) : null}
             {appointment.cancellation_cutoff_minutes !== null ? (
-              <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the Appointment starts.</dd></div>
             ) : null}
           </dl>
         </PanelSection>
-        <PanelSection title="Operational dates" titleId="appointment-operational-dates-heading">
+        <PanelSection title="Record dates" titleId="appointment-operational-dates-heading">
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
             {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}
@@ -780,7 +780,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               {finishOffered ? (
                 <Button disabled={pending} onClick={() => { setError(null); setNotice(null); setUpdatedNotice(null); setFinishOpen(true); }}>Finish counseling</Button>
               ) : canComplete ? (
-                <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button>
+                <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete Appointment</Button>
               ) : null}
               {canReschedule ? (
                 <Button
@@ -804,10 +804,10 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   <DropdownMenuTrigger asChild><Button variant="secondary" disabled={pending}><MoreHorizontal aria-hidden="true" size={18} />More actions</Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => { setError(null); setConfirmAction("no-show"); }}>Mark no-show</DropdownMenuItem>
-                    {canCancel ? <DropdownMenuItem className="text-danger" onSelect={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</DropdownMenuItem> : null}
+                    {canCancel ? <DropdownMenuItem className="text-danger" onSelect={() => { setError(null); setConfirmAction("cancel"); }}>Cancel Appointment</DropdownMenuItem> : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel appointment</Button> : null}
+              ) : canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel Appointment</Button> : null}
             </div>
           ) : null}
           {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
@@ -815,7 +815,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           ) : null}
           {displayedUnavailable.length > 0 ? (
             <DisclosureSection
-              title="Unavailable actions"
+              title="Actions you can’t use yet"
               status={`${displayedUnavailable.length} ${displayedUnavailable.length === 1 ? "action" : "actions"}`}
               level={3}
               className="mt-4 max-w-3xl"
@@ -833,7 +833,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           {canReschedule ? (
             <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
             <DialogContent className="max-w-2xl" dismissible={!rescheduling}>
-            <DialogTitle>Reschedule appointment</DialogTitle>
+            <DialogTitle>Reschedule Appointment</DialogTitle>
             <DialogDescription>Choose a new time and review it before saving.</DialogDescription>
             <form onSubmit={submitReschedule} className="mt-5">
               <div className="grid gap-2 sm:max-w-xs">
@@ -859,7 +859,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   {rescheduleSlots.isPending ? (
                     <LoadingRegion label="Loading replacement times…" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /></LoadingRegion>
                   ) : rescheduleSlots.isError && !rescheduleSlotsUnconfirmed ? (
-                    <div role="alert"><p className="text-sm text-danger">Replacement times could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
+                    <div role="alert"><p className="text-sm text-danger">Couldn&apos;t load replacement times. Try again.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
                   ) : rescheduleSlotItems.length === 0 ? (
                     <p role="status" className="text-sm text-muted">No times are available. Choose another date.</p>
                   ) : (
@@ -912,7 +912,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : null}
               {error?.scope === "reschedule" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
               <Button className="mt-4" type="submit" disabled={!selectedRescheduleSlot || rescheduling || rescheduleSlotsUnconfirmed} aria-busy={rescheduling}>
-                {rescheduling ? "Rescheduling…" : "Reschedule appointment"}
+                {rescheduling ? "Rescheduling…" : "Reschedule Appointment"}
               </Button>
               <Button className="ml-2" variant="secondary" disabled={rescheduling} onClick={() => setRescheduleOpen(false)}>Cancel</Button>
             </form>
@@ -923,21 +923,21 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           {canReassign ? (
             <Dialog open={reassignmentOpen} onOpenChange={setReassignmentOpen}>
             <DialogContent className="max-w-2xl" dismissible={!pending}>
-            <DialogTitle>Reassign counselor</DialogTitle>
-            <DialogDescription>Choose a counselor and review the change before saving.</DialogDescription>
+            <DialogTitle>Reassign Counselor</DialogTitle>
+            <DialogDescription>Choose a Counselor and review the change before saving.</DialogDescription>
             <form onSubmit={submitReassignment} className="mt-5">
-              <p className="text-sm text-muted"><span className="font-semibold text-ink">Current counselor:</span> {appointment.provider.display_name}</p>
+              <p className="text-sm text-muted"><span className="font-semibold text-ink">Current Counselor:</span> {appointment.provider.display_name}</p>
               {candidates.isPending ? (
-                <LoadingRegion label="Loading reassignment candidates…" className="mt-4">
+                <LoadingRegion label="Loading Counselors…" className="mt-4">
                   <Skeleton className="h-10 w-full max-w-xl" />
                 </LoadingRegion>
               ) : candidates.isError ? (
-                <div role="alert" className="mt-4"><p className="text-sm text-danger">Reassignment candidates could not be loaded.</p><Button className="mt-2" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button></div>
+                <div role="alert" className="mt-4"><p className="text-sm text-danger">Couldn&apos;t load Counselors. Try again.</p><Button className="mt-2" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button></div>
               ) : candidateItems.length === 0 ? (
                 <p className="mt-4 text-sm text-muted">No other Counselors are available at this time.</p>
               ) : (
                 <div className="mt-4 grid gap-2 sm:max-w-xl">
-                  <Label htmlFor="reassignment-counselor">New counselor</Label>
+                  <Label htmlFor="reassignment-counselor">New Counselor</Label>
                   <Select id="reassignment-counselor" disabled={reassigning} value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
                     <option value="">Choose a Counselor</option>
                     {candidateItems.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.display_name}</option>)}
@@ -957,7 +957,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ) : null}
               {error?.scope === "reassign" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
               <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassigning || candidates.isPending} aria-busy={reassigning}>
-                {reassigning ? "Reassigning…" : "Reassign counselor"}
+                {reassigning ? "Reassigning…" : "Reassign Counselor"}
               </Button>
               <Button className="ml-2" variant="secondary" disabled={pending} onClick={() => setReassignmentOpen(false)}>Cancel</Button>
             </form>
@@ -970,17 +970,17 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <Panel aria-labelledby="appointment-history-heading">
         <PanelHeader title="Appointment history" titleId="appointment-history-heading" />
         {historyQuery.isPending ? (
-          <RowsSkeleton label="Loading appointment history…" rows={2} />
+          <RowsSkeleton label="Loading Appointment history…" rows={2} />
         ) : historyQuery.isError ? (
           <PanelMessage
             role="alert"
             tone="danger"
             action={<Button variant="secondary" onClick={() => void historyQuery.refetch()}>Retry history</Button>}
           >
-            Appointment history could not be loaded.
+            Couldn&apos;t load Appointment history. Try again.
           </PanelMessage>
         ) : historyItems.length === 0 ? (
-          <PanelMessage>No appointment history yet.</PanelMessage>
+          <PanelMessage>No Appointment history yet.</PanelMessage>
         ) : (
           <ol className="divide-y divide-border">
             {historyItems.map((entry, index) => (
@@ -1011,7 +1011,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               tone="danger"
               action={<Button variant="secondary" onClick={() => void remindersQuery.refetch()}>Retry reminder history</Button>}
             >
-              Reminder history could not be loaded.
+              Couldn&apos;t load reminder history. Try again.
             </PanelMessage>
           ) : (remindersQuery.data?.data.items ?? []).length === 0 ? (
             <PanelMessage>No reminders have been issued yet.</PanelMessage>
@@ -1032,7 +1032,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                       <p className="mt-1 text-sm text-muted">Automatic system reminder</p>
                     )}
                     {!entry.is_current ? (
-                      <p className="mt-1 text-xs text-warning">Superseded by appointment reschedule</p>
+                      <p className="mt-1 text-xs text-warning">Superseded by Appointment reschedule</p>
                     ) : null}
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
                       <div>

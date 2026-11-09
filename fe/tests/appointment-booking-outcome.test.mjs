@@ -38,7 +38,7 @@ test("an unread response stays persistent beside Book and keeps the retry-safe b
   // The key is reused for the exact same details, so a retry returns the booking already made.
   assert.match(source, /intentRef\.current\?\.fingerprint === fingerprint\s*\?\s*intentRef\.current\.key/);
   assert.match(source, /if \(!failure\.keepIntent\) intentRef\.current = null;/);
-  assert.match(source, /bookingError\?\.uncertain \? "Retry booking" : "Book appointment"/);
+  assert.match(source, /bookingError\?\.uncertain \? "Retry booking" : "Book Appointment"/);
 });
 
 test("errors render inside their own steps, never below the whole sheet", () => {
@@ -46,7 +46,7 @@ test("errors render inside their own steps, never below the whole sheet", () => 
   const service = at('title="1. Choose a Service"');
   const delivery = at('title="2. Choose delivery mode"');
   const time = at('title="4. Choose date and time"');
-  const review = at('title="5. Review appointment"');
+  const review = at('title="5. Review Appointment"');
   const footer = at("<PanelFooter>");
   const serviceError = at("{serviceError ? (");
   const timeError = at("{timeError ? (");
@@ -76,7 +76,7 @@ test("a confirmed booking opens one completion dialog and cannot be submitted tw
   // Done starts a new booking instead of leaving a spent review behind.
   assert.match(source, /function finishBooking\(\) \{\s*setBooked\(null\);\s*changeService\(null\);/);
   assert.match(source, /<DialogTitle>Appointment scheduled<\/DialogTitle>/);
-  assert.match(source, /href=\{`\/portal\/appointments\/\$\{booked\.id\}`\}[^>]*>\s*View appointment/);
+  assert.match(source, /href=\{`\/portal\/appointments\/\$\{booked\.id\}`\}[^>]*>\s*View Appointment/);
   assert.match(source, /onOpenAutoFocus=\{\(event\) => \{\s*if \(viewLink\.current\) \{\s*event\.preventDefault\(\);\s*viewLink\.current\.focus\(\);/);
 });
 
@@ -102,7 +102,7 @@ test("the completion states only the safe facts the review showed", () => {
   assert.equal(booked.referenceCode, "APT-7K2Q");
   assert.deepEqual(booked.facts.map((fact) => fact.label), ["Reference", "Service", "Counselor", "Schedule", "Delivery", "Duration"]);
   const values = booked.facts.map((fact) => fact.value).join(" | ");
-  assert.match(values, /Maria Santos · Assigned counselor/);
+  assert.match(values, /Maria Santos · Assigned Counselor/);
   assert.match(values, /2:00/);
   assert.match(values, /In person/);
   assert.match(values, /60 minutes/);

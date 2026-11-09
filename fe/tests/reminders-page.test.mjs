@@ -129,7 +129,7 @@ test("row states are described in plain words, never as stored codes", () => {
   assert.equal(manualReminderLabel(upcomingRow), "Ready to send");
   assert.match(manualReminderLabel(blockedRow), /sent recently/);
   assert.match(manualReminderLabel({ manual_available: false, manual_reason: "TOO_SOON" }), /less than 15 minutes/);
-  assert.match(manualReminderLabel({ manual_available: false, manual_reason: "NOT_SCHEDULED" }), /Only scheduled appointments/);
+  assert.match(manualReminderLabel({ manual_available: false, manual_reason: "NOT_SCHEDULED" }), /Only scheduled Appointments/);
 
   assert.equal(deliveryStateLabel("NOT_REQUESTED"), "Not requested");
   assert.equal(deliveryStateLabel("PENDING"), "Pending");
@@ -218,7 +218,7 @@ test("Reminders appears in navigation only for staff who manage Appointments", (
 
 test("a non-manager sees only the unavailable message, with no reminder data", () => {
   const html = render("", { user: student, upcoming: [], activity: [] });
-  assert.match(html, /Reminders unavailable/);
+  assert.match(html, /Reminder access/);
   assert.doesNotMatch(html, /Upcoming reminders|Sent reminders/);
 });
 

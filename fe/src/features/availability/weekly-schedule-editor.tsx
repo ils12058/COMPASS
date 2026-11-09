@@ -166,7 +166,7 @@ function EditableHours({
 export function WeeklyScheduleEditor({
   windows,
   title = "Weekly schedule",
-  description = "All delivery modes means these hours apply to online and in-person appointments. Online and in-person hours apply only to that delivery mode.",
+  description = "All delivery modes means these hours apply to online and in-person Appointments. Online and in-person hours apply only to that delivery mode.",
   canMutate,
   pending,
   error,
@@ -278,8 +278,7 @@ export function WeeklyScheduleEditor({
             {pending ? "Saving…" : "Save weekly schedule"}
           </Button>
           <p className="min-w-0 flex-1 text-sm leading-6 text-muted">
-            Saving replaces all weekly hours shown above. Existing appointments stay scheduled; review them
-            separately if the hours change.
+            Saving replaces all weekly hours shown above. Existing Appointments stay scheduled; review them separately if the hours change.
           </p>
           {error ? (
             <p id="weekly-schedule-error" role="alert" className="basis-full text-sm text-danger">
@@ -320,7 +319,7 @@ export function WeeklyScheduleCleanup({
       <PanelHeader
         title="Weekly schedule"
         titleId="weekly-schedule-heading"
-        description="You can review or clear these saved weekly hours. Existing appointments stay scheduled."
+        description="You can review or clear these saved weekly hours. Existing Appointments stay scheduled."
         actions={windows.length > 0 ? (
           <Button
             variant="danger"
@@ -361,7 +360,7 @@ export function WeeklyScheduleCleanup({
         variant="danger"
         completed={cleared ? {
           title: "Weekly schedule cleared",
-          children: <p>No recurring Availability windows remain for this provider. Existing Appointments remain scheduled.</p>,
+          children: <p>This Counselor has no weekly hours left. Their booked Appointments stay scheduled.</p>,
         } : null}
         onOpenChange={setClearOpen}
         onConfirm={() => void clearSchedule()}
@@ -373,8 +372,7 @@ export function WeeklyScheduleCleanup({
         }}
       >
         <p>
-          This removes every recurring Availability window for this provider. Existing Appointments remain
-          scheduled. Historical unavailability records are not removed.
+          This removes all weekly hours for this Counselor. Existing Appointments and past time off records stay unchanged.
         </p>
       </ConsequentialActionDialog>
     </Panel>

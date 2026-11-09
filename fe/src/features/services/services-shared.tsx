@@ -39,12 +39,12 @@ import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 const knownErrors: Record<string, string> = {
-  permission_denied: "You can't perform this service action.",
-  service_not_found: "This service is unavailable.",
+  permission_denied: "You can't perform this Service action.",
+  service_not_found: "You can't open this Service.",
   service_catalog_conflict:
-    "These service settings conflict with the current catalog. Review them and try again.",
+    "These Service settings conflict with the current catalog. Review them and try again.",
   invalid_service_catalog_request:
-    "Some service details need attention. Review them and try again.",
+    "Some Service details need attention. Review them and try again.",
   canonical_service_reserved:
     "The COUNSELING code is reserved for the Counseling Service that COMPASS provides. Use a different Service code.",
   canonical_service_required:
@@ -70,7 +70,7 @@ export function serviceDeliveryLabel(modes: DeliveryMode[]): string {
 }
 
 export function serviceBookingLabel(enabled: boolean): string {
-  return enabled ? "Enabled for flexible appointments" : "Flexible appointments disabled";
+  return enabled ? "Enabled for flexible Appointments" : "Flexible Appointments disabled";
 }
 
 export const serviceCoverageLabels: Record<ServiceProviderCoverage, string> = {
@@ -119,13 +119,10 @@ export function ServiceConsequenceSummary({
       {details.existingAppointmentDependencyDetected && onlineRemoved ? (
         <>
           <p>
-            New Online Counseling work will no longer be available. Existing Online Counseling
-            appointments remain scheduled and keep their saved Online delivery mode; they are not
-            changed to in person.
+            New E-Counseling work stops. Existing online Appointments stay scheduled online; they do not change to in person.
           </p>
           <p>
-            While Online counseling is off, those appointments cannot be rescheduled or
-            reassigned.
+            While E-Counseling is off, those Appointments cannot be rescheduled or reassigned.
           </p>
         </>
       ) : null}
@@ -139,31 +136,22 @@ export function ServiceConsequenceSummary({
       ) : null}
       {details.existingFixedSlotDependencyDetected ? (
         <p>
-          Upcoming published Fixed Slots remain on record. Slots that have not been booked will
-          stop accepting new bookings when this pathway, delivery mode, or Service is unavailable.
-          A slot already booked remains its canonical Appointment.
+          Published slots stay on record, but unbooked slots stop accepting bookings when you disable this pathway, delivery mode, or Service. A booked slot keeps its Appointment.
         </p>
       ) : null}
       {details.existingGroupSessionDependencyDetected ? (
         <p>
-          Upcoming published Group Sessions and their registrations remain unchanged. New
-          registrations stop when this pathway, delivery mode, or Service is unavailable. Use the
-          Group Session actions to reschedule or cancel existing events.
+          Published Group Sessions and their registrations stay unchanged, but new registrations stop when you disable this pathway, delivery mode, or Service. Use Group Session actions to reschedule or cancel existing events.
         </p>
       ) : null}
       {details.providerDependencyDetected ? (
         <p>
-          Some upcoming Appointments or open Fixed Slots use a Counselor who will no longer be
-          eligible for new work under this Service. Existing Appointments stay with their assigned
-          Counselor; affected open slots stop accepting bookings.
+          Some upcoming Appointments or open slots use a Counselor who will no longer provide new work for this Service. Existing Appointments keep their Counselor; affected open slots stop accepting bookings.
         </p>
       ) : null}
       {details.counselingOnlineEnabled ? (
         <p>
-          Enabling Online counseling allows new Online Counseling appointments to be scheduled
-          where Counselor Availability and booking requirements permit. Scheduled Online
-          Counseling appointments use E-Counseling. This change does not confirm that the
-          video-session provider is configured or available.
+          Enabling E-Counseling allows new online Appointments when Counselor Availability and booking requirements allow them. Video calls also need the video calling to be set up and available.
         </p>
       ) : null}
     </>
@@ -239,8 +227,8 @@ export function ServicesGate({ children }: { children: ReactNode }) {
   return hasServicesWorkspace(user) ? (
     children
   ) : (
-    <WorkspaceUnavailable title="Services unavailable">
-      You don’t have access to manage services.
+    <WorkspaceUnavailable title="Service access">
+      You don’t have access to manage Services.
     </WorkspaceUnavailable>
   );
 }
@@ -374,12 +362,12 @@ export function ServicesQueryError({
 }
 
 export function ServicesListSkeleton({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading services…" rows={5} framed={framed} />;
+  return <RowsSkeleton label="Loading Services…" rows={5} framed={framed} />;
 }
 
 export function ServicesDetailSkeleton() {
   return (
-    <LoadingRegion label="Loading service…" className="space-y-7">
+    <LoadingRegion label="Loading Service…" className="space-y-7">
       <Skeleton className="h-12 w-72 max-w-full" />
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-36 w-full" />

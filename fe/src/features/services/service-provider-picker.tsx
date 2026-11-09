@@ -55,7 +55,7 @@ export function ServiceProviderPicker({
       <div>
         <p className="text-sm font-semibold text-ink">Selected Counselors</p>
         {selected.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">No counselors selected yet.</p>
+          <p className="mt-2 text-sm text-muted">No Counselors selected yet.</p>
         ) : (
           <ul aria-label="Selected Counselors" className="mt-2 divide-y divide-border rounded-sm border border-border">
             {selected.map((counselor) => (
@@ -65,7 +65,7 @@ export function ServiceProviderPicker({
                   <span>
                   {counselor.displayName}
                   {!counselor.isActive ? (
-                    <span className="block text-xs text-muted">Inactive account · not eligible</span>
+                    <span className="block text-xs text-muted">Inactive account · cannot provide new work</span>
                   ) : null}
                   </span>
                 </span>
@@ -96,13 +96,13 @@ export function ServiceProviderPicker({
         />
         {candidates.isPending ? (
           <div aria-busy="true" className="mt-3 space-y-2">
-            <span className="sr-only">Loading counselors…</span>
+            <span className="sr-only">Loading Counselors…</span>
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
         ) : candidates.isError ? (
           <p role="alert" className="mt-3 text-sm text-danger">
-            {servicesErrorMessage(candidates.error, "Counselors could not be loaded.")}{" "}
+            {servicesErrorMessage(candidates.error, "Couldn't load Counselors. Try again.")}{" "}
             <button type="button" className="font-semibold underline" onClick={() => void candidates.refetch()}>
               Retry
             </button>

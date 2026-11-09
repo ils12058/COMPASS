@@ -111,7 +111,7 @@ function ManagedAppointmentFilters({
     <form
       hidden={hidden}
       role="search"
-      aria-label="Managed appointments"
+      aria-label="Managed Appointments"
       onSubmit={(event) => {
         event.preventDefault();
         onApply({ ...draft, search: draft.search.trim() });
@@ -132,7 +132,7 @@ function ManagedAppointmentFilters({
             label="Service"
             htmlFor="managed-appointment-service"
             hint={servicesFailed ? (
-              <p id="managed-appointment-service-error" className="text-xs text-warning">Service choices could not be loaded.</p>
+              <p id="managed-appointment-service-error" className="text-xs text-warning">Couldn&apos;t load Service choices. Try again.</p>
             ) : null}
           >
             <Select
@@ -145,7 +145,7 @@ function ManagedAppointmentFilters({
               <option value="">All Services</option>
               {applied.service && !appliedServiceKnown ? (
                 <option value={applied.service}>
-                  {servicesPending ? "Loading service…" : "Selected Service"}
+                  {servicesPending ? "Loading Service…" : "Selected Service"}
                 </option>
               ) : null}
               {serviceOptions.map((service) => (
@@ -182,7 +182,7 @@ function ManagedAppointmentFilters({
       >
         <ListSearchField
           id="managed-appointment-search"
-          label="Search appointments"
+          label="Search Appointments"
           value={draft.search}
           onChange={(event) => set("search", event.target.value)}
           placeholder="Search by reference, Student name, or Institutional ID"
@@ -296,7 +296,7 @@ function ManagedAppointmentsList() {
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="manage-appointments-heading"
-        title="Manage appointments"
+        title="Manage Appointments"
       >
         <div className="mt-3">
           <AppointmentsPresentationToggle value={presentation} onChange={changePresentation} />
@@ -352,7 +352,7 @@ function ManagedAppointmentsList() {
                     count: items.length,
                     page: pageData.page,
                     hasNext: pageData.has_next,
-                    noun: { one: "appointment", other: "appointments" },
+                    noun: { one: "Appointment", other: "Appointments" },
                     filtered: hasFilters,
                   })
                 : null
@@ -373,7 +373,7 @@ function ManagedAppointmentsList() {
             tone="danger"
             action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}
           >
-            {appointmentErrorMessage(list.error, "Managed appointments could not be loaded.")}
+            {appointmentErrorMessage(list.error, "Couldn't load Appointments you manage. Try again.")}
           </PanelMessage>
         ) : items.length === 0 ? (
           <PanelMessage
@@ -391,17 +391,17 @@ function ManagedAppointmentsList() {
             ) : undefined}
           >
             {hasFilters
-              ? "No appointments match the selected filters."
+              ? "No Appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
-                ? "No scheduled appointments are available."
-                : "No appointments are available."}
+                ? "No scheduled Appointments are available."
+                : "No Appointments are available."}
           </PanelMessage>
         ) : (
           <>
             <div
               className={`${dataTable.scroll} hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:block`}
               role="region"
-              aria-label="Managed appointments. Scroll horizontally to view all columns."
+              aria-label="Managed Appointments. Scroll horizontally to view all columns."
               tabIndex={0}
               onKeyDown={(event) => {
                 if (event.target !== event.currentTarget || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
@@ -411,11 +411,11 @@ function ManagedAppointmentsList() {
             >
               <p aria-hidden="true" className="px-4 py-2 text-xs text-muted 2xl:hidden">Scroll horizontally to see all columns.</p>
               <table className={`${dataTable.table} min-w-[1000px]`}>
-                <caption className="sr-only">Managed appointments</caption>
+                <caption className="sr-only">Managed Appointments</caption>
                 <thead className={dataTable.head}>
                   <tr>
                     {canSendReminders ? <th scope="col" className={`${dataTable.headerCell} sticky left-0 z-30 w-12 bg-brand-wash`}>
-                      <input type="checkbox" aria-label="Select eligible appointments on this page"
+                      <input type="checkbox" aria-label="Select eligible Appointments on this page"
                         disabled={selectable.length === 0}
                         checked={selectable.length > 0 && selectable.every((item) => selectedIds.includes(item.id))}
                         onChange={(event) => setSelectedIds(event.target.checked ? selectable.slice(0, 25).map((item) => item.id) : [])} />
@@ -470,7 +470,7 @@ function ManagedAppointmentsList() {
                       <input type="checkbox" checked={selectedIds.includes(appointment.id)}
                         disabled={!selectable.some((item) => item.id === appointment.id) || (!selectedIds.includes(appointment.id) && selectedIds.length >= 25)}
                         onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, appointment.id] : previous.filter((id) => id !== appointment.id))} />
-                      Select appointment
+                      Select Appointment
                     </label> : null}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -528,7 +528,7 @@ export function AppointmentsManagedPage() {
   if (!user.capabilities.includes("appointments.manage")) {
     return (
       <AppointmentsUnavailable>
-        Appointment management is unavailable to this account.
+        You don&apos;t have access to manage Appointments.
       </AppointmentsUnavailable>
     );
   }

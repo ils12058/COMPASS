@@ -21,7 +21,7 @@ for (const width of [320, 1440]) {
     for (const [name, route, overrides, text] of [
         ['referral-validation', '/portal/referrals', { '/api/v1/referrals': error('invalid_referral_request') }, 'Some Referral details need attention. Review them and try again.'],
         ['call-slip-validation', '/portal/call-slips', { '/api/v1/call-slips': error('invalid_call_slip_request') }, 'Some Call Slip details need attention. Review them and try again.'],
-        ['appointment-validation', '/portal/appointments/manage', { '/api/v1/appointments': error('invalid_appointment_request') }, 'Some appointment details need attention. Review them and try again.'],
+        ['appointment-validation', '/portal/appointments/manage', { '/api/v1/appointments': error('invalid_appointment_request') }, 'Some Appointment details need attention. Review them and try again.'],
         ['counseling-validation', '/portal/counseling', { '/api/v1/counseling/me/encounters': error('counseling_invalid_request') }, 'Some counseling details need attention. Review them and try again.'],
         ['hidden-referral', '/portal/referrals/long', { '/api/v1/referrals/long': error('referral_not_permitted', 404) }, 'You don\'t have access to this Referral.'],
         ['hidden-call-slip', '/portal/call-slips/slip-density-test', { '/api/v1/call-slips/slip-density-test': error('call_slip_not_permitted', 404) }, 'You don\'t have access to this Call Slip.'],
@@ -124,11 +124,11 @@ for (const width of [320, 1440]) {
         await page.getByRole('button', { name: /^Counseling/ }).click();
         await page.getByRole('radio', { name: 'In person', exact: true }).check();
         await page.getByLabel('Appointment date', { exact: true }).fill('2098-10-10');
-        await page.getByRole('group', { name: 'Available appointment times' }).getByRole('button').first().click();
-        await page.getByRole('button', { name: 'Book appointment', exact: true }).click();
-        await oneAlert(page, 'The booking response could not be confirmed.');
+        await page.getByRole('group', { name: 'Available Appointment times' }).getByRole('button').first().click();
+        await page.getByRole('button', { name: 'Book Appointment', exact: true }).click();
+        await oneAlert(page, "Couldn't confirm your booking.");
         await page.getByRole('button', { name: 'Retry booking', exact: true }).click();
-        await oneAlert(page, 'The booking response could not be confirmed.');
+        await oneAlert(page, "Couldn't confirm your booking.");
         assert.equal(bookingPosts.length, 2);
         assert.ok(bookingPosts[0].key);
         assert.deepEqual(bookingPosts[1], bookingPosts[0]);

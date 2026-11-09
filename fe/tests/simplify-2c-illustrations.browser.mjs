@@ -48,7 +48,7 @@ for(const width of [320,390,1024,1440]) {
   options.handler=async args=>args.pathname==="/api/v1/appointments/me"
     ? (await args.reply({items:[],page:1,page_size:20,has_next:false,ordering:"EARLIEST_START"}), true) : handler(args);
   await h.check(`appointments-empty-${width}`,"/portal/appointments/my?status=ALL",options,async page=>{
-    await h.shown(page.getByText("No appointments are available.",{exact:true}));
+    await h.shown(page.getByText("No Appointments are available.",{exact:true}));
     await checkImages(page,"appointment-calendar-3d");
     await h.noHorizontalOverflow(page);
     await h.screenshot(page,`${before?"before":"after"}-appointments-empty-${width}`);
@@ -68,7 +68,7 @@ if (!before) {
     options.handler=async args=>args.pathname==="/api/v1/appointments/me"
       ? (await args.reply(mode==="error" ? {error:{code:"synthetic_unavailable",message:"Synthetic"}} : {items:mode==="populated"?[appointment]:[],page:1,page_size:20,has_next:false,ordering:"EARLIEST_START"},mode==="error"?503:200),true):handler(args);
     await h.check(`appointments-${mode}`,`/portal/appointments/my?status=ALL${mode==="filtered"?"&search=no-match":""}`,options,async page=>{
-      await h.shown(mode==="error"?page.getByRole("button",{name:"Retry",exact:true}):mode==="filtered"?page.getByText("No appointments match the selected filters.",{exact:true}):page.locator("tbody tr").first());
+      await h.shown(mode==="error"?page.getByRole("button",{name:"Retry",exact:true}):mode==="filtered"?page.getByText("No Appointments match the selected filters.",{exact:true}):page.locator("tbody tr").first());
       assert.equal(await page.locator('main img[src*="illustrations"]').count(),0);
     });
   }
@@ -78,10 +78,10 @@ if (!before) {
     options.handler=async args=>args.pathname==="/api/v1/appointments/me" ? (await gate,await args.reply({items:[],page:1,page_size:20,has_next:false,ordering:"EARLIEST_START"}),true):handler(args);
     await h.check("appointments-loading", "/portal/appointments/my?status=ALL",options,async page=>{
       try {
-        await h.shown(page.getByText("Loading appointments…",{exact:true}));
+        await h.shown(page.getByText("Loading Appointments…",{exact:true}));
         assert.equal(await page.locator('main img[src*="illustrations"]').count(),0);
         release();
-        await h.shown(page.getByText("No appointments are available.",{exact:true}));
+        await h.shown(page.getByText("No Appointments are available.",{exact:true}));
         await checkImages(page,"appointment-calendar-3d");
       } finally {release();}
     });

@@ -95,7 +95,7 @@ export function BookingDeliveryModeChoice({
       </fieldset>
       {onlineUsesECounseling ? (
         <p id="booking-online-help" className="mt-2 text-xs leading-5 text-muted">
-          Online appointments use the E-Counseling workspace.
+          Use E-Counseling for online Appointments.
         </p>
       ) : null}
     </>
@@ -347,7 +347,7 @@ function BookingWorkspace() {
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="book-appointment-heading"
-        title="Book appointment"
+        title="Book Appointment"
       />
 
       <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.png" : undefined} />
@@ -378,18 +378,18 @@ function BookingWorkspace() {
             <div aria-busy="true" className="mt-4 space-y-3">
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
-              <p className="sr-only">Loading appointment services…</p>
+              <p className="sr-only">Loading Appointment Services…</p>
             </div>
           ) : bookingServices.isError ? (
             <div role="alert" className="mt-4">
-              <p className="text-sm text-danger">Appointment Services could not be loaded.</p>
+              <p className="text-sm text-danger">Couldn&apos;t load Appointment Services. Try again.</p>
               <Button className="mt-3" variant="secondary" onClick={() => void bookingServices.refetch()}>Retry</Button>
             </div>
           ) : serviceItems.length === 0 ? (
             <p className="mt-4 text-sm text-muted">
               {serviceSearch.trim()
-                ? "No appointment services match your search."
-                : "No appointment services are currently available."}
+                ? "No Appointment Services match your search."
+                : "No Appointment Services are currently available."}
             </p>
           ) : (
             <>
@@ -415,7 +415,7 @@ function BookingWorkspace() {
                         <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                           <span>{item.default_appointment_duration_minutes} minutes</span>
                           <span>{item.delivery_modes.map(deliveryModeLabel).join(" · ")}</span>
-                          {item.requires_current_inventory ? <span>Current-year Inventory required</span> : null}
+                          {item.requires_current_inventory ? <span>Current Academic Year Individual Inventory required</span> : null}
                         </span>
                       </button>
                     </li>
@@ -448,16 +448,16 @@ function BookingWorkspace() {
         {service && deliveryMode ? (
           <PanelSection title="3. Choose a Counselor" titleId="booking-counselor-heading">
             {counselors.isPending ? (
-              <LoadingRegion label="Loading counselors…">
+              <LoadingRegion label="Loading Counselors…">
                 <Skeleton className="h-10 w-full max-w-xl" />
               </LoadingRegion>
             ) : counselors.isError ? (
               <div role="alert">
-                <p className="text-sm text-danger">Eligible Counselors could not be loaded.</p>
+                <p className="text-sm text-danger">Couldn&apos;t load Counselors. Try again.</p>
                 <Button className="mt-3" variant="secondary" onClick={() => void counselors.refetch()}>Retry</Button>
               </div>
             ) : counselorItems.length === 0 ? (
-              <p className="text-sm text-muted">No eligible Counselors are available for this Service and delivery mode.</p>
+              <p className="text-sm text-muted">No Counselors are available for this Service and delivery mode.</p>
             ) : (
               <div className="grid gap-2 sm:max-w-xl">
                 <Label htmlFor="booking-counselor">Counselor</Label>
@@ -469,7 +469,7 @@ function BookingWorkspace() {
                   {!counselorId ? <option value="">Choose a Counselor</option> : null}
                   {counselorItems.map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>
-                      {candidate.display_name}{candidate.is_default ? " — Assigned counselor" : ""}
+                      {candidate.display_name}{candidate.is_default ? " — Assigned Counselor" : ""}
                     </option>
                   ))}
                 </Select>
@@ -497,11 +497,11 @@ function BookingWorkspace() {
                   </LoadingRegion>
                 ) : slots.isError && !slotsUnconfirmed ? (
                   <div role="alert">
-                    <p className="text-sm text-danger">Available times could not be loaded.</p>
+                    <p className="text-sm text-danger">Couldn&apos;t load available times. Try again.</p>
                     <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
                   </div>
                 ) : slotItems.length === 0 ? (
-                  <p role="status" className="text-sm text-muted">No available appointment times were found for this date. Choose another date.</p>
+                  <p role="status" className="text-sm text-muted">No available Appointment times were found for this date. Choose another date.</p>
                 ) : (
                   <>
                     {slotsUnconfirmed ? (
@@ -515,7 +515,7 @@ function BookingWorkspace() {
                       </Notice>
                     ) : null}
                     <p className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
-                    <div role="group" aria-label="Available appointment times" className="flex flex-wrap gap-2">
+                    <div role="group" aria-label="Available Appointment times" className="flex flex-wrap gap-2">
                       {slotItems.map((slot) => {
                         const selected = slot.starts_at === slotChoice.selected;
                         return (
@@ -544,10 +544,10 @@ function BookingWorkspace() {
 
         {service && deliveryMode && selectedCounselor && selectedSlot ? (
           <>
-            <PanelSection title="5. Review appointment" titleId="booking-review-heading">
+            <PanelSection title="5. Review Appointment" titleId="booking-review-heading">
               <dl className="grid max-w-3xl gap-x-8 gap-y-4 sm:grid-cols-2">
                 <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
-                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned Counselor" : ""}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_appointment_duration_minutes} minutes</dd></div>
@@ -582,7 +582,7 @@ function BookingWorkspace() {
                 onClick={() => void bookAppointment()}
                 aria-busy={submitting}
               >
-                {submitting ? "Booking…" : bookingError?.uncertain ? "Retry booking" : "Book appointment"}
+                {submitting ? "Booking…" : bookingError?.uncertain ? "Retry booking" : "Book Appointment"}
               </Button>
               <p className="text-xs text-muted">
                 {slotsUnconfirmed
@@ -637,8 +637,8 @@ function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | nul
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={onDone}>Done</Button>
             {canView ? <Link ref={viewLink} href={`/portal/appointments/${booked.id}`} className={buttonVariants({ variant: "primary" })}>
-              View appointment
-            </Link> : <p className="text-sm text-muted">Your account cannot open appointment details.</p>}
+              View Appointment
+            </Link> : <p className="text-sm text-muted">You don&apos;t have access to Appointment details.</p>}
           </div>
         </DialogContent>
       ) : null}
@@ -653,7 +653,7 @@ export function AppointmentBookingPage({ scheduledSlots = false, serviceId, init
     return (
       <section aria-labelledby="appointment-booking-unavailable-heading">
         <AppointmentsLocalNavigation />
-        <PageHeader title="Booking unavailable" headingId="appointment-booking-unavailable-heading" />
+        <PageHeader title="Appointment booking access" headingId="appointment-booking-unavailable-heading" />
         <Notice
           className="max-w-2xl"
           action={access.canViewSelf ? (
@@ -661,15 +661,15 @@ export function AppointmentBookingPage({ scheduledSlots = false, serviceId, init
               href="/portal/appointments/my"
               className="text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              Go to My appointments
+              Go to My Appointments
             </Link>
           ) : undefined}
         >
           {access.isStudent
             ? user.student_lifecycle_status !== "CURRENT"
-              ? access.canViewSelf ? "Only current students can book appointments. You can still view your existing appointments." : "Only current students can book appointments."
-              : access.canViewSelf ? "Your account does not have permission to book appointments. You can still view your existing appointments." : "Booking is unavailable to this account."
-            : "Student self-booking is not available to this account."}
+              ? access.canViewSelf ? "Only current Students can book Appointments. You can still view your existing Appointments." : "Only current Students can book Appointments."
+              : access.canViewSelf ? "You don't have access to book Appointments. You can still view your existing Appointments." : "You don't have access to book Appointments."
+            : "You don't have access to Student Appointment booking."}
         </Notice>
       </section>
     );

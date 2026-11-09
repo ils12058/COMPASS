@@ -22,7 +22,7 @@ function sessionStatusLabel(status: string): string {
     case "DRAFT":
       return "Draft";
     default:
-      return "Status unavailable";
+      return "Status not shown";
   }
 }
 
@@ -36,9 +36,9 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
   if (sessionQuery.isPending) {
     return (
       <>
-        <PageHeader title="Group session details" />
+        <PageHeader title="Group Session details" />
         <Panel>
-          <PanelBody className="space-y-3" aria-label="Loading group session details">
+          <PanelBody className="space-y-3" aria-label="Loading Group Session details">
             <Skeleton className="h-8 w-2/5" />
             <Skeleton className="h-28 w-full" />
           </PanelBody>
@@ -50,7 +50,7 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
   if (sessionQuery.isError || !session) {
     return (
       <>
-        <PageHeader title="Group session details" />
+        <PageHeader title="Group Session details" />
         <PanelMessage
           role="alert"
           tone="danger"
@@ -64,7 +64,7 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
             </button>
           }
         >
-          {groupSessionsError(sessionQuery.error, "The group session details could not be loaded. Try again.")}
+          {groupSessionsError(sessionQuery.error, "Couldn't load Group Session details. Try again.")}
         </PanelMessage>
       </>
     );
@@ -74,7 +74,7 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
   const contextId = search.get("service_id");
   const validContext = contextId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contextId);
   const backHref = fromBrowse ? "/portal/group-sessions/discover" + (validContext ? `?service_id=${encodeURIComponent(contextId)}` : "") : isStudent ? "/portal/group-sessions/my" : "/portal/group-sessions/manage";
-  const backLabel = fromBrowse ? "Browse Sessions" : isStudent ? "My Registrations" : "Manage Sessions";
+  const backLabel = fromBrowse ? "Browse Group Sessions" : isStudent ? "My registrations" : "Manage Group Sessions";
 
   return (
     <>

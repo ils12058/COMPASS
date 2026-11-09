@@ -84,7 +84,7 @@ const overrides = {
 };
 
 const collections = [
-  { name: "appointments", route: "/portal/appointments/manage", region: "Managed appointments", identityHeader: 1 },
+  { name: "appointments", route: "/portal/appointments/manage", region: "Managed Appointments", identityHeader: 1 },
   { name: "referrals", route: "/portal/referrals", region: "Referrals", identityHeader: 0 },
   { name: "call-slips", route: "/portal/call-slips", region: "Call Slips", identityHeader: 0 },
   { name: "service-catalog", route: "/portal/services", region: null, identityHeader: null },
@@ -98,7 +98,7 @@ for (const collection of collections) {
     await shown(page.getByRole("heading", { level: 1 }));
     if (collection.name === "service-catalog") {
       await shown(page.getByRole("link", { name: "Wellbeing Consultation", exact: true }));
-      await shown(page.getByText(/Enabled for flexible appointments/));
+      await shown(page.getByText(/Enabled for flexible Appointments/));
     } else {
       await shown(page.locator("tbody tr").first());
     }
@@ -164,7 +164,7 @@ await check("referrals-applied-filter", "/portal/referrals?include_voided=true",
 await check("service-catalog-no-results", "/portal/services?search=no-match", {
   viewport: { width: 375, height: 844 }, overrides,
 }, async (page) => {
-  await shown(page.getByText("No services match the current search or filters.", { exact: true }));
+  await shown(page.getByText("No Services match the current search or filters.", { exact: true }));
   await noHorizontalOverflow(page);
   await screenshot(page, "service-catalog-no-results-375");
   await page.getByRole("button", { name: "Filters", exact: true }).click();

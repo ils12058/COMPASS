@@ -126,10 +126,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="my-appointments-heading"
-        title="My appointments"
+        title="My Appointments"
         description={
           access.isStudent
-            ? "Shows scheduled appointments first. Use Filters to see past appointments."
+            ? "Shows scheduled Appointments first. Use Filters to see past Appointments."
             : undefined
         }
       >
@@ -205,7 +205,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                     count: items.length,
                     page: pageData.page,
                     hasNext: pageData.has_next,
-                    noun: { one: "appointment", other: "appointments" },
+                    noun: { one: "Appointment", other: "Appointments" },
                     filtered: filtering,
                   })
                 : null
@@ -223,11 +223,11 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
               </Button>
             }
           >
-            {appointmentErrorMessage(list.error, "My Appointments could not be loaded.")}
+            {appointmentErrorMessage(list.error, "Couldn't load your Appointments. Try again.")}
           </PanelMessage>
         ) : items.length === 0 && !filtering && status === undefined && !upcoming ? (
           <IllustratedEmptyState src="/illustrations/appointment-calendar-3d.png">
-            No appointments are available.
+            No Appointments are available.
           </IllustratedEmptyState>
         ) : items.length === 0 ? (
           <PanelMessage
@@ -241,10 +241,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             ) : undefined}
           >
             {filtering
-              ? "No appointments match the selected filters."
+              ? "No Appointments match the selected filters."
               : status === AppointmentStatus.SCHEDULED
-                ? "No scheduled appointments match this view."
-                : "No appointments are available."}
+                ? "No scheduled Appointments match this view."
+                : "No Appointments are available."}
           </PanelMessage>
         ) : (
           <>

@@ -102,14 +102,14 @@ const blockedActions = {
 };
 const blockedWorld = appointmentWorld({ appointmentPatch: { actions: blockedActions } });
 await check("Appointment unavailable action reasons stay discoverable", appointmentPath, blockedWorld.options({ device: "desktop" }), async (page) => {
-  const disclosure = page.getByRole("button", { name: /Unavailable actions/ });
+  const disclosure = page.getByRole("button", { name: /Actions you can’t use yet/ });
   await shown(disclosure);
   assert.equal(await disclosure.getAttribute("aria-expanded"), "false");
   assert.match(await disclosure.innerText(), /5 actions/);
   await disclosure.click();
   await shown(page.getByText("Cancel: An E-Counseling room is already linked to this Appointment.", { exact: true }));
-  await shown(page.getByText("Reschedule: The deadline to change this appointment has passed.", { exact: true }));
-  await shown(page.getByText(/Complete: Wait until the online counseling access or rejoin period has ended\./));
+  await shown(page.getByText("Reschedule: The deadline to change this Appointment has passed.", { exact: true }));
+  await shown(page.getByText(/Complete: Wait until the E-Counseling session and rejoin period have ended\./));
   await noHorizontalOverflow(page);
 });
 

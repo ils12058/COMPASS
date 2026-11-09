@@ -103,8 +103,8 @@ test("the Counseling editor names modes, shows current state and offers configur
   assert.match(html, /<legend class="sr-only">Counseling delivery modes<\/legend>/);
   assert.match(html, /<input[^>]*id="counseling-delivery-inPerson"[^>]*checked=""/);
   assert.doesNotMatch(html, /<input[^>]*id="counseling-delivery-online"[^>]*checked=""/);
-  assert.match(html, /<label[^>]*for="counseling-delivery-online"[^>]*>Online counseling<\/label>/);
-  assert.match(html, /role="status"[^>]*>Online counseling off/);
+  assert.match(html, /<label[^>]*for="counseling-delivery-online"[^>]*>E-Counseling<\/label>/);
+  assert.match(html, /role="status"[^>]*>E-Counseling off/);
   assert.match(html, /aria-label="Help: About Service configuration"/);
   assert.match(html, /aria-describedby="counseling-delivery-help counseling-delivery-status"/);
 });
@@ -112,17 +112,17 @@ test("the Counseling editor names modes, shows current state and offers configur
 test("enabled Online counseling shows scheduling state without claiming video readiness", () => {
   const html = editor(serviceResponse({ delivery_modes: ["IN_PERSON", "ONLINE"] }));
   assert.match(html, /<input[^>]*id="counseling-delivery-online"[^>]*checked=""/);
-  assert.match(html, /role="status"[^>]*>Online counseling on/);
+  assert.match(html, /role="status"[^>]*>E-Counseling on/);
   assert.doesNotMatch(html, /provider is (ready|healthy)|E-Counseling: Enabled/);
   const help = renderToStaticMarkup(h(HelpSections, { sections: serviceHelpSections }));
-  assert.match(help, /Scheduled Online Counseling appointments use E-Counseling/);
-  assert.match(help, /video availability still depends on separate video-service settings/);
+  assert.match(help, /Enabling E-Counseling allows you to schedule online Appointments/);
+  assert.match(help, /Video calls also need the video calling to be set up/);
 });
 
 test("the Online status follows each delivery and booking state", () => {
-  assert.match(counselingOnlineStatus({ inPerson: true, online: false, bookingEnabled: true }), /Online counseling off.*In-person Counseling remains available/);
+  assert.match(counselingOnlineStatus({ inPerson: true, online: false, bookingEnabled: true }), /E-Counseling off.*In-person Counseling remains available/);
   assert.doesNotMatch(counselingOnlineStatus({ inPerson: false, online: false, bookingEnabled: true }), /In-person/);
-  assert.match(counselingOnlineStatus({ inPerson: true, online: true, bookingEnabled: true }), /Online counseling on.*booking is available/);
+  assert.match(counselingOnlineStatus({ inPerson: true, online: true, bookingEnabled: true }), /E-Counseling on.*booking is available/);
   assert.match(counselingOnlineStatus({ inPerson: false, online: true, bookingEnabled: false }), /booking is off/);
 });
 
@@ -140,21 +140,21 @@ test("Counseling detail keeps delivery and E-Counseling unavailability visible",
   const html = detail(serviceResponse(), serviceManager);
   assert.match(html, /Counseling delivery/);
   assert.match(html, />In person<\/dt><dd[^>]*>Available</);
-  assert.match(html, />Online counseling<\/dt><dd[^>]*>Not enabled</);
-  assert.match(html, />New E-Counseling appointments<\/dt><dd[^>]*>Unavailable</);
+  assert.match(html, />E-Counseling<\/dt><dd[^>]*>Not enabled</);
+  assert.match(html, />New E-Counseling Appointments<\/dt><dd[^>]*>Enable E-Counseling and Appointment booking to schedule</);
   assert.match(html, /aria-label="Help: About Service configuration"/);
   assert.doesNotMatch(html, /Video-session provider/);
 });
 
 test("Counseling detail shows scheduling state and discloses configuration semantics in Help", () => {
   const html = detail(serviceResponse({ delivery_modes: ["IN_PERSON", "ONLINE"] }), serviceManager);
-  assert.match(html, />Online counseling<\/dt><dd[^>]*>Available</);
-  assert.match(html, />New E-Counseling appointments<\/dt><dd[^>]*>Available for scheduling</);
+  assert.match(html, />E-Counseling<\/dt><dd[^>]*>Available</);
+  assert.match(html, />New E-Counseling Appointments<\/dt><dd[^>]*>Available for scheduling</);
   assert.doesNotMatch(html, /provider is (ready|healthy)/);
   const onlineOnly = detail(serviceResponse({ delivery_modes: ["ONLINE"] }), serviceManager);
   assert.match(onlineOnly, />In person<\/dt><dd[^>]*>Not enabled</);
   const bookingOff = detail(serviceResponse({ delivery_modes: ["ONLINE"], booking_pathways: [], default_appointment_duration_minutes: null, cancellation_cutoff_minutes: null }), serviceManager);
-  assert.match(bookingOff, />New E-Counseling appointments<\/dt><dd[^>]*>Unavailable</);
+  assert.match(bookingOff, />New E-Counseling Appointments<\/dt><dd[^>]*>Enable E-Counseling and Appointment booking to schedule</);
 });
 
 test("the Platform Health link appears only for viewers who already have Platform Operations", () => {
@@ -184,7 +184,7 @@ test("booking offers only current modes and explains Online only for canonical C
 
   const both = booking(summary({ delivery_modes: ["IN_PERSON", "ONLINE"] }));
   assert.match(both, /<input(?=[^>]*value="ONLINE")(?=[^>]*aria-describedby="booking-online-help")[^>]*>/);
-  assert.match(both, /id="booking-online-help"[^>]*>Online appointments use the E-Counseling workspace\./);
+  assert.match(both, /id="booking-online-help"[^>]*>Use E-Counseling for online Appointments\./);
 
   const ordinary = booking(summary({ code: "CAREER_GUIDANCE", delivery_modes: ["IN_PERSON", "ONLINE"] }));
   assert.match(ordinary, /value="ONLINE"/);
@@ -238,9 +238,9 @@ test("consequence review explains enabling and removing Online counseling withou
   });
 
   const enabled = renderToStaticMarkup(h(ServiceConsequenceSummary, { details: details({ counselingOnlineEnabled: true }) }));
-  assert.match(enabled, /allows new Online Counseling appointments to be scheduled/);
-  assert.match(enabled, /use E-Counseling/);
-  assert.match(enabled, /does not confirm that the\s+video-session provider is configured or available/);
+  assert.match(enabled, /allows new online Appointments/);
+  assert.match(enabled, /Enabling E-Counseling/);
+  assert.match(enabled, /Video calls also need the video calling to be set up and available/);
 
   const removed = renderToStaticMarkup(
     h(ServiceConsequenceSummary, {
@@ -248,8 +248,8 @@ test("consequence review explains enabling and removing Online counseling withou
       change: { counselingOnlineRemoved: true, bookingTurnedOff: false },
     }),
   );
-  assert.match(removed, /New Online Counseling work will no longer be available\./);
-  assert.match(removed, /remain scheduled and keep their saved Online delivery mode; they are not\s+changed to in person/);
+  assert.match(removed, /New E-Counseling work stops\./);
+  assert.match(removed, /stay scheduled online; they do not change to in person/);
   assert.match(removed, /cannot be rescheduled or\s+reassigned/);
   assert.doesNotMatch(removed, /Some upcoming Appointments use a setting/);
 

@@ -106,8 +106,8 @@ function CounselingDeliveryFacts({ service }: { service: ServiceResponse }) {
     <PanelSection title="Counseling delivery" titleId="service-delivery-heading">
       <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <Fact label="In person">{state.inPerson ? "Available" : "Not enabled"}</Fact>
-        <Fact label="Online counseling">{state.online ? "Available" : "Not enabled"}</Fact>
-        <Fact label="New E-Counseling appointments">
+        <Fact label="E-Counseling">{state.online ? "Available" : "Not enabled"}</Fact>
+        <Fact label="New E-Counseling Appointments">
           {newECounselingAppointmentsLabel(state)}
         </Fact>
       </dl>
@@ -124,7 +124,7 @@ function SelectedProviders({ serviceId }: { serviceId: string }) {
   if (providers.isError) {
     return (
       <p role="alert" className="mt-3 text-sm text-danger">
-        Selected Counselors could not be loaded.{" "}
+        Couldn&apos;t load selected Counselors. Try again.{" "}
         <button
           type="button"
           className="font-semibold underline"
@@ -145,7 +145,7 @@ function SelectedProviders({ serviceId }: { serviceId: string }) {
         <li key={counselor.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink">
           <span className="inline-flex items-center gap-2"><PersonAvatar displayName={counselor.display_name} photoUrl={counselor.profile_photo_url} photoUpdatedAt={counselor.profile_photo_updated_at} size="compact" />{counselor.display_name}</span>
           {!counselor.is_active ? (
-            <span className="text-xs text-muted">Inactive account · not eligible</span>
+            <span className="text-xs text-muted">Inactive account · cannot provide new work</span>
           ) : null}
         </li>
       ))}
@@ -182,14 +182,14 @@ export function ServiceDetailPage() {
     return (
       <section>
         <ServicesPageHeading
-          title="Service unavailable"
+          title="Service details"
           backHref="/portal/services"
           backLabel="Services"
         />
         <div className="mt-5">
           <ServicesQueryError
             error={detail.error}
-            fallback="The Service could not be loaded."
+            fallback="Couldn't load this Service. Try again."
             onRetry={() => void detail.refetch()}
           />
         </div>
@@ -231,7 +231,7 @@ export function ServiceDetailPage() {
               data: { acknowledge_scheduling_consequences: acknowledged },
             })
           : enable.mutateAsync({ serviceId }),
-      "The service status could not be changed.",
+      "Couldn't change this Service status. Try again.",
       {
         onStepUpRequired: () => setLifecycleOpen(false),
         onError: (caught, code) => {
@@ -327,44 +327,42 @@ export function ServiceDetailPage() {
 
         <PanelSection title="Booking pathways" titleId="service-booking-pathways-heading">
           <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <Fact label="Flexible individual appointments">
+            <Fact label="Flexible individual Appointments">
               {service.is_active &&
               service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT)
-                ? "Enabled; availability depends on Counselor schedules"
+                ? "Enabled; times depend on Counselor schedules"
                 : service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT)
-                  ? "Configured · unavailable while the Service is inactive"
+                  ? "Enable the Service to use this pathway"
                   : "Not configured"}
             </Fact>
-            <Fact label="Fixed-date appointment slots">
+            <Fact label="Fixed-date Appointment slots">
               {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT)
                 ? service.is_active
                   ? "Enabled; no published slot confirmed"
-                  : "Configured · unavailable while the Service is inactive"
+                  : "Enable the Service to use this pathway"
                 : "Not configured"}
             </Fact>
-            <Fact label="Group sessions and events">
+            <Fact label="Group Sessions and events">
               {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION)
                 ? service.is_active
                   ? "Enabled; no published event confirmed"
-                  : "Configured · unavailable while the Service is inactive"
+                  : "Enable the Service to use this pathway"
                 : "Not configured"}
             </Fact>
           </dl>
           <p className="mt-4 text-xs leading-5 text-muted">
-            Pathways can be enabled together. Enabling a pathway does not publish a slot or event;
-            Students can book or register only when the Service is active and an eligible offering
-            is available.
+            You can enable pathways together; this does not publish slots or events. Students can book or register when the Service is active and a time or event is open to them.
           </p>
         </PanelSection>
 
-        <PanelSection title="Provider coverage" titleId="service-provider-heading">
+        <PanelSection title="Who provides this Service" titleId="service-provider-heading">
           <p className="mt-3 text-xs leading-5 text-muted">
             These Counselors provide individual Appointments. Group Session organizers,
             internal facilitators, and external guests are assigned separately to each event.
           </p>
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">
-            <Fact label="Provider type">Counselor</Fact>
-            <Fact label="Coverage">{serviceCoverageLabels[service.provider_coverage]}</Fact>
+            <Fact label="Provided by">Counselor</Fact>
+            <Fact label="Counselors">{serviceCoverageLabels[service.provider_coverage]}</Fact>
           </dl>
           {canManage &&
           service.provider_coverage === ServiceProviderCoverage.SELECTED_COUNSELORS ? (
@@ -457,7 +455,7 @@ export function ServiceDetailPage() {
         <p>
           {service.is_active
             ? "This Service will no longer be available for new work. Existing records and Appointments are preserved."
-            : "This Service will become operational for workflows that support it. Appointment booking is available only when it is enabled in this Service's booking settings."}
+            : "You can use this Service for the work it supports. Students can book only through its enabled booking pathways."}
         </p>
         {disableReviewRequired ? <ServiceConsequenceSummary details={disableReview} /> : null}
       </ConsequentialActionDialog>

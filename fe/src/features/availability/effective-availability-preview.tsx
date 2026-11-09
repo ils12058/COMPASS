@@ -237,18 +237,18 @@ export function EffectiveAvailabilityPreview({
           </span>
         }
         titleId="effective-availability-heading"
-        description="Shows hours after Office and Counselor schedules, applicable time off, and Service/mode checks. It does not subtract booked Appointments or schedule conflicts, or list bookable slots."
+        description="Shows hours based on Guidance Office and Counselor schedules, time off, and the selected Service and delivery mode. It does not subtract booked Appointments or schedule conflicts, or list bookable times."
       />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
       {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
       {services.isPending && !appliedSearch && !selectedService ? (
-        <AvailabilitySectionSkeleton label="Loading services…" />
+        <AvailabilitySectionSkeleton label="Loading Services…" />
       ) : !serviceData && !services.isPending ? (
         <div className="mt-5">
           <AvailabilityQueryError
             error={services.error}
-            fallback="Active Services could not be loaded."
+            fallback="Couldn't load active Services. Try again."
             onRetry={() => void services.refetch()}
           />
         </div>
@@ -348,7 +348,7 @@ export function EffectiveAvailabilityPreview({
           ) : null}
 
           <div className="mt-4">
-            <Button type="submit">Preview effective availability</Button>
+            <Button type="submit">Preview effective Availability</Button>
           </div>
         </form>
       )}
@@ -362,7 +362,7 @@ export function EffectiveAvailabilityPreview({
           <div className="mt-5">
             <AvailabilityQueryError
               error={effective.error}
-              fallback="Effective Availability could not be loaded."
+              fallback="Couldn't load effective Availability. Try again."
               onRetry={() => void effective.refetch()}
             />
           </div>

@@ -140,7 +140,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
       role,
       handler: appointmentHandler({ baseline: true }),
     }, async (page) => {
-      await shown(page.getByRole("heading", { name: role === "STUDENT" ? "My appointments" : "Manage appointments", exact: true }));
+      await shown(page.getByRole("heading", { name: role === "STUDENT" ? "My Appointments" : "Manage Appointments", exact: true }));
       await shown(page.getByText(expected, { exact: true }).first());
       await screenshot(page, label);
       assert.equal(await page.getByRole("button", { name: "Calendar", exact: true }).count(), 0);
@@ -154,7 +154,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
     handler: appointmentHandler(),
   }, async (page) => {
     const calendarToggle = page.getByRole("button", { name: "Calendar", exact: true });
-    await shown(page.getByRole("heading", { name: "My appointments", exact: true }));
+    await shown(page.getByRole("heading", { name: "My Appointments", exact: true }));
     await shown(page.getByText("Academic Advising", { exact: true }).first());
     await screenshot(page, "after-my-list");
 
@@ -207,7 +207,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
     beforeNavigate: installCalendarClock,
     handler: appointmentHandler(),
   }, async (page) => {
-    await shown(page.getByRole("heading", { name: "Manage appointments", exact: true }));
+    await shown(page.getByRole("heading", { name: "Manage Appointments", exact: true }));
     await shown(page.getByText("Jordan Sample", { exact: true }).first());
     await screenshot(page, "after-manage-list");
     await page.getByRole("button", { name: "Calendar", exact: true }).click();
@@ -258,7 +258,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
     await shown(calendarPanel.getByRole("link", { name: /Study Planning.*Scheduled/ }));
     assert.ok(requests.some(({ search }) => search.includes("page_size=50") && search.includes("page=2")));
     const denseDay = calendarPanel.getByRole("button", {
-      name: "Show 47 more appointments for Thursday, October 1, 2026",
+      name: "Show 47 more Appointments for Thursday, October 1, 2026",
       exact: true,
     });
     await shown(denseDay);
@@ -276,7 +276,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
   }, async (page) => {
     await page.getByRole("button", { name: "Calendar", exact: true }).click();
     const calendarPanel = page.getByRole("region", { name: "Calendar", exact: true });
-    await shown(calendarPanel.getByRole("list", { name: /October 2026 appointment agenda/ }));
+    await shown(calendarPanel.getByRole("list", { name: /October 2026 Appointment agenda/ }));
     await shown(calendarPanel.getByRole("link", { name: /Academic Advising.*Scheduled/ }));
     await noHorizontalOverflow(page);
     await screenshot(page, "after-mobile-calendar-agenda");
@@ -290,8 +290,8 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
   }, async (page) => {
     await page.getByRole("button", { name: "Calendar", exact: true }).click();
     const calendarPanel = page.getByRole("region", { name: "Calendar", exact: true });
-    await shown(calendarPanel.getByText("No appointments in this period.", { exact: true }));
-    await shown(calendarPanel.getByRole("region", { name: "October 2026 appointment calendar", exact: true }));
+    await shown(calendarPanel.getByText("No Appointments in this period.", { exact: true }));
+    await shown(calendarPanel.getByRole("region", { name: "October 2026 Appointment calendar", exact: true }));
     await screenshot(page, "after-calendar-empty");
   });
 }

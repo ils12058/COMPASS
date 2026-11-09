@@ -51,7 +51,7 @@ test("Graduate Tracer review permission opens the section without Appointment ma
   assert.match(html, /Graduate Tracer/);
   assert.match(html, /Graduate One|Graduate Two/);
   assert.match(html, /Six-month notice/);
-  assert.match(html, /30-day follow-up/);
+  assert.match(html, /30-day Follow-Up/);
   assert.match(html, /Graduation date/);
   assert.match(html, />Sent<|>Upcoming<|>Answered</);
   assert.match(html, /2026-05-08|2026-11-08|2026-12-08/);
@@ -74,7 +74,7 @@ test("loading, empty and failure each remain within the section", () => {
   assert.match(render({ component: GraduateTracerReminders, pending: true }), /Loading Graduate Tracer reminders/);
   assert.match(render({ rows: [] }), /No Graduate Tracer reminders for active Graduate accounts/);
   const html = render({ component: GraduateTracerReminders, error: true });
-  assert.match(html, /Graduate Tracer reminders could not be loaded/);
+  assert.match(html, /Couldn&#x27;t load Graduate Tracer reminders/);
   assert.match(html, /Retry/);
   assert.doesNotMatch(html, /No Graduate Tracer reminders/);
 });

@@ -61,7 +61,7 @@ export function GraduateTracerReminders() {
       <PanelHeader
         title="Graduate Tracer"
         titleId="tracer-reminders-heading"
-        description="One notice six months after graduation, then one follow-up 30 days after the first notice if the survey is still unsubmitted. Sent means the in-app notice was issued. Email follows the Graduate’s preference."
+        description="Graduates receive one notice six months after graduation and one Follow-Up 30 days later if they have not submitted the survey. Sent means the in-app notice was issued; email follows the Graduate’s preference."
         context={data ? describeResultPage({
           count: data.items.length,
           page: data.page,
@@ -73,7 +73,7 @@ export function GraduateTracerReminders() {
       {result.isError && !data ? (
         <PanelMessage
           tone="danger"
-          title="Graduate Tracer reminders could not be loaded"
+          title="Couldn't load Graduate Tracer reminders"
           action={<Button variant="secondary" onClick={() => void result.refetch()}>Retry</Button>}
         >
           Try loading the reminders again.
@@ -102,7 +102,7 @@ export function GraduateTracerReminders() {
                       disabled={result.isFetching}
                     />
                     <th scope="col" className={dataTable.headerCell}>Six-month notice</th>
-                    <th scope="col" className={dataTable.headerCell}>30-day follow-up</th>
+                    <th scope="col" className={dataTable.headerCell}>30-day Follow-Up</th>
                   </tr>
                 </thead>
                 <tbody className={dataTable.body}>

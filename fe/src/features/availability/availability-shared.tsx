@@ -29,15 +29,15 @@ import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs
 
 const knownErrors: Record<string, string> = {
   availability_resource_not_found:
-    "This availability record is unavailable.",
+    "You can't open this Availability record.",
   invalid_availability_request:
     "Some schedule details need attention. Review them and try again.",
   availability_not_applicable:
-    "The selected Service, delivery mode, or Counselor is not eligible for this Availability request.",
+    "Choose a Service, delivery mode, and Counselor that can be used together.",
   availability_conflict:
-    "The schedule is unavailable right now. Try again or contact the institutional administrator.",
+    "Review the schedule details and try again. Contact the Guidance Office if the problem continues.",
   permission_denied:
-    "You can't perform this availability action.",
+    "You can't perform this Availability action.",
 };
 
 export function canUseSelfAvailability(user: {
@@ -106,10 +106,10 @@ function AvailabilityUnavailable({
   management?: boolean;
 }) {
   return (
-    <WorkspaceUnavailable title="Availability unavailable">
+    <WorkspaceUnavailable title="Availability access">
       {management
-        ? "You don’t have access to manage availability."
-        : "You don’t have access to availability."}
+        ? "You don’t have access to manage Availability."
+        : "You don’t have access to Availability."}
     </WorkspaceUnavailable>
   );
 }
@@ -160,7 +160,7 @@ export function AvailabilityNavigation() {
   return (
     <WorkspaceTabs label="Availability navigation">
       {self ? (
-        <NavLink href="/portal/availability/me">My availability</NavLink>
+        <NavLink href="/portal/availability/me">My Availability</NavLink>
       ) : null}
       {manage ? (
         <>
@@ -251,7 +251,7 @@ export function AvailabilityQueryError({
 }
 
 export function AvailabilitySectionSkeleton({
-  label = "Loading availability…",
+  label = "Loading Availability…",
 }: {
   label?: string;
 }) {

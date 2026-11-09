@@ -66,9 +66,9 @@ test("E-Counseling Help holds separate recording and encounter concepts, recordi
 
 test("Service Help explains coverage, saved appointments and separate video settings", () => {
   const html = help(serviceHelpSections);
-  assert.match(html, /All active Counselors/);
+  assert.match(html, /Choose all active Counselors/);
   assert.match(html, /existing Appointments keep their saved settings/);
-  assert.match(html, /separate video-service settings/);
+  assert.match(html, /Video calls also need the video calling to be set up/);
 });
 
 test("Institutional Form Help distinguishes Current, software support and approval", () => {

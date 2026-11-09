@@ -110,7 +110,7 @@ test("the board keeps seven compact weekday rows, with several windows on one da
 test("Save belongs to the schedule, waits for a change, and keeps the replace consequence beside it", () => {
   const html = board();
   assert.match(html, /<button[^>]*disabled=""[^>]*>Save weekly schedule<\/button>/);
-  assert.match(html, /Saving replaces all weekly hours shown above\. Existing appointments stay scheduled/);
+  assert.match(html, /Saving replaces all weekly hours shown above\. Existing Appointments stay scheduled/);
   // No permanent success sentence; success is announced by the page.
   assert.doesNotMatch(html, /saved\./i);
 });
@@ -238,35 +238,35 @@ test("the schedule leads, its exceptions sit beside it on wide pages, and the pr
 
 test("availability workspaces distinguish personal, Office, and managed Counselor schedules", () => {
   const mine = myAvailability();
-  assert.match(mine, /My availability/);
-  assert.match(mine, /Set your weekly hours and unavailable dates/);
+  assert.match(mine, /My Availability/);
+  assert.match(mine, /Set your weekly hours and time off/);
   assert.match(mine, /Your weekly hours/);
-  assert.match(mine, /All delivery modes means these hours apply to online and in-person appointments/);
+  assert.match(mine, /All delivery modes means these hours apply to online and in-person Appointments/);
 
   const office = officeAvailability();
   assert.match(office, /Office hours/);
   assert.match(office, /Set Office hours and closure dates/);
-  assert.match(office, /Help: Office and Counselor availability/);
+  assert.match(office, /Help: Office and Counselor Availability/);
   assert.match(office, /Office weekly hours/);
 
   const counselors = counselorDirectory();
   assert.match(counselors, /Counselor schedules/);
-  assert.match(counselors, /Find a counselor to manage their availability/);
+  assert.match(counselors, /Find a Counselor to manage their Availability/);
   assert.match(counselors, /Manage schedule for /);
   assert.match(counselors, /Morgan Manager/);
 });
 
 test("the preview explains its limits and does not invent a cause for empty results", () => {
   const html = myAvailability();
-  assert.match(html, /Shows hours after Office and Counselor schedules, applicable time off, and Service\/mode checks/);
-  assert.match(html, /does not subtract booked Appointments or schedule conflicts, or list bookable slots/);
+  assert.match(html, /Shows hours based on Guidance Office and Counselor schedules, time off, and the selected Service and delivery mode/);
+  assert.match(html, /does not subtract booked Appointments or schedule conflicts, or list bookable times/);
   const source = readFileSync(new URL("../src/features/availability/effective-availability-preview.tsx", import.meta.url), "utf8");
   assert.match(source, /This preview cannot\s+identify\s+which condition is limiting the result/);
 });
 
 test("routine saves are announced only after the server confirms them; removal completes in its dialog", () => {
   const source = readFileSync(new URL("../src/features/availability/availability-pages.tsx", import.meta.url), "utf8");
-  for (const message of ["Weekly schedule saved.", "Unavailability added.", "Office weekly schedule saved.", "Office unavailability added."]) {
+  for (const message of ["Weekly schedule saved.", "Unavailability added.", "Office weekly schedule saved.", "Guidance Office unavailability added."]) {
     const at = source.indexOf(`status.show("${message}")`);
     assert.ok(at > 0, `${message} is announced`);
     const before = source.lastIndexOf(".run(", at);

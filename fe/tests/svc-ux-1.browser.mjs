@@ -29,17 +29,17 @@ function handler({ fixedResult = "ok", groupResult = "ok", registered = false, l
 }
 
 for (const device of ["narrowPhone", "tablet", "desktop"]) await check(`booking choices ${device}`, "/portal/appointments/book", { role: "STUDENT", device, handler: handler() }, async page => {
-  await shown(page.getByRole("link", { name: "Find an appointment" }));
+  await shown(page.getByRole("link", { name: "Find an Appointment" }));
   await shown(page.getByRole("link", { name: "View scheduled slots" }));
-  await shown(page.getByRole("link", { name: "Browse group sessions" }));
+  await shown(page.getByRole("link", { name: "Browse Group Sessions" }));
   await noHorizontalOverflow(page);
 });
 await check("page-local fixed search and Service context", "/portal/appointments/book?pathway=FIXED_DATE_SLOT", { role: "STUDENT", device: "phone", handler: handler() }, async page => {
   await shown(page.getByText(/No Services with scheduled slots on this page/));
   await page.getByRole("button", { name: "More Services" }).click();
   await page.getByLabel("Service", { exact: true }).selectOption(sid);
-  await shown(page.getByRole("link", { name: /Browse group sessions for Guidance Service/ }));
-  const href = await page.getByRole("link", { name: /Browse group sessions for Guidance Service/ }).getAttribute("href");
+  await shown(page.getByRole("link", { name: /Browse Group Sessions for Guidance Service/ }));
+  const href = await page.getByRole("link", { name: /Browse Group Sessions for Guidance Service/ }).getAttribute("href");
   const context = new URL(href, "http://localhost");
   assert.equal(context.searchParams.get("service_id"), sid);
   assert.equal(context.searchParams.get("slot_page"), "2");
@@ -50,15 +50,15 @@ await check("fixed slot uncertain response is not replayed", "/portal/appointmen
   await page.getByLabel("Service", { exact: true }).selectOption(sid);
   await page.getByRole("button", { name: "Book this slot" }).click();
   await page.getByRole("button", { name: "Confirm booking" }).click();
-  await shown(page.getByRole("alertdialog").getByText(/We could not confirm whether this appointment was booked/));
+  await shown(page.getByRole("alertdialog").getByText(/Couldn't confirm your booking/));
   assert.equal(await page.getByRole("button", { name: "Confirm booking" }).isDisabled(), true);
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/book")).length, 1);
 });
 await check("group lost response checks exact registration without replay", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ groupResult: "unknown", registered: true }) }, async (page, { requests }) => {
-  await shown(page.getByText(/Showing group sessions for/));
+  await shown(page.getByText(/Showing Group Sessions for/));
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Register", exact: true }).click();
-  await shown(page.getByText('You are registered for "Student workshop".'));
+  await shown(page.getByText('You\'re registered for "Student workshop".'));
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/register")).length, 1);
   assert.ok(requests.some(r => r.method === "GET" && r.pathname === "/api/v1/group-sessions/me/registrations"));
 });
@@ -93,7 +93,7 @@ await check("view permission does not grant registration", "/portal/group-sessio
 });
 await check("booking choices remain usable at 200 percent", "/portal/appointments/book", { role: "STUDENT", device: "phone", handler: handler() }, async page => {
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-  await shown(page.getByRole("link", { name: "Browse group sessions" }));
+  await shown(page.getByRole("link", { name: "Browse Group Sessions" }));
   await noHorizontalOverflow(page);
 });
 await check("booking choices are keyboard reachable", "/portal/appointments/book", { role: "STUDENT", handler: handler() }, async page => {
@@ -101,7 +101,7 @@ await check("booking choices are keyboard reachable", "/portal/appointments/book
   await choice.focus();
   assert.equal(await choice.evaluate(element => element === document.activeElement), true);
   await page.keyboard.press("Enter");
-  await shown(page.getByRole("heading", { name: "Scheduled appointment slots" }));
+  await shown(page.getByRole("heading", { name: "Scheduled Appointment slots" }));
 });
 await check("fixed slot conflict reports no longer available", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ fixedResult: "conflict" }) }, async page => {
   await page.getByRole("button", { name: "Book this slot" }).click();
@@ -140,7 +140,7 @@ await check("empty group discovery does not invent a prerequisite or an offering
   await hidden(page.getByText(/Individual Inventory/));
 });
 await check("fixed and group navigation preserves Service and page context", `/portal/group-sessions/discover?service_id=${sid}&slot_search=Guidance&slot_page=2`, { role: "STUDENT", handler: handler() }, async page => {
-  const href = await page.getByRole("link", { name: "View scheduled appointment slots" }).getAttribute("href");
+  const href = await page.getByRole("link", { name: "View scheduled Appointment slots" }).getAttribute("href");
   const url = new URL(href, "http://localhost");
   assert.equal(url.searchParams.get("service_id"), sid);
   assert.equal(url.searchParams.get("search"), "Guidance");
@@ -148,14 +148,14 @@ await check("fixed and group navigation preserves Service and page context", `/p
 });
 await check("group detail returns to the Service-filtered browse", `/portal/group-sessions/${eid}?from=discover&service_id=${sid}`, { role: "STUDENT", handler: handler() }, async page => {
   await shown(page.getByRole("heading", { name: "Student workshop" }));
-  assert.equal(await page.getByRole("link", { name: "Back to Browse Sessions" }).getAttribute("href"), `/portal/group-sessions/discover?service_id=${sid}`);
+  assert.equal(await page.getByRole("link", { name: "Back to Browse Group Sessions" }).getAttribute("href"), `/portal/group-sessions/discover?service_id=${sid}`);
 });
 await check("unfiltered event identifies its Service", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler() }, async page => {
   await shown(page.getByText(/Service: Guidance Service/));
   assert.equal(await page.getByRole("link", { name: "See Service options" }).getAttribute("href"), `/portal/group-sessions/discover?service_id=${sid}`);
 });
 await check("Service with three pathways explains configuration without promising opportunities", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"], noSessions: true }) }, async page => {
-  await shown(page.getByText(/This Service supports group sessions, scheduled appointment slots, and individual appointment booking/));
+  await shown(page.getByText(/This Service supports Group Sessions, scheduled Appointment slots, and individual Appointment booking/));
   await shown(page.getByText(/No upcoming group sessions are currently scheduled/));
 });
 await check("flexible-only Service is not a fixed-slot offering", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["FLEXIBLE_APPOINTMENT"] }) }, async page => {
@@ -164,11 +164,11 @@ await check("flexible-only Service is not a fixed-slot offering", `/portal/appoi
 });
 await check("fixed-only Service has no invented group link", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["FIXED_DATE_SLOT"] }) }, async page => {
   await shown(page.getByRole("button", { name: "Book this slot" }));
-  await hidden(page.getByRole("link", { name: /Browse group sessions for/ }));
+  await hidden(page.getByRole("link", { name: /Browse Group Sessions for/ }));
 });
 await check("group-only Service does not show appointment actions", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["GROUP_SESSION"] }) }, async page => {
   await shown(page.getByRole("link", { name: "Student workshop" }));
-  await hidden(page.getByRole("link", { name: "View scheduled appointment slots" }));
+  await hidden(page.getByRole("link", { name: "View scheduled Appointment slots" }));
 });
 await check("Service without pathways cannot be used for a fixed booking", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: [] }) }, async page => {
   await shown(page.getByText(/This Service no longer offers scheduled slots/));
@@ -186,20 +186,20 @@ await check("failed reconciliation keeps result unconfirmed", "/portal/group-ses
 });
 await check("direct Group Session deep link keeps history return", `/portal/group-sessions/${eid}`, { role: "STUDENT", handler: handler() }, async page => {
   await shown(page.getByRole("heading", { name: "Student workshop" }));
-  assert.equal(await page.getByRole("link", { name: "Back to My Registrations" }).getAttribute("href"), "/portal/group-sessions/my");
+  assert.equal(await page.getByRole("link", { name: "Back to My registrations" }).getAttribute("href"), "/portal/group-sessions/my");
 });
 await check("booking permission alone does not expose fixed slot or group viewing", "/portal/appointments/book", { role: "STUDENT", handler: handler({ bookingOnly: true }) }, async page => {
-  await shown(page.getByRole("link", { name: "Find an appointment" }));
-  await shown(page.getByText("Scheduled slot browsing is unavailable to this account."));
-  await shown(page.getByText("Group session browsing is unavailable to this account."));
+  await shown(page.getByRole("link", { name: "Find an Appointment" }));
+  await shown(page.getByText("You don't have access to scheduled slots."));
+  await shown(page.getByText("You don't have access to browse Group Sessions."));
   await hidden(page.getByRole("link", { name: "View scheduled slots" }));
-  await hidden(page.getByRole("link", { name: "Browse group sessions" }));
+  await hidden(page.getByRole("link", { name: "Browse Group Sessions" }));
 });
 await check("confirmed fixed booking remains success when refresh fails", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ refreshFailure: true }) }, async (page, { requests }) => {
   await page.getByRole("button", { name: "Book this slot" }).click();
   await page.getByRole("button", { name: "Confirm booking" }).click();
   await shown(page.getByRole("link", { name: "View your confirmed Appointment" }));
-  await shown(page.getByText(/Your appointment was booked, but the latest booking information could not be refreshed/));
+  await shown(page.getByText(/Your Appointment was booked, but the latest booking information could not be refreshed/));
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/book")).length, 1);
 });
@@ -218,7 +218,7 @@ await check("inactive Service cannot filter group discovery", `/portal/group-ses
 await check("malformed fixed success cannot fabricate an appointment", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ fixedResult: "malformed" }) }, async page => {
   await page.getByRole("button", { name: "Book this slot" }).click();
   await page.getByRole("button", { name: "Confirm booking" }).click();
-  await shown(page.getByRole("alertdialog").getByText(/We could not confirm whether this appointment was booked/));
+  await shown(page.getByRole("alertdialog").getByText(/Couldn't confirm your booking/));
   await hidden(page.getByRole("link", { name: "View your confirmed Appointment" }));
 });
 await check("malformed group success remains unconfirmed without matching history", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ groupResult: "malformed" }) }, async page => {

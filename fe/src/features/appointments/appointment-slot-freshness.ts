@@ -23,7 +23,7 @@ export const SLOT_NO_LONGER_AVAILABLE =
   "The selected time is no longer available. Choose another available time.";
 export const SLOT_JUST_TAKEN = "That time was just taken. Choose another available time.";
 export const SLOTS_NOT_RECHECKED =
-  "Available times could not be rechecked. Retry before choosing a time.";
+  "Couldn't recheck available times. Retry before choosing a time.";
 
 type Slot = { starts_at: string };
 

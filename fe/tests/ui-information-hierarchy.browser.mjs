@@ -13,7 +13,7 @@ await check("appointment-dialogs", appointmentPath, {}, async (page) => {
   await hidden(page.getByLabel("New date", { exact: true }));
   const reschedule = page.getByRole("button", { name: "Reschedule", exact: true });
   await reschedule.click();
-  const dialog = page.getByRole("dialog", { name: "Reschedule appointment", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Reschedule Appointment", exact: true });
   await dialog.getByLabel("New date", { exact: true }).fill("2026-10-09");
   await dialog.getByLabel("Reason (optional)", { exact: true }).fill("Schedule adjustment");
   await dialog.getByRole("group", { name: "Available replacement times" }).getByRole("button").first().click();
@@ -27,8 +27,8 @@ await check("appointment-dialogs", appointmentPath, {}, async (page) => {
   assert.equal(await dialog.getByLabel("Reason (optional)", { exact: true }).inputValue(), "Schedule adjustment");
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Reassign", exact: true }).click();
-  const reassign = page.getByRole("dialog", { name: "Reassign counselor", exact: true });
-  await reassign.getByLabel("New counselor", { exact: true }).selectOption("other-counselor");
+  const reassign = page.getByRole("dialog", { name: "Reassign Counselor", exact: true });
+  await reassign.getByLabel("New Counselor", { exact: true }).selectOption("other-counselor");
   await reassign.getByLabel("Reason", { exact: true }).fill("Coverage adjustment");
   await shown(reassign.getByRole("heading", { name: "Review reassignment", exact: true }));
   await page.keyboard.press("Escape");
@@ -36,9 +36,9 @@ await check("appointment-dialogs", appointmentPath, {}, async (page) => {
   assert.equal(await reassign.getByLabel("Reason", { exact: true }).inputValue(), "Coverage adjustment");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "More actions", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Cancel appointment", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Cancel Appointment", exact: true }).click();
   await shown(page.getByRole("alertdialog", { name: `Cancel Appointment ${appointment.reference_code}?`, exact: true }));
-  await page.getByRole("alertdialog").getByRole("button", { name: "Keep appointment", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Keep Appointment", exact: true }).click();
   await screenshot(page, "appointment-detail");
 });
 
@@ -57,10 +57,10 @@ await check("reassignment-save-dismissal", appointmentPath, { overrides: {
   [`POST /api/v1/appointments/${appointmentId}/reassign`]: async ({ reply }) => { await reassignmentPending; await reply({ error: { code: "synthetic_failure", message: "Synthetic reassignment failure" } }, 500); },
 } }, async (page, { requests }) => {
   await page.getByRole("button", { name: "Reassign", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Reassign counselor", exact: true });
-  await dialog.getByLabel("New counselor", { exact: true }).selectOption("other-counselor");
+  const dialog = page.getByRole("dialog", { name: "Reassign Counselor", exact: true });
+  await dialog.getByLabel("New Counselor", { exact: true }).selectOption("other-counselor");
   await dialog.getByLabel("Reason", { exact: true }).fill("Coverage adjustment");
-  await dialog.getByRole("button", { name: "Reassign counselor", exact: true }).click();
+  await dialog.getByRole("button", { name: "Reassign Counselor", exact: true }).click();
   await shown(dialog.getByRole("button", { name: "Reassigning…", exact: true }));
   await page.keyboard.press("Escape");
   await shown(dialog);
@@ -74,14 +74,14 @@ await check("reassignment-save-dismissal", appointmentPath, { overrides: {
 finishReassignment();
 
 await check("service-editor-help", `/portal/services/${serviceId}/edit`, {}, async (page) => {
-  await shown(page.getByText("Online counseling on. Appointment booking is available.", { exact: true }));
-  const online = page.getByLabel("Online counseling", { exact: true });
+  await shown(page.getByText("E-Counseling on. Appointment booking is available.", { exact: true }));
+  const online = page.getByLabel("E-Counseling", { exact: true });
   await online.uncheck();
   await shown(page.getByText(/Existing Appointments keep their saved mode/));
   await page.getByRole("button", { name: "Help: About Service configuration", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "About Service configuration", exact: true });
   assert.match(await dialog.innerText(), /existing Appointments keep their saved settings/);
-  assert.match(await dialog.innerText(), /separate video-service settings/);
+  assert.match(await dialog.innerText(), /Video calls also need the video calling to be set up/);
   await page.keyboard.press("Escape");
   await screenshot(page, "service-editor");
 });
@@ -166,7 +166,7 @@ await check("mobile-sort-and-dialog", "/portal/appointments/manage", { mobile: t
   await noHorizontalOverflow(page);
   await navigate(page, appointmentPath);
   await page.getByRole("button", { name: "Reschedule", exact: true }).tap();
-  const dialog = page.getByRole("dialog", { name: "Reschedule appointment", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Reschedule Appointment", exact: true });
   await dialog.getByLabel("New date", { exact: true }).fill("2026-10-09");
   await dialog.getByRole("button", { name: "Cancel", exact: true }).tap();
   await hidden(dialog);

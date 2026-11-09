@@ -58,10 +58,10 @@ const mappings = [
     [referralErrorMessage, 'invalid_referral_request', /Some Referral details need attention/],
     [callSlipErrorMessage, 'invalid_call_slip_request', /Some Call Slip details need attention/],
     [routineErrorMessage, 'routine_interview_form_revision_unsupported', /can't be used.*Contact the Guidance Office\./],
-    [appointmentErrorMessage, 'appointment_default_provider_unresolved', /could not be selected.*Choose an eligible counselor/],
+    [appointmentErrorMessage, 'appointment_default_provider_unresolved', /Couldn't select a Counselor.*Choose a listed Counselor/],
     [counselingErrorMessage, 'counseling_invalid_request', /Some counseling details need attention/],
-    [servicesErrorMessage, 'invalid_service_catalog_request', /Some service details need attention/],
-    [availabilityErrorMessage, 'availability_conflict', /schedule is unavailable.*contact the institutional administrator/],
+    [servicesErrorMessage, 'invalid_service_catalog_request', /Some Service details need attention/],
+    [availabilityErrorMessage, 'availability_conflict', /Review the schedule details.*Contact the Guidance Office/],
     [availabilityErrorMessage, 'invalid_availability_request', /Some schedule details need attention/],
     [authErrorMessage, 'csrf_failed', /security check expired.*Submit the form again/],
     [accountErrorMessage, 'csrf_failed', /security check expired.*Try again/],
@@ -103,8 +103,8 @@ test('Booking rejection, key conflict, slot conflict and connection failure stay
     assert.equal(classifyBookingFailure(api('idempotency_key_conflict', 409)).keepIntent, false);
     assert.equal(classifyBookingFailure(api('appointment_time_conflict', 409)).message, 'That time was just taken. Choose another available time.');
     assert.equal(classifyBookingFailure(new TypeError('offline')).keepIntent, true);
-    assert.match(appointmentErrorMessage(api('idempotency_unavailable', 503), fallback), /Keep the same booking details/);
-    assert.match(classifyBookingFailure(api('idempotency_unavailable', 503)).message, /Keep the same booking details/);
+    assert.match(appointmentErrorMessage(api('idempotency_unavailable', 503), fallback), /Keep the same details/);
+    assert.match(classifyBookingFailure(api('idempotency_unavailable', 503)).message, /Keep the same details/);
 });
 for (const code of ['idempotency_in_progress', 'idempotency_unavailable'])
     test(`Feedback ${code}: same-response recovery remains explicit`, () => {

@@ -66,7 +66,7 @@ export function deliveryStateLabel(state: string): string {
   if (state === AppointmentReminderTransportState.SENT) return "Sent";
   if (state === AppointmentReminderTransportState.FAILED) return "Not sent";
   if (state === AppointmentReminderTransportState.CANCELLED) return "Cancelled";
-  return "Unavailable";
+  return "Status not shown";
 }
 
 export function inAppStateLabel(state: string): string {

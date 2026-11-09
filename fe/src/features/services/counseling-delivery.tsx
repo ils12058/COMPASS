@@ -25,7 +25,7 @@ export const counselingDeliveryOptions = [
   },
   {
     mode: DeliveryMode.ONLINE,
-    label: "Online counseling",
+    label: "E-Counseling",
     description:
       "Scheduled sessions use E-Counseling.",
   },
@@ -38,12 +38,12 @@ export function counselingOnlineStatus({
   bookingEnabled,
 }: CounselingDeliveryState): string {
   if (!online) {
-    return "Online counseling off." + (inPerson ? " In-person Counseling remains available." : "");
+    return "E-Counseling off." + (inPerson ? " In-person Counseling remains available." : "");
   }
   if (!bookingEnabled) {
-    return "Online counseling on. Appointment booking is off.";
+    return "E-Counseling on. Appointment booking is off.";
   }
-  return "Online counseling on. Appointment booking is available.";
+  return "E-Counseling on. Appointment booking is available.";
 }
 
 export function newECounselingAppointmentsLabel({
@@ -52,7 +52,7 @@ export function newECounselingAppointmentsLabel({
 }: CounselingDeliveryState): string {
   return online && bookingEnabled
     ? "Available for scheduling"
-    : "Unavailable";
+    : "Enable E-Counseling and Appointment booking to schedule";
 }
 
 // Offered only to viewers who already hold Platform Operations access; it grants nothing new.

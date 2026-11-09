@@ -45,7 +45,7 @@ function descriptionExcerpt(value: string): string {
 
 function pathwaySummary(pathways: BookingPathway[]): string {
   const labels = [
-    pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ? "Flexible appointments" : null,
+    pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ? "Flexible Appointments" : null,
     pathways.includes(BookingPathway.FIXED_DATE_SLOT) ? "Scheduled slots" : null,
     pathways.includes(BookingPathway.GROUP_SESSION) ? "Group Sessions" : null,
   ].filter((label): label is string => Boolean(label));
@@ -207,7 +207,7 @@ export function ServicesListPage() {
           </Button>
         ) : undefined}
         filters={<>
-          <FilterField label="Flexible appointment booking" htmlFor="services-booking-filter" className="sm:col-span-2">
+          <FilterField label="Flexible Appointment booking" htmlFor="services-booking-filter" className="sm:col-span-2">
             <Select
               id="services-booking-filter"
               value={booking ?? ""}
@@ -258,15 +258,15 @@ export function ServicesListPage() {
         <ServicesListSkeleton framed={false} />
       ) : list.isError ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
-          {servicesErrorMessage(list.error, "Services could not be loaded.")}
+          {servicesErrorMessage(list.error, "Couldn't load Services. Try again.")}
         </PanelMessage>
       ) : list.data.data.items.length === 0 ? (
         <PanelMessage>
           {hasFilters
-            ? "No services match the current search or filters."
+            ? "No Services match the current search or filters."
             : canManage && includeInactive
-              ? "No services have been added yet."
-              : "No active services are currently available."}
+              ? "No Services have been added yet."
+              : "No active Services are currently available."}
         </PanelMessage>
       ) : (
           <ul className="divide-y divide-border">
