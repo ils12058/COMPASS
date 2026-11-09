@@ -113,7 +113,7 @@ def provider_metadata(source, client):
             pk=source.pk, provider_binding_quarantined_at__isnull=False
         ).exists()
     ):
-        raise ArtifactVerificationError("Provider media binding requires protected review.")
+        raise ArtifactVerificationError("The recording needs protected review.")
     artifact_id = source.provider_artifact_id
     item = client.get_recording(artifact_id=artifact_id)
     valid = (
@@ -130,7 +130,7 @@ def provider_metadata(source, client):
             pk=source.pk, provider_binding_quarantined_at__isnull=False
         ).exists()
     ):
-        raise ArtifactVerificationError("Provider media identity could not be verified.")
+        raise ArtifactVerificationError("Couldn't verify the recording. Try again.")
     return item
 
 
@@ -143,7 +143,7 @@ def delete_provider_recording(source, client):
         or result.get("id") != artifact_id
         or result.get("storage_provider")
     ):
-        raise ArtifactVerificationError("Provider deletion could not be verified.")
+        raise ArtifactVerificationError("Couldn't verify the recording deletion. Try again.")
 
 
 def _retry(artifact_id, token, code):

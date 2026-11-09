@@ -287,7 +287,7 @@ def _upcoming_bounds(*, from_date, to_date, at) -> tuple[datetime, datetime]:
     start_date = from_date or at.astimezone(zone).date()
     end_date = to_date or start_date + timedelta(days=DEFAULT_UPCOMING_DAYS - 1)
     if start_date > end_date:
-        raise ValueError("from_date must not be after to_date.")
+        raise ValueError("The From date can't be after the To date.")
     if (end_date - start_date).days + 1 > MAX_UPCOMING_DAYS:
         raise ValueError(f"The date window cannot be longer than {MAX_UPCOMING_DAYS} days.")
     lower = datetime.combine(start_date, time.min, tzinfo=zone)
@@ -487,9 +487,9 @@ def list_reminder_activity(
     if kind is not None and kind not in AppointmentReminderKind.values:
         raise ValueError("kind must be one of " + ", ".join(AppointmentReminderKind.values) + ".")
     if delivery is not None and delivery not in DELIVERY_STATES:
-        raise ValueError("delivery must be one of " + ", ".join(DELIVERY_STATES) + ".")
+        raise ValueError("Choose a valid Delivery status.")
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise ValueError("from_date must not be after to_date.")
+        raise ValueError("The From date can't be after the To date.")
 
     visible = scope_managed_appointments(Appointment.objects.all(), actor)
     queryset = AppointmentReminderOccurrence.objects.filter(appointment__in=visible).select_related(

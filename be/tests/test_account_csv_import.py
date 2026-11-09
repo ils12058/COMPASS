@@ -608,23 +608,15 @@ def test_csv_rejects_incomplete_unknown_inactive_or_nonstudent_placement():
         for row in body["rows"]
         if row["action"] == "INVALID"
     }
-    assert message_by_id["UCN-SAR4-501"] == (
-        "Provide both campus_code and college_code, or leave both blank."
-    )
-    assert message_by_id["UCN-SAR4-502"] == (
-        "Provide both campus_code and college_code, or leave both blank."
-    )
-    assert message_by_id["UCN-SAR4-503"] == "campus_code does not resolve to an active Campus."
-    assert message_by_id["UCN-SAR4-504"] == (
-        "college_code does not resolve to an active College beneath that Campus."
-    )
+    assert message_by_id["UCN-SAR4-501"] == "Choose both a Campus and College, or leave both blank."
+    assert message_by_id["UCN-SAR4-502"] == "Choose both a Campus and College, or leave both blank."
+    assert message_by_id["UCN-SAR4-503"] == "Choose an active Campus."
+    assert message_by_id["UCN-SAR4-504"] == "Choose an active College in the selected Campus."
     assert message_by_id["UCN-SAR4-505"] == (
         "Only Student accounts accept an initial academic placement."
     )
-    assert message_by_id["UCN-SAR4-506"] == "campus_code does not resolve to an active Campus."
-    assert message_by_id["UCN-SAR4-507"] == (
-        "college_code does not resolve to an active College beneath that Campus."
-    )
+    assert message_by_id["UCN-SAR4-506"] == "Choose an active Campus."
+    assert message_by_id["UCN-SAR4-507"] == "Choose an active College in the selected Campus."
 
     committed = upload(client, csv_bytes, dry_run=False)
     assert committed.status_code == 422

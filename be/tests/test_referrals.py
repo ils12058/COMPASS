@@ -264,7 +264,7 @@ def test_historical_source_dates_are_kept_while_compass_entry_times_stay_system_
     for recorded in (item.created_at, action.created_at):
         assert before <= recorded <= timezone.now()
 
-    with pytest.raises(InvalidReferralInput, match="occurred_at cannot be in the future"):
+    with pytest.raises(InvalidReferralInput, match="Action time can't be in the future"):
         record_action(
             actor=head,
             referral_id=item.pk,
@@ -300,7 +300,7 @@ def test_future_referred_on_is_rejected_against_the_institutional_date():
         )
 
     assert create(date(2026, 10, 9), "institutional-today").referred_on == date(2026, 10, 9)
-    with pytest.raises(InvalidReferralInput, match="referred_on cannot be in the future"):
+    with pytest.raises(InvalidReferralInput, match="Referred date can't be in the future"):
         create(date(2026, 10, 10), "institutional-tomorrow")
     # Received at this very instant is received on 9 October in Manila, not on the UTC date.
     received = create(date(2026, 10, 9), "received-now", received_at=now)
@@ -450,7 +450,7 @@ def test_received_at_is_optional_but_naive_or_invalid_chronology_is_rejected():
     item = create_for(head, student, key="no-receipt", fingerprint="a" * 64, now=now)
     assert item.received_at is None
 
-    with pytest.raises(InvalidReferralInput, match="timezone-aware"):
+    with pytest.raises(InvalidReferralInput, match="valid Received date and time"):
         create_for(
             head,
             student,
@@ -468,7 +468,9 @@ def test_received_at_is_optional_but_naive_or_invalid_chronology_is_rejected():
             now=now,
             received_at=now + timedelta(hours=1),
         )
-    with pytest.raises(InvalidReferralInput, match="earlier than referred_on"):
+    with pytest.raises(
+        InvalidReferralInput, match="Received time can't be before the Referred date"
+    ):
         create_referral(
             actor=head,
             student_id=student.pk,
@@ -772,7 +774,7 @@ def test_action_cannot_predate_known_gco_receipt():
         now=now,
         received_at=received,
     )
-    with pytest.raises(InvalidReferralInput, match="earlier than received_at"):
+    with pytest.raises(InvalidReferralInput, match="Action time can't be before the Received time"):
         record_action(
             actor=head,
             referral_id=item.pk,

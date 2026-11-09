@@ -108,7 +108,11 @@ class PushStatusResponse(StrictSchema):
 
 def _require_push_enabled() -> None:
     if not settings.WEB_PUSH_ENABLED:
-        raise APIError(503, "push_unavailable", "Browser notifications are unavailable.")
+        raise APIError(
+            503,
+            "push_unavailable",
+            "Browser notifications aren't set up for this browser.",
+        )
 
 
 def _push_invalid(exc: InvalidPushSubscription) -> NoReturn:
@@ -121,7 +125,7 @@ def _raise(exc: NotificationError) -> NoReturn:
     if isinstance(exc, InvalidNotificationInput):
         raise APIError(422, "invalid_notification_input", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Notification request could not be completed."
+        500, "internal_error", "Couldn't complete the Notification change. Try again."
     ) from exc
 
 

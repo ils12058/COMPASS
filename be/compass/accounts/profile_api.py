@@ -98,13 +98,17 @@ def _raise_profile_error(
 ) -> NoReturn:
     if isinstance(exc, AccountProfileConfidentialContentUnavailable):
         raise APIError(
-            500, "profile_confidential_content_unavailable", "The account profile is unavailable."
+            500,
+            "profile_confidential_content_unavailable",
+            "Couldn't load your profile. Try again.",
         ) from None
     if isinstance(exc, InvalidProfileInput):
         raise APIError(422, "invalid_profile_request", str(exc)) from exc
     if isinstance(exc, ProfileUnavailable):
-        raise APIError(403, "profile_unavailable", "The account profile is unavailable.") from exc
-    raise APIError(500, "internal_error", "The profile operation could not be completed.") from exc
+        raise APIError(
+            403, "profile_unavailable", "Couldn't load your profile. Try again."
+        ) from exc
+    raise APIError(500, "internal_error", "Couldn't update your profile. Try again.") from exc
 
 
 @router.get(
@@ -116,7 +120,7 @@ def _raise_profile_error(
 )
 def get_my_profile(request):
     if not request.auth_user.is_active:
-        raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
+        raise APIError(403, "profile_unavailable", "Couldn't load your profile. Try again.")
     try:
         return _serialize(request.auth_user)
     except AccountProfileConfidentialContentUnavailable as exc:
@@ -153,7 +157,7 @@ def patch_my_profile(request, payload: MyProfileUpdateRequest):
 def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B008
     user = request.auth_user
     if not user.is_active:
-        raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
+        raise APIError(403, "profile_unavailable", "Couldn't load your profile. Try again.")
     try:
         set_profile_photo(user, photo)
         url = profile_photo_url(user)
@@ -163,7 +167,7 @@ def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B00
         raise APIError(
             503,
             "profile_photo_storage_unavailable",
-            "Profile photo storage is temporarily unavailable.",
+            "Couldn't save your profile photo. Try again.",
         ) from exc
     return {
         "profile_photo_url": url,
@@ -181,7 +185,7 @@ def set_my_profile_photo(request, photo: UploadedFile = File(...)):  # noqa: B00
 def remove_my_profile_photo(request):
     user = request.auth_user
     if not user.is_active:
-        raise APIError(403, "profile_unavailable", "The account profile is unavailable.")
+        raise APIError(403, "profile_unavailable", "Couldn't load your profile. Try again.")
     try:
         remove_profile_photo(user)
         url = profile_photo_url(user)
@@ -189,7 +193,7 @@ def remove_my_profile_photo(request):
         raise APIError(
             503,
             "profile_photo_storage_unavailable",
-            "Profile photo storage is temporarily unavailable.",
+            "Couldn't remove your profile photo. Try again.",
         ) from exc
     return {
         "profile_photo_url": url,

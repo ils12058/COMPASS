@@ -65,7 +65,7 @@ def _require_viewer(request) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Student Support Context access is required.",
+            "You don't have permission to view Student Support Context.",
         )
 
 
@@ -84,7 +84,11 @@ def student_support_get_context(request, student_id: UUID):
     except StudentSupportConfigurationConflict as exc:
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     except StudentSupportError as exc:
-        raise APIError(500, "internal_error", "Student Support Context is unavailable.") from exc
+        raise APIError(
+            500,
+            "internal_error",
+            "Couldn't load Student Support Context. Try again.",
+        ) from exc
     return {
         "student": {
             "id": context.student.pk,

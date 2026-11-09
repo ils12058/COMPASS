@@ -344,7 +344,7 @@ def _validate_student(student: User) -> None:
 def _require_current_student(student: User) -> None:
     if not is_current_student(student):
         raise RoutineInterviewCurrentStudentRequired(
-            "Current Student lifecycle is required for this Routine Interview action."
+            "Only current Students can complete this Routine Interview action."
         )
 
 
@@ -356,7 +356,7 @@ def _validate_counselor(counselor: User) -> None:
 def _normalize_delivery_mode(value: str | DeliveryMode) -> str:
     normalized = value.value if isinstance(value, DeliveryMode) else value
     if normalized not in DeliveryMode.values:
-        raise InvalidRoutineInterviewInput("delivery_mode must be IN_PERSON or ONLINE.")
+        raise InvalidRoutineInterviewInput("Choose In person or E-Counseling as the Delivery mode.")
     return str(normalized)
 
 
@@ -364,7 +364,7 @@ def _normalize_direct_entry_mode(value: str | CounselingEntryMode) -> str:
     normalized = value.value if isinstance(value, CounselingEntryMode) else value
     if normalized not in DIRECT_ENTRY_MODES:
         raise InvalidRoutineInterviewInput(
-            "Direct Routine Interview entry_mode must be WALK_IN, CALLED_IN, or REFERRED."
+            "Choose Walk-in, Called-in, or Referred as the Entry type."
         )
     return str(normalized)
 
@@ -409,11 +409,11 @@ def _validate_counseling_provider(*, service, counselor: User) -> None:
 
     if service.code != "COUNSELING" or not service.is_active:
         raise RoutineInterviewAppointmentInvalid(
-            "Routine Interview requires the active canonical COUNSELING Service."
+            "Routine Interviews require an active Counseling Service."
         )
     if not service_counselor_eligible(service, counselor):
         raise RoutineInterviewAppointmentInvalid(
-            "The assigned provider is not eligible for the COUNSELING Service."
+            "The assigned Counselor isn't available for the Counseling Service."
         )
 
 
@@ -421,7 +421,7 @@ def _validate_counseling_service(*, service, counselor: User, delivery_mode: str
     _validate_counseling_provider(service=service, counselor=counselor)
     if not service_supports_delivery_mode(service, delivery_mode):
         raise RoutineInterviewAppointmentInvalid(
-            "The COUNSELING Service does not support this delivery mode."
+            "The Counseling Service doesn't support this Delivery mode."
         )
 
 
@@ -496,7 +496,7 @@ def ensure_for_appointment(
         counseling_service = _active_counseling_service(for_update=True)
         if appointment.service_id != counseling_service.pk:
             raise RoutineInterviewAppointmentInvalid(
-                "The Appointment does not use the canonical COUNSELING Service."
+                "The Appointment doesn't use the Counseling Service."
             )
         # The saved Appointment anchors the Routine Interview: later changes to the Service's
         # delivery modes or provider coverage do not undo it (ADR-089).
@@ -523,7 +523,7 @@ def ensure_for_appointment(
             concurrent = RoutineInterview.objects.filter(appointment_id=appointment.pk).first()
             if concurrent is None:
                 raise RoutineInterviewCreationConflict(
-                    "The Routine Interview could not be created safely; retry the request."
+                    "Couldn't create the Routine Interview. Try again."
                 ) from None
             return _queryset().get(pk=concurrent.pk)
 
@@ -645,7 +645,7 @@ def create_direct(
             concurrent = RoutineInterview.objects.filter(direct_creation_key_digest=digest).first()
             if concurrent is None:
                 raise RoutineInterviewCreationConflict(
-                    "The Routine Interview could not be created safely; retry the request."
+                    "Couldn't create the Routine Interview. Try again."
                 ) from None
             if concurrent.direct_request_fingerprint != request_fingerprint:
                 raise RoutineInterviewCreationConflict(
@@ -709,7 +709,7 @@ def get_direct_creation_options(counselor: User) -> RoutineDirectCreationOptions
     )
     if not delivery_modes:
         raise RoutineInterviewAppointmentInvalid(
-            "The canonical COUNSELING Service has no supported delivery mode."
+            "The Counseling Service has no supported Delivery mode."
         )
     return RoutineDirectCreationOptions(service=service, delivery_modes=delivery_modes)
 
@@ -939,7 +939,7 @@ def list_assigned(
         queryset = queryset.filter(delivery_mode=_normalize_delivery_mode(delivery_mode))
     if intake_status is not None:
         if intake_status not in {"DRAFT", "SUBMITTED"}:
-            raise InvalidRoutineInterviewInput("intake_status must be DRAFT or SUBMITTED.")
+            raise InvalidRoutineInterviewInput("Choose Draft or Submitted as the Intake status.")
         queryset = (
             queryset.filter(intake_submitted_at__isnull=True)
             if intake_status == "DRAFT"
@@ -947,7 +947,9 @@ def list_assigned(
         )
     if evaluation_status is not None:
         if evaluation_status not in {"DRAFT", "FINALIZED"}:
-            raise InvalidRoutineInterviewInput("evaluation_status must be DRAFT or FINALIZED.")
+            raise InvalidRoutineInterviewInput(
+                "Choose Draft or Finalized as the Evaluation status."
+            )
         queryset = (
             queryset.filter(evaluation_finalized_at__isnull=True)
             if evaluation_status == "DRAFT"
@@ -1004,9 +1006,7 @@ def _validate_intake_submission(intake: dict[str, object]) -> None:
     concerns = intake["concerns"]
     specification = str(intake["other_concern_specification"]).strip()
     if RoutineConcern.OTHER in concerns and not specification:
-        raise InvalidRoutineInterviewInput(
-            "other_concern_specification is required when OTHER concern is selected."
-        )
+        raise InvalidRoutineInterviewInput("Enter the Other concern.")
     meaningful_text = any(
         str(intake[field]).strip()
         for field in INTAKE_FIELDS
@@ -1159,7 +1159,7 @@ _MATCH_ISSUE_MESSAGES = {
     RoutineEncounterMatchIssue.STUDENT: "The Counseling Encounter belongs to another Student.",
     RoutineEncounterMatchIssue.COUNSELOR: "The Counseling Encounter belongs to another Counselor.",
     RoutineEncounterMatchIssue.SERVICE: (
-        "The Counseling Encounter does not use the canonical COUNSELING Service."
+        "The Counseling Encounter doesn't use the Counseling Service."
     ),
     RoutineEncounterMatchIssue.DELIVERY_MODE: (
         "The Counseling Encounter delivery mode does not match the Routine Interview."
@@ -1174,7 +1174,7 @@ def _raise_match_issue(item: RoutineInterview, issue: RoutineEncounterMatchIssue
     if issue == RoutineEncounterMatchIssue.ENTRY_MODE:
         if item.appointment_id is not None:
             raise RoutineInterviewEncounterMismatch(
-                "An Appointment-backed Routine Interview requires an APPOINTMENT Encounter."
+                "Choose an Appointment-linked Counseling Encounter for this Routine Interview."
             )
         raise RoutineInterviewEncounterMismatch(
             "The Counseling Encounter entry mode does not match the Routine Interview."

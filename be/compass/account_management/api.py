@@ -304,7 +304,7 @@ def _require_management(request, *, recent_mfa: bool) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "The accounts.manage capability is required.",
+            "You don't have permission to manage accounts.",
         )
     if recent_mfa:
         require_recent_mfa_for_request(request)
@@ -316,10 +316,7 @@ def _require_designation_management(request) -> None:
         raise APIError(
             403,
             "institutional_designation_permission_denied",
-            (
-                "The accounts.manage and institutional_designations.manage capabilities "
-                "are required."
-            ),
+            ("You don't have permission to manage institutional designations."),
         )
 
 
@@ -328,10 +325,7 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
         raise APIError(
             403,
             "institutional_designation_permission_denied",
-            (
-                "The accounts.manage and institutional_designations.manage capabilities "
-                "are required."
-            ),
+            ("You don't have permission to manage institutional designations."),
         ) from exc
     if isinstance(exc, AcademicPlacementNotAuthorized):
         raise APIError(403, "academic_placement_permission_denied", str(exc)) from exc
@@ -383,18 +377,18 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
         ) from exc
     if isinstance(exc, ManagementNotAuthorized):
         raise APIError(
-            403, "permission_denied", "The accounts.manage capability is required."
+            403, "permission_denied", "You don't have permission to manage accounts."
         ) from exc
     if isinstance(exc, ManagementConfigurationError):
         raise APIError(
             503,
             "identity_policy_unavailable",
-            "The canonical identity policy is temporarily unavailable.",
+            "COMPASS isn't set up for this yet. Contact your IT Administrator.",
         ) from exc
     if isinstance(exc, (InvalidManagementInput, PaginationError)):
         raise APIError(422, "invalid_account_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The account-management operation could not be completed."
+        500, "internal_error", "Couldn't complete the account change. Try again."
     ) from exc
 
 
@@ -710,18 +704,18 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
         raise APIError(
             429,
             "rate_limited",
-            "Too many authentication attempts. Please try again later.",
+            "Too many authentication attempts. Try again later.",
             headers={"Retry-After": str(exc.retry_after_seconds)},
         ) from exc
     except EmailOTPSecurityUnavailable as exc:
         raise APIError(
             503,
             "security_unavailable",
-            "Authentication is temporarily unavailable.",
+            "Couldn't verify your account. Try again.",
         ) from exc
     except EmailChangePermissionDenied as exc:
         raise APIError(
-            403, "permission_denied", "The accounts.manage capability is required."
+            403, "permission_denied", "You don't have permission to change account emails."
         ) from exc
     except EmailChangeNotFound as exc:
         raise APIError(404, "account_not_found", "The requested account was not found.") from exc
@@ -731,13 +725,13 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
         raise APIError(
             422,
             "invalid_email_change_request",
-            "The email change request could not be staged.",
+            "Couldn't start the email change. Try again.",
         ) from exc
     except EmailChangeError as exc:
         raise APIError(
             500,
             "internal_error",
-            "The email change operation could not be completed.",
+            "Couldn't change the email. Try again.",
         ) from exc
     return {
         "request_id": pending.request_id,

@@ -121,7 +121,7 @@ def recoverable_queryset(*, actor):
 
 def list_recoverable(*, actor, page=1, page_size=20):
     if not 1 <= page <= 100 or not 1 <= page_size <= 50:
-        raise FollowUpInvalid("The requested recovery page is unavailable.")
+        raise FollowUpInvalid("Choose a valid Recovery page.")
     rows = list(
         recoverable_queryset(actor=actor)
         .select_related("student", "assigned_to")

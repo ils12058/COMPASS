@@ -405,7 +405,7 @@ def _require_student(request, capability: str) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Student Graduate Tracer access is required.",
+            "You don't have permission to use Graduate Tracer.",
         )
 
 
@@ -415,14 +415,14 @@ def _require_viewer(request) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Head Guidance Graduate Tracer review authority is required.",
+            "You don't have permission to review Graduate Tracer responses.",
         )
 
 
 def _require_classification_options_viewer(request) -> None:
     actor = request.auth_user
     if not actor.is_active:
-        raise APIError(403, "permission_denied", "Active user session required.")
+        raise APIError(403, "permission_denied", "Sign in to view Graduate Tracer options.")
     if (
         actor.has_capability("graduate_tracer.manage_self")
         or actor.has_capability("graduate_tracer.view_self")
@@ -433,7 +433,7 @@ def _require_classification_options_viewer(request) -> None:
     raise APIError(
         403,
         "permission_denied",
-        "Graduate Tracer classification options access is required.",
+        "You don't have permission to view Graduate Tracer options.",
     )
 
 
@@ -444,7 +444,7 @@ def _raise(exc: GraduateTracerError) -> NoReturn:
         raise APIError(
             500,
             "graduate_tracer_confidential_content_unavailable",
-            "The Graduate Tracer confidential content is unavailable.",
+            "Couldn't load the Graduate Tracer response. Try again.",
         ) from None
     if isinstance(exc, GraduateTracerNotFound):
         raise APIError(404, "graduate_tracer_not_found", str(exc)) from exc
@@ -459,7 +459,7 @@ def _raise(exc: GraduateTracerError) -> NoReturn:
     raise APIError(
         500,
         "internal_error",
-        "The Graduate Tracer operation could not be completed.",
+        "Couldn't complete the Graduate Tracer change. Try again.",
     ) from exc
 
 

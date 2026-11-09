@@ -50,7 +50,7 @@ def _validate_pagination(*, page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1 or page > MAX_PAGE_NUMBER:
         raise ActivityPaginationError(f"page must be an integer between 1 and {MAX_PAGE_NUMBER}")
     if type(page_size) is not int or page_size < 1 or page_size > MAX_PAGE_SIZE:
-        raise ActivityPaginationError(f"page_size must be an integer between 1 and {MAX_PAGE_SIZE}")
+        raise ActivityPaginationError(f"Items per page must be between 1 and {MAX_PAGE_SIZE}.")
     return page, page_size
 
 

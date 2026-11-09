@@ -103,7 +103,7 @@ def test_legacy_token_rebinding_maps_to_unchanged_safe_routine_error(record_id, 
     assert caught.value.reason == "binding_mismatch"
     assert caught.value.routine_interview_id == record_id
     assert caught.value.section == section.value
-    assert str(caught.value) == "The Routine Interview content is unavailable."
+    assert str(caught.value) == "Couldn't load the Routine Interview. Try again."
     assert caught.value.__cause__ is None
     assert caught.value.__suppress_context__
 

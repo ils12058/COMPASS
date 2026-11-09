@@ -57,9 +57,7 @@ def resolve_csv_student_placement(*, role, campus_code, college_code) -> CsvStud
     if not campus_code and not college_code:
         return None
     if not campus_code or not college_code:
-        raise InvalidManagementInput(
-            "Provide both campus_code and college_code, or leave both blank."
-        )
+        raise InvalidManagementInput("Choose both a Campus and College, or leave both blank.")
     if role != "STUDENT":
         raise InvalidManagementInput(STUDENT_ONLY_MESSAGE)
 
@@ -68,7 +66,7 @@ def resolve_csv_student_placement(*, role, campus_code, college_code) -> CsvStud
 
     campus = Campus.objects.filter(code=normalized_campus, is_active=True).first()
     if campus is None:
-        raise InvalidManagementInput("campus_code does not resolve to an active Campus.")
+        raise InvalidManagementInput("Choose an active Campus.")
 
     college = College.objects.filter(
         code=normalized_college,
@@ -77,9 +75,7 @@ def resolve_csv_student_placement(*, role, campus_code, college_code) -> CsvStud
         campus__is_active=True,
     ).first()
     if college is None:
-        raise InvalidManagementInput(
-            "college_code does not resolve to an active College beneath that Campus."
-        )
+        raise InvalidManagementInput("Choose an active College in the selected Campus.")
 
     return CsvStudentPlacement(
         campus_id=campus.pk,

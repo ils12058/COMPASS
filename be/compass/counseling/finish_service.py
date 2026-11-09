@@ -207,7 +207,7 @@ def finish_counseling_appointment(
 
         if appointment.service.code != COUNSELING_SERVICE_CODE:
             raise CounselingAppointmentInvalid(
-                "The linked Appointment does not use the canonical COUNSELING Service."
+                "The linked Appointment doesn't use the Counseling Service."
             )
         delivery_mode = _normalize_delivery_mode(appointment.delivery_mode)
 
@@ -247,8 +247,8 @@ def finish_counseling_appointment(
             access_window = ecounseling_access_window(appointment, now=current)
             if access_window.state == ECounselingJoinState.OPEN:
                 raise CounselingFinishECounselingAccessOpen(
-                    "This Counseling Appointment cannot be finished while the online "
-                    "counseling access period is still open."
+                    "This Counseling Appointment can't be finished while the E-Counseling "
+                    "access period is open."
                 )
 
         was_completed = appointment.status == AppointmentStatus.COMPLETED
@@ -312,8 +312,7 @@ def finish_counseling_appointment(
             )
             if linked_encounter_id != encounter.pk:
                 raise CounselingFinishConflict(
-                    "The Appointment's Routine Interview could not be linked safely; "
-                    "retry the finish request."
+                    "Couldn't link the Routine Interview. Try finishing the Appointment again."
                 )
             routine_interview = locked_routine
         else:

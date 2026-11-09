@@ -215,7 +215,7 @@ def test_booking_settings_are_appointment_only_and_bounded():
                 default_appointment_duration_minutes=duration,
                 context=context(actor),
             )
-    with pytest.raises(InvalidServiceCatalogInput, match="non-negative"):
+    with pytest.raises(InvalidServiceCatalogInput, match="positive number of minutes or blank"):
         configured_service(actor, code="NEGATIVE_CUTOFF", cancellation_cutoff_minutes=-1)
 
     # Booking-off Services cannot carry Appointment-only settings.
@@ -283,7 +283,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     staff = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
-    with pytest.raises(InvalidServiceCatalogInput, match="delivery_modes"):
+    with pytest.raises(InvalidServiceCatalogInput, match="In person, E-Counseling, or both"):
         create_service(
             code="BAD_MODE",
             name="Bad mode",
@@ -291,7 +291,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
             delivery_modes=["PHONE"],
             context=context(actor),
         )
-    with pytest.raises(InvalidServiceCatalogInput, match="duplicates"):
+    with pytest.raises(InvalidServiceCatalogInput, match="Delivery mode only once"):
         create_service(
             code="DUP_MODE",
             name="Duplicate mode",
@@ -299,7 +299,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
             delivery_modes=["ONLINE", "ONLINE"],
             context=context(actor),
         )
-    with pytest.raises(InvalidServiceCatalogInput, match="provider_coverage"):
+    with pytest.raises(InvalidServiceCatalogInput, match="Counselor coverage"):
         create_service(
             code="BAD_COVERAGE",
             name="Bad",
@@ -326,7 +326,9 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
             context=context(actor),
             **selected,
         )
-    with pytest.raises(InvalidServiceCatalogInput, match="not found"):
+    with pytest.raises(
+        InvalidServiceCatalogInput, match="selected Counselor account was not found"
+    ):
         create_service(
             code="UNKNOWN_PROVIDER",
             name="Unknown provider",
@@ -335,7 +337,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
             context=context(actor),
             **selected,
         )
-    with pytest.raises(InvalidServiceCatalogInput, match="duplicates"):
+    with pytest.raises(InvalidServiceCatalogInput, match="Counselor only once"):
         create_service(
             code="DUP_PROVIDER",
             name="Duplicate provider",
@@ -344,7 +346,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
             context=context(actor),
             **selected,
         )
-    with pytest.raises(ServiceCatalogConflict, match="SELECTED_COUNSELORS"):
+    with pytest.raises(ServiceCatalogConflict, match="Selected Counselors"):
         create_service(
             code="ALL_WITH_SELECTION",
             name="All with selection",

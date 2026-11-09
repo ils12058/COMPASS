@@ -50,7 +50,12 @@ def _context(request) -> AuditContext:
 
 def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = (
+            "manage Academic Years"
+            if capability == "academic_years.manage"
+            else "view Academic Years"
+        )
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
     if recent_mfa:
         require_recent_mfa_for_request(request)
 
@@ -63,7 +68,7 @@ def _raise(exc: AcademicYearError) -> NoReturn:
     if isinstance(exc, InvalidAcademicYearInput):
         raise APIError(422, "invalid_academic_year_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Academic Year operation could not be completed."
+        500, "internal_error", "Couldn't complete the Academic Year change. Try again."
     ) from exc
 
 

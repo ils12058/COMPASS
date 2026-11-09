@@ -161,7 +161,9 @@ def _parse_csv(data: bytes) -> ParsedRosterCsv:
     except StopIteration as exc:
         raise RosterImportMalformed("CSV header row is required") from exc
     except csv.Error as exc:
-        raise RosterImportMalformed("CSV could not be parsed") from exc
+        raise RosterImportMalformed(
+            "Couldn't read the CSV file. Check its format and try again."
+        ) from exc
 
     headers = _headers(raw_headers)
     rows: list[RosterImportRow] = []
@@ -250,7 +252,9 @@ def _parse_csv(data: bytes) -> ParsedRosterCsv:
                 )
             )
     except csv.Error as exc:
-        raise RosterImportMalformed("CSV could not be parsed") from exc
+        raise RosterImportMalformed(
+            "Couldn't read the CSV file. Check its format and try again."
+        ) from exc
 
     if total_rows == 0:
         raise RosterImportMalformed("CSV must contain at least one roster row")

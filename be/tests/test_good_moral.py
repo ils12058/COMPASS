@@ -2480,7 +2480,7 @@ def test_form_input_1a_creation_rejects_unsupported_year_level(invalid_year: str
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_good_moral_request"
-    assert "year_level must be between 1st and 4th Year" in response.json()["error"]["message"]
+    assert "Year Level must be from 1st to 4th Year" in response.json()["error"]["message"]
 
 
 @pytest.mark.django_db
@@ -2685,7 +2685,7 @@ def test_form_input_1a_operational_correction_rejects_unsupported_values_when_ch
     item, _ = make_current_request(student)
 
     # Attempt to change year_level to unsupported value
-    with pytest.raises(InvalidGoodMoralInput, match="year_level is not supported"):
+    with pytest.raises(InvalidGoodMoralInput, match="Choose a valid Year Level"):
         update_request(
             actor=counselor,
             request_id=item.pk,

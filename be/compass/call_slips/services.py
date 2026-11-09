@@ -224,7 +224,7 @@ def _validate_operational_actor(actor: User) -> None:
         or not actor.is_active
         or actor.role.code not in OPERATIONAL_ROLES
     ):
-        raise CallSlipNotPermitted("Active Guidance operational access is required.")
+        raise CallSlipNotPermitted("You don't have permission to manage Call Slips.")
 
 
 def _validate_student_actor(actor: User) -> None:
@@ -298,7 +298,7 @@ def _normalize_destination_type(
         else destination_type
     )
     if normalized not in CallSlipDestinationType.values:
-        raise InvalidCallSlipInput("destination_type is not supported.")
+        raise InvalidCallSlipInput("Choose a valid Destination.")
     return normalized
 
 
@@ -312,7 +312,7 @@ def _normalize_destination(
         else destination_type
     )
     if normalized not in CallSlipDestinationType.values:
-        raise InvalidCallSlipInput("destination_type is not supported.")
+        raise InvalidCallSlipInput("Choose a valid Destination.")
     cleaned_other = _clean_optional(
         other_destination,
         "other_destination",
@@ -320,25 +320,25 @@ def _normalize_destination(
     )
     if normalized == CallSlipDestinationType.GUIDANCE_OFFICE:
         if cleaned_other:
-            raise InvalidCallSlipInput("other_destination must be empty for GUIDANCE_OFFICE.")
+            raise InvalidCallSlipInput("Leave Other destination blank for the Guidance Office.")
         return normalized, ""
     if not cleaned_other:
-        raise InvalidCallSlipInput("other_destination is required for OTHER.")
+        raise InvalidCallSlipInput("Enter the Other destination.")
     return normalized, cleaned_other
 
 
 def _normalize_report_at(value: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidCallSlipInput("report_at must be a timezone-aware datetime.")
+        raise InvalidCallSlipInput("Enter a valid Report date and time.")
     return to_institution_time(value)
 
 
 def _normalize_interview_ended_at(value: datetime, *, now: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidCallSlipInput("interview_ended_at must be a timezone-aware datetime.")
+        raise InvalidCallSlipInput("Enter a valid Interview end date and time.")
     normalized = to_institution_time(value)
     if normalized > now:
-        raise InvalidCallSlipInput("interview_ended_at cannot be in the future.")
+        raise InvalidCallSlipInput("The Interview end time can't be in the future.")
     return normalized
 
 
@@ -347,11 +347,11 @@ def _date_bounds(
     to_date: date | None,
 ) -> tuple[datetime | None, datetime | None]:
     if from_date is not None and not isinstance(from_date, date):
-        raise InvalidCallSlipInput("from_date must be a date.")
+        raise InvalidCallSlipInput("Enter a valid From date.")
     if to_date is not None and not isinstance(to_date, date):
-        raise InvalidCallSlipInput("to_date must be a date.")
+        raise InvalidCallSlipInput("Enter a valid To date.")
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise InvalidCallSlipInput("from_date must not be after to_date.")
+        raise InvalidCallSlipInput("The From date can't be after the To date.")
     start = institution_day_start(from_date) if from_date else None
     end = institution_day_start(to_date + timedelta(days=1)) if to_date else None
     return start, end
@@ -476,7 +476,7 @@ def _resolve_issuer_locked(actor: User) -> User:
     if actor.role.code == "COUNSELOR":
         return actor
     if actor.role.code != "GUIDANCE_OFFICE_ASSISTANT":
-        raise CallSlipNotPermitted("Only Guidance operational actors may issue Call Slips.")
+        raise CallSlipNotPermitted("You don't have permission to issue Call Slips.")
 
     supervision = StaffSupervision.objects.select_for_update().filter(staff_id=actor.pk).first()
     if supervision is None:
@@ -514,7 +514,7 @@ def _lock_linked_referral(
         action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
     ).exists():
         raise CallSlipReferralConflict(
-            "The linked Referral does not record SEND_CALL_SLIP_INTERVIEW_PERMIT."
+            "Record permission to send a Call Slip on the linked Referral first."
         )
     if CallSlip.objects.filter(
         referral_id=referral.pk,
@@ -554,7 +554,7 @@ def _create_new_call_slip_locked(
     student = _validate_student(student)
     if not _student_in_scope(actor, student.pk):
         raise CallSlipNotPermitted(
-            "The selected Student is outside the authenticated Guidance actor's Call Slip scope."
+            "You don't have permission to issue a Call Slip for the selected Student."
         )
 
     referral = None
@@ -597,9 +597,7 @@ def _create_new_call_slip_locked(
             raise CallSlipReferralConflict(
                 "The linked Referral already has a non-voided Call Slip."
             ) from exc
-        raise CallSlipCreationConflict(
-            "The Call Slip could not be created because its creation identity conflicted."
-        ) from exc
+        raise CallSlipCreationConflict("Couldn't create the Call Slip. Try again.") from exc
 
     item_for_audit = _queryset().get(pk=item.pk)
     record_event(
@@ -686,7 +684,7 @@ def _translate_referral_action_error(exc: ReferralError) -> CallSlipError:
         return InvalidCallSlipInput(str(exc))
     if isinstance(exc, (ReferralActionConflict, ReferralVoidConflict)):
         return CallSlipReferralConflict(str(exc))
-    return CallSlipReferralConflict("The linked Referral source action could not be ensured.")
+    return CallSlipReferralConflict("Couldn't prepare the linked Referral action. Try again.")
 
 
 def create_call_slip_from_referral(
@@ -987,7 +985,7 @@ def record_interview_ended(
     _validate_operational_actor(actor)
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidCallSlipInput("The server time must be timezone-aware.")
+        raise InvalidCallSlipInput("Couldn't process the Call Slip time. Try again.")
     normalized = _normalize_interview_ended_at(
         interview_ended_at,
         now=current,
@@ -1002,7 +1000,9 @@ def record_interview_ended(
         if item.interview_ended_at is not None:
             if item.interview_ended_at == normalized:
                 return _queryset().get(pk=item.pk)
-            raise CallSlipInterviewEndConflict("interview_ended_at is immutable once recorded.")
+            raise CallSlipInterviewEndConflict(
+                "The Interview end time can't be changed once recorded."
+            )
 
         item.interview_ended_at = normalized
         item.save(update_fields=["interview_ended_at", "updated_at"])

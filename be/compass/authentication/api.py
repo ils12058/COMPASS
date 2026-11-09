@@ -487,7 +487,7 @@ def _raise_rate_limited(exc: AuthenticationRateLimited) -> None:
     raise APIError(
         429,
         "rate_limited",
-        "Too many authentication attempts. Please try again later.",
+        "Too many authentication attempts. Try again later.",
         headers={"Retry-After": str(exc.retry_after_seconds)},
     ) from exc
 
@@ -496,12 +496,12 @@ def _raise_security_unavailable(exc: Exception) -> None:
     raise APIError(
         503,
         "security_unavailable",
-        "Authentication is temporarily unavailable.",
+        "Couldn't verify your account. Try again.",
     ) from exc
 
 
 def _raise_invalid_mfa(exc: Exception) -> None:
-    raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+    raise APIError(400, "mfa_failed", "Couldn't verify the MFA code. Try again.") from exc
 
 
 def _raise_password_challenge_invalid(exc: Exception) -> None:
@@ -530,12 +530,12 @@ def _raise_password_change_error(exc: Exception) -> None:
         raise APIError(
             403,
             "password_change_authentication_failed",
-            "The current authentication proof could not be verified.",
+            "Couldn't verify your identity. Try again.",
         ) from exc
     raise APIError(
         500,
         "internal_error",
-        "The password change operation could not be completed.",
+        "Couldn't change your password. Try again.",
     ) from exc
 
 
@@ -558,12 +558,12 @@ def _raise_email_change_error(exc: Exception) -> None:
         raise APIError(
             422,
             "invalid_email_change_request",
-            "The email change request could not be verified.",
+            "Couldn't verify the email change request. Try again.",
         ) from exc
     raise APIError(
         500,
         "internal_error",
-        "The email change operation could not be completed.",
+        "Couldn't change your email. Try again.",
     ) from exc
 
 
@@ -927,7 +927,7 @@ def verify_login_mfa(request, payload: LoginMFARequest, response: HttpResponse):
     except (InvalidLoginChallenge, AuthenticationUnavailable) as exc:
         if isinstance(exc, AuthenticationUnavailable):
             _raise_security_unavailable(exc)
-        raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+        raise APIError(400, "mfa_failed", "Couldn't verify the MFA code. Try again.") from exc
     _apply_login_cookies(response, result)
     if result.status == "mfa_failed":
         _raise_invalid_mfa(InvalidLoginChallenge("invalid MFA response"))
@@ -1073,7 +1073,7 @@ def totp_bootstrap_setup(request):
         raise APIError(
             403,
             "mfa_enrollment_challenge_invalid",
-            "The MFA enrollment challenge is unavailable.",
+            "Couldn't start MFA setup. Sign in again and retry.",
         ) from exc
     except TOTPAlreadyConfigured as exc:
         raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
@@ -1101,12 +1101,12 @@ def totp_bootstrap_confirm(request, payload: MFARequest, response: HttpResponse)
         raise APIError(
             403,
             "mfa_enrollment_challenge_invalid",
-            "The MFA enrollment challenge is unavailable.",
+            "Couldn't continue MFA setup. Sign in again and retry.",
         ) from exc
     except AuthenticationUnavailable as exc:
         _raise_security_unavailable(exc)
     except TOTPEnrollmentMissing as exc:
-        raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+        raise APIError(400, "mfa_failed", "Couldn't verify the MFA code. Try again.") from exc
     except Exception as exc:
         _raise_security_unavailable(exc)
     if result is None:
@@ -1143,7 +1143,7 @@ def totp_setup(request, payload: TOTPSetupRequest):
         raise APIError(
             403,
             "mfa_enrollment_authorization_failed",
-            "The current authentication proof could not be verified.",
+            "Couldn't verify your identity. Try again.",
         ) from exc
     except TOTPAlreadyConfigured as exc:
         raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
@@ -1180,10 +1180,10 @@ def totp_confirm(request, payload: TOTPConfirmationRequest):
         raise APIError(
             403,
             "mfa_enrollment_authorization_failed",
-            "The current authentication proof could not be verified.",
+            "Couldn't verify your identity. Try again.",
         ) from exc
     except TOTPEnrollmentMissing as exc:
-        raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+        raise APIError(400, "mfa_failed", "Couldn't verify the MFA code. Try again.") from exc
     except Exception as exc:
         _raise_security_unavailable(exc)
     if result is None:

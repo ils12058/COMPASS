@@ -363,7 +363,7 @@ def test_direct_creation_integrity_race_recovers_outside_failed_savepoint():
         "compass.routine_interviews.services.RoutineInterview.objects.create",
         side_effect=IntegrityError("simulated unique race"),
     ):
-        with pytest.raises(RoutineInterviewCreationConflict, match="retry"):
+        with pytest.raises(RoutineInterviewCreationConflict, match="Try again"):
             create_direct(
                 counselor=counselor,
                 student_id=student.pk,
@@ -393,7 +393,7 @@ def test_intake_other_rule_is_submission_only_and_submitted_intake_locks_without
     )
     assert read_intake(draft)["other_concern_specification"] == ""
     assert not AuditEvent.objects.filter(action="routine_interview.intake_submitted").exists()
-    with pytest.raises(InvalidRoutineInterviewInput, match="other_concern_specification"):
+    with pytest.raises(InvalidRoutineInterviewInput, match="Enter the Other concern"):
         submit_my_intake(student=student, routine_interview_id=item.pk, context=context(student))
 
     cleared = replace_my_intake(

@@ -206,7 +206,12 @@ class TechnicalActivityPageResponse(StrictSchema):
 def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     actor = request.auth_user
     if not actor.is_active or not actor.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = (
+            "manage platform operations"
+            if capability == "platform_operations.manage"
+            else "view platform operations"
+        )
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
     if recent_mfa:
         require_recent_mfa_for_request(request)
 

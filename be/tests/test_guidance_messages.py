@@ -411,7 +411,7 @@ def test_multiple_heads_fail_closed_without_implicit_fallback(world):
     StudentAcademicProfile.objects.filter(student=world.student).update(
         current_college=world.colleges[3]
     )
-    with pytest.raises(MessagesConflict, match="routing"):
+    with pytest.raises(MessagesConflict, match="Counselor must be assigned"):
         office(world)
     assert not GuidanceThread.objects.exists()
     for actor in [world.head, world.head_goa, world.other]:

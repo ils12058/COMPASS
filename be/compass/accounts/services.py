@@ -154,16 +154,16 @@ def set_user_capability_override(
         try:
             capability = Capability.objects.get(code=capability)
         except Capability.DoesNotExist as exc:
-            raise ValueError(f"unknown capability: {capability}") from exc
+            raise ValueError("Choose a valid Permission.") from exc
     if capability.pk is None:
-        raise ValueError("capability must be saved before assigning an override")
+        raise ValueError("Choose a saved Permission.")
     if capability.code not in CAPABILITY_CODES:
-        raise ValueError(f"unknown capability: {capability.code}")
+        raise ValueError("Choose a valid Permission.")
     if effect not in UserCapabilityOverride.Effect.values:
         raise ValueError("effect must be GRANT or REVOKE")
     cleaned_reason = reason.strip()
     if not cleaned_reason:
-        raise ValueError("reason is required for a capability override")
+        raise ValueError("Enter a reason for the Permission change.")
     if created_by is not None and not getattr(created_by, "pk", None):
         raise ValueError("created_by must be saved when provided")
 
@@ -175,7 +175,7 @@ def set_user_capability_override(
         locked_user.role.code,
         capability.code,
     ):
-        raise ValueError("The capability is incompatible with the current Faculty role boundary.")
+        raise ValueError("This Permission isn't available for the current Faculty Role.")
     if (
         capability.code == "organization.catalog.manage"
         and effect == UserCapabilityOverride.Effect.GRANT

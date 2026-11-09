@@ -101,7 +101,7 @@ RECORDING_SCOPE = ConsentScope.AUDIO_VIDEO_RECORDING
 def _validate_scopes(scopes):
     if not set(scopes) <= {RECORDING_SCOPE}:
         raise ECounselingConsentScopeIncompatible(
-            "This consent scope is incompatible with the session's media policy."
+            "This recording choice isn't available for the session."
         )
 
 
@@ -132,7 +132,7 @@ def _load_session_appointment(appointment_id: UUID) -> Appointment:
     if appointment is None:
         raise ECounselingNotFound("The requested E-Counseling Appointment was not found.")
     if appointment.delivery_mode != DeliveryMode.ONLINE or appointment.service.code != "COUNSELING":
-        raise ECounselingAppointmentNotEligible("The Appointment is not ONLINE Counseling.")
+        raise ECounselingAppointmentNotEligible("The Appointment isn't for E-Counseling.")
     return appointment
 
 
@@ -240,12 +240,12 @@ def request_consents(
     context: AuditContext,
 ) -> list[dict[str, object]]:
     if not scopes:
-        raise ECounselingConsentConflict("At least one consent scope is required.")
+        raise ECounselingConsentConflict("Choose recording consent.")
     if len(scopes) != len(set(scopes)):
-        raise ECounselingConsentConflict("Duplicate consent scopes are not allowed.")
+        raise ECounselingConsentConflict("Choose recording consent only once.")
     unsupported = set(scopes) - set(ConsentScope.values)
     if unsupported:
-        raise ECounselingConsentConflict("One or more consent scopes are not supported.")
+        raise ECounselingConsentConflict("Choose a supported recording option.")
 
     appointment = _load_eligible_appointment(appointment_id)
     _require_counselor_relationship(
@@ -272,7 +272,7 @@ def request_consents(
                 current.decision == ConsentDecision.DENIED or current.withdrawn_at is not None
             ):
                 raise ECounselingConsentConflict(
-                    "A denied or withdrawn consent scope cannot be reopened for this session."
+                    "Denied or withdrawn recording consent can't be reopened for this session."
                 )
 
         result: list[ECounselingConsent] = []
@@ -333,7 +333,7 @@ def decide_my_consent(
     )
     if decision == ConsentDecision.APPROVED and not is_current_student(student):
         raise ECounselingCurrentStudentRequired(
-            "Current Student lifecycle is required to approve E-Counseling consent."
+            "Only current Students can approve E-Counseling consent."
         )
     room = _require_room_for_appointment(appointment)
 
@@ -621,7 +621,7 @@ def _execute_provider_stop(
     client = _daily_client(daily_client)
     try:
         if not capture.provider_instance_id:
-            raise DailyInvalidResponse("Recording instance ID is unavailable.")
+            raise DailyInvalidResponse("Couldn't find the Daily recording. Try again.")
         _provider_ack(
             client.stop_recording(
                 room_name=room.daily_room_name,

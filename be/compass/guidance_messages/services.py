@@ -102,7 +102,7 @@ def _pagination(page, page_size):
         or type(page_size) is not int
         or not 1 <= page_size <= MAX_PAGE_SIZE
     ):
-        raise InvalidMessageInput("Use a positive page and page_size between 1 and 50.")
+        raise InvalidMessageInput("Use a positive page and 1 to 50 conversations per page.")
 
 
 SEEN_BY_PERSON = "PERSON"
@@ -217,7 +217,7 @@ def list_messages(*, actor, thread_id, before_sequence=None, page_size=DEFAULT_P
     query = thread.messages.select_related("sender").order_by("-sequence")
     if before_sequence is not None:
         if type(before_sequence) is not int or before_sequence < 1:
-            raise InvalidMessageInput("before_sequence must be a positive integer.")
+            raise InvalidMessageInput("Choose a valid earlier Message.")
         query = query.filter(sequence__lt=before_sequence)
     rows = list(query[: page_size + 1])
     return list(reversed(rows[:page_size])), len(rows) > page_size
@@ -233,7 +233,7 @@ def _lock_thread(actor, thread_id, *, staff_only=False):
 
 def _client_id(value):
     if not isinstance(value, UUID):
-        raise InvalidMessageInput("client_message_id must be a UUID.")
+        raise InvalidMessageInput("Couldn't send the Message. Try again.")
 
 
 def _replay(actor, client_message_id, thread_id):
@@ -241,7 +241,7 @@ def _replay(actor, client_message_id, thread_id):
         sender_id=actor.pk, client_message_id=client_message_id
     ).first()
     if message is not None and message.thread_id != thread_id:
-        raise MessagesConflict("client_message_id has already been used for another thread.")
+        raise MessagesConflict("This Message was already used in another conversation.")
     return message
 
 
@@ -272,7 +272,7 @@ def _send_locked(*, actor, thread, client_message_id, body, context):
     if replay is not None:
         return replay
     if thread.status != ThreadStatus.OPEN:
-        raise MessagesConflict("This Guidance thread is resolved.")
+        raise MessagesConflict("This Guidance thread is closed.")
     if thread.kind == ThreadKind.REFERRAL_COORDINATION:
         _locked_referral_for(thread)
     body = content.validate_body(body)
@@ -377,7 +377,7 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
     )
     if prior is not None:
         if prior.thread.kind != ThreadKind.OFFICE or prior.thread.student_id != student.pk:
-            raise MessagesConflict("client_message_id has already been used for another thread.")
+            raise MessagesConflict("This Message was already used in another conversation.")
         policy.require_thread(actor, prior.thread, manage=True)
         return prior.thread, prior
     thread = (
@@ -395,7 +395,9 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
             or placement.college.id
             not in resolve_operational_responsibility_scope(resolution.counselor).college_ids
         ):
-            raise MessagesConflict("Guidance Office routing is currently unavailable.")
+            raise MessagesConflict(
+                "A Counselor must be assigned before you can start this conversation."
+            )
         thread = GuidanceThread.objects.create(
             kind=ThreadKind.OFFICE,
             student=student,
@@ -473,11 +475,11 @@ def open_faculty_inquiry(*, actor, client_message_id, body, context=None):
     )
     if prior is not None:
         if prior.thread.kind != ThreadKind.FACULTY_INQUIRY:
-            raise MessagesConflict("client_message_id has already been used for another thread.")
+            raise MessagesConflict("This Message was already used in another conversation.")
         policy.require_thread(actor, prior.thread, manage=True)
         return prior.thread, prior
     if not policy.has_intake_staff():
-        raise MessagesConflict("Guidance Office intake is currently unavailable.")
+        raise MessagesConflict("No Guidance Office staff are available for a new inquiry.")
     open_count = GuidanceThread.objects.filter(
         kind=ThreadKind.FACULTY_INQUIRY, status=ThreadStatus.OPEN, requester=actor
     ).count()
@@ -640,7 +642,7 @@ def open_referral_thread(*, actor, referral_id, client_message_id, body, context
             prior.thread.kind != ThreadKind.REFERRAL_COORDINATION
             or prior.thread.relationship_referral_id != referral.pk
         ):
-            raise MessagesConflict("client_message_id has already been used for another thread.")
+            raise MessagesConflict("This Message was already used in another conversation.")
         policy.require_thread(actor, prior.thread, manage=True)
         return prior.thread, prior
     if referral.voided_at is not None:
@@ -746,7 +748,7 @@ def open_counselor_direct_thread(*, actor, peer_id, client_message_id, body, con
             prior.thread.direct_first_user_id,
             prior.thread.direct_second_user_id,
         } != set(pair):
-            raise MessagesConflict("client_message_id has already been used for another thread.")
+            raise MessagesConflict("This Message was already used in another conversation.")
         policy.require_thread(actor, prior.thread, manage=True)
         return prior.thread, prior
     actor, peer, first, second = _lock_direct_pair(actor_id=actor.pk, peer_id=peer_id)
@@ -826,7 +828,7 @@ def open_case_coordination_thread(*, actor, grant_id, client_message_id, body, c
             prior.thread.kind != ThreadKind.COUNSELOR_CASE_COORDINATION
             or prior.thread.relationship_case_grant_id != grant.pk
         ):
-            raise MessagesConflict("client_message_id has already been used for another thread.")
+            raise MessagesConflict("This Message was already used in another conversation.")
         policy.require_thread(actor, prior.thread, manage=True)
         return prior.thread, prior
     thread = (
@@ -974,7 +976,7 @@ def signal_typing(*, actor, thread_id):
         raise ThreadNotFound()
     policy.require_thread(actor, thread, manage=True)
     if thread.status != ThreadStatus.OPEN:
-        raise MessagesConflict("This Guidance thread is resolved.")
+        raise MessagesConflict("This Guidance thread is closed.")
     if thread.kind == ThreadKind.REFERRAL_COORDINATION:
         referral = thread.relationship_referral
         if referral is None:

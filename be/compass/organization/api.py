@@ -162,7 +162,19 @@ def _context(request) -> AuditContext:
 
 def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        actions = {
+            "organization.structure.view": "view the Organization Structure",
+            "organization.manage": "manage the Organization Structure",
+            "student_academics.view_self": "view your Academic Record",
+            "student_academics.view": "view Student Academic Records",
+            "student_academics.manage": "manage Student Academic Records",
+            "student_academics.import": "import Student Academic Records",
+        }
+        raise APIError(
+            403,
+            "permission_denied",
+            f"You don't have permission to {actions[capability]}.",
+        )
     if recent_mfa:
         require_recent_mfa_for_request(request)
 
@@ -175,7 +187,7 @@ def _raise(exc: OrganizationError) -> NoReturn:
     if isinstance(exc, InvalidOrganizationInput):
         raise APIError(422, "invalid_organization_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The organization operation could not be completed."
+        500, "internal_error", "Couldn't complete the Organization change. Try again."
     ) from exc
 
 

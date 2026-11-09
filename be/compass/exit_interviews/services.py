@@ -254,7 +254,7 @@ def _age_on(date_of_birth: date | None, reference_date: date) -> int | None:
     if date_of_birth is None:
         return None
     if date_of_birth > reference_date:
-        raise InvalidExitInterviewInput("The current profile date_of_birth is in the future.")
+        raise InvalidExitInterviewInput("The profile Date of birth can't be in the future.")
     years = reference_date.year - date_of_birth.year
     before_birthday = (reference_date.month, reference_date.day) < (
         date_of_birth.month,
@@ -317,7 +317,7 @@ def _normalize_program_completion(value: object) -> str:
         return ""
     candidate = value.value if hasattr(value, "value") else str(value)
     if candidate not in ProgramCompletion.values:
-        raise InvalidExitInterviewInput("program_completion is not source-backed.")
+        raise InvalidExitInterviewInput("Program completion must match the Academic Record.")
     return candidate
 
 
@@ -453,9 +453,9 @@ def _validate_consistency(values: dict[str, object]) -> None:
 
     career_modes = values["career_modes"]
     if CareerMode.WORK not in career_modes and values["work_choices"]:
-        raise InvalidExitInterviewInput("work_choices require the WORK career mode.")
+        raise InvalidExitInterviewInput("Work choices require Work as the Career plan.")
     if CareerMode.STUDY not in career_modes and values["study_choices"]:
-        raise InvalidExitInterviewInput("study_choices require the STUDY career mode.")
+        raise InvalidExitInterviewInput("Study choices require Study as the Career plan.")
 
 
 def _normalize_ratings(
@@ -649,7 +649,7 @@ def ensure_my_current(
         _validate_student(locked_student)
         if not is_current_student(locked_student):
             raise ExitInterviewCurrentStudentRequired(
-                "Current Student lifecycle is required to initiate an Exit Interview."
+                "Current Student status is required to start an Exit Interview."
             )
 
         if not locked_student.has_capability("exit_interviews.manage_self"):
@@ -694,7 +694,9 @@ def ensure_my_current(
         try:
             profile = get_person_profile_context(locked_student)
         except AccountProfileConfidentialContentUnavailable:
-            raise ExitInterviewError("The current account profile is unavailable.") from None
+            raise ExitInterviewError(
+                "Complete your profile before starting the Exit Interview."
+            ) from None
         reference_date = institution_today()
         home_address = profile.current_address.strip() or profile.permanent_address.strip()
         try:
@@ -727,7 +729,7 @@ def ensure_my_current(
             ).first()
             if concurrent is None:
                 raise ExitInterviewConflict(
-                    "The current Exit Interview could not be created safely; retry the request."
+                    "Couldn't create the Exit Interview. Try again."
                 ) from None
             return _detail_queryset().get(pk=concurrent.pk)
 
@@ -769,7 +771,7 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
     _validate_student(student)
     if not is_current_student(student):
         raise ExitInterviewCurrentStudentRequired(
-            "Current Student lifecycle is required to edit an Exit Interview."
+            "Current Student status is required to edit an Exit Interview."
         )
     current = _current_year()
     normalized = _normalized_root(values)
@@ -829,7 +831,7 @@ def replace_mine(
     _validate_student(student)
     if not is_current_student(student):
         raise ExitInterviewCurrentStudentRequired(
-            "Current Student lifecycle is required to edit an Exit Interview."
+            "Current Student status is required to edit an Exit Interview."
         )
     normalized = _normalized_root(values)
 
@@ -915,7 +917,7 @@ def submit_my_current(
     _validate_student(student)
     if not is_current_student(student):
         raise ExitInterviewCurrentStudentRequired(
-            "Current Student lifecycle is required to submit an Exit Interview."
+            "Current Student status is required to submit an Exit Interview."
         )
     current = _current_year()
     submitted_at = now or timezone.now()
@@ -975,7 +977,7 @@ def submit_mine(
     _validate_student(student)
     if not is_current_student(student):
         raise ExitInterviewCurrentStudentRequired(
-            "Current Student lifecycle is required to submit an Exit Interview."
+            "Current Student status is required to submit an Exit Interview."
         )
     submitted_at = now or timezone.now()
     if timezone.is_naive(submitted_at):
@@ -1140,7 +1142,7 @@ def reopen_for_correction(
             raise ExitInterviewConflict("Only a submitted Exit Interview may be reopened.")
         if not is_current_student(owner):
             raise ExitInterviewCurrentStudentRequired(
-                "Current Student lifecycle is required before reopening for Student correction."
+                "Current Student status is required before reopening for Student correction."
             )
         # The Student edits under the saved answer contract. An unsupported saved Form Revision
         # raises here, before the record becomes a draft the Student could not save or submit.

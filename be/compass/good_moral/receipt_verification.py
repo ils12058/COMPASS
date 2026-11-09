@@ -61,11 +61,11 @@ def authority(actor, capability, context=None, *, lock=False, student_id=None):
     else:
         fresh = rows.filter(pk=actor.pk).first()
     if fresh is None:
-        raise GoodMoralNotPermitted("Authorized Guidance receipt access is required.")
+        raise GoodMoralNotPermitted("You don't have permission to review Official Receipts.")
     validate = _validate_counselor if capability == "good_moral.issue" else _validate_operational
     validate(fresh, capability)
     if context is not None and getattr(context.actor, "pk", None) != fresh.pk:
-        raise GoodMoralNotPermitted("The audit actor must be the acting operator.")
+        raise GoodMoralNotPermitted("You don't have permission to review this Official Receipt.")
     return fresh
 
 
@@ -87,13 +87,13 @@ def eligible(item, *, lock=False):
         or identity.bound_request_id != item.pk
         or latest.request_id != item.pk
     ):
-        raise ReceiptBlocked("conflict", "This receipt requires authorized GCO review.")
+        raise ReceiptBlocked("conflict", "This Official Receipt needs Guidance Office review.")
     if not latest.receipt_date or latest.amount is None:
         raise ReceiptBlocked("incomplete", "Complete the receipt date and actual printed amount.")
     if latest.receipt_date > institution_today():
         raise ReceiptBlocked("incomplete", "Official Receipt date cannot be in the future.")
     if not latest.is_current:
-        raise ReceiptBlocked("conflict", "This receipt requires authorized GCO review.")
+        raise ReceiptBlocked("conflict", "This Official Receipt needs Guidance Office review.")
     if not latest.amount.is_finite() or latest.amount < 0 or latest.amount.as_tuple().exponent < -2:
         raise ReceiptBlocked("incomplete", "The recorded receipt amount is invalid.")
     return latest
@@ -142,7 +142,7 @@ def gate(
     verification = current_verification(assignment, lock=lock)
     if verification is None:
         raise ReceiptBlocked(
-            "unverified", "An authorized employee must inspect this physical receipt first."
+            "unverified", "A Guidance Office staff member must inspect this Official Receipt first."
         )
     if verification.fee_decision != decision.snapshot():
         raise ReceiptBlocked(

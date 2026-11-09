@@ -120,9 +120,9 @@ DOMAIN_ACTIVITY_POLICIES = {
     ),
     actions.GOOD_MORAL_REQUEST_CREATED: DomainActivityPolicy(
         "goodmoral.request",
-        "Good Moral certificate requested",
-        student_self="You requested a Good Moral certificate.",
-        student_affected="The Guidance and Counseling Office started a Good Moral request for you.",
+        "Good Moral Certificate requested",
+        student_self="You requested a Good Moral Certificate.",
+        student_affected="The Guidance Office started a Good Moral Certificate request for you.",
         staff_self="You started a Good Moral request for a Student.",
     ),
     actions.GOOD_MORAL_REQUEST_UPDATED: DomainActivityPolicy(
@@ -133,9 +133,9 @@ DOMAIN_ACTIVITY_POLICIES = {
     ),
     actions.GOOD_MORAL_PREPARED: DomainActivityPolicy(
         "goodmoral.request",
-        "Good Moral certificate prepared",
-        student_affected="Your Good Moral certificate was prepared.",
-        staff_self="You prepared a Good Moral certificate.",
+        "Good Moral Certificate prepared",
+        student_affected="Your Good Moral Certificate was prepared.",
+        staff_self="You prepared a Good Moral Certificate.",
     ),
     actions.GOOD_MORAL_RETURNED_TO_PREPARATION: DomainActivityPolicy(
         "goodmoral.request",
@@ -154,8 +154,8 @@ DOMAIN_ACTIVITY_POLICIES = {
     actions.GOOD_MORAL_ISSUED: DomainActivityPolicy(
         "goodmoral.request",
         "Good Moral certificate issued",
-        student_affected="Your Good Moral certificate was issued.",
-        staff_self="You issued a Good Moral certificate.",
+        student_affected="Your Good Moral Certificate was issued.",
+        staff_self="You issued a Good Moral Certificate.",
         staff_roles=frozenset({COUNSELOR}),
     ),
     actions.EXIT_INTERVIEW_CREATED: DomainActivityPolicy(
@@ -203,7 +203,7 @@ DOMAIN_ACTIVITY_POLICIES = {
     actions.REFERRAL_ACTION_RECORDED: DomainActivityPolicy(
         "referrals.referralaction",
         "Referral action recorded",
-        staff_self="You recorded an operational referral action.",
+        staff_self="You recorded a Referral action.",
     ),
     actions.REFERRAL_VOIDED: DomainActivityPolicy(
         "referrals.referral",

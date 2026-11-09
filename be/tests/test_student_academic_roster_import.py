@@ -35,7 +35,7 @@ from compass.student_academics.models import StudentAcademicProfile
 
 BASE = "/api/v1/student-academics"
 HEADER = "institutional_id,campus_code,college_code"
-IMPORT_PERMISSION_MESSAGE = "The student_academics.import capability is required."
+IMPORT_PERMISSION_MESSAGE = "You don't have permission to import Student Academic Records."
 
 
 def sync_policy() -> None:
@@ -333,7 +333,7 @@ def test_admin_and_head_can_dry_run_and_commit():
         (
             HEADER.encode() + b'\nUCN-H8,"MAIN,CCMS\n',
             "csv_import_malformed",
-            "could not be parsed",
+            "Couldn't read the CSV file",
         ),
     ],
 )

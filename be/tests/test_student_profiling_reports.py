@@ -526,7 +526,7 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
         "colleges": [],
     }
     assert head_report.json()["methodology"]["access_scope_note"] == (
-        "Reporting scope: institution-wide."
+        "Report coverage: all Campuses and Colleges."
     )
 
     assert auth_client(zero_scope).get("/api/v1/reports/student-profile").status_code == 403

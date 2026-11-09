@@ -42,7 +42,7 @@ class ReferralConfidentialContentUnavailable(ReferralError):
         action_type: str | None = None,
     ):
         ConfidentialDataUnavailable(reason=reason)
-        super().__init__("The Referral confidential content is unavailable.")
+        super().__init__("Couldn't load the Referral. Try again.")
         self.referral_id = referral_id
         self.referral_action_id = referral_action_id
         self.action_type = action_type if action_type in ReferralActionType.values else None
@@ -68,7 +68,7 @@ def validate_text(value: str, *, label: str, max_length: int, required: bool = F
 
 def _content(payload: dict[str, object], *, voided: bool) -> ReferralConfidentialContent:
     if set(payload) != set(CONTENT_LIMITS):
-        raise InvalidReferralInput("The Referral content payload is invalid.")
+        raise InvalidReferralInput("Couldn't read the Referral content. Try again.")
     for name, limit in CONTENT_LIMITS.items():
         validate_text(
             payload[name],
@@ -144,7 +144,7 @@ def read_referral_action_remarks(action: ReferralAction) -> str:
     payload = _decrypt(action, action.remarks_ciphertext, ACTION_SCHEMA_VERSION)
     try:
         if set(payload) != {"remarks"}:
-            raise InvalidReferralInput("The Referral action payload is invalid.")
+            raise InvalidReferralInput("Couldn't read the Referral action. Try again.")
         return validate_text(payload["remarks"], label="remarks", max_length=MAX_REMARKS_LENGTH)
     except InvalidReferralInput:
         raise _unavailable(action, "malformed") from None

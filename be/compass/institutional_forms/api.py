@@ -71,7 +71,11 @@ class FormRevisionListResponse(StrictSchema):
 
 def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to view institutional forms.",
+        )
 
 
 def _raise(exc: InstitutionalFormError) -> NoReturn:
@@ -82,7 +86,7 @@ def _raise(exc: InstitutionalFormError) -> NoReturn:
     raise APIError(
         500,
         "internal_error",
-        "The institutional form operation could not be completed.",
+        "Couldn't load institutional forms. Try again.",
     ) from exc
 
 

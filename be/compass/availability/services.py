@@ -120,21 +120,21 @@ class AvailabilityProviderPage:
 def _mode_value(value: object) -> str:
     normalized = getattr(value, "value", value)
     if normalized not in AvailabilityModeScope.values:
-        raise InvalidAvailabilityInput("mode_scope must be ALL, IN_PERSON, or ONLINE")
+        raise InvalidAvailabilityInput("Choose All, In person, or E-Counseling for Applies to.")
     return str(normalized)
 
 
 def _delivery_mode_value(value: object) -> str:
     normalized = getattr(value, "value", value)
     if normalized not in DeliveryMode.values:
-        raise InvalidAvailabilityInput("delivery_mode must be IN_PERSON or ONLINE")
+        raise InvalidAvailabilityInput("Choose In person or E-Counseling as the Delivery mode.")
     return str(normalized)
 
 
 def _weekday_value(value: object) -> str:
     normalized = getattr(value, "value", value)
     if normalized not in Weekday.values:
-        raise InvalidAvailabilityInput("weekday must be a canonical weekday name")
+        raise InvalidAvailabilityInput("Choose a valid Weekday.")
     return str(normalized)
 
 
@@ -161,11 +161,11 @@ def _reason(value: object) -> str:
 
 def _aware_range(starts_at: object, ends_at: object) -> tuple[datetime, datetime]:
     if not isinstance(starts_at, datetime) or not isinstance(ends_at, datetime):
-        raise InvalidAvailabilityInput("starts_at and ends_at must be datetimes")
+        raise InvalidAvailabilityInput("Enter valid start and end times.")
     if timezone.is_naive(starts_at) or timezone.is_naive(ends_at):
-        raise InvalidAvailabilityInput("starts_at and ends_at must be timezone-aware")
+        raise InvalidAvailabilityInput("Enter valid start and end times.")
     if starts_at >= ends_at:
-        raise InvalidAvailabilityInput("starts_at must be earlier than ends_at")
+        raise InvalidAvailabilityInput("The Start time must be before the End time.")
     return starts_at, ends_at
 
 
@@ -178,7 +178,7 @@ def _require_active_or_upcoming(ends_at: datetime, now: datetime | None) -> None
 
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAvailabilityInput("The server time must be timezone-aware.")
+        raise InvalidAvailabilityInput("Couldn't process the Availability time. Try again.")
     if ends_at <= current:
         raise InvalidAvailabilityInput(
             "The unavailability must still be active or upcoming. "
@@ -207,7 +207,7 @@ def normalize_weekly_windows(
         end_time = _local_wall_time(value.get("end_time"), field_name="end_time")
         mode_scope = _mode_value(value.get("mode_scope"))
         if start_time >= end_time:
-            raise InvalidAvailabilityInput("weekly start_time must be earlier than end_time")
+            raise InvalidAvailabilityInput("The weekly Start time must be before the End time.")
         window = NormalizedWeeklyWindow(weekday, start_time, end_time, mode_scope)
         if window in seen:
             raise InvalidAvailabilityInput("weekly windows must not contain exact duplicates")
@@ -253,13 +253,13 @@ def _get_provider(provider_id: UUID, *, for_update: bool = False) -> User:
         queryset = queryset.select_for_update()
     provider = queryset.filter(pk=provider_id).first()
     if provider is None:
-        raise AvailabilityNotFound("The requested provider was not found.")
+        raise AvailabilityNotFound("The requested Counselor was not found.")
     return provider
 
 
 def _validate_provider_for_new_configuration(provider: User) -> None:
     if not provider.is_active:
-        raise AvailabilityNotApplicable("An inactive provider cannot receive new Availability.")
+        raise AvailabilityNotApplicable("An inactive Counselor can't receive new Availability.")
     if provider.role.code not in ELIGIBLE_PROVIDER_ROLE_CODES:
         raise AvailabilityNotApplicable(
             "Availability may only be configured for Counselor providers."
@@ -281,7 +281,7 @@ def _directory_provider_queryset():
 def get_availability_provider(provider_id: UUID) -> User:
     provider = _directory_provider_queryset().filter(pk=provider_id).first()
     if provider is None:
-        raise AvailabilityNotFound("The requested provider was not found.")
+        raise AvailabilityNotFound("The requested Counselor was not found.")
     return provider
 
 
@@ -625,9 +625,7 @@ def expand_weekly_windows(
         try:
             zone = ZoneInfo(timezone_name)
         except ZoneInfoNotFoundError as exc:
-            raise AvailabilityConflict(
-                "The requested availability timezone is unavailable."
-            ) from exc
+            raise AvailabilityConflict("Choose a valid Availability time zone.") from exc
     result: list[Interval] = []
     day = start_date
     by_weekday: dict[str, list[NormalizedWeeklyWindow]] = {}
@@ -648,9 +646,9 @@ def expand_weekly_windows(
 
 def _validate_query_range(start_date: date, end_date: date) -> None:
     if not isinstance(start_date, date) or not isinstance(end_date, date):
-        raise InvalidAvailabilityInput("start_date and end_date are required")
+        raise InvalidAvailabilityInput("Enter the Start date and End date.")
     if start_date >= end_date:
-        raise InvalidAvailabilityInput("start_date must be earlier than end_date")
+        raise InvalidAvailabilityInput("The Start date must be before the End date.")
     if (end_date - start_date).days > MAX_EFFECTIVE_QUERY_DAYS:
         raise InvalidAvailabilityInput(
             f"Availability queries may cover at most {MAX_EFFECTIVE_QUERY_DAYS} days"
@@ -688,13 +686,13 @@ def compute_base_availability(
     if service is None:
         raise AvailabilityNotFound("The requested Service was not found.")
     if not provider.is_active or provider.role.code not in ELIGIBLE_PROVIDER_ROLE_CODES:
-        raise AvailabilityNotApplicable("The requested provider is not operationally available.")
+        raise AvailabilityNotApplicable("The requested Counselor isn't available.")
     if not service.is_active:
         raise AvailabilityNotApplicable("The requested Service is inactive.")
     if not service_supports_delivery_mode(service, requested_mode):
         raise AvailabilityNotApplicable("The Service does not support the requested delivery mode.")
     if not service_counselor_eligible(service, provider):
-        raise AvailabilityNotApplicable("The provider does not currently provide this Service.")
+        raise AvailabilityNotApplicable("The Counselor isn't assigned to this Service.")
 
     zone = institution_zone()
     range_start = datetime.combine(start_date, time.min, tzinfo=zone)
@@ -777,10 +775,10 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
         return
     if ProviderAvailabilityWindow.objects.filter(provider_id=user.pk).exists():
         raise AvailabilityRoleTransitionConflict(
-            "Remove the provider's recurring Availability before changing to a non-provider role."
+            "Remove the Counselor's recurring Availability before changing to a non-Counselor Role."
         )
     if ProviderUnavailability.objects.filter(provider_id=user.pk).exists():
         raise AvailabilityRoleTransitionConflict(
-            "Remove the provider's unavailability exceptions before changing "
-            "to a non-provider role."
+            "Remove the Counselor's Availability exceptions before changing to a "
+            "non-Counselor Role."
         )

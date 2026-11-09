@@ -37,7 +37,7 @@ pytestmark = pytest.mark.django_db
 
 INTAKE = "GENERAL_GUIDANCE_INTAKE"
 CAP = "You already have 5 open Guidance Office inquiries."
-UNAVAILABLE = "Guidance Office intake is currently unavailable."
+UNAVAILABLE = "No Guidance Office staff are available for a new inquiry."
 
 
 def faculty():

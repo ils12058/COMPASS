@@ -208,7 +208,8 @@ def _require(request, capability: str) -> None:
         or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not user.has_capability(capability)
     ):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = "manage Referrals" if capability == "referrals.manage" else "view Referrals"
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
 
 
 def _raise(exc: ReferralError) -> NoReturn:
@@ -216,7 +217,7 @@ def _raise(exc: ReferralError) -> NoReturn:
         raise APIError(
             500,
             "referral_confidential_content_unavailable",
-            "The Referral confidential content is unavailable.",
+            "Couldn't load the Referral. Try again.",
         ) from None
     if isinstance(exc, ReferralNotFound):
         raise APIError(404, "referral_not_found", str(exc)) from exc
@@ -241,7 +242,9 @@ def _raise(exc: ReferralError) -> NoReturn:
         ),
     ):
         raise APIError(409, "referral_conflict", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Referral operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "Couldn't complete the Referral change. Try again."
+    ) from exc
 
 
 def _person(user) -> dict[str, object]:
@@ -351,10 +354,7 @@ def _pdf_response(item, *, context: AuditContext) -> HttpResponse:
         raise APIError(
             503,
             "release_audit_unavailable",
-            (
-                "The Referral Slip could not be released because its required "
-                "privacy audit is unavailable."
-            ),
+            ("Couldn't release the Referral Slip because its privacy check failed. Try again."),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = institutional_pdf_content_disposition(

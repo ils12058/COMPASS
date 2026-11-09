@@ -130,7 +130,7 @@ def classify(*, source_kind, category):
         return FollowUpVisibility.OPERATIONAL
     if source_kind is None:
         if category == FollowUpCategory.COUNSELING:
-            raise FollowUpInvalid("Counseling follow-ups require an authorized source.")
+            raise FollowUpInvalid("Counseling Follow-Ups must be linked to a related record.")
         return FollowUpVisibility.OPERATIONAL
     raise FollowUpInvalid("The follow-up source is unsupported.")
 
@@ -138,12 +138,12 @@ def classify(*, source_kind, category):
 def require_assignee(candidate_id, *, student_id, visibility, source_kind=None, source_id=None):
     candidate = User.objects.select_related("role").filter(pk=candidate_id, is_active=True).first()
     if candidate is None or candidate.role.code not in ROLES:
-        raise FollowUpInvalid("The selected staff member is unavailable.")
+        raise FollowUpInvalid("The selected staff member isn't available for Follow-Ups.")
     if not candidate.has_capability("guidance_followups.manage"):
         raise FollowUpInvalid("The selected staff member cannot manage follow-ups.")
     if visibility == FollowUpVisibility.COUNSELOR_CONFIDENTIAL:
         if candidate.role.code != "COUNSELOR":
-            raise FollowUpInvalid("Confidential follow-ups require an authorized Counselor.")
+            raise FollowUpInvalid("Confidential Follow-Ups require an assigned Counselor.")
         try:
             require_source(
                 candidate,

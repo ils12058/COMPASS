@@ -143,7 +143,7 @@ def _raise(exc: StudentAcademicError) -> NoReturn:
     if isinstance(exc, InvalidStudentAcademicInput):
         raise APIError(422, "invalid_student_academic_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The student academic operation could not be completed."
+        500, "internal_error", "Couldn't complete the Student Academic Record change. Try again."
     ) from exc
 
 

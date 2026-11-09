@@ -30,7 +30,7 @@ class OptionPage:
 
 def pagination(page, page_size):
     if not 1 <= page <= 100 or not 1 <= page_size <= 50:
-        raise FollowUpInvalid("The requested page is unavailable.")
+        raise FollowUpInvalid("Choose a valid page.")
 
 
 def eligible_students(*, actor, search=None, page=1, page_size=20):
@@ -64,7 +64,7 @@ def source_context(*, actor, source_kind, source_id):
     else:
         raise FollowUpInvalid("The related record is unsupported.")
     if source is None:
-        raise FollowUpNotFound("The related record is unavailable.")
+        raise FollowUpNotFound("Related record not found.")
     student = policy.valid_student(source.student_id)
     policy.require_source(actor, kind=source_kind, source_id=source_id, student_id=student.pk)
     can_create = actor.has_capability("guidance_followups.manage")
@@ -103,7 +103,7 @@ def eligible_assignees(
             actor, kind=source_kind, source_id=source_id, student_id=student.pk, manage=True
         )
     elif not policy.in_operational_scope(actor, student.pk):
-        raise FollowUpNotFound("The Student is unavailable.")
+        raise FollowUpNotFound("Student not found.")
     candidates = User.objects.filter(is_active=True, role__code__in=policy.ROLES).select_related(
         "role"
     )

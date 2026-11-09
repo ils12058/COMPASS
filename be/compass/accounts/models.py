@@ -85,12 +85,12 @@ class UserManager(BaseUserManager):
         if institutional_id is None:
             return None
         if not isinstance(institutional_id, str):
-            raise ValueError("institutional_id must be a string or null")
+            raise ValueError("Institutional ID must be text or blank.")
         normalized = institutional_id.strip().upper()
         if not normalized:
             return None
         if len(normalized) > 64 or any(ord(character) < 32 for character in normalized):
-            raise ValueError("institutional_id is invalid")
+            raise ValueError("Enter a valid Institutional ID.")
         return normalized
 
     def clean_email(self, email: str | None) -> str:
@@ -132,7 +132,7 @@ class UserManager(BaseUserManager):
         is_active: bool = True,
     ) -> User:
         if not first_name.strip() or not last_name.strip():
-            raise ValueError("first_name and last_name are required")
+            raise ValueError("Enter the First name and Last name.")
         if password == "":
             raise ValueError("password must not be blank")
         resolved_role = self._resolve_role(role)

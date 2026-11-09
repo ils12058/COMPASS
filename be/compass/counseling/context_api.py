@@ -182,12 +182,16 @@ class CounselingContextHistoryResponse(StrictSchema):
 def _require_context_viewer(request) -> None:
     actor = request.auth_user
     if not actor.is_active or actor.role.code != "COUNSELOR":
-        raise APIError(403, "permission_denied", "Active Counselor access is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to view Counseling Context.",
+        )
     if not actor.has_capability("counseling.view_assigned"):
         raise APIError(
             403,
             "permission_denied",
-            "Assigned Counseling read access is required.",
+            "You don't have permission to view this Counseling Context.",
         )
 
 

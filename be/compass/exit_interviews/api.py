@@ -448,14 +448,18 @@ def _context(request) -> AuditContext:
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
-        raise APIError(403, "permission_denied", "Student Exit Interview access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to use Exit Interviews."
+        )
 
 
 def _require_opportunity_manager(request) -> None:
     user = request.auth_user
     if not user.is_active or not user.has_capability("exit_interviews.manage_opportunities"):
         raise APIError(
-            403, "permission_denied", "Guidance Exit Interview opportunity authority is required."
+            403,
+            "permission_denied",
+            "You don't have permission to manage Exit Interview opportunities.",
         )
 
 
@@ -463,7 +467,7 @@ def _require_head(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or not user.has_capability(capability):
         raise APIError(
-            403, "permission_denied", "Head Guidance Exit Interview authority is required."
+            403, "permission_denied", "You don't have permission to manage Exit Interviews."
         )
 
 
@@ -472,7 +476,7 @@ def _raise(exc: ExitInterviewError) -> NoReturn:
         raise APIError(
             500,
             "exit_interview_confidential_content_unavailable",
-            "The Exit Interview confidential content is unavailable.",
+            "Couldn't load the Exit Interview. Try again.",
         ) from None
     if isinstance(exc, ExitInterviewDocumentUnavailable):
         raise APIError(503, "exit_interview_document_unavailable", str(exc)) from exc
@@ -501,7 +505,7 @@ def _raise(exc: ExitInterviewError) -> NoReturn:
     raise APIError(
         500,
         "internal_error",
-        "The Exit Interview operation could not be completed.",
+        "Couldn't complete the Exit Interview change. Try again.",
     ) from exc
 
 
@@ -520,8 +524,7 @@ def _pdf_response(item, *, context: AuditContext, access_mode: str) -> HttpRespo
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The Exit Interview could not be released because its required "
-            "privacy audit is unavailable.",
+            "Couldn't release the Exit Interview because its privacy check failed. Try again.",
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = institutional_pdf_content_disposition(

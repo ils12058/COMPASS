@@ -105,7 +105,7 @@ def eligible_students(*, actor, **query):
 
 def _page(qs, page, page_size):
     if type(page) is not int or page < 1 or type(page_size) is not int or not 1 <= page_size <= 50:
-        raise InvalidAssessmentRecordInput("page/page_size are invalid.")
+        raise InvalidAssessmentRecordInput("Choose a valid page and items per page.")
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
     return {
@@ -136,7 +136,7 @@ def _type_values(values):
     if "description" in normalized:
         validate_text(normalized["description"], "description", 2000)
     if "is_active" in normalized and type(normalized["is_active"]) is not bool:
-        raise InvalidAssessmentRecordInput("is_active must be a boolean.")
+        raise InvalidAssessmentRecordInput("Choose Active or Inactive.")
     return normalized
 
 
@@ -282,9 +282,7 @@ def get_record(*, actor, record_id):
 
 def _date(value):
     if type(value) is not date or value > institution_today():
-        raise InvalidAssessmentRecordInput(
-            "administered_on must be a calendar date that is not in the future."
-        )
+        raise InvalidAssessmentRecordInput("Administration date can't be in the future.")
     return value
 
 

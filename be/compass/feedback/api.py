@@ -303,21 +303,21 @@ def _context(request) -> AuditContext:
 def _require_student(request, capability: str) -> None:
     actor = request.auth_user
     if not actor.is_active or actor.role.code != "STUDENT" or not actor.has_capability(capability):
-        raise APIError(403, "permission_denied", "Student Feedback submission access is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to submit Feedback.")
 
 
 def _require_viewer(request, capability: str) -> None:
     actor = request.auth_user
     if not actor.is_active or not actor.has_capability(capability):
-        raise APIError(
-            403, "permission_denied", "Head Guidance Feedback review authority is required."
-        )
+        raise APIError(403, "permission_denied", "You don't have permission to review Feedback.")
 
 
 def _raise(exc: FeedbackError | FeedbackConfidentialContentUnavailable) -> NoReturn:
     if isinstance(exc, FeedbackConfidentialContentUnavailable):
         raise APIError(
-            500, "feedback_confidential_content_unavailable", "The Feedback content is unavailable."
+            500,
+            "feedback_confidential_content_unavailable",
+            "Couldn't load the Feedback. Try again.",
         ) from None
     if isinstance(exc, FeedbackOpportunityNotFound):
         raise APIError(404, "feedback_opportunity_not_found", str(exc)) from exc
@@ -331,7 +331,9 @@ def _raise(exc: FeedbackError | FeedbackConfidentialContentUnavailable) -> NoRet
         raise APIError(409, "feedback_configuration_conflict", str(exc)) from exc
     if isinstance(exc, InvalidFeedbackInput):
         raise APIError(422, "invalid_feedback_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Feedback operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "Couldn't complete the Feedback submission. Try again."
+    ) from exc
 
 
 def _submission(item) -> dict[str, object]:
@@ -392,7 +394,7 @@ def _begin_submission_idempotency(
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The Feedback submission replay boundary is temporarily unavailable.",
+            "Couldn't confirm the Feedback submission. Try again.",
         ) from exc
 
     if decision.outcome == "replay":
@@ -430,7 +432,7 @@ def _complete_submission_or_503(store, reservation, response: HttpResponse) -> N
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The Feedback submission replay boundary could not be completed safely.",
+            "Couldn't confirm the Feedback submission. Try again.",
         ) from exc
 
 
@@ -441,7 +443,7 @@ def _abandon_submission_or_503(store, reservation) -> None:
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The Feedback submission replay boundary could not be released safely.",
+            "Couldn't finish the Feedback submission. Try again.",
         ) from exc
 
 

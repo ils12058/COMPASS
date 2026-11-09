@@ -176,7 +176,9 @@ def _parse_csv(data: bytes) -> ParsedCsv:
     except StopIteration as exc:
         raise CsvImportMalformed("CSV header row is required") from exc
     except csv.Error as exc:
-        raise CsvImportMalformed("CSV could not be parsed") from exc
+        raise CsvImportMalformed(
+            "Couldn't read the CSV file. Check its format and try again."
+        ) from exc
 
     headers = _headers(raw_headers)
     rows: list[CsvProvisionRow] = []
@@ -275,7 +277,9 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                 )
             )
     except csv.Error as exc:
-        raise CsvImportMalformed("CSV could not be parsed") from exc
+        raise CsvImportMalformed(
+            "Couldn't read the CSV file. Check its format and try again."
+        ) from exc
 
     if total_rows == 0:
         raise CsvImportMalformed("CSV must contain at least one account row")
@@ -486,7 +490,7 @@ def provision_accounts_from_csv(
         role_records = {role.code: role for role in Role.objects.filter(code__in=requested_roles)}
         if set(role_records) != requested_roles:
             raise ManagementConfigurationError(
-                "a requested canonical role is not synchronized; run sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
 
         try:

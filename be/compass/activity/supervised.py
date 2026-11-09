@@ -60,7 +60,7 @@ SUPERVISED_PRESENTERS = {
     ),
     actions.REFERRAL_ACTION_RECORDED: (
         "Referral action recorded",
-        "An operational referral action was recorded.",
+        "A Referral action was recorded.",
         "referrals.referralaction",
     ),
     actions.REFERRAL_STATUS_UPDATED: (
@@ -139,7 +139,9 @@ class SupervisedActivityPermissionDenied(PermissionError):
 
 def _require(actor):
     if not actor.is_active or not actor.has_capability(CAPABILITY):
-        raise SupervisedActivityPermissionDenied(f"The {CAPABILITY} capability is required.")
+        raise SupervisedActivityPermissionDenied(
+            "You don't have permission to view supervised staff Activity."
+        )
 
 
 def current_supervisions(actor):

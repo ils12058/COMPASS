@@ -186,7 +186,7 @@ def test_modified_or_plaintext_intake_is_rejected_instead_of_decoded(stored):
     assert exc.value.reason == ("missing" if stored == "" else "undecryptable")
     assert exc.value.routine_interview_id == item.pk
     assert exc.value.section == "student_intake"
-    assert str(exc.value) == "The Routine Interview content is unavailable."
+    assert str(exc.value) == "Couldn't load the Routine Interview. Try again."
     # No cryptography or JSON error (which could describe the stored bytes) is chained.
     assert exc.value.__cause__ is None
     assert exc.value.__context__ is None or exc.value.__suppress_context__
@@ -578,7 +578,7 @@ def test_unreadable_content_fails_closed_without_being_overwritten(world, caplog
         assert response.status_code == 500
         assert response.json()["error"]["code"] == "routine_interview_content_unavailable"
         assert response.json()["error"]["message"] == (
-            "The Routine Interview content is unavailable."
+            "Couldn't load the Routine Interview. Try again."
         )
         _assert_safe_output(response.content.decode(), tampered_intake, tampered_evaluation)
 

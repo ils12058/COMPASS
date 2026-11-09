@@ -189,7 +189,7 @@ def _validate_graduated_student_access(student: User, capability: str) -> None:
     _validate_student_access(student, capability)
     if student.student_lifecycle_status != StudentLifecycleStatus.GRADUATED:
         raise GraduateTracerGraduatedStudentRequired(
-            "Graduated Student lifecycle is required for Graduate Tracer self-service."
+            "Graduated Student status is required for Graduate Tracer self-service."
         )
 
 
@@ -256,9 +256,9 @@ def _birth_date(value: object) -> date | None:
     if value is None:
         return None
     if not isinstance(value, date) or isinstance(value, datetime):
-        raise InvalidGraduateTracerInput("birth_date must be a date or null.")
+        raise InvalidGraduateTracerInput("Enter a valid Birth date or leave it blank.")
     if value > institution_today():
-        raise InvalidGraduateTracerInput("birth_date must not be in the future.")
+        raise InvalidGraduateTracerInput("Birth date can't be in the future.")
     return value
 
 
@@ -298,7 +298,9 @@ def ensure_my_response(
         try:
             profile = get_person_profile_context(locked)
         except AccountProfileConfidentialContentUnavailable:
-            raise GraduateTracerError("The current account profile is unavailable.") from None
+            raise GraduateTracerError(
+                "Complete your profile before starting the Graduate Tracer."
+            ) from None
         try:
             with transaction.atomic():
                 item = GraduateTracerResponse(
@@ -324,7 +326,7 @@ def ensure_my_response(
             ).first()
             if concurrent is None:
                 raise GraduateTracerConflict(
-                    "The Graduate Tracer draft could not be created safely; retry the request."
+                    "Couldn't create the Graduate Tracer draft. Try again."
                 ) from None
             return _queryset().get(pk=concurrent.pk)
 
@@ -389,11 +391,12 @@ def _normalize_education_rows(raw: object) -> list[dict[str, object]]:
         )
         if not degree or not institution:
             raise InvalidGraduateTracerInput(
-                "Every education row requires degree_and_specialization and college_or_university."
+                "Enter the Degree and specialization and College or university for each "
+                "Education entry."
             )
         if type(year) is not int or not 1900 <= year <= current_year:
             raise InvalidGraduateTracerInput(
-                "education.year_graduated must be a sensible completed graduation year."
+                "Enter a valid Year graduated for each Education entry."
             )
         normalized.append(
             {
@@ -411,13 +414,13 @@ def _normalize_exam_rows(raw: object) -> list[dict[str, object]]:
     if raw is None:
         return []
     if not isinstance(raw, (list, tuple)):
-        raise InvalidGraduateTracerInput("professional_exams must be a list.")
+        raise InvalidGraduateTracerInput("Enter valid Professional examinations.")
     normalized: list[dict[str, object]] = []
     for position, row in enumerate(raw, start=1):
         if not isinstance(row, dict):
-            raise InvalidGraduateTracerInput("professional_exams contains an invalid row.")
+            raise InvalidGraduateTracerInput("A Professional examination entry is invalid.")
         if set(row) - {"examination_name", "date_taken", "rating"}:
-            raise InvalidGraduateTracerInput("professional_exams contains unsupported fields.")
+            raise InvalidGraduateTracerInput("A Professional examination has unsupported fields.")
         name = _clean_text(
             row.get("examination_name", ""),
             "professional_exams.examination_name",
@@ -427,17 +430,13 @@ def _normalize_exam_rows(raw: object) -> list[dict[str, object]]:
         rating = _clean_text(row.get("rating", ""), "professional_exams.rating", 128)
         if not name:
             raise InvalidGraduateTracerInput(
-                "Every professional examination row requires examination_name."
+                "Enter the Examination name for each Professional examination."
             )
         if taken is not None:
             if not isinstance(taken, date) or isinstance(taken, datetime):
-                raise InvalidGraduateTracerInput(
-                    "professional_exams.date_taken must be a date or null."
-                )
+                raise InvalidGraduateTracerInput("Enter a valid Date taken or leave it blank.")
             if taken > institution_today():
-                raise InvalidGraduateTracerInput(
-                    "professional_exams.date_taken must not be in the future."
-                )
+                raise InvalidGraduateTracerInput("Date taken can't be in the future.")
         normalized.append(
             {
                 "position": position,
@@ -552,7 +551,7 @@ def _normalize_root(values: dict[str, object]) -> dict[str, object]:
         normalized["graduation_year"] = None
     else:
         if type(year) is not int or isinstance(year, bool):
-            raise InvalidGraduateTracerInput("graduation_year must be an integer year or null.")
+            raise InvalidGraduateTracerInput("Enter a valid Graduation year or leave it blank.")
         current_year = institution_today().year
         if not (1900 <= year <= current_year):
             raise InvalidGraduateTracerInput(
@@ -729,32 +728,31 @@ def _validate_other(
 def _validate_submission(item: GraduateTracerResponse, private) -> None:
     _require_text(item.name_snapshot, "name")
     if item.graduated_college_id is None:
-        raise InvalidGraduateTracerInput("graduated_college is required before submission.")
+        raise InvalidGraduateTracerInput("Choose the College graduated from before submitting.")
     if item.graduated_program_id is None:
-        raise InvalidGraduateTracerInput("graduated_program is required before submission.")
+        raise InvalidGraduateTracerInput("Choose the Program graduated from before submitting.")
     if item.graduation_year is None:
-        raise InvalidGraduateTracerInput("graduation_year is required before submission.")
+        raise InvalidGraduateTracerInput("Enter the Graduation year before submitting.")
     current_year = institution_today().year
     if not (1900 <= item.graduation_year <= current_year):
         raise InvalidGraduateTracerInput(
-            "graduation_year must be a valid completed graduation year "
-            f"from 1900 through {current_year}."
+            f"Graduation year must be a completed year from 1900 through {current_year}."
         )
     if item.graduated_program.college_id != item.graduated_college_id:
         raise InvalidGraduateTracerInput(
             "The selected program does not belong to the selected college."
         )
     if not item.civil_status:
-        raise InvalidGraduateTracerInput("civil_status is required before submission.")
+        raise InvalidGraduateTracerInput("Choose the Civil status before submitting.")
     if not item.sex:
-        raise InvalidGraduateTracerInput("sex is required before submission.")
+        raise InvalidGraduateTracerInput("Choose Sex before submitting.")
     if private.birth_date is None:
-        raise InvalidGraduateTracerInput("birth_date is required before submission.")
+        raise InvalidGraduateTracerInput("Enter the Birth date before submitting.")
     if not item.region_of_origin:
-        raise InvalidGraduateTracerInput("region_of_origin is required before submission.")
+        raise InvalidGraduateTracerInput("Choose the Region of origin before submitting.")
     _require_text(private.province, "province")
     if not item.residence_location:
-        raise InvalidGraduateTracerInput("residence_location is required before submission.")
+        raise InvalidGraduateTracerInput("Enter the Residence location before submitting.")
     if not item.education_rows.exists():
         raise InvalidGraduateTracerInput(
             "At least one baccalaureate education row is required before submission."
@@ -769,7 +767,7 @@ def _validate_submission(item: GraduateTracerResponse, private) -> None:
 
     employment = item.current_employment_state
     if not employment:
-        raise InvalidGraduateTracerInput("current_employment_state is required before submission.")
+        raise InvalidGraduateTracerInput("Choose the Current employment status before submitting.")
 
     if employment in {GTSEmploymentState.NOT_EMPLOYED, GTSEmploymentState.NEVER_EMPLOYED}:
         if not item.unemployment_reasons:
@@ -785,30 +783,24 @@ def _validate_submission(item: GraduateTracerResponse, private) -> None:
         return
 
     if employment != GTSEmploymentState.EMPLOYED:
-        raise InvalidGraduateTracerInput("current_employment_state is not supported.")
+        raise InvalidGraduateTracerInput("Choose a valid Current employment status.")
 
     if not item.present_employment_status:
-        raise InvalidGraduateTracerInput(
-            "present_employment_status is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose the Present employment status.")
     if item.present_employment_status == GTSPresentEmploymentStatus.SELF_EMPLOYED:
         _require_text(private.self_employed_college_skills, "self_employed_college_skills")
     _require_text(private.present_occupation, "present_occupation")
     if not item.employer_business_line:
-        raise InvalidGraduateTracerInput(
-            "employer_business_line is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose the Employer's line of business.")
     if not item.place_of_work:
-        raise InvalidGraduateTracerInput("place_of_work is required for an employed respondent.")
+        raise InvalidGraduateTracerInput("Enter the Place of work.")
     if item.first_job_after_college is None:
-        raise InvalidGraduateTracerInput(
-            "first_job_after_college is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose whether this is the first job after college.")
 
     if item.first_job_after_college:
         if not item.reasons_for_staying_on_job:
             raise InvalidGraduateTracerInput(
-                "reasons_for_staying_on_job is required when the current job is the first job."
+                "Choose at least one reason for staying in the current job."
             )
         _validate_other(
             item.reasons_for_staying_on_job,
@@ -818,7 +810,7 @@ def _validate_submission(item: GraduateTracerResponse, private) -> None:
         )
         if item.first_job_related_to_course is None:
             raise InvalidGraduateTracerInput(
-                "first_job_related_to_course is required when the current job is the first job."
+                "Choose whether the first job is related to the course."
             )
 
     _validate_other(
@@ -835,47 +827,39 @@ def _validate_submission(item: GraduateTracerResponse, private) -> None:
     )
 
     if not item.first_job_duration:
-        raise InvalidGraduateTracerInput(
-            "first_job_duration is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose how long it took to find the first job.")
     if item.first_job_duration == GTSFirstJobDuration.OTHER:
         _require_text(private.first_job_duration_other, "first_job_duration_other")
     elif private.first_job_duration_other:
         raise InvalidGraduateTracerInput(
-            "first_job_duration_other must be blank unless OTHER is selected."
+            "Clear the Other first-job duration unless Other is selected."
         )
 
     if not item.first_job_source:
-        raise InvalidGraduateTracerInput("first_job_source is required for an employed respondent.")
+        raise InvalidGraduateTracerInput("Choose how the first job was found.")
     if item.first_job_source == GTSFirstJobSource.OTHER:
         _require_text(private.first_job_source_other, "first_job_source_other")
     elif private.first_job_source_other:
         raise InvalidGraduateTracerInput(
-            "first_job_source_other must be blank unless OTHER is selected."
+            "Clear the Other first-job source unless Other is selected."
         )
 
     if not item.time_to_first_job:
-        raise InvalidGraduateTracerInput(
-            "time_to_first_job is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose the Time to first job.")
     if item.time_to_first_job == GTSFirstJobDuration.OTHER:
         _require_text(private.time_to_first_job_other, "time_to_first_job_other")
     elif private.time_to_first_job_other:
         raise InvalidGraduateTracerInput(
-            "time_to_first_job_other must be blank unless OTHER is selected."
+            "Clear the Other time to first job unless Other is selected."
         )
 
     if not item.first_job_level or not item.current_job_level:
-        raise InvalidGraduateTracerInput(
-            "first_job_level and current_job_level are required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose the First job level and Current job level.")
     if not item.initial_gross_monthly_earning:
-        raise InvalidGraduateTracerInput(
-            "initial_gross_monthly_earning is required for an employed respondent."
-        )
+        raise InvalidGraduateTracerInput("Choose the Initial gross monthly earning.")
     if item.curriculum_relevant_to_first_job is None:
         raise InvalidGraduateTracerInput(
-            "curriculum_relevant_to_first_job is required for an employed respondent."
+            "Choose whether the curriculum was relevant to the first job."
         )
     if item.curriculum_relevant_to_first_job:
         if not item.useful_competencies:
@@ -995,7 +979,7 @@ def list_submitted_for_head(
     )
     term = _clean_search(search)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
-        raise InvalidGraduateTracerInput("submitted_from must be on or before submitted_to.")
+        raise InvalidGraduateTracerInput("The Submitted from date can't be after Submitted to.")
     if college_id is not None:
         if not College.objects.filter(pk=college_id).exists():
             raise InvalidGraduateTracerInput("The selected college was not found.")
@@ -1009,10 +993,10 @@ def list_submitted_for_head(
             )
     if graduation_year is not None:
         if type(graduation_year) is not int or isinstance(graduation_year, bool):
-            raise InvalidGraduateTracerInput("graduation_year must be a valid graduation year.")
+            raise InvalidGraduateTracerInput("Enter a valid Graduation year.")
         current_year = institution_today().year
         if not (1900 <= graduation_year <= current_year):
-            raise InvalidGraduateTracerInput("graduation_year must be a valid graduation year.")
+            raise InvalidGraduateTracerInput("Enter a valid Graduation year.")
     queryset = _queryset().filter(status=GraduateTracerStatus.SUBMITTED)
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)

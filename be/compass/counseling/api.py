@@ -294,17 +294,35 @@ def _context(request) -> AuditContext:
 def _require_counselor(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "COUNSELOR":
-        raise APIError(403, "permission_denied", "Active Counselor access is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to use Counseling.")
     if not user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        actions = {
+            "counseling.manage_assigned": "manage assigned Counseling Encounters",
+            "counseling.view_assigned": "view assigned Counseling Encounters",
+            "routine_interviews.manage_assigned": "manage assigned Routine Interviews",
+            "appointments.manage": "manage Appointments",
+            "student_session_summaries.view_assigned": "view assigned Student Session Summaries",
+            "student_session_summaries.manage_assigned": (
+                "manage assigned Student Session Summaries"
+            ),
+        }
+        raise APIError(
+            403,
+            "permission_denied",
+            f"You don't have permission to {actions[capability]}.",
+        )
 
 
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT":
-        raise APIError(403, "permission_denied", "Active Student access is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to use Counseling.")
     if not user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to view your Student Session Summaries.",
+        )
 
 
 def _raise(exc: CounselingError) -> NoReturn:
@@ -351,7 +369,7 @@ def _raise(exc: CounselingError) -> NoReturn:
     if isinstance(exc, CounselingFinishECounselingAccessOpen):
         raise APIError(409, "ecounseling_access_open", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Counseling operation could not be completed."
+        500, "internal_error", "Couldn't complete the Counseling change. Try again."
     ) from exc
 
 

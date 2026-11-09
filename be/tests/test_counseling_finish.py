@@ -401,7 +401,7 @@ def test_non_appointment_link_is_rejected_before_finish_without_completing():
     _, counselor, student, service = setup_domain("entry-mode")
     appointment = make_appointment(student=student, provider=counselor, service=service)
     start, end = actual_times()
-    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Appointment as the Entry type"):
         create_encounter(
             counselor=counselor,
             entry_mode="REFERRED",

@@ -141,7 +141,7 @@ def require_group_session_access(
 
     access = group_session_access(actor, session, lock_supervision=lock_supervision)
     if not getattr(access, permission, False):
-        raise ValidationError("Group session not found.")
+        raise ValidationError("Group Session not found.")
     return access
 
 

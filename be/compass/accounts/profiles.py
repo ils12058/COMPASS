@@ -153,13 +153,13 @@ def update_my_profile(
     """Update only the authenticated owner's logical current-profile values."""
 
     if not getattr(user, "pk", None):
-        raise ProfileUnavailable("The authenticated account is unavailable.")
+        raise ProfileUnavailable("Couldn't load your account. Try again.")
 
     normalized = _normalize_changes(changes)
     with transaction.atomic():
         locked = User.objects.select_for_update().filter(pk=user.pk).first()
         if locked is None or not locked.is_active:
-            raise ProfileUnavailable("The authenticated account is unavailable.")
+            raise ProfileUnavailable("Couldn't load your account. Try again.")
 
         current = read_account_profile_confidential_content(locked)
         changed_fields = tuple(

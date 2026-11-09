@@ -17,7 +17,7 @@ class RoutineContentUnavailable(RoutineInterviewError):
     """
 
     def __init__(self, *, routine_interview_id: UUID, section: str, reason: str) -> None:
-        super().__init__("The Routine Interview content is unavailable.")
+        super().__init__("Couldn't load the Routine Interview. Try again.")
         self.routine_interview_id = routine_interview_id
         self.section = str(section)
         self.reason = reason

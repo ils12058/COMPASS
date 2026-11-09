@@ -189,7 +189,7 @@ def _normalize_entry_mode(value: str | CounselingEntryMode) -> str:
 def _normalize_delivery_mode(value: str | DeliveryMode) -> str:
     normalized = value.value if isinstance(value, DeliveryMode) else value
     if normalized not in DeliveryMode.values:
-        raise InvalidCounselingInput("delivery_mode must be IN_PERSON or ONLINE")
+        raise InvalidCounselingInput("Choose In person or E-Counseling as the Delivery mode.")
     return str(normalized)
 
 
@@ -200,15 +200,15 @@ def _normalize_actual_times(
     now: datetime | None = None,
 ) -> tuple[datetime, datetime]:
     if not isinstance(started_at, datetime) or not isinstance(ended_at, datetime):
-        raise CounselingInvalidTime("started_at and ended_at must be datetimes")
+        raise CounselingInvalidTime("Enter valid start and end times.")
     if timezone.is_naive(started_at) or timezone.is_naive(ended_at):
         raise CounselingInvalidTime("Counseling encounter times must be timezone-aware.")
     normalized_start = to_institution_time(started_at)
     normalized_end = to_institution_time(ended_at)
     if normalized_start >= normalized_end:
-        raise CounselingInvalidTime("started_at must be earlier than ended_at.")
+        raise CounselingInvalidTime("The Start time must be before the End time.")
     if normalized_end > (now or timezone.now()):
-        raise CounselingInvalidTime("ended_at must not be in the future.")
+        raise CounselingInvalidTime("The End time can't be in the future.")
     return normalized_start, normalized_end
 
 
@@ -332,10 +332,10 @@ def get_counseling_service(*, require_active: bool = True, for_update: bool = Fa
     service = queryset.filter(code=COUNSELING_SERVICE_CODE).first()
     if service is None:
         raise CounselingConfigurationConflict(
-            "The canonical COUNSELING Service has not been configured."
+            "COMPASS isn't set up for Counseling yet. Contact your IT Administrator."
         )
     if require_active and not service.is_active:
-        raise CounselingConfigurationConflict("The canonical COUNSELING Service is inactive.")
+        raise CounselingConfigurationConflict("The Counseling Service is inactive.")
     return service
 
 
@@ -365,7 +365,7 @@ def _validate_active_student(user: User) -> None:
 
 def _validate_canonical_service(service: Service) -> None:
     if service.code != COUNSELING_SERVICE_CODE or not service.is_active:
-        raise CounselingConfigurationConflict("The canonical COUNSELING Service is not active.")
+        raise CounselingConfigurationConflict("The Counseling Service is inactive.")
 
 
 def _validate_service_for_direct_encounter(
@@ -375,7 +375,7 @@ def _validate_service_for_direct_encounter(
 
     _validate_canonical_service(service)
     if not service_counselor_eligible(service, counselor):
-        raise CounselingNotPermitted("The COUNSELING Service does not permit this Counselor.")
+        raise CounselingNotPermitted("This Counselor isn't assigned to the Counseling Service.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise CounselingNotPermitted(
             "The COUNSELING Service does not support the requested delivery mode."
@@ -421,7 +421,7 @@ def _validate_appointment_link(
         raise CounselingAppointmentInvalid("The linked Appointment belongs to a different Student.")
     if appointment.service_id != service_id:
         raise CounselingAppointmentInvalid(
-            "The linked Appointment does not use the canonical COUNSELING Service."
+            "The linked Appointment doesn't use the Counseling Service."
         )
     if appointment.delivery_mode != delivery_mode:
         raise CounselingAppointmentInvalid(
@@ -596,7 +596,7 @@ def create_encounter(
 
     if appointment_id is not None and normalized_entry != CounselingEntryMode.APPOINTMENT:
         raise CounselingAppointmentInvalid(
-            "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+            "Choose Appointment as the Entry type for an Appointment-linked Counseling Encounter."
         )
 
     if appointment_id is not None:
@@ -622,17 +622,17 @@ def create_encounter(
             _validate_canonical_service(service)
             if appointment.service_id != service.pk:
                 raise CounselingAppointmentInvalid(
-                    "The linked Appointment does not use the canonical COUNSELING Service."
+                    "The linked Appointment doesn't use the Counseling Service."
                 )
             if student_id is not None and student_id != appointment.student_id:
                 raise CounselingAppointmentInvalid(
-                    "student_id does not match the linked Appointment."
+                    "The selected Student doesn't match the linked Appointment."
                 )
             if delivery_mode is not None:
                 supplied_mode = _normalize_delivery_mode(delivery_mode)
                 if supplied_mode != normalized_mode:
                     raise CounselingAppointmentInvalid(
-                        "delivery_mode does not match the linked Appointment."
+                        "The Delivery mode doesn't match the linked Appointment."
                     )
             _validate_appointment_link(
                 appointment=appointment,
@@ -672,11 +672,11 @@ def create_encounter(
         return _encounter_queryset().get(pk=encounter.pk)
 
     if normalized_entry == CounselingEntryMode.APPOINTMENT:
-        raise CounselingAppointmentInvalid("entry_mode APPOINTMENT requires an appointment_id.")
+        raise CounselingAppointmentInvalid("Choose the Appointment for this Counseling Encounter.")
     if student_id is None:
-        raise InvalidCounselingInput("student_id is required without an Appointment.")
+        raise InvalidCounselingInput("Choose the Student for this Counseling Encounter.")
     if delivery_mode is None:
-        raise InvalidCounselingInput("delivery_mode is required without an Appointment.")
+        raise InvalidCounselingInput("Choose the Delivery mode for this Counseling Encounter.")
     normalized_mode = _normalize_delivery_mode(delivery_mode)
 
     with _routine_link_errors(), transaction.atomic():
@@ -731,11 +731,11 @@ def _date_bounds(
     from_date: date | None, to_date: date | None
 ) -> tuple[datetime | None, datetime | None]:
     if from_date is not None and not isinstance(from_date, date):
-        raise InvalidCounselingInput("from_date must be a date")
+        raise InvalidCounselingInput("Enter a valid From date.")
     if to_date is not None and not isinstance(to_date, date):
-        raise InvalidCounselingInput("to_date must be a date")
+        raise InvalidCounselingInput("Enter a valid To date.")
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise InvalidCounselingInput("from_date must not be after to_date")
+        raise InvalidCounselingInput("The From date can't be after the To date.")
     start = institution_day_start(from_date) if from_date else None
     end = institution_day_start(to_date + timedelta(days=1)) if to_date else None
     return start, end
@@ -747,11 +747,11 @@ def get_encounter_creation_options(
     _validate_active_counselor(counselor)
     service = get_counseling_service(require_active=True)
     if not service_counselor_eligible(service, counselor):
-        raise CounselingNotPermitted("The COUNSELING Service does not permit this Counselor.")
+        raise CounselingNotPermitted("This Counselor isn't assigned to the Counseling Service.")
     delivery_modes = _configured_delivery_modes(service)
     if not delivery_modes:
         raise CounselingConfigurationConflict(
-            "The canonical COUNSELING Service has no configured delivery mode."
+            "The Counseling Service has no Delivery mode. Contact your IT Administrator."
         )
     return CounselingEncounterCreationOptions(
         service=service,
@@ -929,7 +929,7 @@ def list_encounter_appointment_candidates(
         raise CounselingNotFound("The requested Counseling Encounter was not found.")
     if encounter.service.code != COUNSELING_SERVICE_CODE:
         raise CounselingConfigurationConflict(
-            "The Encounter is not bound to the canonical COUNSELING Service."
+            "This Counseling Encounter isn't linked to the Counseling Service."
         )
 
     used_elsewhere = CounselingEncounter.objects.filter(
@@ -1124,7 +1124,7 @@ def update_encounter(
             if proposed_appointment_id is not None and not isinstance(
                 proposed_appointment_id, UUID
             ):
-                raise InvalidCounselingInput("appointment_id must be a UUID or null")
+                raise InvalidCounselingInput("Choose a valid Appointment.")
         else:
             proposed_appointment_id = item.appointment_id
 
@@ -1145,7 +1145,7 @@ def update_encounter(
         service = Service.objects.select_for_update().filter(pk=item.service_id).first()
         if service is None or service.code != COUNSELING_SERVICE_CODE:
             raise CounselingConfigurationConflict(
-                "The Encounter is not bound to the canonical COUNSELING Service."
+                "This Counseling Encounter isn't linked to the Counseling Service."
             )
 
         proposed_appointment = (
@@ -1156,18 +1156,19 @@ def update_encounter(
         if proposed_appointment is None:
             if next_entry == CounselingEntryMode.APPOINTMENT:
                 raise CounselingAppointmentInvalid(
-                    "entry_mode APPOINTMENT requires an Appointment link."
+                    "Choose the Appointment for this Counseling Encounter."
                 )
             if "delivery_mode" in changes and not service_supports_delivery_mode(
                 service, next_mode
             ):
                 raise CounselingNotPermitted(
-                    "The COUNSELING Service does not support the corrected delivery mode."
+                    "The Counseling Service doesn't support the selected Delivery mode."
                 )
         else:
             if next_entry != CounselingEntryMode.APPOINTMENT:
                 raise CounselingAppointmentInvalid(
-                    "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+                    "Choose Appointment as the Entry type for an Appointment-linked "
+                    "Counseling Encounter."
                 )
             _validate_appointment_link(
                 appointment=proposed_appointment,

@@ -387,7 +387,7 @@ def test_appointment_link_validation_rejects_missing_cancelled_wrong_provider_an
     service = create_counseling_service(admin)
     started_at, ended_at = actual_times()
 
-    with pytest.raises(CounselingAppointmentInvalid, match="requires"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Choose the Appointment"):
         create_encounter(
             counselor=counselor,
             entry_mode="APPOINTMENT",
@@ -428,7 +428,7 @@ def test_appointment_link_validation_rejects_missing_cancelled_wrong_provider_an
         )
 
     usable = make_appointment(student=student, provider=counselor, service=service)
-    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Appointment as the Entry type"):
         create_encounter(
             counselor=counselor,
             entry_mode="CALLED_IN",
@@ -484,7 +484,7 @@ def test_linked_create_rejects_wrong_service_and_smuggled_student_or_mode():
         provider=counselor,
         service=other_service,
     )
-    with pytest.raises(CounselingAppointmentInvalid, match="COUNSELING"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Counseling Service"):
         create_encounter(
             counselor=counselor,
             entry_mode="APPOINTMENT",
@@ -495,7 +495,7 @@ def test_linked_create_rejects_wrong_service_and_smuggled_student_or_mode():
         )
 
     usable = make_appointment(student=student, provider=counselor, service=counseling)
-    with pytest.raises(CounselingAppointmentInvalid, match="student_id"):
+    with pytest.raises(CounselingAppointmentInvalid, match="selected Student"):
         create_encounter(
             counselor=counselor,
             entry_mode="APPOINTMENT",
@@ -505,7 +505,7 @@ def test_linked_create_rejects_wrong_service_and_smuggled_student_or_mode():
             ended_at=ended_at,
             context=context(counselor),
         )
-    with pytest.raises(CounselingAppointmentInvalid, match="delivery_mode"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Delivery mode"):
         create_encounter(
             counselor=counselor,
             entry_mode="APPOINTMENT",
@@ -525,7 +525,7 @@ def test_missing_inactive_or_misconfigured_counseling_service_rejects_new_encoun
     student = make_user("student@example.edu", "STUDENT")
     started_at, ended_at = actual_times()
 
-    with pytest.raises(CounselingConfigurationConflict, match="not been configured"):
+    with pytest.raises(CounselingConfigurationConflict, match="isn't set up for Counseling"):
         create_encounter(
             counselor=counselor,
             student_id=student.pk,
@@ -818,7 +818,7 @@ def test_relink_requires_appointment_entry_mode_and_preserves_the_rule_on_correc
         context=context(counselor),
     )
 
-    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Appointment as the Entry type"):
         update_encounter(
             encounter_id=item.pk,
             counselor=counselor,
@@ -835,7 +835,7 @@ def test_relink_requires_appointment_entry_mode_and_preserves_the_rule_on_correc
     assert linked.entry_mode == "APPOINTMENT"
     assert linked.appointment_id == appointment.pk
 
-    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+    with pytest.raises(CounselingAppointmentInvalid, match="Appointment as the Entry type"):
         update_encounter(
             encounter_id=item.pk,
             counselor=counselor,

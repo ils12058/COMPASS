@@ -434,7 +434,7 @@ def test_list_requires_student_academics_view_and_returns_placement_projection()
     counselor_denied = auth_client(counselor).get(f"{BASE}/placements")
     assert counselor_denied.status_code == 403
     assert counselor_denied.json()["error"]["message"] == (
-        "The student_academics.view capability is required."
+        "You don't have permission to view Student Academic Records."
     )
 
     student_denied = auth_client(make_user("list.other@example.edu")).get(f"{BASE}/placements")
@@ -504,7 +504,7 @@ def test_view_only_capability_cannot_write_and_does_not_audit():
     assert denied_set.status_code == 403
     assert denied_set.json()["error"]["code"] == "permission_denied"
     assert denied_set.json()["error"]["message"] == (
-        "The student_academics.manage capability is required."
+        "You don't have permission to manage Student Academic Records."
     )
     assert client.delete(f"{BASE}/students/{student.pk}/placement", **headers).status_code == 403
     assert (
@@ -558,13 +558,13 @@ def test_organization_manage_alone_cannot_read_academic_records():
     placements = client.get(f"{BASE}/placements")
     assert placements.status_code == 403
     assert placements.json()["error"]["message"] == (
-        "The student_academics.view capability is required."
+        "You don't have permission to view Student Academic Records."
     )
 
     record = client.get(f"{BASE}/students/{student.pk}/record")
     assert record.status_code == 403
     assert record.json()["error"]["message"] == (
-        "The student_academics.view capability is required."
+        "You don't have permission to view Student Academic Records."
     )
 
 
@@ -1312,7 +1312,7 @@ def test_my_record_requires_student_self_view_and_returns_own_record():
     assert denied.status_code == 403
     assert denied.json()["error"]["code"] == "permission_denied"
     assert denied.json()["error"]["message"] == (
-        "The student_academics.view_self capability is required."
+        "You don't have permission to view your Academic Record."
     )
 
     UserCapabilityOverride.objects.create(
@@ -1350,7 +1350,7 @@ def test_my_record_requires_student_self_view_and_returns_own_record():
     revoked = auth_client(student).get(f"{BASE}/me/record")
     assert revoked.status_code == 403
     assert revoked.json()["error"]["message"] == (
-        "The student_academics.view_self capability is required."
+        "You don't have permission to view your Academic Record."
     )
 
 

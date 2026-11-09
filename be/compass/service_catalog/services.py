@@ -225,11 +225,11 @@ def _normalize_duration(value: int | None) -> int | None:
         return None
     if type(value) is not int:
         raise InvalidServiceCatalogInput(
-            "default_appointment_duration_minutes must be an integer or null"
+            "Default Appointment duration must be a whole number of minutes or blank."
         )
     if not MIN_SERVICE_DURATION_MINUTES <= value <= MAX_SERVICE_DURATION_MINUTES:
         raise InvalidServiceCatalogInput(
-            f"default_appointment_duration_minutes must be between "
+            f"Default Appointment duration must be between "
             f"{MIN_SERVICE_DURATION_MINUTES} and {MAX_SERVICE_DURATION_MINUTES}"
         )
     return value
@@ -240,7 +240,7 @@ def _normalize_cancellation_cutoff(value: int | None) -> int | None:
         return None
     if type(value) is not int or value < 0:
         raise InvalidServiceCatalogInput(
-            "cancellation_cutoff_minutes must be a non-negative integer or null"
+            "Cancellation cutoff must be a positive number of minutes or blank."
         )
     return value
 
@@ -250,9 +250,9 @@ def _normalize_modes(values: list[str] | tuple[str, ...] | None) -> frozenset[st
         return frozenset()
     normalized = [value.value if isinstance(value, DeliveryMode) else value for value in values]
     if len(normalized) != len(set(normalized)):
-        raise InvalidServiceCatalogInput("delivery_modes must not contain duplicates")
+        raise InvalidServiceCatalogInput("Choose each Delivery mode only once.")
     if not set(normalized) <= set(DeliveryMode.values):
-        raise InvalidServiceCatalogInput("delivery_modes may contain only IN_PERSON or ONLINE")
+        raise InvalidServiceCatalogInput("Choose In person, E-Counseling, or both.")
     return frozenset(normalized)
 
 
@@ -260,7 +260,7 @@ def _normalize_coverage(value: str | ServiceProviderCoverage) -> str:
     normalized = value.value if isinstance(value, ServiceProviderCoverage) else value
     if normalized not in ServiceProviderCoverage.values:
         raise InvalidServiceCatalogInput(
-            "provider_coverage must be ALL_COUNSELORS or SELECTED_COUNSELORS"
+            "Choose All Counselors or Selected Counselors for Counselor coverage."
         )
     return str(normalized)
 
@@ -269,12 +269,12 @@ def _normalize_counselor_ids(values: list[UUID] | tuple[UUID, ...] | None) -> fr
     if values is None:
         return frozenset()
     if not isinstance(values, (list, tuple)) or not all(isinstance(v, UUID) for v in values):
-        raise InvalidServiceCatalogInput("selected_counselor_ids must be a list of UUIDs")
+        raise InvalidServiceCatalogInput("Choose valid Counselors.")
     if len(values) != len(set(values)):
-        raise InvalidServiceCatalogInput("selected_counselor_ids must not contain duplicates")
+        raise InvalidServiceCatalogInput("Choose each Counselor only once.")
     if len(values) > MAX_SELECTED_COUNSELORS:
         raise InvalidServiceCatalogInput(
-            f"selected_counselor_ids may contain at most {MAX_SELECTED_COUNSELORS} Counselors"
+            f"Choose no more than {MAX_SELECTED_COUNSELORS} Counselors."
         )
     return frozenset(values)
 
@@ -315,16 +315,16 @@ def _normalize_booking_settings(
 
 def _normalize_pathways(values: list[str] | tuple[str, ...]) -> frozenset[str]:
     if not isinstance(values, (list, tuple)):
-        raise InvalidServiceCatalogInput("booking_pathways must be a list.")
+        raise InvalidServiceCatalogInput("Choose at least one Booking pathway.")
     normalized = [
         value.value if isinstance(value, BookingPathwayCode) else value for value in values
     ]
     if not all(isinstance(value, str) for value in normalized):
-        raise InvalidServiceCatalogInput("booking_pathways must contain supported pathway codes.")
+        raise InvalidServiceCatalogInput("Choose valid Booking pathways.")
     if len(set(normalized)) != len(normalized):
-        raise InvalidServiceCatalogInput("booking_pathways must not contain duplicates.")
+        raise InvalidServiceCatalogInput("Choose each Booking pathway only once.")
     if not set(normalized) <= set(BookingPathwayCode.values):
-        raise InvalidServiceCatalogInput("booking_pathways contains an unsupported pathway.")
+        raise InvalidServiceCatalogInput("Choose valid Booking pathways.")
     return frozenset(normalized)
 
 
@@ -507,9 +507,11 @@ def _validate_new_selections(*, added: frozenset[UUID]) -> None:
         raise InvalidServiceCatalogInput("A selected Counselor account was not found.")
     for user in rows.values():
         if user.role.code != PROVIDER_ROLE_CODE:
-            raise ServiceCatalogConflict("Only Counselors can be selected as Service providers.")
+            raise ServiceCatalogConflict("Only Counselors can be selected for this Service.")
         if not user.is_active:
-            raise ServiceCatalogConflict("An inactive account cannot be selected as a provider.")
+            raise ServiceCatalogConflict(
+                "An inactive Counselor can't be selected for this Service."
+            )
 
 
 def _normalize_selection(
@@ -518,7 +520,7 @@ def _normalize_selection(
     if coverage == ServiceProviderCoverage.ALL_COUNSELORS:
         if explicit and selected:
             raise ServiceCatalogConflict(
-                "Selected Counselors apply only when provider coverage is SELECTED_COUNSELORS."
+                "Selected Counselors apply only when Counselor coverage is Selected Counselors."
             )
         return frozenset()
     return selected
@@ -765,7 +767,7 @@ def list_operational_provider_candidates(
     service = get_service(service_id)
     provider_ids = slot_provider_scope(actor)
     if not provider_ids:
-        raise PermissionError("Appointment operational access is required for this Service.")
+        raise PermissionError("You don't have permission to manage Appointments for this Service.")
     if (
         not service.is_active
         or not ServiceBookingPathway.objects.filter(
@@ -823,7 +825,7 @@ def create_service(
     normalized_code = normalize_service_code(code)
     if normalized_code == COUNSELING_SERVICE_CODE:
         raise CanonicalServiceReserved(
-            "COUNSELING is system-managed. Run sync_canonical_services to provision it."
+            "COMPASS isn't set up for this yet. Contact your IT Administrator."
         )
     pathways = _normalize_pathways(booking_pathways)
     booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in pathways
@@ -901,7 +903,7 @@ def update_service(
     if not set(changes) <= _UPDATABLE_FIELDS:
         raise InvalidServiceCatalogInput("The Service update contains unsupported fields.")
     if type(acknowledge_scheduling_consequences) is not bool:
-        raise InvalidServiceCatalogInput("acknowledge_scheduling_consequences must be a boolean.")
+        raise InvalidServiceCatalogInput("Choose whether you reviewed the scheduling effects.")
     current_time = now or timezone.now()
     if timezone.is_naive(current_time):
         raise InvalidServiceCatalogInput("The Service update time must be timezone-aware.")
@@ -1048,7 +1050,7 @@ def set_service_active(
             raise ServiceCatalogNotFound("The requested Service was not found.")
         if service.code == COUNSELING_SERVICE_CODE and not is_active:
             raise CanonicalServiceRequired(
-                "The canonical Counseling Service is required by COMPASS and cannot be disabled."
+                "The Counseling Service is required by COMPASS and can't be disabled."
             )
         if service.is_active == is_active:
             return get_service(service.pk)

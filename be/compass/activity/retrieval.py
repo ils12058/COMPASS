@@ -72,7 +72,7 @@ def validate_page(page: int, page_size: int) -> None:
     if type(page) is not int or not 1 <= page <= MAX_PAGE_NUMBER:
         raise ActivityRetrievalError(f"page must be between 1 and {MAX_PAGE_NUMBER}.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise ActivityRetrievalError(f"page_size must be between 1 and {MAX_PAGE_SIZE}.")
+        raise ActivityRetrievalError(f"Items per page must be between 1 and {MAX_PAGE_SIZE}.")
 
 
 def bounded_candidates(queryset):

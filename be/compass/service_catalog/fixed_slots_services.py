@@ -133,16 +133,14 @@ def _validate_service_and_counselor(
     ).exists()
     if not has_fixed_pathway:
         raise ServiceNotEligibleForFixedSlots(
-            "Service does not have fixed-date slot booking pathway enabled."
+            "This Service doesn't offer scheduled Appointment slots."
         )
 
     if not provider.is_active:
-        raise CounselorNotQualifiedForService("The provider account is inactive.")
+        raise CounselorNotQualifiedForService("The Counselor account is inactive.")
 
     if not service_counselor_eligible(service, provider):
-        raise CounselorNotQualifiedForService(
-            "The provider is not qualified for this Service under current provider coverage."
-        )
+        raise CounselorNotQualifiedForService("The Counselor isn't assigned to this Service.")
 
     if not service_supports_delivery_mode(service, delivery_mode):
         raise DeliveryModeNotSupported(
@@ -211,7 +209,7 @@ def create_fixed_slot(
                 *initial_scope,
             )
         except ValueError as exc:
-            raise CounselorNotQualifiedForService("Provider not found.") from exc
+            raise CounselorNotQualifiedForService("Counselor not found.") from exc
         staff_actor = current_slot_staff(actor, lock_supervision=True)
         if staff_actor is None:
             raise SlotNotFoundError("The requested slot was not found.")
@@ -221,7 +219,7 @@ def create_fixed_slot(
 
         provider = locked_users.get(provider_id)
         if provider is None:
-            raise CounselorNotQualifiedForService("Provider not found.")
+            raise CounselorNotQualifiedForService("Counselor not found.")
         if not can_manage_slot_provider(staff_actor, provider.pk, lock_supervision=True):
             raise SlotNotFoundError("The requested slot was not found.")
 
@@ -298,7 +296,7 @@ def update_fixed_slot(
                 *initial_scope,
             )
         except ValueError as exc:
-            raise CounselorNotQualifiedForService("Provider not found.") from exc
+            raise CounselorNotQualifiedForService("Counselor not found.") from exc
         if current_slot_staff(actor, lock_supervision=True) is None:
             raise SlotNotFoundError("Slot not found.")
         Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
@@ -329,15 +327,15 @@ def update_fixed_slot(
 
         if has_history and time_or_provider_changed:
             raise SlotCannotBeModifiedError(
-                "Cannot modify the schedule, provider, or delivery mode after a slot "
-                "has booking history."
+                "You can't change the schedule, Counselor, or Delivery mode after the slot "
+                "has bookings."
             )
 
         new_provider = slot.provider
         if provider_id is not None:
             new_provider = locked_users.get(provider_id)
             if new_provider is None:
-                raise CounselorNotQualifiedForService("Provider not found.")
+                raise CounselorNotQualifiedForService("Counselor not found.")
             if not can_manage_slot_provider(actor, new_provider.pk, lock_supervision=True):
                 raise SlotNotFoundError("Slot not found.")
 
@@ -560,9 +558,7 @@ def book_fixed_slot(
 ) -> Appointment:
     """Book a published fixed-date appointment slot, creating a canonical COMPASS Appointment."""
     if not is_current_student(student):
-        raise AppointmentCurrentStudentRequired(
-            "Current Student lifecycle is required to book an Appointment."
-        )
+        raise AppointmentCurrentStudentRequired("Only current Students can book an Appointment.")
 
     current_time = now or timezone.now()
 

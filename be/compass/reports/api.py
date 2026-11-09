@@ -92,7 +92,7 @@ def _require_global_viewer(request) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Institution-wide aggregate report access is required.",
+            "You don't have permission to view institution-wide reports.",
         )
 
 
@@ -109,18 +109,18 @@ def _raise(exc: ReportError) -> NoReturn:
         raise APIError(
             503,
             "report_document_unavailable",
-            "The Student Profiling report PDF is temporarily unavailable.",
+            "Couldn't create the Student Profiling PDF. Try again.",
         ) from exc
     if isinstance(exc, StudentProfilingWorkbookUnavailable):
         raise APIError(
             503,
             "report_workbook_unavailable",
-            "The Student Profiling report XLSX is temporarily unavailable.",
+            "Couldn't create the Student Profiling spreadsheet. Try again.",
         ) from exc
     raise APIError(
         500,
         "internal_error",
-        "The Student Profiling report could not be generated.",
+        "Couldn't create the Student Profiling report. Try again.",
     ) from exc
 
 
@@ -138,12 +138,12 @@ def _raise_graduate_tracer(exc: GraduateTracerReportError) -> NoReturn:
         raise APIError(
             503,
             "report_workbook_unavailable",
-            "The Graduate Tracer report XLSX is temporarily unavailable.",
+            "Couldn't create the Graduate Tracer spreadsheet. Try again.",
         ) from exc
     raise APIError(
         500,
         "internal_error",
-        "The Graduate Tracer report could not be generated.",
+        "Couldn't create the Graduate Tracer report. Try again.",
     ) from exc
 
 

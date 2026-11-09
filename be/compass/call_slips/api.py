@@ -219,7 +219,8 @@ def _require_operational(request, capability: str) -> None:
         or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not user.has_capability(capability)
     ):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = "manage Call Slips" if capability == "call_slips.manage" else "view Call Slips"
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
 
 
 def _require_student(request) -> None:
@@ -229,7 +230,9 @@ def _require_student(request) -> None:
         or user.role.code != "STUDENT"
         or not user.has_capability("call_slips.view_self")
     ):
-        raise APIError(403, "permission_denied", "Call Slip self-view access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to view this Call Slip."
+        )
 
 
 def _raise(exc: CallSlipError) -> NoReturn:
@@ -253,7 +256,7 @@ def _raise(exc: CallSlipError) -> NoReturn:
     ):
         raise APIError(409, "call_slip_conflict", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Call Slip operation could not be completed."
+        500, "internal_error", "Couldn't complete the Call Slip change. Try again."
     ) from exc
 
 
@@ -317,10 +320,7 @@ def _pdf_response(
         raise APIError(
             503,
             "release_audit_unavailable",
-            (
-                "The Call Slip could not be released because its required "
-                "privacy audit is unavailable."
-            ),
+            ("Couldn't release the Call Slip because its privacy check failed. Try again."),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = institutional_pdf_content_disposition("call_slip", item.pk)
@@ -604,7 +604,7 @@ def call_slips_create_from_referral(
         raise APIError(
             500,
             "referral_confidential_content_unavailable",
-            "The Referral confidential content is unavailable.",
+            "Couldn't load the Referral. Try again.",
         ) from None
     except CallSlipError as exc:
         _raise(exc)

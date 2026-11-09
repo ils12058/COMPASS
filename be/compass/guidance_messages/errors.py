@@ -41,4 +41,4 @@ class ReferralVoided(MessagesConflict):
 
 class GuidanceMessageContentUnavailable(GuidanceMessagesError):
     def __init__(self):
-        super().__init__("Guidance Message confidential content is unavailable.")
+        super().__init__("Couldn't load the Guidance Message. Try again.")

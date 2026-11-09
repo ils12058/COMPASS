@@ -355,7 +355,7 @@ def test_scoped_report_sees_assigned_colleges_and_only_explicit_global_sees_all(
     assert "Counselor-assigned Colleges" in scoped["methodology"]["access_scope_note"]
     assert "without a recorded Program" in scoped["methodology"]["access_scope_note"]
     assert institution_wide["report_context"]["submitted_inventory_count"] == 3
-    assert "institution-wide" in institution_wide["methodology"]["access_scope_note"]
+    assert "all Campuses and Colleges" in institution_wide["methodology"]["access_scope_note"]
     assert (
         scoped["methodology"]["profile_population_note"]
         == (institution_wide["methodology"]["profile_population_note"])

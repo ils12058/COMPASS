@@ -255,7 +255,9 @@ def _validate_student(student: User, capability: str) -> None:
         or student.role.code != "STUDENT"
         or not student.has_capability(capability)
     ):
-        raise GoodMoralNotPermitted("Active Student Good Moral self-service access is required.")
+        raise GoodMoralNotPermitted(
+            "You don't have permission to manage your Good Moral Certificate request."
+        )
 
 
 def _validate_counselor(actor: User, capability: str) -> None:
@@ -265,7 +267,7 @@ def _validate_counselor(actor: User, capability: str) -> None:
         or actor.role.code != "COUNSELOR"
         or not actor.has_capability(capability)
     ):
-        raise GoodMoralNotPermitted("Authorized Counselor Good Moral access is required.")
+        raise GoodMoralNotPermitted("You don't have permission to manage Good Moral Certificates.")
 
 
 def _validate_operational(actor: User, capability: str) -> None:
@@ -275,7 +277,9 @@ def _validate_operational(actor: User, capability: str) -> None:
         or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not actor.has_capability(capability)
     ):
-        raise GoodMoralNotPermitted("Authorized Guidance Good Moral access is required.")
+        raise GoodMoralNotPermitted(
+            "You don't have permission to manage Good Moral Certificate requests."
+        )
 
 
 def _validate_idempotency_key(value: str) -> str:
@@ -350,7 +354,7 @@ def _recover_creation_conflict(
     if existing is not None:
         return existing
     raise GoodMoralCreationConflict(
-        "The Good Moral request could not be created because its creation identity conflicted."
+        "Couldn't create the Good Moral Certificate request. Try again."
     )
 
 
@@ -400,7 +404,7 @@ def _clean_amount(value: object) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, (Decimal, int, float, str)):
-        raise InvalidGoodMoralInput("official_receipt_amount must be a nonnegative decimal.")
+        raise InvalidGoodMoralInput("Enter a valid Official Receipt amount.")
     try:
         amount = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
@@ -408,11 +412,11 @@ def _clean_amount(value: object) -> Decimal | None:
             "official_receipt_amount must be a nonnegative decimal."
         ) from exc
     if not amount.is_finite() or amount < 0:
-        raise InvalidGoodMoralInput("official_receipt_amount must be nonnegative.")
+        raise InvalidGoodMoralInput("Official Receipt amount can't be negative.")
     if amount.as_tuple().exponent < -2:
-        raise InvalidGoodMoralInput("official_receipt_amount supports at most two decimal places.")
+        raise InvalidGoodMoralInput("Official Receipt amount can have up to two decimal places.")
     if amount >= Decimal("10000000000"):
-        raise InvalidGoodMoralInput("official_receipt_amount is too large.")
+        raise InvalidGoodMoralInput("Official Receipt amount is too large.")
     return amount
 
 
@@ -771,12 +775,13 @@ def _create_current_student(
         _reject_assisted_pending(locked_student, initiator=initiator)
         if not is_current_student(locked_student):
             raise GoodMoralCurrentStudentRequired(
-                "Current Student lifecycle is required to request the F4 Good Moral certificate."
+                "Current Student status is required to request a Good Moral Certificate for "
+                "current Students."
             )
 
         inventory = _require_submitted_inventory(locked_student)
         if year and year not in CANONICAL_YEAR_LEVELS:
-            raise InvalidGoodMoralInput("year_level must be between 1st and 4th Year.")
+            raise InvalidGoodMoralInput("Year Level must be from 1st to 4th Year.")
         if term not in CANONICAL_SEMESTERS:
             raise InvalidGoodMoralInput("semester is not supported.")
         inventory_year = _require_f4_bachelors_inventory(inventory)
@@ -888,7 +893,8 @@ def _create_graduate(
 
         if locked_student.student_lifecycle_status not in StudentLifecycleStatus.values:
             raise InvalidGoodMoralInput(
-                "A recorded Student lifecycle status is required to request F6."
+                "A recorded Student status is required to request a Good Moral Certificate for "
+                "UCN Bachelor's graduates."
             )
 
         _reject_assisted_pending(locked_student, initiator=initiator)
@@ -1206,7 +1212,7 @@ def update_request(
                 "year_level_snapshot" in changed
                 and normalized["year_level_snapshot"] not in CANONICAL_YEAR_LEVELS
             ):
-                raise InvalidGoodMoralInput("year_level is not supported.")
+                raise InvalidGoodMoralInput("Choose a valid Year Level.")
             if "year_level_snapshot" in changed:
                 linked_inventory = (
                     StudentInventory.objects.select_related("program__college__campus")

@@ -497,14 +497,14 @@ def _validate_roster_filters(
 ) -> Program | None:
     college_ids = _counselor_college_ids(actor)
     if year_level is not None and not 1 <= year_level <= 10:
-        raise InvalidInventoryInput("year_level must be between 1 and 10.")
+        raise InvalidInventoryInput("Year Level must be from 1 to 10.")
     if college_id is not None:
         college = College.objects.select_related("campus").filter(pk=college_id).first()
         if college is None:
             raise InvalidInventoryInput("The selected College was not found.")
         if college_ids is not None and college.pk not in set(college_ids):
             raise InventoryNotPermitted(
-                "The selected College is outside Counselor Inventory scope."
+                "You don't have access to Individual Inventories for the selected College."
             )
     program = None
     if program_id is not None:
@@ -513,7 +513,7 @@ def _validate_roster_filters(
             raise InvalidInventoryInput("The selected Program was not found.")
         if college_ids is not None and program.college_id not in set(college_ids):
             raise InventoryNotPermitted(
-                "The selected Program is outside Counselor Inventory scope."
+                "You don't have access to Individual Inventories for the selected Program."
             )
         if college_id is not None and program.college_id != college_id:
             raise InvalidInventoryInput(
@@ -536,7 +536,7 @@ def _correction_pending(item: StudentInventory | None) -> bool:
 def _require_current_student(student: User) -> None:
     if not is_current_student(student):
         raise InventoryCurrentStudentRequired(
-            "Current Student lifecycle is required to initiate or change an Inventory."
+            "Current Student status is required to start or change an Individual Inventory."
         )
 
 
@@ -566,7 +566,7 @@ def _validate_program_year_level(program: Program, year_level: int | None) -> No
     if year_level is None:
         return
     if type(year_level) is not int or not 1 <= year_level <= 10:
-        raise InvalidInventoryInput("year_level must be between 1 and 10.")
+        raise InvalidInventoryInput("Year Level must be from 1 to 10.")
     metadata = get_program_policy(program)
     if (
         metadata.applicable_year_levels is not None
@@ -622,7 +622,7 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
 
 def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
     if not isinstance(rows, list):
-        raise InvalidInventoryInput("family_members must be a list.")
+        raise InvalidInventoryInput("Enter valid Family members.")
     normalized: list[dict[str, object]] = []
     seen: set[str] = set()
     for raw in rows:
@@ -636,7 +636,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         if status is not None:
             status = str(status)
             if status not in AnnualIncomeStatus.values:
-                raise InvalidInventoryInput("Unsupported annual_income_status.")
+                raise InvalidInventoryInput("Choose a valid Annual income response.")
             row["annual_income_status"] = status
             amount = row.get("annual_income_previous_year")
             if status == AnnualIncomeStatus.REPORTED:
@@ -653,7 +653,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         if occupation_category is not None:
             occupation_category = str(occupation_category)
             if occupation_category not in OccupationCategory.values:
-                raise InvalidInventoryInput("Unsupported occupation_category.")
+                raise InvalidInventoryInput("Choose a valid Occupation category.")
             row["occupation_category"] = occupation_category
             if (
                 occupation_category == OccupationCategory.OTHER
@@ -671,10 +671,10 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
 
 def _normalize_support_profile(values: object) -> dict[str, object]:
     if not isinstance(values, dict):
-        raise InvalidInventoryInput("support_profile must be an object.")
+        raise InvalidInventoryInput("Enter valid Family support details.")
     unknown = set(values) - set(SUPPORT_FIELDS)
     if unknown:
-        raise InvalidInventoryInput("The support_profile contains unsupported fields.")
+        raise InvalidInventoryInput("The Family support details contain unsupported fields.")
 
     normalized = dict(values)
     choices = {
@@ -711,7 +711,7 @@ def _apply_support_profile(
     try:
         profile.full_clean(exclude=("inventory",))
     except ValidationError as exc:
-        raise InvalidInventoryInput("The support_profile contains invalid typed values.") from exc
+        raise InvalidInventoryInput("The Family support details contain invalid values.") from exc
     profile.save(update_fields=[*SUPPORT_FIELDS, "updated_at"])
 
 
@@ -729,7 +729,7 @@ def _pair(code: str, name: str, label: str, *, required: bool) -> tuple[str, str
 
 def _normalize_geographic_rows(rows: object) -> list[dict[str, object]]:
     if not isinstance(rows, list):
-        raise InvalidInventoryInput("geographic_locations must be a list.")
+        raise InvalidInventoryInput("Enter valid Current and Permanent locations.")
     normalized: list[dict[str, object]] = []
     seen: set[str] = set()
     for raw in rows:
@@ -764,7 +764,7 @@ def _normalize_geographic_rows(rows: object) -> list[dict[str, object]]:
 
 def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
     if not isinstance(rows, list):
-        raise InvalidInventoryInput("transportation_entries must be a list.")
+        raise InvalidInventoryInput("Enter valid Transportation details.")
     normalized: list[dict[str, object]] = []
     for raw in rows:
         row = dict(raw)
@@ -772,7 +772,7 @@ def _normalize_transportation_rows(rows: object) -> list[dict[str, object]]:
         if category is not None:
             category = str(category)
             if category not in TransportationFrequencyCategory.values:
-                raise InvalidInventoryInput("Unsupported transportation frequency_category.")
+                raise InvalidInventoryInput("Choose a valid Transportation frequency.")
             row["frequency_category"] = category
             detail = str(row.get("frequency", "")).strip()
             if category == TransportationFrequencyCategory.OTHER:
@@ -877,8 +877,7 @@ def ensure_current_inventory(*, student: User, context: AuditContext) -> Student
             ).first()
             if item is None:
                 raise InventoryConflict(
-                    "The current Individual Inventory could not be created safely; "
-                    "retry the request."
+                    "Couldn't create the Individual Inventory. Try again."
                 ) from None
             StudentSupportProfile.objects.get_or_create(inventory=item)
             return _inventory_queryset().get(pk=item.pk)
@@ -1629,7 +1628,7 @@ def replace_current_inventory(
         year_level = normalized_values.get("year_level", item.year_level)
         year_level_changed = year_level != item.year_level
         if year_level is not None and (type(year_level) is not int or not 1 <= year_level <= 10):
-            raise InvalidInventoryInput("year_level must be between 1 and 10.")
+            raise InvalidInventoryInput("Year Level must be from 1 to 10.")
         if item.program is not None and (program_changed or year_level_changed):
             _validate_program_year_level(item.program, year_level)
         canonical_institutional_id = locked_student.institutional_id
@@ -1746,7 +1745,7 @@ def _resolve_geography(rows) -> dict[_GeographyKey, _ResolvedGeographyNames]:
     except (PSGCInvalidRequest, PSGCReferenceNotFound) as exc:
         raise InvalidInventoryInput(str(exc)) from exc
     except (PSGCConfigurationError, PSGCUnavailable, PSGCInvalidResponse) as exc:
-        raise InventoryPSGCUnavailable("Official PSGC validation could not be completed.") from exc
+        raise InventoryPSGCUnavailable("Couldn't check the location. Try again.") from exc
     return resolved
 
 
@@ -2112,7 +2111,7 @@ def reopen_inventory_for_correction(
             raise InventoryConflict("Only a submitted Individual Inventory may be reopened.")
         if not is_current_student(item.student):
             raise InventoryCurrentStudentRequired(
-                "Current Student lifecycle is required before reopening for Student correction."
+                "Current Student status is required before reopening for Student correction."
             )
         selected_targets = normalize_correction_targets(targets)
 

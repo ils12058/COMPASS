@@ -223,7 +223,7 @@ def _require_staff(request: HttpRequest, *, recent_mfa: bool = False) -> User:
         raise APIError(
             403,
             "permission_denied",
-            "Guidance staff authority with appointments.manage capability is required.",
+            "You don't have permission to manage Group Sessions.",
         )
     if recent_mfa:
         require_recent_mfa_for_request(request)
@@ -239,7 +239,7 @@ def _require_student_view(request: HttpRequest) -> User:
         raise APIError(
             403,
             "permission_denied",
-            "Student scheduling view authority is required.",
+            "You don't have permission to view Group Sessions.",
         )
     return user
 
@@ -257,13 +257,13 @@ def _require_student_manage(
         raise APIError(
             403,
             "permission_denied",
-            "Student scheduling management authority is required.",
+            "You don't have permission to register for Group Sessions.",
         )
     if require_current_lifecycle and not is_current_student(user):
         raise APIError(
             403,
             "current_student_required",
-            "Current Student lifecycle is required for group session registration.",
+            "Current Student status is required for Group Session registration.",
         )
     return user
 
@@ -406,7 +406,7 @@ def discover_group_sessions(
         registration_block_reason = None
         if not is_registered:
             if not service_supports_delivery_mode(s.service, s.delivery_mode):
-                registration_block_reason = "Registration is unavailable for this delivery mode."
+                registration_block_reason = "This Delivery mode doesn't accept registrations."
             elif s.reg_opens_at and s.reg_opens_at > now:
                 registration_block_reason = "Registration has not opened yet."
             elif s.reg_closes_at and s.reg_closes_at < now:
@@ -644,7 +644,7 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
         raise APIError(
             403,
             "permission_denied",
-            "You do not have permission to view this group session.",
+            "You don't have permission to view this Group Session.",
         )
 
     session = (
@@ -654,7 +654,7 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
         .first()
     )
     if not session:
-        raise APIError(404, "group_session_not_found", "Group session not found.")
+        raise APIError(404, "group_session_not_found", "Group Session not found.")
 
     if not is_staff:
         has_reg = session.registrations.filter(student=user).exists()
@@ -664,7 +664,7 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
         if not has_reg and (
             session.status != GroupSessionStatus.PUBLISHED or not session.service.is_active
         ):
-            raise APIError(404, "group_session_not_found", "Group session not found.")
+            raise APIError(404, "group_session_not_found", "Group Session not found.")
         return _serialize_session(
             session,
             redact_for_unregistered=not has_reg,
@@ -672,7 +672,7 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
         )
 
     if not group_session_access(user, session).can_view:
-        raise APIError(404, "group_session_not_found", "Group session not found.")
+        raise APIError(404, "group_session_not_found", "Group Session not found.")
     return _serialize_session(session, actor=user)
 
 
@@ -872,7 +872,7 @@ def list_registrations(request: HttpRequest, session_id: uuid.UUID):
             .first()
         )
         if session is None:
-            raise APIError(404, "group_session_not_found", "Group session not found.")
+            raise APIError(404, "group_session_not_found", "Group Session not found.")
         try:
             access = require_group_session_access(
                 actor=actor,

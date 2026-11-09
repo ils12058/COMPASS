@@ -445,14 +445,14 @@ def test_student_media_consent_capability_is_explicit():
 def test_override_requires_a_reason_and_known_capability():
     sync_policy()
     user = make_user()
-    with pytest.raises(ValueError, match="reason is required"):
+    with pytest.raises(ValueError, match="Enter a reason for the Permission change"):
         set_user_capability_override(
             user=user,
             capability="accounts.view",
             effect=UserCapabilityOverride.Effect.GRANT,
             reason="   ",
         )
-    with pytest.raises(ValueError, match="unknown capability"):
+    with pytest.raises(ValueError, match="Choose a valid Permission"):
         set_user_capability_override(
             user=user,
             capability="not-in-policy",

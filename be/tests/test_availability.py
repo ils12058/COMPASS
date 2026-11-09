@@ -168,9 +168,9 @@ def test_weekly_validation_rejects_invalid_duplicate_and_semantic_overlap_but_al
     )
     assert len(adjacent) == 2
 
-    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+    with pytest.raises(InvalidAvailabilityInput, match="Start time must be before the End time"):
         normalize_weekly_windows([weekly(start=time(9), end=time(9))])
-    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+    with pytest.raises(InvalidAvailabilityInput, match="Start time must be before the End time"):
         normalize_weekly_windows([weekly(start=time(10), end=time(9))])
     with pytest.raises(InvalidAvailabilityInput, match="exact duplicates"):
         normalize_weekly_windows([weekly(), weekly()])
@@ -287,14 +287,14 @@ def test_exception_validation_requires_aware_ordered_ranges_and_bounded_reason()
     aware_start = datetime(2026, 9, 21, 8, tzinfo=ZoneInfo("Asia/Manila"))
     aware_end = datetime(2026, 9, 21, 9, tzinfo=ZoneInfo("Asia/Manila"))
 
-    with pytest.raises(InvalidAvailabilityInput, match="timezone-aware"):
+    with pytest.raises(InvalidAvailabilityInput, match="Enter valid start and end times"):
         create_office_exception(
             starts_at=datetime(2026, 9, 21, 8),
             ends_at=datetime(2026, 9, 21, 9),
             mode_scope="ALL",
             context=context(actor),
         )
-    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+    with pytest.raises(InvalidAvailabilityInput, match="Start time must be before the End time"):
         create_provider_exception(
             provider_id=provider.pk,
             starts_at=aware_end,
@@ -349,9 +349,9 @@ def test_new_unavailability_may_start_in_the_past_but_must_not_have_ended(scope)
     ):
         with pytest.raises(InvalidAvailabilityInput, match="must be in the future"):
             create(starts_at, ends_at)
-    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+    with pytest.raises(InvalidAvailabilityInput, match="Start time must be before the End time"):
         create(datetime(2026, 10, 9, 17, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
-    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+    with pytest.raises(InvalidAvailabilityInput, match="Start time must be before the End time"):
         create(datetime(2026, 10, 9, 8, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
 
     model = OfficeUnavailability if scope == "office" else ProviderUnavailability
@@ -535,7 +535,7 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
             start_date=date(2026, 9, 21),
             end_date=date(2026, 9, 22),
         )
-    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
+    with pytest.raises(AvailabilityNotApplicable, match="Counselor isn't available"):
         compute_base_availability(
             provider_id=goa.pk,
             service_id=service.pk,
@@ -899,7 +899,7 @@ def test_goa_legacy_schedule_is_non_operational_but_cleanup_compatible():
         mode_scope="ALL",
     )
 
-    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
+    with pytest.raises(AvailabilityNotApplicable, match="Counselor isn't available"):
         compute_base_availability(
             provider_id=goa.pk,
             service_id=service.pk,

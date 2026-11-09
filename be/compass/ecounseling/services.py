@@ -136,23 +136,21 @@ def _load_eligible_appointment(appointment_id: UUID) -> Appointment:
         counseling_service = get_counseling_service(require_active=True)
     except CounselingError as exc:
         raise ECounselingAppointmentNotEligible(
-            "The canonical COUNSELING Service is not available for E-Counseling."
+            "The Counseling Service isn't available for E-Counseling."
         ) from exc
     if appointment.service_id != counseling_service.pk:
         raise ECounselingAppointmentNotEligible(
-            "The Appointment does not use the canonical COUNSELING Service."
+            "The Appointment doesn't use the Counseling Service."
         )
     if appointment.delivery_mode != DeliveryMode.ONLINE:
-        raise ECounselingAppointmentNotEligible("The Appointment is not ONLINE Counseling.")
+        raise ECounselingAppointmentNotEligible("The Appointment isn't for E-Counseling.")
     if appointment.status != AppointmentStatus.SCHEDULED:
         raise ECounselingAppointmentNotEligible("The Appointment is not SCHEDULED.")
     # The saved ONLINE Appointment is the authority: removing ONLINE from the Service, changing
     # its provider coverage, or disabling booking later never denies it (ADR-089). Current
     # account rules still apply.
     if not appointment.provider.is_active or appointment.provider.role.code != "COUNSELOR":
-        raise ECounselingAppointmentNotEligible(
-            "The assigned provider is not currently an active Counselor."
-        )
+        raise ECounselingAppointmentNotEligible("The assigned Counselor is no longer active.")
     if not appointment.student.is_active or appointment.student.role.code != "STUDENT":
         raise ECounselingAppointmentNotEligible("The Appointment Student is not active.")
     return appointment
@@ -404,9 +402,7 @@ def _normalize_provider_room(
     expected_expiry_epoch: int,
 ) -> tuple[str | None, str]:
     if payload.get("name") != expected_name or payload.get("privacy") != "private":
-        raise ECounselingInvalidProviderResponse(
-            "Daily returned room metadata that does not match the expected private room."
-        )
+        raise ECounselingInvalidProviderResponse("Daily returned the wrong private room details.")
     if payload.get("api_created") is False:
         raise ECounselingInvalidProviderResponse(
             "Daily returned a room not created through the API."
@@ -441,12 +437,12 @@ def _normalize_provider_room(
 
 def _provider_failure(exc: Exception) -> ECounselingError:
     if isinstance(exc, (DailyUnavailable, DailyConfigurationError)):
-        return ECounselingProviderUnavailable("Daily is temporarily unavailable.")
+        return ECounselingProviderUnavailable("Couldn't prepare E-Counseling. Try again.")
     if isinstance(exc, DailyInvalidResponse):
-        return ECounselingInvalidProviderResponse("Daily returned an invalid provider response.")
+        return ECounselingInvalidProviderResponse("Couldn't prepare E-Counseling. Try again.")
     if isinstance(exc, DailyHTTPError):
-        return ECounselingProviderUnavailable("Daily could not complete the requested operation.")
-    return ECounselingRoomProvisioningFailed("The Daily room could not be provisioned.")
+        return ECounselingProviderUnavailable("Couldn't prepare E-Counseling. Try again.")
+    return ECounselingRoomProvisioningFailed("Couldn't prepare the E-Counseling room. Try again.")
 
 
 def _ensure_provider_room(
@@ -530,7 +526,7 @@ def create_join_credential(
         )
         if not is_current_student(actor):
             raise ECounselingCurrentStudentRequired(
-                "Current Student lifecycle is required to join E-Counseling."
+                "Current Student status is required to join E-Counseling."
             )
         participant_type = "STUDENT"
     elif actor.role.code == "COUNSELOR":
@@ -596,7 +592,7 @@ def create_join_credential(
         },
     )
     if room.daily_room_url is None:
-        raise ECounselingInvalidProviderResponse("Daily room URL is unavailable.")
+        raise ECounselingInvalidProviderResponse("Couldn't open the Daily room. Try again.")
     return JoinCredential(
         room=room,
         room_url=room.daily_room_url,
@@ -626,7 +622,7 @@ def process_daily_webhook(
     from .webhook_events import MAX_WEBHOOK_BYTES
 
     if len(raw_body) > MAX_WEBHOOK_BYTES:
-        raise ECounselingInvalidWebhook("Daily webhook payload exceeds the allowed size.")
+        raise ECounselingInvalidWebhook("The Daily webhook request is too large.")
 
     def unique_fields(pairs):
         value = {}
@@ -639,9 +635,11 @@ def process_daily_webhook(
     try:
         event = json.loads(raw_body.decode("utf-8"), object_pairs_hook=unique_fields)
     except (UnicodeDecodeError, ValueError, RecursionError):
-        raise ECounselingInvalidWebhook("Daily webhook payload is invalid JSON.") from None
+        raise ECounselingInvalidWebhook(
+            "The Daily webhook request contains invalid JSON."
+        ) from None
     if not isinstance(event, dict):
-        raise ECounselingInvalidWebhook("Daily webhook payload must be an object.")
+        raise ECounselingInvalidWebhook("The Daily webhook request must be a JSON object.")
     if event.get("test") == "test" and "type" not in event:
         return WebhookProcessingResult(accepted=True)
 

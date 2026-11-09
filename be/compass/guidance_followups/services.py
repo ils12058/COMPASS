@@ -162,7 +162,7 @@ def create_followup(
                 existing.visibility != FollowUpVisibility.OPERATIONAL
                 or not policy.in_operational_scope(actor, existing.student_id)
             ):
-                raise FollowUpNotFound("The Follow-Up is unavailable.")
+                raise FollowUpNotFound("Follow-Up not found.")
             policy.valid_student(existing.student_id)
             return existing
         _due(due_at, now=at)
@@ -229,7 +229,7 @@ def list_followups(
 ) -> FollowUpPage:
     actor = policy.current_actor(actor)
     if type(page) is not int or not 1 <= page <= MAX_PAGE:
-        raise FollowUpInvalid("The requested page is unavailable.")
+        raise FollowUpInvalid("Choose a valid page.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise FollowUpInvalid("Choose between 1 and 50 items per page.")
     if status is not None and status not in FollowUpStatus.values:
@@ -273,7 +273,7 @@ def _lock_for_mutation(*, actor, followup_id, expected_version, allow_recovery=F
         from .recovery import recoverable_queryset
 
         if not recoverable_queryset(actor=actor).filter(pk=item.pk).exists():
-            raise FollowUpNotFound("The follow-up is unavailable for reassignment.")
+            raise FollowUpNotFound("This Follow-Up can't be reassigned.")
     else:
         policy.require_followup(actor, item, manage=True)
     if item.version != expected_version:
@@ -467,7 +467,7 @@ def followup_detail(*, actor, item, history_page=1):
     actor = policy.current_actor(actor)
     policy.require_followup(actor, item)
     if type(history_page) is not int or not 1 <= history_page <= MAX_PAGE:
-        raise FollowUpInvalid("The history page is unavailable.")
+        raise FollowUpInvalid("Choose a valid History page.")
     offset = (history_page - 1) * 20
     rows = list(item.events.select_related("actor").order_by("revision")[offset : offset + 21])
     events = []

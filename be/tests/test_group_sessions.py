@@ -906,7 +906,7 @@ def test_group_session_student_eligibility_and_cancelled_attendance_guard(
     alumni.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     alumni.save(update_fields=["student_lifecycle_status"])
 
-    with pytest.raises(ValidationError, match="Current Student lifecycle is required"):
+    with pytest.raises(ValidationError, match="Current Student status is required"):
         register_student(session_id=session.id, student=alumni)
 
     # Current student registers then cancels -> attendance rejected on cancelled registration
@@ -1356,7 +1356,7 @@ def test_group_session_goa_and_supervisor_are_limited_to_direct_responsibility(
     assert published.status == GroupSessionStatus.PUBLISHED
     assert get_group_session_metrics(actor=counselor)["total_sessions"] == 1
     assert get_group_session_metrics(actor=other_counselor)["total_sessions"] == 0
-    with pytest.raises(ValidationError, match="Group session not found"):
+    with pytest.raises(ValidationError, match="Group Session not found"):
         complete_group_session(session_id=session.id, actor=other_counselor)
 
 

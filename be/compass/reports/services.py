@@ -55,18 +55,18 @@ PROFILE_METHODOLOGY = (
     "Year-Level-specific unless an authoritative source for that classification exists."
 )
 CURRENT_COVERAGE_NOTE = (
-    "Current Student Inventory Coverage compares active Student accounts with a Current "
-    "lifecycle status against their Inventory state for the selected Academic Year. Campus and "
+    "Current Student Inventory Coverage compares active Student accounts marked Current "
+    "against their Inventory state for the selected Academic Year. Campus and "
     "College coverage filters, when supplied, use each Student's current academic College "
     "placement rather than the Program recorded on the Inventory, so coverage and the profile "
     "population can count different Students. Program and Year Level do not classify Students "
     "without an Individual Inventory."
 )
 HISTORICAL_COVERAGE_NOTE = (
-    "Historical Academic Years can report existing submitted and draft Inventories within the "
-    "reporting scope, but authoritative Without Individual Inventory coverage cannot be "
-    "reconstructed because COMPASS has no historical enrollment or eligibility roster for that "
-    "Academic Year. Today's Current Students are never used as a historical denominator."
+    "Historical Academic Years can report existing submitted and draft Inventories available "
+    "to you, but COMPASS can't determine authoritative Without Individual Inventory coverage "
+    "because it has no historical enrollment roster for that Academic Year. Today's Current "
+    "Students are never used as a historical denominator."
 )
 PLACEMENT_PRECEDENCE_NOTE = (
     "Student College affiliation is taken from the Student's current academic placement. The "
@@ -130,7 +130,7 @@ def parent_income_bracket_legend() -> list[tuple[str, str]]:
 PARENT_INCOME_LEGEND_NOTE = (
     "Combined annual income is the Father's plus the Mother's reported annual income for the "
     "previous year; Spouse income is excluded and a parent with no income contributes ₱0. The "
-    "brackets follow the existing Guidance and Counseling Office Student Profiling reference and "
+    "brackets follow the existing Guidance Office Student Profiling reference and "
     "are applied exactly as defined there."
 )
 
@@ -195,7 +195,7 @@ def _active_scope_college_ids(access_scope: ReportAccessScope) -> tuple[UUID, ..
         .values_list("pk", flat=True)
     )
     if not active_ids:
-        raise ReportAccessDenied("No active Counselor report scope is assigned.")
+        raise ReportAccessDenied("No active Colleges are assigned for reporting.")
     return active_ids
 
 
@@ -205,15 +205,15 @@ def resolve_report_access_scope(actor: User) -> ReportAccessScope:
         or not actor.is_active
         or not actor.has_capability("reports.view")
     ):
-        raise ReportAccessDenied("Aggregate report access is required.")
+        raise ReportAccessDenied("You don't have permission to view reports.")
     if actor.role.code != "COUNSELOR":
-        raise ReportAccessDenied("The authenticated actor has no supported report resource scope.")
+        raise ReportAccessDenied("You don't have permission to view reports for this account.")
 
     if is_head_guidance(actor):
         return GLOBAL_REPORT_ACCESS_SCOPE
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
-        raise ReportAccessDenied("No active Counselor report scope is assigned.")
+        raise ReportAccessDenied("No active Colleges are assigned for reporting.")
     return ReportAccessScope(is_global=False, college_ids=scope.college_ids)
 
 
@@ -273,17 +273,17 @@ def _scope_projection(access_scope: ReportAccessScope) -> ReportScopeProjection:
 def _report_access_scope_note(access_scope: ReportAccessScope) -> str:
     college_ids = _active_scope_college_ids(access_scope)
     if college_ids is None:
-        return "Reporting scope: institution-wide."
+        return "Report coverage: all Campuses and Colleges."
     labels = list(
         College.objects.filter(pk__in=college_ids)
         .order_by("campus__code", "code")
         .values_list("code", "name")
     )
     return (
-        "Reporting scope: limited to Counselor-assigned Colleges — "
+        "Report coverage: Counselor-assigned Colleges — "
         + "; ".join(f"{code} ({name})" for code, name in labels)
         + ". Inventories recorded under other Colleges, or without a recorded Program, are "
-        "outside this scope."
+        "not included."
     )
 
 
@@ -296,13 +296,9 @@ def _enforce_report_filter_scope(
         return
     allowed = set(college_ids)
     if filters.college is not None and filters.college.pk not in allowed:
-        raise ReportAccessDenied(
-            "The requested report is outside the authenticated actor's report scope."
-        )
+        raise ReportAccessDenied("You don't have access to reports for the selected College.")
     if filters.program is not None and filters.program.college_id not in allowed:
-        raise ReportAccessDenied(
-            "The requested report is outside the authenticated actor's report scope."
-        )
+        raise ReportAccessDenied("You don't have access to reports for the selected Program.")
     if (
         filters.campus is not None
         and not College.objects.filter(
@@ -312,9 +308,7 @@ def _enforce_report_filter_scope(
             campus__is_active=True,
         ).exists()
     ):
-        raise ReportAccessDenied(
-            "The requested report is outside the authenticated actor's report scope."
-        )
+        raise ReportAccessDenied("You don't have access to reports for the selected Campus.")
 
 
 @dataclass(frozen=True, slots=True)

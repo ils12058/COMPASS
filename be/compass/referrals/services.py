@@ -211,7 +211,7 @@ def _validate_operational_actor(actor: User) -> None:
         or not actor.is_active
         or actor.role.code not in OPERATIONAL_ROLES
     ):
-        raise ReferralNotPermitted("Active Guidance operational access is required.")
+        raise ReferralNotPermitted("You don't have permission to manage Referrals.")
 
 
 def _validate_student(student: User | None) -> User:
@@ -298,12 +298,12 @@ def _normalize_received_at(
     if value is None:
         return None
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidReferralInput("received_at must be a timezone-aware datetime.")
+        raise InvalidReferralInput("Enter a valid Received date and time.")
     normalized = to_institution_time(value)
     if normalized > now:
-        raise InvalidReferralInput("received_at cannot be in the future.")
+        raise InvalidReferralInput("The Received time can't be in the future.")
     if normalized.date() < referred_on:
-        raise InvalidReferralInput("received_at cannot be earlier than referred_on.")
+        raise InvalidReferralInput("The Received time can't be before the Referred date.")
     return normalized
 
 
@@ -314,14 +314,14 @@ def _normalize_occurred_at(
     now: datetime,
 ) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidReferralInput("occurred_at must be a timezone-aware datetime.")
+        raise InvalidReferralInput("Enter a valid Action date and time.")
     normalized = to_institution_time(value)
     if normalized > now:
-        raise InvalidReferralInput("occurred_at cannot be in the future.")
+        raise InvalidReferralInput("The Action time can't be in the future.")
     if referral.received_at is not None and normalized < referral.received_at:
-        raise InvalidReferralInput("occurred_at cannot be earlier than received_at.")
+        raise InvalidReferralInput("The Action time can't be before the Received time.")
     if referral.received_at is None and normalized.date() < referral.referred_on:
-        raise InvalidReferralInput("occurred_at cannot be earlier than referred_on.")
+        raise InvalidReferralInput("The Action time can't be before the Referred date.")
     return normalized
 
 
@@ -402,7 +402,7 @@ def create_referral(
     if timezone.is_naive(current):
         raise InvalidReferralInput("The server creation time must be timezone-aware.")
     if source_date > institution_today(current):
-        raise InvalidReferralInput("referred_on cannot be in the future.")
+        raise InvalidReferralInput("The Referred date can't be in the future.")
     normalized_received_at = _normalize_received_at(
         received_at,
         referred_on=source_date,
@@ -443,7 +443,7 @@ def create_referral(
         student = _validate_student(student)
         if not _student_in_scope(locked_actor, student.pk):
             raise ReferralNotPermitted(
-                "The selected Student is outside the authenticated Guidance actor's Referral scope."
+                "You don't have permission to create a Referral for the selected Student."
             )
 
         revision = _active_referral_revision()
@@ -546,7 +546,7 @@ def list_referrals(
     if to_date is not None:
         _validate_date(to_date, "to_date")
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise InvalidReferralInput("from_date must not be after to_date.")
+        raise InvalidReferralInput("The From date can't be after the To date.")
     term = _clean_search(search)
 
     qs = _scope_queryset(_queryset(), actor)
@@ -820,7 +820,7 @@ def record_action(
         action_type.value if isinstance(action_type, ReferralActionType) else action_type
     )
     if normalized_type not in ReferralActionType.values:
-        raise InvalidReferralInput("action_type is not supported.")
+        raise InvalidReferralInput("Choose a valid Referral action.")
     cleaned_remarks = _clean_optional(remarks, "remarks", MAX_REMARKS_LENGTH)
     current = now or timezone.now()
     if timezone.is_naive(current):
@@ -878,9 +878,7 @@ def ensure_call_slip_action(
             if occurred_at is None and remarks is None:
                 return referral, existing, False
             if occurred_at is None:
-                raise InvalidReferralInput(
-                    "action.occurred_at is required when action input is supplied."
-                )
+                raise InvalidReferralInput("Enter the Action date and time.")
             normalized_occurred, cleaned_remarks = _normalize_action_values(
                 referral=referral,
                 occurred_at=occurred_at,

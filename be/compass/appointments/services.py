@@ -258,7 +258,7 @@ class AppointmentHistoryEntry:
 def _normalized_delivery_mode(value: str | DeliveryMode) -> str:
     normalized = value.value if isinstance(value, DeliveryMode) else value
     if normalized not in DeliveryMode.values:
-        raise InvalidAppointmentInput("delivery_mode must be IN_PERSON or ONLINE")
+        raise InvalidAppointmentInput("Choose In person or E-Counseling as the Delivery mode.")
     return str(normalized)
 
 
@@ -267,7 +267,7 @@ def _normalized_status(value: str | AppointmentStatus | None) -> str | None:
         return None
     normalized = value.value if isinstance(value, AppointmentStatus) else value
     if normalized not in AppointmentStatus.values:
-        raise InvalidAppointmentInput("status must be SCHEDULED, CANCELLED, COMPLETED, or NO_SHOW")
+        raise InvalidAppointmentInput("Choose a valid Appointment status.")
     return str(normalized)
 
 
@@ -302,7 +302,7 @@ def _ordering_fields(ordering: AppointmentListOrdering) -> tuple[str, str, str]:
 
 def _pagination(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
-        raise InvalidAppointmentInput("page must be a positive integer")
+        raise InvalidAppointmentInput("Page must be a positive number.")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise InvalidAppointmentInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     return page, page_size
@@ -310,7 +310,7 @@ def _pagination(page: int, page_size: int) -> tuple[int, int]:
 
 def _aware_start(value: datetime) -> datetime:
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidAppointmentInput("starts_at must be a timezone-aware datetime")
+        raise InvalidAppointmentInput("Enter a valid Appointment start date and time.")
     return value.astimezone(institution_zone())
 
 
@@ -332,11 +332,11 @@ def _date_bounds(
     from_date: date | None, to_date: date | None
 ) -> tuple[datetime | None, datetime | None]:
     if from_date is not None and not isinstance(from_date, date):
-        raise InvalidAppointmentInput("from_date must be a date")
+        raise InvalidAppointmentInput("Enter a valid From date.")
     if to_date is not None and not isinstance(to_date, date):
-        raise InvalidAppointmentInput("to_date must be a date")
+        raise InvalidAppointmentInput("Enter a valid To date.")
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise InvalidAppointmentInput("from_date must not be after to_date")
+        raise InvalidAppointmentInput("The From date can't be after the To date.")
     zone = institution_zone()
     start = datetime.combine(from_date, time.min, tzinfo=zone) if from_date else None
     end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=zone) if to_date else None
@@ -603,7 +603,7 @@ def _resolve_booking_provider(student: User, provider_id: UUID | None) -> User:
     resolution = resolve_default_counselor_for_student(student)
     if resolution.counselor is None:
         raise AppointmentDefaultProviderUnresolved(
-            "A default Counselor could not be resolved for this Student."
+            "Couldn't find a Counselor for this Student. Contact the Guidance Office."
         )
     return resolution.counselor
 
@@ -619,7 +619,7 @@ def _validate_booking_users(student: User, provider: User) -> None:
     if not student.is_active or student.role.code != "STUDENT":
         raise AppointmentNotSchedulable("Only an active Student can create this Appointment.")
     if not provider.is_active or provider.role.code != "COUNSELOR":
-        raise AppointmentNotSchedulable("The selected provider must be an active Counselor.")
+        raise AppointmentNotSchedulable("Choose an active Counselor.")
 
 
 def _validate_default_provider_still_current(student: User, provider: User) -> None:
@@ -751,11 +751,11 @@ def list_bookable_slots(
 ) -> BookableSlotList:
     if not is_current_student(student):
         raise AppointmentCurrentStudentRequired(
-            "Current Student lifecycle is required to discover bookable Appointment times."
+            "Only current Students can view bookable Appointment times."
         )
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     provider = User.objects.select_related("role").filter(pk=provider_id).first()
     if provider is None:
@@ -826,9 +826,7 @@ def _validate_current_scheduling(*, service: Service, delivery_mode: str) -> Non
     """
 
     if not service.is_active or not service_accepts_appointments(service):
-        raise AppointmentNotSchedulable(
-            "The Appointment Service is no longer operationally schedulable."
-        )
+        raise AppointmentNotSchedulable("This Service no longer accepts Appointments.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise AppointmentNotSchedulable(
             "The Service no longer supports the Appointment delivery mode."
@@ -843,7 +841,7 @@ def _validate_existing_service(
 ) -> None:
     _validate_current_scheduling(service=service, delivery_mode=delivery_mode)
     if not provider.is_active or provider.role.code != "COUNSELOR":
-        raise AppointmentNotSchedulable("The assigned provider is no longer an active Counselor.")
+        raise AppointmentNotSchedulable("The assigned Counselor is no longer active.")
     if not service_counselor_eligible(service, provider):
         raise AppointmentNotSchedulable(
             "The assigned Counselor is no longer eligible for this Service."
@@ -895,7 +893,7 @@ def create_student_appointment(
 ) -> Appointment:
     if not is_current_student(student):
         raise AppointmentCurrentStudentRequired(
-            "Current Student lifecycle is required to create a new Appointment."
+            "Only current Students can create a new Appointment."
         )
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     normalized_start = _aware_start(starts_at)
@@ -911,7 +909,7 @@ def create_student_appointment(
         _validate_booking_users(locked_student, locked_provider)
         if not is_current_student(locked_student):
             raise AppointmentCurrentStudentRequired(
-                "Current Student lifecycle is required to create a new Appointment."
+                "Only current Students can create a new Appointment."
             )
         if provider_id is None:
             _validate_default_provider_still_current(locked_student, locked_provider)
@@ -1135,7 +1133,7 @@ def list_reschedule_slots(
 ) -> BookableSlotList:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     item = _appointment_queryset().filter(pk=appointment_id).first()
     if item is None:
         raise AppointmentNotFound("The requested Appointment was not found.")
@@ -1152,7 +1150,7 @@ def list_reschedule_slots(
             raise AppointmentNotFound("The requested Appointment was not found.")
         if not is_current_student(actor):
             raise AppointmentCurrentStudentRequired(
-                "Current Student lifecycle is required to reschedule an Appointment."
+                "Only current Students can reschedule an Appointment."
             )
 
     _require_scheduled_before_start(item, now=current)
@@ -1210,7 +1208,7 @@ def reschedule_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     normalized_start = _aware_start(starts_at)
     if normalized_start <= current.astimezone(institution_zone()):
         raise AppointmentNotSchedulable("Appointments must start in the future.")
@@ -1247,7 +1245,7 @@ def reschedule_appointment(
         locked_provider = participants[item.provider_id]
         if not administrative and not is_current_student(locked_student):
             raise AppointmentCurrentStudentRequired(
-                "Current Student lifecycle is required to reschedule an Appointment."
+                "Only current Students can reschedule an Appointment."
             )
 
         if not administrative and item.cancellation_cutoff_minutes is not None:
@@ -1405,7 +1403,7 @@ def reassign_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     cleaned_reason = _clean_change_reason(reason, required=True)
 
     with transaction.atomic():
@@ -1524,7 +1522,7 @@ def list_reassignment_candidates(
 ) -> tuple[AppointmentReassignmentCandidate, ...]:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     item = _appointment_queryset().filter(pk=appointment_id).first()
     if item is None:
         raise AppointmentNotFound("The requested Appointment was not found.")
@@ -1573,7 +1571,7 @@ def complete_appointment(
 ) -> Appointment:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     with transaction.atomic():
         item = (
             Appointment.objects.select_for_update(of=("self",))
@@ -1598,8 +1596,7 @@ def complete_appointment(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
             raise AppointmentECounselingAccessOpen(
-                "This Appointment cannot be completed while the online counseling "
-                "access period is still open."
+                "This Appointment can't be completed while the E-Counseling access period is open."
             )
         item.status = AppointmentStatus.COMPLETED
         item.completed_at = current
@@ -1628,7 +1625,7 @@ def mark_appointment_no_show(
 ) -> Appointment:
     current = now or timezone.now()
     if timezone.is_naive(current):
-        raise InvalidAppointmentInput("The server time must be timezone-aware.")
+        raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     with transaction.atomic():
         item = (
             Appointment.objects.select_for_update(of=("self",))
@@ -1655,8 +1652,8 @@ def mark_appointment_no_show(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state == ECounselingJoinState.OPEN:
             raise AppointmentECounselingAccessOpen(
-                "This Appointment cannot be marked NO_SHOW while the online counseling "
-                "rejoin period is still open."
+                "This Appointment can't be marked as No-show while the E-Counseling rejoin "
+                "period is open."
             )
 
         from compass.counseling.models import CounselingEncounter
@@ -1759,7 +1756,7 @@ def list_eligible_counselors(
     normalized_mode = _normalized_delivery_mode(delivery_mode)
     if not is_current_student(student):
         raise AppointmentCurrentStudentRequired(
-            "Current Student lifecycle is required to discover booking Counselors."
+            "Only current Students can view booking Counselors."
         )
     service = Service.objects.filter(pk=service_id).first()
     if service is None or not service.is_active:
@@ -1934,7 +1931,7 @@ def validate_role_transition(
     if user.role.code in PROVIDER_ROLE_CODES and new_role_code not in PROVIDER_ROLE_CODES:
         if Appointment.objects.filter(future_scheduled, provider_id=user.pk).exists():
             raise AppointmentRoleTransitionConflict(
-                "Resolve the provider's active or future Appointments before changing role."
+                "Resolve the Counselor's active or future Appointments before changing the Role."
             )
     if user.role.code == "STUDENT" and new_role_code != "STUDENT":
         if Appointment.objects.filter(future_scheduled, student_id=user.pk).exists():

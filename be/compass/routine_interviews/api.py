@@ -341,7 +341,9 @@ def _context(request) -> AuditContext:
 def _require_student(request, capability: str) -> None:
     actor = request.auth_user
     if not actor.is_active or actor.role.code != "STUDENT" or not actor.has_capability(capability):
-        raise APIError(403, "permission_denied", "Student Routine Interview access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to use Routine Interviews."
+        )
 
 
 def _require_counselor(request, capability: str) -> None:
@@ -354,7 +356,7 @@ def _require_counselor(request, capability: str) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Assigned Counselor Routine Interview access is required.",
+            "You don't have permission to manage this Routine Interview.",
         )
 
 
@@ -400,13 +402,13 @@ def _raise(exc: Exception) -> NoReturn:
         raise APIError(
             500,
             "routine_interview_content_unavailable",
-            "The Routine Interview content is unavailable.",
+            "Couldn't load the Routine Interview. Try again.",
         ) from exc
     if isinstance(exc, RoutineInterviewError):
         raise APIError(
             500,
             "internal_error",
-            "The Routine Interview operation could not be completed.",
+            "Couldn't complete the Routine Interview change. Try again.",
         ) from exc
     raise exc
 

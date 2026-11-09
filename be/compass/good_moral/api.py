@@ -365,13 +365,22 @@ def _context(request) -> AuditContext:
 def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT" or not user.has_capability(capability):
-        raise APIError(403, "permission_denied", "Student Good Moral access is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to manage your Good Moral Certificate request.",
+        )
 
 
 def _require_counselor(request, capability: str) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "COUNSELOR" or not user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = (
+            "issue Good Moral Certificates"
+            if capability == "good_moral.issue"
+            else "manage Good Moral Certificate requests"
+        )
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
 
 
 def _require_operational(request, capability: str) -> None:
@@ -381,7 +390,17 @@ def _require_operational(request, capability: str) -> None:
         or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not user.has_capability(capability)
     ):
-        raise APIError(403, "permission_denied", "Guidance Good Moral access is required.")
+        actions = {
+            "good_moral.initiate": "start Good Moral Certificate requests",
+            "good_moral.view": "view Good Moral Certificate requests",
+            "good_moral.prepare": "prepare Good Moral Certificates",
+            "good_moral.verify_receipt": "verify Official Receipts",
+        }
+        raise APIError(
+            403,
+            "permission_denied",
+            f"You don't have permission to {actions[capability]}.",
+        )
 
 
 def _raise(exc: GoodMoralError) -> NoReturn:
@@ -434,7 +453,7 @@ def _raise(exc: GoodMoralError) -> NoReturn:
     if isinstance(exc, InvalidGoodMoralInput):
         raise APIError(422, "invalid_good_moral_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Good Moral operation could not be completed."
+        500, "internal_error", "Couldn't complete the Good Moral Certificate change. Try again."
     ) from exc
 
 
@@ -629,8 +648,8 @@ def _pdf_response(
             503,
             "release_audit_unavailable",
             (
-                "The certificate could not be released because its required privacy audit "
-                "is unavailable."
+                "Couldn't release the Good Moral Certificate because its privacy check failed. "
+                "Try again."
             ),
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
@@ -663,7 +682,11 @@ def _require_degree_options_access(request) -> None:
         )
     ):
         return
-    raise APIError(403, "permission_denied", "Good Moral degree suggestions are unavailable.")
+    raise APIError(
+        403,
+        "permission_denied",
+        "You don't have permission to view Good Moral Certificate degree suggestions.",
+    )
 
 
 # Static operational routes precede UUID detail routes.

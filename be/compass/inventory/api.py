@@ -613,7 +613,9 @@ def _require_student(request, capability: str) -> None:
     user = request.auth_user
     if user.role.code != "STUDENT" or not user.has_capability(capability):
         raise APIError(
-            403, "permission_denied", "Student Inventory self-service access is required."
+            403,
+            "permission_denied",
+            "You don't have permission to manage your Individual Inventory.",
         )
 
 
@@ -623,7 +625,7 @@ def _require_counselor(request, capability: str) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Counselor Individual Inventory authority is required.",
+            "You don't have permission to manage Individual Inventories.",
         )
 
 
@@ -658,7 +660,7 @@ def _raise(exc: InventoryError) -> NoReturn:
     if isinstance(exc, InvalidInventoryInput):
         raise APIError(422, "inventory_invalid", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Inventory operation could not be completed."
+        500, "internal_error", "Couldn't complete the Individual Inventory change. Try again."
     ) from exc
 
 
@@ -681,8 +683,8 @@ def _pdf_response(item, *, context: AuditContext, access_mode: str) -> HttpRespo
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The Individual Inventory could not be released because its required "
-            "privacy audit is unavailable.",
+            "Couldn't release the Individual Inventory because its privacy check failed. "
+            "Try again.",
         ) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = institutional_pdf_content_disposition(

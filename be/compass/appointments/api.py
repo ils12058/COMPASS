@@ -392,13 +392,22 @@ def _context(request) -> AuditContext:
 
 def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        actions = {
+            "appointments.manage_self": "manage your Appointments",
+            "appointments.view_self": "view your Appointments",
+            "appointments.manage": "manage Appointments",
+        }
+        raise APIError(
+            403,
+            "permission_denied",
+            f"You don't have permission to {actions[capability]}.",
+        )
 
 
 def _require_student_self_management(request) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT":
-        raise APIError(403, "permission_denied", "Active Student self-service is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to book Appointments.")
     _require(request, "appointments.manage_self")
 
 
@@ -436,7 +445,7 @@ def _raise(exc: AppointmentError) -> NoReturn:
     if isinstance(exc, (AppointmentNotSchedulable, AppointmentReferenceConflict)):
         raise APIError(409, "appointment_not_schedulable", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Appointment operation could not be completed."
+        500, "internal_error", "Couldn't complete the Appointment change. Try again."
     ) from exc
 
 
@@ -512,7 +521,7 @@ def _complete_or_503(store, reservation, response: HttpResponse) -> None:
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The booking replay boundary could not be completed safely.",
+            "Couldn't confirm the Appointment booking. Try again.",
         ) from exc
 
 
@@ -523,14 +532,16 @@ def _abandon_or_503(store, reservation) -> None:
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The booking replay boundary could not be released safely.",
+            "Couldn't finish the Appointment booking. Try again.",
         ) from exc
 
 
 def _require_reminder_manager(request, *, recent_mfa: bool = False):
     user = request.auth_user
     if not user.is_active or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}:
-        raise APIError(403, "permission_denied", "Appointment management access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to manage Appointments."
+        )
     _require(request, "appointments.manage")
     if recent_mfa:
         # Authorization first, so an unauthorized actor learns nothing about step-up state.
@@ -576,7 +587,7 @@ def appointments_preview_reminders(request, payload: AppointmentReminderSelectio
         }
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
@@ -599,7 +610,7 @@ def appointments_send_reminders(request, payload: AppointmentReminderBulkRequest
         )
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
@@ -622,7 +633,7 @@ def appointments_send_reminder(request, appointment_id: UUID, payload: Appointme
         )
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
@@ -640,7 +651,7 @@ def appointments_list_reminders(request, appointment_id: UUID):
         rows = reminder_history(actor=request.auth_user, appointment_id=appointment_id)
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     if rows is None:
         # Same concealment as a missing Appointment: no existence or scope oracle.
@@ -677,7 +688,7 @@ def appointments_list_upcoming_reminders(
         )
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_request", str(exc)) from exc
@@ -735,7 +746,7 @@ def appointments_list_reminder_activity(
         )
     except PermissionError as exc:
         raise APIError(
-            403, "permission_denied", "Appointment management access is required."
+            403, "permission_denied", "You don't have permission to manage Appointment reminders."
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_request", str(exc)) from exc
@@ -810,12 +821,14 @@ def appointments_list_booking_services(
 ):
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT":
-        raise APIError(403, "permission_denied", "Active Student booking access is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to book Appointments.")
     if not (
         user.has_capability("appointments.view_self")
         or user.has_capability("appointments.manage_self")
     ):
-        raise APIError(403, "permission_denied", "Appointment self-service access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to manage your Appointments."
+        )
     try:
         result = list_booking_services(search=search, page=page, page_size=page_size)
     except AppointmentError as exc:
@@ -841,12 +854,14 @@ def appointments_list_eligible_counselors(
 ):
     user = request.auth_user
     if not user.is_active or user.role.code != "STUDENT":
-        raise APIError(403, "permission_denied", "Active Student booking access is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to book Appointments.")
     if not (
         user.has_capability("appointments.view_self")
         or user.has_capability("appointments.manage_self")
     ):
-        raise APIError(403, "permission_denied", "Appointment self-service access is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to manage your Appointments."
+        )
     try:
         rows = list_eligible_counselors(
             student=user,
@@ -959,7 +974,7 @@ def appointments_create_my(
         raise APIError(
             503,
             "idempotency_unavailable",
-            "The booking replay boundary is temporarily unavailable.",
+            "Couldn't confirm the Appointment booking. Try again.",
         ) from exc
 
     if decision.outcome == "replay":

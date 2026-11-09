@@ -478,7 +478,7 @@ def test_destination_rules_report_at_history_and_snapshots_are_source_faithful()
     assert future.destination_type == CallSlipDestinationType.GUIDANCE_OFFICE
     assert future.other_destination == ""
 
-    with pytest.raises(InvalidCallSlipInput, match="must be empty"):
+    with pytest.raises(InvalidCallSlipInput, match="Leave Other destination blank"):
         create_for(
             head,
             student,
@@ -486,7 +486,7 @@ def test_destination_rules_report_at_history_and_snapshots_are_source_faithful()
             fingerprint="c" * 64,
             other_destination="Unexpected",
         )
-    with pytest.raises(InvalidCallSlipInput, match="required for OTHER"):
+    with pytest.raises(InvalidCallSlipInput, match="Enter the Other destination"):
         create_for(
             head,
             student,
@@ -495,7 +495,7 @@ def test_destination_rules_report_at_history_and_snapshots_are_source_faithful()
             destination_type="OTHER",
             other_destination="   ",
         )
-    with pytest.raises(InvalidCallSlipInput, match="timezone-aware"):
+    with pytest.raises(InvalidCallSlipInput, match="valid Report date and time"):
         create_for(
             head,
             student,
@@ -549,7 +549,7 @@ def test_referral_link_requires_scope_same_student_action_and_one_to_one():
         fingerprint="a" * 64,
     )
 
-    with pytest.raises(CallSlipReferralConflict, match="does not record"):
+    with pytest.raises(CallSlipReferralConflict, match="Record permission to send a Call Slip"):
         create_for(
             counselor_a,
             student_a,
@@ -847,7 +847,7 @@ def test_interview_end_is_aware_nonfuture_immutable_and_instant_idempotent():
             context=audit_context(head),
             now=now,
         )
-    with pytest.raises(InvalidCallSlipInput, match="timezone-aware"):
+    with pytest.raises(InvalidCallSlipInput, match="valid Interview end date and time"):
         record_interview_ended(
             actor=head,
             call_slip_id=create_for(

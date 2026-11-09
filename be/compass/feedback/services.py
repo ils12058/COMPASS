@@ -392,12 +392,12 @@ def _lock_owned_opportunity(
 
 def _normalize_services(raw: object) -> list[str]:
     if not isinstance(raw, (list, tuple)) or not raw:
-        raise InvalidFeedbackInput("services_received must contain at least one source service.")
+        raise InvalidFeedbackInput("Choose at least one Service received.")
     normalized: list[str] = []
     for item in raw:
         value = _choice(item, set(CustomerFeedbackService.values), "services_received")
         if value in normalized:
-            raise InvalidFeedbackInput("services_received must not contain duplicate values.")
+            raise InvalidFeedbackInput("Choose each Service received only once.")
         normalized.append(value)
     return normalized
 
@@ -408,13 +408,13 @@ def _normalize_customer_feedback(values: dict[str, object]) -> dict[str, object]
         values.get("other_service", ""), "other_service", 255, required=False
     )
     if CustomerFeedbackService.OTHER in services and not other_service:
-        raise InvalidFeedbackInput("other_service is required when OTHER is selected.")
+        raise InvalidFeedbackInput("Enter the Other Service received.")
     if CustomerFeedbackService.OTHER not in services and other_service:
-        raise InvalidFeedbackInput("other_service must be blank unless OTHER is selected.")
+        raise InvalidFeedbackInput("Clear Other Service unless Other is selected.")
 
     talked = values.get("talked_to_guidance_counselor")
     if type(talked) is not bool:
-        raise InvalidFeedbackInput("talked_to_guidance_counselor must be true or false.")
+        raise InvalidFeedbackInput("Choose whether you talked to a Guidance Counselor.")
     raw_accommodated = values.get("accommodated_by")
     accommodated = (
         ""
@@ -426,12 +426,10 @@ def _normalize_customer_feedback(values: dict[str, object]) -> dict[str, object]
         )
     )
     if talked and accommodated:
-        raise InvalidFeedbackInput(
-            "accommodated_by must be blank when the Guidance Counselor was reached."
-        )
+        raise InvalidFeedbackInput("Clear Accommodated by when the Guidance Counselor was reached.")
     if not talked and not accommodated:
         raise InvalidFeedbackInput(
-            "accommodated_by is required when the Guidance Counselor was not reached."
+            "Choose Accommodated by when the Guidance Counselor was not reached."
         )
 
     normalized: dict[str, object] = {
@@ -524,7 +522,7 @@ def create_customer_feedback(
         normalized = _normalize_customer_feedback(values)
         if opportunity.service_kind not in normalized["services_received"]:
             raise InvalidFeedbackInput(
-                "services_received must include the service for this Feedback opportunity."
+                "Services received must include the Service for this Feedback form."
             )
         private = {name: normalized.pop(name) for name in FIELDS["CustomerFeedbackResponse"]}
         item = CustomerFeedbackResponse(form_revision=revision, **normalized)

@@ -468,9 +468,8 @@ def test_activity_relationships_and_current_authority(world, actor):
     def descriptions(user):
         return [row.description for row in get_my_activity(user).items]
 
-    assert (
-        "The Guidance and Counseling Office started a Good Moral request for you."
-        in descriptions(world["student"])
+    assert "The Guidance Office started a Good Moral Certificate request for you." in descriptions(
+        world["student"]
     )
     assert "You started a Good Moral request for a Student." in descriptions(world[actor])
     for key in ["other", "unrelated", "it", "dpo"]:

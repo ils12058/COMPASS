@@ -156,20 +156,32 @@ def _context(request) -> AuditContext:
 
 def _require(request, capability: str) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        action = {
+            "availability.view": "view Counselor Availability",
+            "availability.manage": "manage Counselor Availability",
+        }[capability]
+        raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
 
 
 def _require_self_read(request) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "COUNSELOR":
-        raise APIError(403, "permission_denied", "Counselor self-service is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to view your Counselor Availability.",
+        )
     _require(request, "availability.view")
 
 
 def _require_self_mutation(request) -> None:
     user = request.auth_user
     if not user.is_active or user.role.code != "COUNSELOR":
-        raise APIError(403, "permission_denied", "Counselor self-service is required.")
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to manage your Counselor Availability.",
+        )
     if not (
         user.has_capability("availability.manage_self")
         or user.has_capability("availability.manage")
@@ -177,7 +189,7 @@ def _require_self_mutation(request) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "The availability.manage_self or availability.manage capability is required.",
+            "You don't have permission to manage your Counselor Availability.",
         )
 
 
@@ -191,7 +203,7 @@ def _raise(exc: AvailabilityError) -> NoReturn:
     if isinstance(exc, AvailabilityConflict):
         raise APIError(409, "availability_conflict", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Availability operation could not be completed."
+        500, "internal_error", "Couldn't complete the Availability change. Try again."
     ) from exc
 
 

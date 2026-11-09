@@ -268,7 +268,11 @@ def _raise_slot_error(exc: Exception) -> NoReturn:
         raise APIError(409, "appointment_conflict", str(exc)) from exc
     if isinstance(exc, FixedSlotError):
         raise APIError(400, "invalid_slot_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The fixed slot operation failed.") from exc
+    raise APIError(
+        500,
+        "internal_error",
+        "Couldn't complete the Appointment slot change. Try again.",
+    ) from exc
 
 
 def _slot_response(slot, *, actor=None) -> dict[str, object]:
@@ -315,7 +319,16 @@ def _context(request) -> AuditContext:
 
 def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not request.auth_user.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        actions = {
+            "services.catalog.view": "view the Service Catalog",
+            "services.manage": "manage the Service Catalog",
+            "appointments.manage": "manage Appointment scheduling",
+        }
+        raise APIError(
+            403,
+            "permission_denied",
+            f"You don't have permission to {actions[capability]}.",
+        )
     if recent_mfa:
         require_recent_mfa_for_request(request)
 
@@ -351,7 +364,7 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
     if isinstance(exc, InvalidServiceCatalogInput):
         raise APIError(422, "invalid_service_catalog_request", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The Service Catalog operation could not be completed."
+        500, "internal_error", "Couldn't complete the Service Catalog change. Try again."
     ) from exc
 
 
@@ -625,7 +638,7 @@ def _require_slot_management(request, *, recent_mfa: bool = False) -> None:
         raise APIError(
             403,
             "permission_denied",
-            "Guidance staff authority with appointments.manage capability is required.",
+            "You don't have permission to manage Appointment slots.",
         )
     if recent_mfa:
         require_recent_mfa_for_request(request)
@@ -638,7 +651,11 @@ def _require_student_slot_access(request, capability: str) -> None:
         raise APIError(
             403,
             "permission_denied",
-            f"Student authority with {capability} capability is required.",
+            (
+                "You don't have permission to book this Appointment slot."
+                if capability == "appointments.manage_self"
+                else "You don't have permission to view Appointment slots."
+            ),
         )
 
 

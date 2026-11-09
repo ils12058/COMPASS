@@ -18,11 +18,11 @@ MAX_OUTCOME = 4000
 def _keyring():
     value = getattr(settings, "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS", ())
     if not value:
-        raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.")
+        raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.")
     try:
         return crypto.parse_fernet_keyring(value, setting="GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS")
     except ValueError:
-        raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.") from None
+        raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.") from None
 
 
 def _text(value, label, limit, *, required=False):
@@ -61,7 +61,7 @@ def encrypt_text(followup_id, section, text, *, event_id=None, required=False):
             payload={"text": validated},
         )
     except ConfidentialDataUnavailable:
-        raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.") from None
+        raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.") from None
 
 
 def decrypt_text(followup_id, section, token, *, event_id=None):
@@ -73,7 +73,7 @@ def decrypt_text(followup_id, section, token, *, event_id=None):
             binding=_binding(followup_id, section, event_id),
         )
         if set(payload) != {"text"}:
-            raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.")
+            raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.")
         limit = (
             MAX_DESCRIPTION
             if section == "description"
@@ -83,7 +83,7 @@ def decrypt_text(followup_id, section, token, *, event_id=None):
         )
         return _text(payload["text"], section, limit)
     except (ConfidentialDataUnavailable, FollowUpInvalid, UnicodeError):
-        raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.") from None
+        raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.") from None
 
 
 def rotate_text(followup_id, section, token, *, event_id=None):

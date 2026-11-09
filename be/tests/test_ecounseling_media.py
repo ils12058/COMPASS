@@ -258,7 +258,7 @@ def test_consent_request_creates_only_local_room_binding_and_is_idempotent():
 @pytest.mark.django_db
 def test_consent_request_rejects_duplicates_retired_scopes_and_terminal_rerequest():
     _, student, counselor, appointment = setup_session()
-    with pytest.raises(ECounselingConsentConflict, match="Duplicate"):
+    with pytest.raises(ECounselingConsentConflict, match="Choose recording consent only once"):
         request_consents(
             counselor=counselor,
             appointment_id=appointment.pk,
@@ -266,7 +266,7 @@ def test_consent_request_rejects_duplicates_retired_scopes_and_terminal_rereques
             context=context(counselor),
         )
     for retired in ("LIVE_TRANSCRIPTION", "TRANSCRIPT_STORAGE", "SESSION_MEDIA_CAPTURE"):
-        with pytest.raises(ECounselingConsentConflict, match="not supported"):
+        with pytest.raises(ECounselingConsentConflict, match="supported recording option"):
             request_consents(
                 counselor=counselor,
                 appointment_id=appointment.pk,
@@ -287,7 +287,7 @@ def test_consent_request_rejects_duplicates_retired_scopes_and_terminal_rereques
         decision=ConsentDecision.DENIED,
         context=context(student),
     )
-    with pytest.raises(ECounselingConsentConflict, match="cannot be reopened"):
+    with pytest.raises(ECounselingConsentConflict, match="can't be reopened"):
         request_consents(
             counselor=counselor,
             appointment_id=appointment.pk,

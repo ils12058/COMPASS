@@ -205,9 +205,7 @@ def _validate_term(term: str) -> str:
 
 def _validate_enrollment_status(enrollment_status: str) -> str:
     if not isinstance(enrollment_status, str) or enrollment_status not in EnrollmentStatus.values:
-        raise InvalidStudentAcademicInput(
-            f"enrollment_status must be one of {', '.join(EnrollmentStatus.values)}"
-        )
+        raise InvalidStudentAcademicInput("Choose a valid Enrollment status.")
     return enrollment_status
 
 
@@ -215,7 +213,7 @@ def _validate_year_level(year_level: int | None) -> int | None:
     if year_level is None:
         return None
     if type(year_level) is not int or not 1 <= year_level <= 8:
-        raise InvalidStudentAcademicInput("year_level must be an integer from 1 to 8.")
+        raise InvalidStudentAcademicInput("Year Level must be from 1 to 8.")
     return year_level
 
 
@@ -312,14 +310,14 @@ def record_graduation(
     context: AuditContext,
 ) -> StudentGraduationRecord:
     if type(graduation_date) is not date:
-        raise InvalidStudentAcademicInput("graduation_date must be a date.")
+        raise InvalidStudentAcademicInput("Enter a valid Graduation date.")
     if not isinstance(verification_source, str):
-        raise InvalidStudentAcademicInput("verification_source must be text.")
+        raise InvalidStudentAcademicInput("Verification source must be text.")
     source = verification_source.strip()
     if not source:
-        raise InvalidStudentAcademicInput("verification_source is required.")
+        raise InvalidStudentAcademicInput("Enter the Verification source.")
     if len(source) > 200:
-        raise InvalidStudentAcademicInput("verification_source must be at most 200 characters.")
+        raise InvalidStudentAcademicInput("Verification source must be 200 characters or fewer.")
     with transaction.atomic():
         student = _lock_student(student_id, require_active=False)
         college = _lock_active_college(graduated_college_id)

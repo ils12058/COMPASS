@@ -208,20 +208,20 @@ def _write(request):
 def _raise(exc: FollowUpError) -> NoReturn:
     if isinstance(exc, FollowUpContentUnavailable):
         raise APIError(
-            503, "followup_content_unavailable", "Protected Follow-Up content is unavailable."
+            503, "followup_content_unavailable", "Couldn't load the Follow-Up. Try again."
         ) from exc
     if isinstance(exc, FollowUpPermissionDenied):
         raise APIError(
-            403, "followup_access_denied", "Guidance Follow-Up access is required."
+            403, "followup_access_denied", "You don't have permission to use Follow-Ups."
         ) from exc
     if isinstance(exc, FollowUpNotFound):
-        raise APIError(404, "followup_not_found", "The requested record is unavailable.") from exc
+        raise APIError(404, "followup_not_found", "Follow-Up not found.") from exc
     if isinstance(exc, FollowUpConflict):
         raise APIError(409, "followup_conflict", str(exc)) from exc
     if isinstance(exc, FollowUpInvalid):
         raise APIError(422, "invalid_followup", str(exc)) from exc
     raise APIError(
-        500, "internal_error", "The follow-up operation could not be completed."
+        500, "internal_error", "Couldn't complete the Follow-Up change. Try again."
     ) from exc
 
 

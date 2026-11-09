@@ -266,7 +266,7 @@ def _raise(exc: Exception) -> NoReturn:
         ) from exc
     if isinstance(exc, ECounselingError):
         raise APIError(
-            500, "internal_error", "The E-Counseling operation could not be completed."
+            500, "internal_error", "Couldn't complete the E-Counseling change. Try again."
         ) from exc
     raise exc
 

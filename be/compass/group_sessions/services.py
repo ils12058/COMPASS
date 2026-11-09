@@ -204,12 +204,12 @@ def _write_facilitator_assignments(
 def _actor_schedule_lock_ids(actor: User) -> tuple[uuid.UUID, ...]:
     current = current_group_session_staff(actor)
     if current is None:
-        raise ValidationError("Group session not found.")
+        raise ValidationError("Group Session not found.")
     ids = {current.pk}
     if current.role.code == "GUIDANCE_OFFICE_ASSISTANT":
         supervisor = supervised_counselor(current)
         if supervisor is None:
-            raise ValidationError("Group session not found.")
+            raise ValidationError("Group Session not found.")
         ids.add(supervisor.pk)
     return tuple(ids)
 
@@ -217,7 +217,7 @@ def _actor_schedule_lock_ids(actor: User) -> tuple[uuid.UUID, ...]:
 def _schedule_context_snapshot(session_id: uuid.UUID):
     session = GroupSession.objects.filter(pk=session_id).first()
     if session is None:
-        raise ValidationError("Group session not found.")
+        raise ValidationError("Group Session not found.")
     facilitator_ids = tuple(
         GroupSessionFacilitator.objects.filter(
             group_session_id=session_id,
@@ -261,7 +261,7 @@ def _lock_group_schedule_context(
         .first()
     )
     if session is None or service is None:
-        raise ValidationError("Group session not found.")
+        raise ValidationError("Group Session not found.")
     _, current_facilitator_ids, current_student_ids = _schedule_context_snapshot(session_id)
     if set(current_facilitator_ids) != set(old_facilitator_ids) or set(current_student_ids) != set(
         old_student_ids
@@ -430,7 +430,7 @@ def create_group_session(
             raise ValidationError("The selected internal facilitator is not available.") from exc
         current_organizer = current_group_session_staff(organizer, lock_supervision=True)
         if current_organizer is None:
-            raise ValidationError("Group session not found.")
+            raise ValidationError("Group Session not found.")
         service = Service.objects.select_for_update().filter(id=service_id).first()
         if not service:
             raise ValidationError("Service does not exist.")
@@ -978,22 +978,20 @@ def complete_group_session(
 def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionRegistration:
     """Register a student for a published group session with transactional capacity guard."""
     if not is_current_student(student):
-        raise ValidationError(
-            "Current Student lifecycle is required to register for a group session."
-        )
+        raise ValidationError("Current Student status is required to register for a Group Session.")
 
     with transaction.atomic():
         snapshot = GroupSession.objects.filter(pk=session_id).only("service_id").first()
         if snapshot is None:
-            raise ValidationError("Group session not found.")
+            raise ValidationError("Group Session not found.")
         try:
             locked_users = lock_schedule_users(student.pk)
         except ValueError as exc:
-            raise ValidationError("Current Student lifecycle is required to register.") from exc
+            raise ValidationError("Current Student status is required to register.") from exc
         locked_student = locked_users[student.pk]
         if not is_current_student(locked_student):
             raise ValidationError(
-                "Current Student lifecycle is required to register for a group session."
+                "Current Student status is required to register for a Group Session."
             )
         service = Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
         session = (
@@ -1003,7 +1001,7 @@ def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionReg
             .first()
         )
         if not session or service is None:
-            raise ValidationError("Group session not found.")
+            raise ValidationError("Group Session not found.")
         now = timezone.now()
         if session.status != GroupSessionStatus.PUBLISHED:
             raise ValidationError("Session is not open for registration.")
@@ -1012,7 +1010,7 @@ def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionReg
             or not service.booking_pathways.filter(code=BookingPathwayCode.GROUP_SESSION).exists()
         ):
             raise ValidationError(
-                "This Service is not currently accepting group session registrations."
+                "This Service is not currently accepting Group Session registrations."
             )
         if not service_supports_delivery_mode(service, session.delivery_mode):
             raise ValidationError(
@@ -1244,7 +1242,7 @@ def export_roster_csv(*, session_id: uuid.UUID, actor: User) -> str:
             .first()
         )
         if session is None:
-            raise ValidationError("Group session not found.")
+            raise ValidationError("Group Session not found.")
         require_group_session_access(
             actor=actor,
             session=session,

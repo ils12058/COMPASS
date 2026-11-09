@@ -225,18 +225,18 @@ class SecurityRevocationResult:
 
 def _validate_pagination(*, page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1 or page > MAX_PAGE_NUMBER:
-        raise PaginationError(f"page must be an integer between 1 and {MAX_PAGE_NUMBER}")
+        raise PaginationError(f"Page must be between 1 and {MAX_PAGE_NUMBER}.")
     if type(page_size) is not int or page_size < 1 or page_size > MAX_PAGE_SIZE:
-        raise PaginationError(f"page_size must be an integer between 1 and {MAX_PAGE_SIZE}")
+        raise PaginationError(f"Rows per page must be between 1 and {MAX_PAGE_SIZE}.")
     return page, page_size
 
 
 def _canonical_code(value: str, *, allowed: frozenset[str], label: str) -> str:
     if not isinstance(value, str):
-        raise InvalidManagementInput(f"{label} must be a canonical code")
+        raise InvalidManagementInput(f"Choose a valid {label.title()}.")
     normalized = value.strip()
     if normalized not in allowed:
-        raise InvalidManagementInput(f"unknown {label}: {normalized}")
+        raise InvalidManagementInput(f"Choose a valid {label.title()}.")
     return normalized
 
 
@@ -259,19 +259,26 @@ def _clean_identity_text(
     required: bool = False,
     allow_none: bool = False,
 ) -> str:
+    labels = {
+        "first_name": "First name",
+        "middle_name": "Middle name",
+        "last_name": "Last name",
+        "suffix": "Suffix",
+    }
+    label = labels[field_name]
     if value is None:
         if allow_none:
             return ""
-        raise InvalidManagementInput(f"{field_name} is required")
+        raise InvalidManagementInput(f"Enter the {label.lower()}.")
     if not isinstance(value, str):
-        raise InvalidManagementInput(f"{field_name} must be a string")
+        raise InvalidManagementInput(f"{label} must be text.")
     normalized = value.strip()
     if required and not normalized:
-        raise InvalidManagementInput(f"{field_name} is required")
+        raise InvalidManagementInput(f"Enter the {label.lower()}.")
     try:
         User._meta.get_field(field_name).clean(normalized, None)
     except ValidationError as exc:
-        raise InvalidManagementInput(f"{field_name} is invalid") from exc
+        raise InvalidManagementInput(f"Enter a valid {label.lower()}.") from exc
     return normalized
 
 
@@ -286,14 +293,14 @@ def _clean_institutional_id(value: str | None, *, required: bool = True) -> str 
     try:
         normalized = User.objects.normalize_institutional_id(value)
     except (TypeError, ValueError) as exc:
-        raise InvalidManagementInput("institutional_id is invalid") from exc
+        raise InvalidManagementInput("Enter a valid Institutional ID.") from exc
     if required and normalized is None:
-        raise InvalidManagementInput("institutional_id is required")
+        raise InvalidManagementInput("Enter the Institutional ID.")
     if normalized is not None:
         try:
             User._meta.get_field("institutional_id").clean(normalized, None)
         except ValidationError as exc:
-            raise InvalidManagementInput("institutional_id is invalid") from exc
+            raise InvalidManagementInput("Enter a valid Institutional ID.") from exc
     return normalized
 
 
@@ -303,7 +310,7 @@ def _clean_expiry(value: datetime | None) -> datetime | None:
     if timezone.is_naive(value):
         value = timezone.make_aware(value, timezone.get_current_timezone())
     if value <= timezone.now():
-        raise InvalidManagementInput("expires_at must be in the future")
+        raise InvalidManagementInput("Choose a future expiration date.")
     return value
 
 
@@ -314,7 +321,7 @@ def _lock_management_mutex() -> None:
         Capability.objects.select_for_update().get(code=ACCOUNT_MANAGE_CAPABILITY)
     except Capability.DoesNotExist as exc:
         raise ManagementConfigurationError(
-            "accounts.manage capability is not synchronized; run sync_identity_policy first"
+            "COMPASS isn't set up for this yet. Contact your IT Administrator."
         ) from exc
     # Keeping this as one small canonical policy-row lock serializes manager-count checks without
     # introducing a distributed lock.
@@ -322,7 +329,7 @@ def _lock_management_mutex() -> None:
 
 def _lock_users(*, actor_id, target_id=None) -> tuple[User, User | None]:
     if not actor_id:
-        raise ManagementNotAuthorized("a saved administrative actor is required")
+        raise ManagementNotAuthorized("You don't have permission to manage accounts.")
     ids = {actor_id}
     if target_id is not None:
         ids.add(target_id)
@@ -335,7 +342,7 @@ def _lock_users(*, actor_id, target_id=None) -> tuple[User, User | None]:
     users = {user.pk: user for user in locked}
     actor = users.get(actor_id)
     if actor is None:
-        raise ManagementNotAuthorized("the administrative actor is unavailable")
+        raise ManagementNotAuthorized("You don't have permission to manage accounts.")
     target = users.get(target_id) if target_id is not None else None
     if target_id is not None and target is None:
         raise AccountNotFound("the requested account was not found")
@@ -344,13 +351,13 @@ def _lock_users(*, actor_id, target_id=None) -> tuple[User, User | None]:
 
 def _assert_manager(actor: User) -> None:
     if not actor.is_active or not user_has_capability(actor, ACCOUNT_MANAGE_CAPABILITY):
-        raise ManagementNotAuthorized("accounts.manage is required")
+        raise ManagementNotAuthorized("You don't have permission to manage accounts.")
 
 
 def _assert_designation_manager(actor: User) -> None:
     if not user_has_capability(actor, INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY):
         raise DesignationManagementNotAuthorized(
-            "accounts.manage and institutional_designations.manage are required"
+            "You don't have permission to manage institutional designations."
         )
 
 
@@ -726,12 +733,12 @@ def create_account(
         role_record = Role.objects.filter(code=role_code).first()
         if role_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical role is not synchronized; run sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         if User.objects.filter(email__iexact=cleaned_email).exists():
             raise DuplicateEmail("an account with this email already exists")
         if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
-            raise DuplicateInstitutionalId("an account with this institutional_id already exists")
+            raise DuplicateInstitutionalId("An account with this Institutional ID already exists.")
         try:
             with transaction.atomic():
                 user = User.objects.create_user(
@@ -748,7 +755,7 @@ def create_account(
         except IntegrityError as exc:
             if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
                 raise DuplicateInstitutionalId(
-                    "an account with this institutional_id already exists"
+                    "An account with this Institutional ID already exists."
                 ) from exc
             if User.objects.filter(email__iexact=cleaned_email).exists():
                 raise DuplicateEmail("an account with this email already exists") from exc
@@ -843,7 +850,7 @@ def update_identity(
         except IntegrityError as exc:
             if "institutional_id" in changed_fields:
                 raise DuplicateInstitutionalId(
-                    "an account with this institutional_id already exists"
+                    "An account with this Institutional ID already exists."
                 ) from exc
             raise
 
@@ -947,7 +954,7 @@ def change_role(
         role_record = Role.objects.filter(code=role_code).first()
         if role_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical role is not synchronized; run sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         if target.role_id == role_record.pk:
             return MutationResult(user=target, changed=False)
@@ -1047,7 +1054,7 @@ def set_student_lifecycle(
     status: str,
 ) -> MutationResult:
     if status not in StudentLifecycleStatus.values:
-        raise InvalidManagementInput("student lifecycle status is not supported")
+        raise InvalidManagementInput("Choose a valid Student status.")
     with _admin_mutation(
         actor=actor,
         actor_session=actor_session,
@@ -1056,10 +1063,10 @@ def set_student_lifecycle(
     ) as (_locked_actor, target):
         assert target is not None
         if target.pk == actor.pk:
-            raise SelfTargetForbidden("an administrator cannot change their own Student lifecycle")
+            raise SelfTargetForbidden("You can't change your own Student status.")
         if target.role.code != "STUDENT":
             raise StudentLifecycleConflict(
-                "Student lifecycle can only be changed for a STUDENT-role account."
+                "Student status can only be changed for a Student account."
             )
         if target.student_lifecycle_status == status:
             return MutationResult(user=target, changed=False)
@@ -1099,16 +1106,13 @@ def assign_designation(
         designation_record = Designation.objects.filter(code=designation_code).first()
         if designation_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical designation is not synchronized; run "
-                "sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         if not designation_role_compatible(
             designation_code=designation_code,
             role_code=target.role.code,
         ):
-            raise DesignationRoleConflict(
-                f"designation {designation_code} is incompatible with role {target.role.code}"
-            )
+            raise DesignationRoleConflict("This Designation can't be assigned to this Role.")
         assignment = (
             UserDesignation.objects.select_for_update()
             .filter(
@@ -1164,8 +1168,7 @@ def remove_designation(
         designation_record = Designation.objects.filter(code=designation_code).first()
         if designation_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical designation is not synchronized; run "
-                "sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         assignment = (
             UserDesignation.objects.select_for_update()
@@ -1214,14 +1217,14 @@ def set_capability_override(
     capability_code = _canonical_capability_code(capability)
     effect_value = effect.value if isinstance(effect, UserCapabilityOverride.Effect) else effect
     if effect_value not in UserCapabilityOverride.Effect.values:
-        raise InvalidManagementInput("effect must be GRANT or REVOKE")
+        raise InvalidManagementInput("Choose Grant or Revoke.")
     if not isinstance(reason, str) or not reason.strip():
-        raise InvalidManagementInput("reason is required for a capability override")
+        raise InvalidManagementInput("Enter a reason for the Permission change.")
     cleaned_reason = reason.strip()
     try:
         UserCapabilityOverride._meta.get_field("reason").clean(cleaned_reason, None)
     except ValidationError as exc:
-        raise InvalidManagementInput("reason is invalid") from exc
+        raise InvalidManagementInput("Enter a valid reason for the Permission change.") from exc
     cleaned_expiry = _clean_expiry(expires_at)
 
     with _admin_mutation(
@@ -1232,27 +1235,24 @@ def set_capability_override(
     ) as (locked_actor, target):
         assert target is not None
         if target.pk == locked_actor.pk:
-            raise SelfTargetForbidden(
-                "an administrator cannot change their own capability overrides"
-            )
+            raise SelfTargetForbidden("You can't change your own Permissions.")
         if effect_value == UserCapabilityOverride.Effect.GRANT and not faculty_capability_eligible(
             target.role.code,
             capability_code,
         ):
             raise InvalidManagementInput(
-                "The capability is incompatible with the current Faculty role boundary."
+                "This Permission isn't available for the current Faculty Role."
             )
         if (
             capability_code == "organization.catalog.manage"
             and effect_value == UserCapabilityOverride.Effect.GRANT
             and target.role.code not in CATALOG_ELIGIBLE_ROLES
         ):
-            raise InvalidManagementInput("Catalog authority requires an eligible staff role.")
+            raise InvalidManagementInput("This Permission requires an eligible Staff Role.")
         capability_record = Capability.objects.filter(code=capability_code).first()
         if capability_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical capability is not synchronized; run "
-                "sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         existing = (
             UserCapabilityOverride.objects.select_for_update()
@@ -1286,7 +1286,7 @@ def set_capability_override(
                 missing_names = ", ".join(names_by_code.get(code, code) for code in sorted(missing))
                 raise CapabilityDependencyConflict(
                     f"{names_by_code.get(capability_code, capability_code)} requires "
-                    f"{missing_names}. Grant the required capability first."
+                    f"{missing_names}. Grant the required Permission first."
                 )
 
         override = set_user_capability_override(
@@ -1340,14 +1340,11 @@ def remove_capability_override(
     ) as (locked_actor, target):
         assert target is not None
         if target.pk == locked_actor.pk:
-            raise SelfTargetForbidden(
-                "an administrator cannot change their own capability overrides"
-            )
+            raise SelfTargetForbidden("You can't change your own Permissions.")
         capability_record = Capability.objects.filter(code=capability_code).first()
         if capability_record is None:
             raise ManagementConfigurationError(
-                "the requested canonical capability is not synchronized; run "
-                "sync_identity_policy first"
+                "COMPASS isn't set up for this yet. Contact your IT Administrator."
             )
         override = (
             UserCapabilityOverride.objects.select_for_update()
