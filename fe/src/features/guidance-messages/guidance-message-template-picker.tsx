@@ -123,7 +123,7 @@ function PickerBody({
           <p role="status" className="text-sm text-muted">Loading templates…</p>
         ) : templates.isError && items.length === 0 ? (
           <div role="alert">
-            <p className="text-sm text-danger">Templates could not be loaded.</p>
+            <p className="text-sm text-danger">Couldn&apos;t load the templates. Try again.</p>
             <Button className="mt-3" variant="secondary" onClick={() => void templates.refetch()}>
               Retry
             </Button>
@@ -172,7 +172,7 @@ function PickerBody({
               </Button>
             ) : null}
             {templates.isError ? (
-              <p role="alert" className="mt-3 text-sm text-danger">More templates could not be loaded.</p>
+              <p role="alert" className="mt-3 text-sm text-danger">Couldn&apos;t load more templates. Try again.</p>
             ) : null}
           </>
         )}

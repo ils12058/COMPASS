@@ -56,7 +56,7 @@ function describeSaveError(error: unknown): SaveError {
   if (status === 403) return { field: null, text: "Your account can no longer manage Message templates." };
   if (status === 401) return { field: null, text: "Your session needs to be checked again. Your changes are still here." };
   if (status === 422) return { field: null, text: "Check the name and text, then save again." };
-  return { field: null, text: "The template could not be saved. Try again." };
+  return { field: null, text: "Couldn't save the template. Try again." };
 }
 
 /**
@@ -211,7 +211,7 @@ function EditorForm({
               if (current) { setLatestVersion(current); return; }
               if (!response.data.has_next) return;
             }
-          })().catch(() => setFormError("The current template could not be loaded. Your unsaved text is still here. Close and reopen the editor when you’re ready."))
+          })().catch(() => setFormError("Couldn't load the current template; your unsaved text is still here. Close and reopen the editor when you’re ready."))
             .finally(() => setCheckingLatest(false));
         }
         if (described.field === "name") {
@@ -239,7 +239,7 @@ function EditorForm({
             setBaseline(latestVersion); setConflicted(false); setFormError(null);
             onDirtyChange(name.trim() !== latestVersion.name || body !== latestVersion.body);
           }}>I reviewed it; continue editing my draft</Button>
-        </> : !checkingLatest ? <p>The current active template is unavailable. Close and reopen it to check its status.</p> : null}
+        </> : !checkingLatest ? <p>Couldn&apos;t load the current active template. Close and reopen it to check its status.</p> : null}
       </div> : null}
       <div className="border-b border-brand-line px-5 pt-5 pb-4">
         <DialogTitle className="text-lg">{baseline ? "Edit template" : "Create template"}</DialogTitle>

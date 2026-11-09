@@ -56,7 +56,7 @@ export function GuidanceMessagesWorkspace({ children }: { children: ReactNode })
   const access = getGuidanceMessagesAccess(user);
   if (!access.hasWorkspace) {
     return (
-      <WorkspaceUnavailable title="Messages unavailable">
+      <WorkspaceUnavailable title="Messages">
         Guidance Messages are not available to this account.
       </WorkspaceUnavailable>
     );

@@ -12,12 +12,12 @@ export function FacultyReferralGate({ submit = false, children }: { submit?: boo
   const { user } = usePortalSession();
   const access = facultyReferralAccess(user);
   return (submit ? access.submit : access.read) ? children
-    : <WorkspaceUnavailable title="Faculty Referrals unavailable">This account cannot open this Faculty workspace.</WorkspaceUnavailable>;
+    : <WorkspaceUnavailable title="Faculty Referrals">You don&apos;t have access to Faculty Referrals.</WorkspaceUnavailable>;
 }
 
 export function FacultyUnavailable({ onRetry }: { onRetry?: () => void }) {
-  return <Notice title="Digital Referrals are not available yet." action={onRetry ? <Button variant="secondary" onClick={onRetry}>Check availability</Button> : undefined}>
-    You can continue to use Notifications and your Profile.
+  return <Notice title="You can't submit digital Referrals right now." action={onRetry ? <Button variant="secondary" onClick={onRetry}>Check Availability</Button> : undefined}>
+    Contact the Guidance Office. You can still use Notifications and your Profile.
   </Notice>;
 }
 

@@ -196,7 +196,7 @@ async function choose(page, name) {
     templatesPage.setDefaultTimeout(12_000);
     templatesPage.on("pageerror", (error) => errors.push(error.stack ?? error.message));
     await templatesPage.goto(`${baseURL}${TEMPLATES_PAGE}`, { waitUntil: "domcontentloaded" });
-    await shown(templatesPage.getByRole("heading", { name: "Message templates unavailable" }));
+    await shown(templatesPage.getByRole("heading", { name: "Message templates" }));
     assert.equal(backend.templateRequests().length, 0, "No template API call");
     assert.equal(backend.handlerLists().length, 0);
   });
@@ -497,7 +497,7 @@ async function choose(page, name) {
     const initial = await counts();
     await page.getByRole("button", { name: /^Messages/ }).click();
     const surface = page.getByRole("complementary", { name: "Messages" });
-    await shown(surface.getByText("No conversation has started for this counseling appointment yet."));
+    await shown(surface.getByText("No conversation has started for this counseling Appointment yet."));
     await templatesButton(surface).click();
     await picker(page).getByRole("button", { name: "Appointment reminder" }).click();
     await hidden(picker(page));
@@ -636,7 +636,7 @@ for (const [label, account] of [
   const backend = withTemplates(staffWorld());
   const value = world(backend, account);
   await check(`${label} cannot open the templates page`, TEMPLATES_PAGE, value.options(), async (page) => {
-    await shown(page.getByRole("heading", { name: "Message templates unavailable" }));
+    await shown(page.getByRole("heading", { name: "Message templates" }));
     assert.equal(backend.templateRequests().length, 0, "No template request");
   });
   if (account.role === "COUNSELOR") {

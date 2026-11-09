@@ -427,7 +427,7 @@ async function refreshReferral(page, state) {
     await noteField(page).fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
-    const notice = page.getByText(/^The latest Referral details could not be refreshed\./);
+    const notice = page.getByText(/^Couldn't refresh the latest Referral details\./);
     await shown(notice);
     assert.equal(await noteField(page).inputValue(), MARKER, "The unsaved note is kept");
     assert.equal(await page.getByRole("button", { name: "Save status note", exact: true }).isDisabled(), true);

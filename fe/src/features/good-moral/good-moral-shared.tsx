@@ -49,7 +49,7 @@ export function isCanonicalSemester(value: string | null | undefined): boolean {
 }
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
-  return variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree";
+  return variant === "CURRENT_STUDENT" ? "Good Moral Certificate for current Students" : "Good Moral Certificate for UCN Bachelor's graduates";
 }
 
 export function goodMoralStatusLabel(status: GoodMoralStatusValue): string {
@@ -99,15 +99,15 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "good_moral_receipt_incomplete":
       return "Complete the physical receipt details before inspection and preparation.";
     case "good_moral_receipt_unverified":
-      return "An authorized GCO employee must inspect the physical receipt before preparation.";
+      return "Show your Official Receipt at the Guidance Office.";
     case "good_moral_receipt_fee_mismatch":
-      return "The recorded amount does not match the approved expected fee. Ask GCO for review.";
+      return "The recorded amount doesn't match the fee. Ask the Guidance Office to review it.";
     case "good_moral_receipt_policy_unresolved":
       return "The approved receipt fee policy needs review before work can continue.";
     case "good_moral_receipt_already_verified":
       return "This receipt already has a recorded physical inspection. Review the latest details.";
     case "good_moral_receipt_conflict":
-      return "Official Receipt number already recorded. Check the number or ask GCO for review.";
+      return "Official Receipt number already recorded. Check the number or ask the Guidance Office to review it.";
     case "good_moral_receipt_changed":
       return "This request or receipt changed. Review the latest saved details before saving again.";
     case "good_moral_not_ready":
@@ -120,20 +120,20 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "good_moral_not_found":
       return "Good Moral request not found.";
     case "good_moral_inventory_required":
-      return "Submit your Individual Inventory for the current academic year before requesting a certificate.";
+      return "Submit your Individual Inventory for the current Academic Year before requesting a certificate.";
     case "good_moral_exit_interview_required":
-      return "Complete and submit your Exit Interview before requesting your graduation Good Moral certificate.";
+      return "Complete and submit your Exit Interview before requesting your graduation Good Moral Certificate.";
     case "good_moral_placement_required":
       return "A current college placement is required to request this certificate.";
     case "current_student_required":
-      return "This request is available only to current students.";
+      return "This request is available only to current Students.";
     case "graduated_student_required":
       return "This request is available only to graduates.";
     case "good_moral_configuration_conflict":
-      return "This certificate cannot be issued because its approved setup is unavailable. Contact the Guidance Office administrator.";
+      return "This certificate's setup needs attention before you can issue it. Contact the Guidance Office.";
     case "good_moral_document_unavailable":
     case "release_audit_unavailable":
-      return "The certificate could not be released right now. Try again later.";
+      return "Couldn't release the certificate right now. Try again later.";
     case "idempotency_key_conflict":
       return "This request attempt no longer matches its original details.";
     case "permission_denied":
@@ -202,7 +202,7 @@ export function GoodMoralHeading({
 }
 
 export function GoodMoralUnavailable({
-  title = "Good Moral unavailable",
+  title = "Good Moral",
   message = "You don’t have access to Good Moral.",
 }: {
   title?: string;
@@ -283,7 +283,7 @@ export function formatGoodMoralAmount(value: string | null | undefined): string 
 }
 
 export function goodMoralInitiationLabel(origin: string | undefined): string {
-  if (origin === "GCO_ASSISTED") return "Started by the Guidance and Counseling Office";
+  if (origin === "GCO_ASSISTED") return "Started by the Guidance Office";
   if (origin === "STUDENT_SELF") return "Requested by Student";
   return "Initiator not recorded";
 }

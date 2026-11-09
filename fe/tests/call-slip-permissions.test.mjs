@@ -29,14 +29,14 @@ function assertReadable(html) {
   assert.match(html, /data-page-action-label=""[^>]*>Download<span class="sr-only"> Call Slip<\/span>/);
 }
 function assertNoManagement(html) {
-  assert.doesNotMatch(html, /Operational actions|Record interview end|Review interview end|Void Call Slip|call-slip-interview-ended|call-slip-void-reason|role="alertdialog"/);
+  assert.doesNotMatch(html, /Staff actions|Record interview end|Review interview end|Void Call Slip|call-slip-interview-ended|call-slip-void-reason|role="alertdialog"/);
 }
 for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   for (const state of ["ACTIVE", "COMPLETED", "VOIDED"]) {
     test(`${role} with explicit view-only capabilities keeps ${state} details and PDF without management`, () => {
       const html = render(role, ["call_slips.view"], state);
       assertReadable(html); assertNoManagement(html);
-      assert.match(html, /A linked referral exists, but its reference is unavailable/);
+      assert.match(html, /You don(?:&#x27;|')t have access to the linked Referral reference/);
       assert.doesNotMatch(html, /REF-TEST/);
     });
     test(`${role} manager respects ${state} lifecycle restrictions`, () => {

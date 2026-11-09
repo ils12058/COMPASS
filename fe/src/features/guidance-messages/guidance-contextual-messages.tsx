@@ -209,7 +209,7 @@ function AppointmentContextualHost({
         panelTitle: "Messages",
         triggerLabel: "Messages",
         subtitle: (thread, name) => `${thread ? threadTitle(thread, access.viewer) : name} · Counseling`,
-        emptyMessage: "No conversation has started for this counseling appointment yet.",
+        emptyMessage: "No conversation has started for this counseling Appointment yet.",
         endedMessage: null,
       }}
     >

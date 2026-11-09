@@ -91,7 +91,7 @@ export function useReceiptInspection({ item, confirmed, onRefresh, onActivityCha
     } else {
       setReview(null);
       setUncertain(true);
-      setError("The inspection could not be confirmed. No current inspection is shown. Deliberately review the same receipt before retrying this inspection.");
+      setError("Couldn't confirm the inspection; no current inspection is shown. Review the same receipt before retrying.");
     }
   }
 
@@ -121,7 +121,7 @@ export function useReceiptInspection({ item, confirmed, onRefresh, onActivityCha
         setError(goodMoralErrorMessage(caught, "The inspection was refused. Review the latest request."));
         await onRefresh();
       } else {
-        setError(goodMoralErrorMessage(caught, "Receipt inspection could not be recorded. Review the request before trying again."));
+        setError(goodMoralErrorMessage(caught, "Couldn't record the receipt inspection. Review the request before trying again."));
       }
     } finally {
       sending.current = false;

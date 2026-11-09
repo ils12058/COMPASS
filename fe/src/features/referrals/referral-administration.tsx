@@ -57,7 +57,7 @@ export function ReferralAdministration({ referral, canManage, refreshFailed }: {
     <PanelHeader title="Faculty intake" titleId="referral-administration-heading" />
     <PanelBody className="space-y-4">
       {query.isPending ? <p role="status">Loading intake record…</p> : data ? <>
-        <p role="status" className="font-semibold text-ink">{data.state ? administrativeStateLabel(data.state) : "Voided — administrative actions unavailable"}</p>
+        <p role="status" className="font-semibold text-ink">{data.state ? administrativeStateLabel(data.state) : "Voided — no further administrative actions"}</p>
         <dl className="grid min-w-0 gap-4 text-sm sm:grid-cols-2 [&_dd]:mt-1 [&_dd]:[overflow-wrap:anywhere] [&_dt]:font-semibold [&_dt]:text-muted">
           <div><dt>Submitted by</dt><dd>{data.submitted_by.display_name}</dd></div>
           <div><dt>Submitted · Philippine Time</dt><dd>{formatInstitutionalDateTime(data.submitted_at)}</dd></div>
@@ -67,15 +67,15 @@ export function ReferralAdministration({ referral, canManage, refreshFailed }: {
           {data.closed_by && data.closed_at ? <div><dt>Administratively closed</dt><dd>{data.closed_by.display_name} · {formatInstitutionalDateTime(data.closed_at)}</dd></div> : null}
         </dl>
         {canManage && !referral.voided_at && data.state !== "ADMINISTRATIVELY_CLOSED" ? <div>
-          {!unavailable && (data.can_acknowledge || data.can_close) ? <Button className="min-w-0 max-w-full [overflow-wrap:anywhere]" variant="secondary" onClick={() => { setReview({ kind: data.can_acknowledge ? "ack" : "close", version: data.version }); setReviewed(false); setError(null); setNotice(null); }}>{data.can_acknowledge ? "Acknowledge receipt" : "Close administratively"}</Button> : <p className="text-sm text-muted">Administrative action is unavailable. Current policy and record eligibility must be confirmed.</p>}
+          {!unavailable && (data.can_acknowledge || data.can_close) ? <Button className="min-w-0 max-w-full [overflow-wrap:anywhere]" variant="secondary" onClick={() => { setReview({ kind: data.can_acknowledge ? "ack" : "close", version: data.version }); setReviewed(false); setError(null); setNotice(null); }}>{data.can_acknowledge ? "Acknowledge receipt" : "Close administratively"}</Button> : <p className="text-sm text-muted">You can act after the current Referral details and permitted actions are checked.</p>}
         </div> : null}
       </> : null}
-      {query.isError ? <Notice role="alert">Intake details could not be refreshed. Actions are unavailable.</Notice> : null}
+      {query.isError ? <Notice role="alert">Couldn&apos;t refresh intake details. Try again before taking action.</Notice> : null}
       <Button className="min-w-0 max-w-full [overflow-wrap:anywhere]" variant="quiet" disabled={pending || query.isFetching} onClick={async () => { const result = await query.refetch(); if (result.isSuccess) setBlocked(false); }}>Refresh intake record</Button>
       {notice ? <p role="status" className="text-sm text-success">{notice}</p> : null}
     </PanelBody>
     <ConsequentialActionDialog open={review !== null} title={review?.kind === "close" ? "Close this Referral administratively?" : "Acknowledge receipt of this Referral?"} confirmLabel={review?.kind === "close" ? "Close administratively" : "Acknowledge receipt"} pendingLabel="Recording…" pending={pending} confirmDisabled={unavailable || stale || !actionAllowed || (review?.kind === "close" && !reviewed)} error={error || (stale ? "The record changed. Close this review and check the latest record." : null)} onOpenChange={(open) => { if (!open) setReview(null); }} onConfirm={() => void confirm()} choices={review?.kind === "close" ? <div className="flex min-h-11 items-start gap-3"><input id="referral-obligations-reviewed" type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-brand" checked={reviewed} disabled={pending} onChange={(event) => setReviewed(event.target.checked)} /><Label className="min-w-0 [overflow-wrap:anywhere]" htmlFor="referral-obligations-reviewed">I reviewed the required obligations</Label></div> : undefined}>
-      {review?.kind === "close" ? <p>Review the administrative obligations under the approved closure criteria before closing. This records completion of administrative handling. Linked Call Slips and Follow-Ups keep their own status. Closure does not establish that Counseling or the Student’s concern is resolved.</p> : <p>This records your account and the current server time as the GCO receipt. The original Faculty submission and source content are retained.</p>}
+      {review?.kind === "close" ? <p>Review the required obligations before closing this Referral. Closing ends administrative handling; linked Call Slips and Follow-Ups keep their status, and Counseling or the Student’s concern may still need attention.</p> : <p>Marks this Referral as received by the Guidance Office, under your name and the current time. The Faculty submission stays unchanged.</p>}
     </ConsequentialActionDialog>
   </Panel>;
 }

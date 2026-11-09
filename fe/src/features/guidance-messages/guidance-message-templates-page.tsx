@@ -44,7 +44,7 @@ export function GuidanceMessageTemplatesPage() {
   const access = getGuidanceMessagesAccess(user);
   if (!access.canManageTemplates) {
     return (
-      <WorkspaceUnavailable title="Message templates unavailable">
+      <WorkspaceUnavailable title="Message templates">
         Your account cannot manage Message templates.
       </WorkspaceUnavailable>
     );
@@ -154,7 +154,7 @@ function TemplatesWorkspace() {
             >
               {errorStatus(templates.error) === 403
                 ? "Your account can no longer manage Message templates."
-                : "Templates could not be loaded."}
+                : "Couldn't load the templates. Try again."}
             </PanelMessage>
           ) : items.length === 0 ? (
             <PanelMessage
@@ -285,5 +285,5 @@ function describeStatusError(error: unknown, action: "archive" | "restore"): str
   if (code === 404) return "This template no longer exists.";
   if (code === 403) return "Your account can no longer manage Message templates.";
   if (code === 401) return "Your session needs to be checked again.";
-  return action === "archive" ? "The template could not be archived. Try again." : "The template could not be restored. Try again.";
+  return action === "archive" ? "Couldn't archive the template. Try again." : "Couldn't restore the template. Try again.";
 }

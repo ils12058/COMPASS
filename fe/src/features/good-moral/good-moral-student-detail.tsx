@@ -46,7 +46,7 @@ export function GoodMoralStudentDetail({
     return (
       <section className="max-w-2xl space-y-5">
         <Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>
-        {notFound ? <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1>} /> : <GoodMoralError error={detail.error} fallback="Your Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
+        {notFound ? <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1>} /> : <GoodMoralError error={detail.error} fallback="Couldn't load your Good Moral request. Try again." onRetry={() => void detail.refetch()} />}
       </section>
     );
   }
@@ -70,7 +70,7 @@ export function GoodMoralStudentDetail({
       <GoodMoralHeading
         headingId="good-moral-student-detail-heading"
         title="Good Moral request"
-        description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
+        description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)}` : `${goodMoralVariantLabel(item.variant)} request`}
         back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>}
       />
 
@@ -120,7 +120,7 @@ export function GoodMoralStudentDetail({
         <GoodMoralSection title="Certificate issuance">
           <dl className={factGrid}>
             <GoodMoralField label="Issued by" value={item.issued_by_name_snapshot} />
-            <GoodMoralField label="Official form code" value={item.form_revision?.official_code} />
+            <GoodMoralField label="Certificate type" value={goodMoralVariantLabel(item.variant)} />
             <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
           </dl>
           <div className="mt-5 border-t border-border pt-4">

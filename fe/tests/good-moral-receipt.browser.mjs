@@ -92,7 +92,7 @@ async function submitInspection(page, name) {
   await dialog.getByRole('button', { name: 'Verify receipt', exact: true }).click();
 }
 
-for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['POLICY_UNAVAILABLE', 'Fee policy unavailable'], ['DISPUTED', 'Receipt disputed']]) {
+for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['POLICY_UNAVAILABLE', 'Fee needs confirmation'], ['DISPUTED', 'Receipt disputed']]) {
   const item = receiptItem(state); const f = fixture({ item });
   await check(`blocker-${state}`, route, f.options, async page => {
     await shown(page.getByText(label, { exact: true }));

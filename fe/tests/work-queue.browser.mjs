@@ -6,7 +6,7 @@ import { messagesAccount, sessionFor, threadIds } from "./support/guidance-messa
 const { baseURL, check, shown, hidden, finish, noHorizontalOverflow } = await createBrowserHarness("work-queue");
 const instant = "2026-10-10T00:00:00Z";
 const kinds = ["CALL_SLIP_DUE", "GUIDANCE_MESSAGE_REPLY", "ROUTINE_EVALUATION", "GOOD_MORAL_PREPARATION", "GOOD_MORAL_ISSUANCE"];
-const titles = ["Review Call Slip", "Reply to Guidance Message", "Review Routine Interview", "Prepare Good Moral request", "Issue Good Moral certificate"];
+const titles = ["Review Call Slip", "Reply to Guidance Message", "Review Routine Interview", "Prepare Good Moral request", "Issue Good Moral Certificate"];
 const rows = kinds.map((kind, i) => ({
   id: `${kind.toLowerCase()}:${i}`, kind, priority: i === 0 ? "TIME_SENSITIVE" : "ACTION_REQUIRED",
   source_id: i === 1 ? threadIds.office : `a0000000-0000-4000-8000-00000000000${i + 5}`,
@@ -68,7 +68,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
       assert.equal(await nav.getByRole("link", { name: "My work", exact: true }).count(), 1);
       assert.equal((await nav.locator("a").allTextContents())[1].trim(), "My work");
     } else {
-      await shown(page.getByRole("heading", { name: "My work unavailable" }));
+      await shown(page.getByRole("heading", { name: "My work" }));
       assert.equal(await page.getByRole("link", { name: "My work", exact: true }).count(), 0);
       assert.equal(state.reads.length, 0);
     }

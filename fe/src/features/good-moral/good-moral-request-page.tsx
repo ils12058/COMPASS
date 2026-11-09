@@ -63,7 +63,7 @@ export function GoodMoralRequestPage() {
   const lifecycle = user.student_lifecycle_status;
 
   if (!access.isStudent || !access.canRequestSelf) {
-    return <GoodMoralUnavailable title="Request unavailable" message="You cannot submit a Good Moral request with this account." />;
+    return <GoodMoralUnavailable title="Good Moral request" message="You don't have access to submit Good Moral requests." />;
   }
 
   if (lifecycle === "CURRENT") {
@@ -75,7 +75,7 @@ export function GoodMoralRequestPage() {
 
   return (
     <section className="max-w-2xl space-y-5">
-      <GoodMoralHeading title="Good Moral request unavailable" description="You can't start a request right now." />
+      <GoodMoralHeading title="Good Moral request" description="You can't start a request right now." />
       <Notice action={<Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>}>
         You can still review your existing Good Moral requests.
       </Notice>
@@ -123,8 +123,8 @@ function useCreateGoodMoralRequest() {
         setNotice("Review the request details, then submit again to start a new request.");
       }
       setError(goodMoralErrorMessage(caught, uncertainGoodMoralMutation(caught)
-        ? "The request result could not be confirmed. Retry the same request to check whether it was received."
-        : "The Good Moral request could not be created."));
+        ? "Couldn't confirm the request result. Retry the same request to check whether it was received."
+        : "Couldn't create the Good Moral request. Try again."));
       if (uncertainGoodMoralMutation(caught)) {
         setUncertainIntent(intent);
       } else {
@@ -239,10 +239,10 @@ function f4YearLevelLabel(value: number | null | undefined): string | null {
 
 function f4EligibilityMessage(status: GoodMoralF4EligibilityStatus): string {
   switch (status) {
-    case "NOT_CURRENT": return "F4 is for current students.";
-    case "INVENTORY_REQUIRED": return "Submit this year's Individual Inventory to request F4.";
+    case "NOT_CURRENT": return "You must be a current Student to request this certificate.";
+    case "INVENTORY_REQUIRED": return "Submit this year's Individual Inventory to request a Good Moral Certificate for current Students.";
     case "UNCLASSIFIED_PROGRAM": return "We can't confirm your program. Contact the Guidance Office.";
-    case "POSTGRADUATE_PROGRAM": return "F4 is for current Bachelor's students.";
+    case "POSTGRADUATE_PROGRAM": return "Good Moral Certificate for current Students requires a Bachelor's program.";
     case "UNSUPPORTED_YEAR_LEVEL": return "Update your Individual Inventory or contact the Guidance Office about your year level.";
     case "ELIGIBLE": return "We can't confirm your year level. Contact the Guidance Office.";
   }
@@ -260,13 +260,13 @@ function CurrentStudentRequestChoices() {
         <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       </IllustratedIntroduction>
       <Panel as="div">
-        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="F4 is for current bachelor's students. F6 is for a completed UCN bachelor's degree, even after postgraduate study.">
-          {context.isPending ? <LoadingRegion label="Checking F4 availability…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
-          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check F4 availability. You can still request F6 for a completed UCN Bachelor&apos;s degree.</Notice> : null}
+        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="Choose the current Student certificate for a Bachelor's program. Choose the UCN Bachelor's graduate certificate for a completed degree, even after postgraduate study.">
+          {context.isPending ? <LoadingRegion label="Checking the current Student certificate requirements…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
+          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check the current Student certificate requirements. You can still request a Good Moral Certificate for UCN Bachelor&apos;s graduates.</Notice> : null}
           {academicContext && !f4Eligible ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
-          <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Good Moral certificate type">
-            <Button type="button" variant={variant === "CURRENT_STUDENT" ? "primary" : "secondary"} aria-pressed={variant === "CURRENT_STUDENT"} disabled={!f4Eligible} onClick={() => setVariant("CURRENT_STUDENT")}>F4 · Current Student</Button>
-            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>F6 · UCN Bachelor&apos;s degree</Button>
+          <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Good Moral Certificate type">
+            <Button type="button" variant={variant === "CURRENT_STUDENT" ? "primary" : "secondary"} aria-pressed={variant === "CURRENT_STUDENT"} disabled={!f4Eligible} onClick={() => setVariant("CURRENT_STUDENT")}>Good Moral Certificate for current Students</Button>
+            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>Good Moral Certificate for UCN Bachelor&apos;s graduates</Button>
           </div>
         </PanelSection>
       </Panel>
@@ -294,12 +294,12 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
   return (
     <RequestFormFrame
       embedded
-      title="F4 · Current Student request"
-      description="For current Bachelor's students."
+      title="Good Moral Certificate for current Students"
+      description="For current Bachelor's Students."
     >
       <CreateFeedback state={create} busy={create.isPending} />
       {canReadExitStatus && status.isPending ? <LoadingRegion label="Checking Good Moral prerequisites…"><Skeleton className="h-14 w-full" /></LoadingRegion> : canReadExitStatus && status.isError ? (
-        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void status.refetch()}>Retry</Button>}>Your graduation workflow status could not be confirmed.</Notice>
+        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void status.refetch()}>Retry</Button>}>Couldn&apos;t check your Exit Interview status. Try again.</Notice>
       ) : status.data?.data.graduation_good_moral_blocked ? <GraduationGoodMoralPrerequisite /> : null}
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">
@@ -357,10 +357,10 @@ function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) 
   }
 
   return (
-    <RequestFormFrame embedded={embedded} title="F6 · UCN Bachelor's degree request">
+    <RequestFormFrame embedded={embedded} title="Good Moral Certificate for UCN Bachelor's graduates">
       <CreateFeedback state={create} busy={create.isPending} />
       <Notice>
-        F6 is for a completed UCN Bachelor&apos;s degree. COMPASS doesn&apos;t verify your degree or graduation date.
+        This certificate is for a completed UCN Bachelor&apos;s degree. COMPASS doesn&apos;t verify your degree or graduation date.
       </Notice>
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">

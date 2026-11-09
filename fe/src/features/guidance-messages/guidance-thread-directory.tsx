@@ -72,7 +72,7 @@ export function GuidanceThreadDirectory({
           </Button>
         }
       >
-        Conversations could not be loaded.
+        Couldn&apos;t load the conversations. Try again.
       </PanelMessage>
     );
   } else if (rows.length === 0) {
@@ -89,13 +89,12 @@ export function GuidanceThreadDirectory({
         {viewer === "student" ? (
           <>
             <span className="block font-semibold text-ink">No messages yet.</span>
-            You can write to the Guidance Office, or to your Counselor once you have a Counseling
-            appointment.
+            You can write to the Guidance Office, or to your Counselor once you have a Counseling Appointment.
           </>
         ) : viewer === "faculty" ? (
           <>
             <span className="block font-semibold text-ink">No inquiries yet.</span>
-            Write to the Guidance Office when you need guidance about a student.
+            Write to the Guidance Office when you need guidance about a Student.
           </>
         ) : (
           "No Guidance conversations are available in your current workload."
@@ -140,7 +139,7 @@ export function GuidanceThreadDirectory({
       {directory.isError && keepRows ? (
         <div className="px-3">
           <RefreshFailureNotice
-            message="Conversations could not be refreshed. Showing the last confirmed list."
+            message="Couldn't refresh the conversations. Showing the last confirmed list."
             retrying={directory.isFetching}
             onRetry={() => void directory.refetch()}
           />

@@ -15,13 +15,13 @@ import type { SortOption } from "@/components/ui/sort-field";
 import { ReferralOrdering } from "@/lib/api/generated/model";
 
 const knownReferralErrors: Record<string, string> = {
-  permission_denied: "You don't have access to referrals.",
+  permission_denied: "You don't have access to Referrals.",
   referral_not_found: "Referral not found.",
-  referral_not_permitted: "This referral is unavailable.",
-  referral_document_unavailable: "The document could not be released right now. Try again later.",
-  release_audit_unavailable: "The document could not be released right now. Try again later.",
-  invalid_referral_request: "Some referral details need attention. Review them and try again.",
-  referral_conflict: "This referral changed or conflicts with another recorded action. Review the latest details before trying again.",
+  referral_not_permitted: "You don't have access to this Referral.",
+  referral_document_unavailable: "Couldn't release the document right now. Try again later.",
+  release_audit_unavailable: "Couldn't release the document right now. Try again later.",
+  invalid_referral_request: "Some Referral details need attention. Review them and try again.",
+  referral_conflict: "This Referral changed or conflicts with another recorded action. Review the latest details before trying again.",
   referral_active_call_slip_conflict: "This Referral cannot be voided while its linked Call Slip is active. Void the Call Slip first.",
   referral_completed_call_slip_conflict: "This Referral cannot be voided because its linked Call Slip records a completed interview.",
   idempotency_key_conflict: "This creation attempt no longer matches its original details. Review the form and submit again.",
@@ -82,12 +82,12 @@ export function ReferralHeading({
 }
 
 export function ReferralListSkeleton({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading referrals…" framed={framed} />;
+  return <RowsSkeleton label="Loading Referrals…" framed={framed} />;
 }
 
 export function ReferralDetailSkeleton() {
   return (
-    <LoadingRegion label="Loading referral…" className="space-y-4">
+    <LoadingRegion label="Loading Referral…" className="space-y-4">
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-40 w-full" />
       <Skeleton className="h-64 w-full" />
@@ -96,8 +96,8 @@ export function ReferralDetailSkeleton() {
 }
 
 export function ReferralAccessUnavailable({
-  title = "Referrals unavailable",
-  message = "You don't have access to referrals.",
+  title = "Referrals",
+  message = "You don't have access to Referrals.",
 }: {
   title?: string;
   message?: string;

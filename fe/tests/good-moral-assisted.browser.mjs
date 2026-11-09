@@ -95,7 +95,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) {
     await page.getByRole('radio', { name: /Local Postgraduate Synthetic/ }).check();
     const type = page.getByLabel('Request type');
     assert.equal(await type.locator('option[value="CURRENT_STUDENT"]').isDisabled(), true);
-    assert.match(await page.locator('main').textContent(), /Current program is postgraduate/);
+    assert.match(await page.locator('main').textContent(), /requires a Bachelor's program/);
     await hidden(page.getByLabel('Year level'));
     await shown(page.locator('#assisted-degree'));
     await shown(page.getByText(/COMPASS hasn't verified the degree or graduation date/i));
@@ -119,7 +119,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
   await check('uncertain result locks details and retries original identity', start, f.options, async page => {
     const dialog = await chooseCurrent(page);
     await dialog.getByRole('button', { name: 'Start Good Moral request', exact: true }).click();
-    await shown(dialog.getByText(/result could not be confirmed/));
+    await shown(dialog.getByText(/Couldn't confirm the result/));
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await page.getByLabel('Year level').isDisabled(), true);
     await page.getByRole('button', { name: 'Retry same request', exact: true }).click();
@@ -134,7 +134,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
   await check('view-only account has no action or picker', '/portal/good-moral', f.options, async page => {
     await hidden(page.getByRole('link', { name: /Start request/ }));
     await navigate(page, start);
-    await shown(page.getByRole('heading', { name: 'Request initiation unavailable' }));
+    await shown(page.getByRole('heading', { name: 'Start Good Moral request' }));
     await hidden(page.getByLabel('Search Students'));
   });
 }

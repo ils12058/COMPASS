@@ -139,7 +139,7 @@ export function GoodMoralCorrectionForm({
     if (!alive.current) return undefined;
     if (!refreshed) {
       setBlockedUntilRefresh(true);
-      setError("The request could not be refreshed. Do not submit another correction until its current values can be checked.");
+      setError("Couldn't refresh the request. Do not submit another correction until its current values can be checked.");
       return undefined;
     }
     if (!preserveDraft) setDraft(draftFrom(refreshed));
@@ -198,10 +198,10 @@ export function GoodMoralCorrectionForm({
       if (uncertainGoodMoralMutation(caught) || goodMoralErrorCode(caught) === "good_moral_receipt_changed") {
         const refreshed = await refreshCanonical(true);
         if (refreshed) setReviewRequired(true);
-        setError("The correction could not be confirmed against the details you reviewed. Your draft is kept; compare it with the latest saved receipt before continuing.");
+        setError("Couldn't confirm the correction against the details you reviewed. Your draft is kept; compare it with the latest saved receipt before continuing.");
         return;
       }
-      setError(goodMoralErrorMessage(caught, "Certificate details could not be corrected."));
+      setError(goodMoralErrorMessage(caught, "Couldn't correct certificate details. Try again."));
     } finally {
       sending.current = false;
       if (alive.current) setWorking(false);

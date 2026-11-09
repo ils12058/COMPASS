@@ -33,7 +33,7 @@ test('provenance retains backend inspector ID and institutional time', () => {
 });
 test('metadata history is a disclosure and never invents old receipt contents', () => {
   const html = render(receiptItem()); assert.match(html, /<details/); assert.match(html, /Receipt change history/);
-  assert.match(html, /Earlier receipt contents.*not included/); assert.match(html, /Recorder account reference/);
+  assert.match(html, /Changes to this receipt, newest first/); assert.match(html, /Recorder account reference/);
 });
 test('expected fee displays its backend provisional status', () => {
   const item = receiptItem('POLICY_UNAVAILABLE'); assert.doesNotMatch(render(item), /Approved expected amount/);
@@ -59,7 +59,7 @@ test('no success for invalidated or replaced inspection evidence', () => {
   current.receipt_inspection.status = 'VERIFIED'; current.receipt_identity.revision_id = verificationId; assert.equal(reviewedInspectionIsCurrent(current, review), false);
 });
 test('Student next steps contain no approved amount, inspection authority or online payment', () => {
-  const html = renderToStaticMarkup(h(GoodMoralStudentNextSteps)); assert.match(html, /UCN Cashier/); assert.match(html, /physical Official Receipt/); assert.match(html, /Guidance and Counseling Office/);
+  const html = renderToStaticMarkup(h(GoodMoralStudentNextSteps)); assert.match(html, /UCN Cashier/); assert.match(html, /physical Official Receipt/); assert.match(html, /Guidance Office/);
   assert.doesNotMatch(html, /80|Verify receipt|ledger|policy|<input|<form|upload/);
 });
 test('active correction avoids an unconditional optional receipt label and never attests to inspection', () => {

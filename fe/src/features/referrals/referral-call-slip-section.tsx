@@ -49,10 +49,10 @@ export function ReferralCallSlipSection({
       <PanelHeader title="Call Slip / Interview Permit" titleId="referral-call-slips-heading" />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
       {!canViewCallSlips ? (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Linked Call Slip details are unavailable here. Open the Call Slip to check its issuance status if you have access.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Open the linked Call Slip to check its issuance status if you have access.</p>
       ) : currentError ? (
         <div className="mt-4">
-          <CallSlipQueryError error={currentError} fallback="Linked Call Slip state could not be checked." onRetry={() => { retryCurrent(); void history.refetch(); }} />
+          <CallSlipQueryError error={currentError} fallback="Couldn't check the linked Call Slip state. Try again." onRetry={() => { retryCurrent(); void history.refetch(); }} />
         </div>
       ) : currentPending ? (
         <div className="mt-4 space-y-2" aria-busy="true" aria-label="Checking linked Call Slips">
@@ -68,7 +68,7 @@ export function ReferralCallSlipSection({
 
           {history.isError ? (
             <div className="mt-4">
-              <CallSlipQueryError error={history.error} fallback="Linked Call Slip history could not be loaded." onRetry={() => void history.refetch()} />
+              <CallSlipQueryError error={history.error} fallback="Couldn't load the linked Call Slip history. Try again." onRetry={() => void history.refetch()} />
             </div>
           ) : history.isPending ? (
             <p role="status" className="mt-4 text-sm text-muted">Loading linked Call Slip history…</p>
@@ -101,7 +101,7 @@ export function ReferralCallSlipSection({
                   referral={referral}
                   actionType={ReferralActionTypeValue.SEND_CALL_SLIP_INTERVIEW_PERMIT}
                   buttonLabel="Record action only"
-                  supportingText={'Records the action without issuing a digital Call Slip or notifying the student.'}
+                  supportingText={'Records the action without issuing a digital Call Slip or notifying the Student.'}
                   onRefresh={onRefresh}
                 />
               ) : null}

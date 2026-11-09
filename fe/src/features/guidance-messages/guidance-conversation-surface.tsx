@@ -121,8 +121,8 @@ export function ConversationHistoryRegion({
           <RefreshFailureNotice
             message={
               isContentUnavailable(history.error)
-                ? "New messages cannot be shown right now because confidential message content is temporarily unavailable. Showing the messages already loaded."
-                : "Messages could not be refreshed. Showing the messages already loaded."
+                ? "Couldn't show new messages right now. Showing the messages already loaded."
+                : "Couldn't refresh messages. Showing the messages already loaded."
             }
             retrying={history.isFetching}
             onRetry={() => void history.refetch()}
@@ -158,8 +158,8 @@ export function ConversationHistoryRegion({
             }
           >
             {isContentUnavailable(history.error)
-              ? "Messages in this conversation cannot be shown right now because confidential message content is temporarily unavailable."
-              : "Messages could not be loaded."}
+              ? "Couldn't show messages in this conversation right now. Try again."
+              : "Couldn't load messages. Try again."}
           </PanelMessage>
         </div>
       ) : (
@@ -200,7 +200,7 @@ function TypingIndicator({ label }: { label: string | null }) {
 export function ResolvedNote({ thread, viewer }: { thread: GuidanceThreadResponse; viewer: GuidanceViewer }) {
   return (
     <p>
-      <span className="font-semibold text-ink">This conversation is resolved.</span>{" "}
+      <span className="font-semibold text-ink">This conversation is closed.</span>{" "}
       {viewer === "student" && thread.kind === "OFFICE" ? (
         <>
           To contact the Guidance Office again,{" "}
@@ -219,7 +219,7 @@ export function ResolvedNote({ thread, viewer }: { thread: GuidanceThreadRespons
 }
 
 export function ReferralVoidedNote() {
-  return <p>This referral was voided, so this conversation is read-only.</p>;
+  return <p>This Referral was voided, so this conversation is read-only.</p>;
 }
 
 export function ComposerNote({ children }: { children: ReactNode }) {
@@ -233,7 +233,7 @@ export function ComposerNote({ children }: { children: ReactNode }) {
 export function ResolvedBadge() {
   return (
     <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
-      Resolved
+      Closed
     </span>
   );
 }
@@ -301,7 +301,7 @@ export function ThreadStatusControl({
       <Button
         variant="secondary"
         className={cn("min-h-10", compact && "px-3")}
-        aria-label={compact ? (resolved ? `Reopen ${noun}` : `Resolve ${noun}`) : undefined}
+        aria-label={compact ? (resolved ? `Reopen ${noun}` : `Close ${noun}`) : undefined}
         disabled={reopen.isPending}
         onClick={() => {
           if (!resolved) {
@@ -318,7 +318,7 @@ export function ThreadStatusControl({
       >
         {resolved
           ? reopen.isPending ? "Reopening…" : compact ? "Reopen" : `Reopen ${noun}`
-          : compact ? "Resolve" : `Resolve ${noun}`}
+          : compact ? "Close" : `Close ${noun}`}
       </Button>
       {reopenError && resolved ? (
         <p role="alert" className="max-w-xs text-right text-sm text-danger">
@@ -327,9 +327,9 @@ export function ThreadStatusControl({
       ) : null}
       <ConsequentialActionDialog
         open={confirming}
-        title={inquiry ? "Resolve this inquiry?" : "Resolve this conversation?"}
-        confirmLabel={`Resolve ${noun}`}
-        pendingLabel="Resolving…"
+        title={inquiry ? "Close this inquiry?" : "Close this conversation?"}
+        confirmLabel={`Close ${noun}`}
+        pendingLabel="Closing…"
         pending={resolve.isPending}
         error={resolve.isError ? describeStatusChangeError(resolve.error, "resolve") : null}
         onOpenChange={setConfirming}
@@ -337,7 +337,7 @@ export function ThreadStatusControl({
           resolve.mutate(undefined, {
             onSuccess: () => {
               setConfirming(false);
-              onChanged?.("Conversation resolved.");
+              onChanged?.("Conversation closed.");
             },
           })
         }
@@ -347,7 +347,7 @@ export function ThreadStatusControl({
           messages stay readable.
         </p>
         {referral ? (
-          <p>This resolves only the conversation. It does not change the Referral record.</p>
+          <p>This closes only the conversation. It does not change the Referral record.</p>
         ) : null}
         {thread.kind === "OFFICE" ? (
           <p>If they write to the Guidance Office again, a new conversation starts.</p>

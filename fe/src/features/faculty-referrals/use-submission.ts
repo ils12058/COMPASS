@@ -17,7 +17,7 @@ export function validateReferralFields(identifier: string, course: string, reaso
   return {
     identifier: !identifier.trim() ? "Enter the exact institutional ID." : identifier.length > 64 ? "Institutional ID must be 64 characters or fewer." : "",
     course: !course.trim() ? "Enter the Course/Year/Block." : course.length > 255 ? "Course/Year/Block must be 255 characters or fewer." : "",
-    reason: !reason.trim() ? "Enter the reason for referral." : reason.length > 10000 ? "Referral reason must be 10,000 characters or fewer." : "",
+    reason: !reason.trim() ? "Enter the reason for Referral." : reason.length > 10000 ? "Referral reason must be 10,000 characters or fewer." : "",
   };
 }
 
@@ -40,7 +40,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   const dirty = !!(identifier || course || reason);
   useUnsavedChangesGuard({ dirty, message: uncertain
     ? "The submission outcome is not confirmed. Check My Referrals before starting another. Discard this draft and its retry information?"
-    : "Discard your unsaved referral? Its confidential information is kept only on this page." });
+    : "Discard your unsaved Referral? Its confidential information is kept only on this page." });
   useServerBoundary({ boundary: confirmed?.response.expires_at, serverDate: confirmed?.serverDate, receivedAt: confirmed?.receivedAt, onBoundary: () => setExpired(true) });
   useServerBoundary({ boundary: cooldown, onBoundary: () => setCooldown(null) });
 
@@ -56,7 +56,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
       setExpired(false);
     } else {
       setConfirmed(null);
-      setError("The Student could not be confirmed. Check the exact institutional ID or contact the Guidance and Counseling Office through your usual institutional channel.");
+      setError("Couldn't confirm the Student. Check the exact institutional ID or contact the Guidance Office.");
     }
   } });
   const submission = useMutation({ retry: false, gcTime: 0, mutationFn: async () => {
@@ -87,7 +87,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     setErrors(invalid); setError("");
     const first = invalid.identifier ? "faculty-student-id" : invalid.course ? "faculty-course" : invalid.reason ? "faculty-reason" : null;
     if (first) { document.getElementById(first)?.focus(); return; }
-    if (!confirmed?.response.confirmation || expired || Date.now() >= confirmed.deadline) { setExpired(true); setError("Confirm the Student again before reviewing your referral."); return; }
+    if (!confirmed?.response.confirmation || expired || Date.now() >= confirmed.deadline) { setExpired(true); setError("Confirm the Student again before reviewing your Referral."); return; }
     intent.current = null; setReviewing(true);
   }
   async function submit() {

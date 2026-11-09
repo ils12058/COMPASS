@@ -59,7 +59,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGetMy(callSlipId, { query: { retry: false } });
   const confirmed = safeQueryData(slip);
 
-  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Couldn't load Call Slip details. Try again." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipDetailSkeleton />;
   if (!confirmed) return <CallSlipDetailSkeleton />;
 
@@ -115,7 +115,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
   const confirmed = safeQueryData(slip);
 
-  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Call Slip detail could not be loaded." onRetry={() => void slip.refetch()} /></div>;
+  if (slip.isError && !confirmed) return <div className="space-y-5"><CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" /><CallSlipQueryError error={slip.error} fallback="Couldn't load Call Slip details. Try again." onRetry={() => void slip.refetch()} /></div>;
   if (slip.isPending) return <CallSlipDetailSkeleton />;
   if (!confirmed) return <CallSlipDetailSkeleton />;
 
@@ -172,7 +172,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
             <FormRevisionSection revision={item.form_revision} />
             {item.referral && !referralAccess.canView ? (
               <PanelSection title="Linked Referral" titleId="linked-referral-heading">
-                <p className="text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>
+                <p className="text-sm text-muted">You don&apos;t have access to the linked Referral reference.</p>
               </PanelSection>
             ) : null}
           </Panel>
@@ -218,7 +218,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
       const response = studentFacing ? await callSlipsDownloadMyPdf(callSlipId) : await callSlipsDownloadPdf(callSlipId);
       downloadBinaryResponse(response, institutionalPdfFallbackFilename("callSlip", callSlipId));
     } catch (caught) {
-      setError(callSlipErrorMessage(caught, "The document could not be released right now. Try again later."));
+      setError(callSlipErrorMessage(caught, "Couldn't release the document right now. Try again later."));
     } finally {
       setPending(false);
     }
@@ -231,7 +231,7 @@ function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperation
   if (slip.state !== CallSlipLifecycleStateValue.ACTIVE) return null;
   return (
     <Panel aria-labelledby="call-slip-actions-heading">
-      <PanelHeader title="Operational actions" titleId="call-slip-actions-heading" />
+      <PanelHeader title="Staff actions" titleId="call-slip-actions-heading" />
       {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="px-4 py-4 text-sm text-muted sm:px-5">Interview end is recorded at {formatInstitutionalDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
       <VoidCallSlip slip={slip} onRefresh={onRefresh} />
     </Panel>
@@ -273,7 +273,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
   async function record() {
     if (reconcileRequired) {
       const refreshed = await onRefresh();
-      if (!refreshed) return setError("The Call Slip could not be refreshed. Do not retry until its current state can be checked.");
+      if (!refreshed) return setError("Couldn't refresh the Call Slip. Do not retry until its current state can be checked.");
       setReconcileRequired(false);
       if (refreshed.interview_ended_at) {
         setConfirmOpen(false);
@@ -304,10 +304,10 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         } else {
           setConfirmOpen(false);
           setReconcileRequired(true);
-          setError("The Call Slip could not be refreshed. Do not retry until its current state can be checked.");
+          setError("Couldn't refresh the Call Slip. Do not retry until its current state can be checked.");
         }
       } else {
-        setError(callSlipErrorMessage(caught, "Interview end could not be recorded."));
+        setError(callSlipErrorMessage(caught, "Couldn't record the interview end. Try again."));
       }
     }
   }
@@ -379,7 +379,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
     setNotice(null);
     if (reconcileRequired) {
       const refreshed = await onRefresh();
-      if (!refreshed) return setError("The Call Slip could not be refreshed. Do not retry the void until its current state can be checked.");
+      if (!refreshed) return setError("Couldn't refresh the Call Slip. Do not retry the void until its current state can be checked.");
       setReconcileRequired(false);
       if (refreshed.state === CallSlipLifecycleStateValue.VOIDED) {
         setOpen(false);
@@ -414,10 +414,10 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
         } else {
           setOpen(false);
           setReconcileRequired(true);
-          setError("The Call Slip could not be refreshed. Do not retry the void until its current state can be checked.");
+          setError("Couldn't refresh the Call Slip. Do not retry the void until its current state can be checked.");
         }
       } else {
-        setError(callSlipErrorMessage(caught, "The Call Slip could not be voided."));
+        setError(callSlipErrorMessage(caught, "Couldn't void the Call Slip. Try again."));
       }
     }
   }

@@ -24,7 +24,7 @@ const metricLink = "inline-flex min-h-11 min-w-0 items-center text-brand hover:u
 
 export function GuidanceOperationsPage() {
   const { user } = usePortalSession();
-  if (!hasGuidanceOperations(user)) return <WorkspaceUnavailable title="Guidance operations unavailable">Guidance operations is available to Guidance staff.</WorkspaceUnavailable>;
+  if (!hasGuidanceOperations(user)) return <WorkspaceUnavailable title="Guidance Operations">You don&apos;t have access to Guidance Operations.</WorkspaceUnavailable>;
   return <OperationsSummary key={user.id} user={user} />;
 }
 
@@ -52,7 +52,7 @@ function OperationsSummary({ user }: { user: UserSummary }) {
     {query.isPending || !data ? <Panel>
       {query.isPending ? <PanelMessage role="status">Loading Guidance operations…</PanelMessage> : null}
       {query.isError ? <Notice role="alert" tone="warning" action={<Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Retry</Button>}>
-        {forbidden ? "You don't have access to Guidance Operations." : "Guidance operations could not be loaded. Try again."}
+        {forbidden ? "You don't have access to Guidance Operations." : "Couldn't load Guidance Operations. Try again."}
       </Notice> : null}
     </Panel> : null}
     {metrics && data ? <>

@@ -55,8 +55,8 @@ const mappings = [
     [exitInterviewErrorMessage, 'exit_interview_opportunity_not_open', /no longer open.*Contact/],
     [exitInterviewErrorMessage, 'exit_interview_opportunity_conflict', /Review the access record or contact/],
     [inventoryErrorMessage, 'inventory_conflict', /Review your answers and inventory status/],
-    [referralErrorMessage, 'invalid_referral_request', /Some referral details need attention/],
-    [callSlipErrorMessage, 'invalid_call_slip_request', /Some call slip details need attention/],
+    [referralErrorMessage, 'invalid_referral_request', /Some Referral details need attention/],
+    [callSlipErrorMessage, 'invalid_call_slip_request', /Some Call Slip details need attention/],
     [routineErrorMessage, 'routine_interview_form_revision_unsupported', /can't be used.*Contact the Guidance Office administrator/],
     [appointmentErrorMessage, 'appointment_default_provider_unresolved', /could not be selected.*Choose an eligible counselor/],
     [counselingErrorMessage, 'counseling_invalid_request', /Some counseling details need attention/],
@@ -76,7 +76,9 @@ for (const [produce, code, expected] of mappings)
 for (const [produce, code] of [[referralErrorMessage, 'referral_not_permitted'], [callSlipErrorMessage, 'call_slip_not_permitted'], [counselingErrorMessage, 'counseling_resource_not_found'], [inventoryErrorMessage, 'inventory_not_found'], [exitInterviewErrorMessage, 'exit_interview_not_found']])
     test(`${produce.name}: concealed record remains unavailable`, () => {
         const text = produce(api(code, 404), fallback);
-        assert.match(text, /unavailable|not available|could not be found|no longer available/);
+        assert.match(text, [referralErrorMessage, callSlipErrorMessage].includes(produce)
+            ? /^You don't have access to this (Referral|Call Slip)\.$/
+            : /unavailable|not available|could not be found|no longer available/);
         assert.doesNotMatch(text, /exists|another account|owner|tenant|capability/);
     });
 test('Routine forbidden and not-found records preserve identical concealment', () => assert.equal(routineErrorMessage(api('routine_interview_not_found', 404), fallback), routineErrorMessage(api('routine_interview_not_permitted', 403), fallback)));
@@ -127,7 +129,7 @@ for (const status of [408, 500, 503])
         const error = api('internal_error', status);
         assert.equal(isUncertainSendFailure(error), true);
         const text = describeSendError(error, 'thread');
-        assert.match(text, /could not confirm|could not be confirmed/);
+        assert.match(text, /Couldn't confirm/);
         assert.doesNotMatch(text, /not sent/);
         const intent = { target: 'thread', body: 'Private synthetic text', clientMessageId: 'original' }, state = { kind: 'uncertain', intent };
         assert.equal(nextSendIntent(state, 'thread', intent.body, () => { throw Error('No new ID'); }), intent);
@@ -162,7 +164,7 @@ test('Rendered query errors retain one alert, explicit Retry, and no diagnostics
     }
 });
 test('Ordinary loading copy has one sentence-case status announcement', () => {
-    for (const [component, label] of [[ReferralListSkeleton, 'Loading referrals…'], [CallSlipListSkeleton, 'Loading call slips…']]) {
+    for (const [component, label] of [[ReferralListSkeleton, 'Loading Referrals…'], [CallSlipListSkeleton, 'Loading Call Slips…']]) {
         const html = renderToStaticMarkup(h(component));
         assert.match(html, new RegExp(label));
         assert.equal((html.match(/role="status"/g) ?? []).length, 1);

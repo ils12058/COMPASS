@@ -36,9 +36,9 @@ export function presentOperations(data: GuidanceOperationsResponse, user: UserSu
   const context = (label: string, count: number | null, href?: string) => {
     if (count !== null) schedule.push({ label, count, href });
   };
-  context("Your upcoming appointments", data.schedule.upcoming_self_appointments_count,
+  context("Your upcoming Appointments", data.schedule.upcoming_self_appointments_count,
     appointments.canViewSelf ? "/portal/appointments/my?status=UPCOMING" : undefined);
-  context("Upcoming managed appointments", data.schedule.upcoming_managed_appointments_count,
+  context("Upcoming managed Appointments", data.schedule.upcoming_managed_appointments_count,
     appointments.canManage ? "/portal/appointments/manage?status=UPCOMING" : undefined);
   context("Active Call Slips", data.schedule.active_call_slips_count,
     callSlips.hasWorkspace ? "/portal/call-slips?state=ACTIVE" : undefined);

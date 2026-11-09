@@ -32,7 +32,7 @@ function world(role, capabilities, lifecycle = "ACTIVE", { uncertain = false, fo
   return { handler, mutations, get reads() { return reads; } };
 }
 async function noManagement(page) {
-  for (const label of ["Record interview end", "Operational actions"]) await hidden(page.getByRole("heading", { name: label, exact: true }));
+  for (const label of ["Record interview end", "Staff actions"]) await hidden(page.getByRole("heading", { name: label, exact: true }));
   await hidden(page.getByRole("button", { name: "Void Call Slip", exact: true }));
   await hidden(page.getByRole("button", { name: "Review interview end", exact: true }));
   assert.equal(await page.getByRole("alertdialog").count(), 0);
@@ -72,7 +72,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
     for (const uncertain of [false, true]) {
       const fixture = world(role, ["call_slips.view", "call_slips.manage"], "ACTIVE", { uncertain });
       await check(`${role} ${action} confirmation and ${uncertain ? "uncertain recovery" : "confirmed refresh"}`, path, { handler: fixture.handler }, async (page) => {
-        await shown(page.getByRole("heading", { name: "Operational actions", exact: true }));
+        await shown(page.getByRole("heading", { name: "Staff actions", exact: true }));
         let trigger;
         if (action === "interview-ended") {
           await page.getByLabel("Interview ended", { exact: true }).fill("2026-01-01T10:00");
@@ -104,7 +104,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
 for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT"]) {
   const fixture = world(role, ["call_slips.manage", "unrelated.view"]);
   await check(`${role} direct URL without viewing capability makes no detail request`, path, { handler: fixture.handler }, async (page) => {
-    await shown(page.getByRole("heading", { name: "Call Slips unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "Call Slips", exact: true }));
     await noManagement(page); assert.equal(fixture.reads, 0);
     await hidden(page.getByRole("button", { name: "Download Call Slip", exact: true }));
   });

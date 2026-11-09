@@ -21,13 +21,13 @@ import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import type { SortOption } from "@/components/ui/sort-field";
 
 const knownCallSlipErrors: Record<string, string> = {
-  permission_denied: "You don't have access to call slips.",
+  permission_denied: "You don't have access to Call Slips.",
   call_slip_not_found: "Call Slip not found.",
-  call_slip_not_permitted: "This call slip is unavailable.",
-  call_slip_document_unavailable: "The document could not be released right now. Try again later.",
-  release_audit_unavailable: "The document could not be released right now. Try again later.",
-  invalid_call_slip_request: "Some call slip details need attention. Review them and try again.",
-  call_slip_conflict: "This call slip changed or conflicts with its current details. Review the latest details before trying again.",
+  call_slip_not_permitted: "You don't have access to this Call Slip.",
+  call_slip_document_unavailable: "Couldn't release the document right now. Try again later.",
+  release_audit_unavailable: "Couldn't release the document right now. Try again later.",
+  invalid_call_slip_request: "Some Call Slip details need attention. Review them and try again.",
+  call_slip_conflict: "This Call Slip changed or conflicts with its current details. Review the latest details before trying again.",
   idempotency_key_conflict: "This issuance attempt no longer matches its original details. Review the form and submit again.",
 };
 
@@ -74,11 +74,11 @@ export function CallSlipHeading({
   );
 }
 
-export function CallSlipListSkeleton({ label = "Loading call slips…", framed = true }: { label?: string; framed?: boolean }) {
+export function CallSlipListSkeleton({ label = "Loading Call Slips…", framed = true }: { label?: string; framed?: boolean }) {
   return <RowsSkeleton label={label} framed={framed} />;
 }
 
-export function CallSlipDetailSkeleton({ label = "Loading call slip…" }: { label?: string }) {
+export function CallSlipDetailSkeleton({ label = "Loading Call Slip…" }: { label?: string }) {
   return (
     <LoadingRegion label={label} className="space-y-4">
       <Skeleton className="h-16 w-full" />
@@ -92,14 +92,14 @@ export function CallSlipDetailSkeleton({ label = "Loading call slip…" }: { lab
 export function LinkedCallSlipCheckLoading() {
   return (
     <div className="space-y-4" aria-busy="true">
-      <p role="status" className="text-sm text-muted">Checking the referral and linked call slip…</p>
+      <p role="status" className="text-sm text-muted">Checking the Referral and linked Call Slip…</p>
     </div>
   );
 }
 
 export function CallSlipAccessUnavailable({
-  title = "Call Slips unavailable",
-  message = "You don't have access to call slips.",
+  title = "Call Slips",
+  message = "You don't have access to Call Slips.",
 }: {
   title?: string;
   message?: string;

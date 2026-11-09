@@ -137,7 +137,7 @@ test("case titles name the Student subject and subtitles name the kind", () => {
 });
 
 test("the exact ended copy is reserved for an ended access; every other refusal keeps its wording", () => {
-  assert.equal(CASE_COORDINATION_ENTRY_COPY, "Coordinate on this authorized case.");
+  assert.equal(CASE_COORDINATION_ENTRY_COPY, "Coordinate on this case.");
   assert.equal(CASE_COORDINATION_ENDED_COPY, "Your case coordination access has ended.");
   assert.equal(CASE_COORDINATION_UNAVAILABLE_COPY, "This conversation is no longer available for new messages.");
   assert.equal(

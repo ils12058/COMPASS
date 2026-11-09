@@ -35,8 +35,8 @@ export function FollowupsList() {
   const activeFilterCount = Number(filters.status !== StatusValue.PENDING)
     + Number(Boolean(filters.due_window))
     + Number(Boolean(filters.assigned_to_id));
-  const emptyTitle = activeFilterCount ? "No matching follow-ups" : workloadTotal === 0 ? "No follow-ups assigned" : workload?.pending === 0 ? "No Pending follow-ups" : "No follow-ups on this page";
-  const emptyCopy = activeFilterCount ? "Change Status or open Filters to adjust the due date and responsibility filters." : workloadTotal === 0 ? "Follow-ups appear here when a next action is assigned to you." : workload?.pending === 0 ? "Choose another Status to review completed or cancelled work." : "Try another page or adjust the filters to find the Pending follow-up you need.";
+  const emptyTitle = activeFilterCount ? "No matching Follow-Ups" : workloadTotal === 0 ? "No Follow-Ups assigned" : workload?.pending === 0 ? "No Pending Follow-Ups" : "No Follow-Ups on this page";
+  const emptyCopy = activeFilterCount ? "Change Status or open Filters to adjust the due date and responsibility filters." : workloadTotal === 0 ? "Follow-Ups appear here when a next action is assigned to you." : workload?.pending === 0 ? "Choose another Status to review completed or cancelled work." : "Try another page or adjust the filters to find the Pending Follow-Up you need.";
   const hasActiveFilters = activeFilterCount > 0;
   function clearFilters() {
     setFilters(previous => ({
@@ -60,18 +60,18 @@ export function FollowupsList() {
           <Link className="font-semibold text-brand underline underline-offset-4" href="/portal/follow-ups/report">Follow-Up report</Link>
         </div>
       </div>
-      {report.isError ? <p role="alert" className="mt-2 text-sm text-muted">The workload overview could not be loaded. <Button variant="quiet" onClick={() => void report.refetch()}>Retry</Button></p> : workload ? <>
+      {report.isError ? <p role="alert" className="mt-2 text-sm text-muted">Couldn&apos;t load workload overview. Try again. <Button variant="quiet" onClick={() => void report.refetch()}>Retry</Button></p> : workload ? <>
         <dl className="mt-2 flex flex-wrap gap-x-8 gap-y-2 border-y border-brand-line py-2">
           <div className="flex items-baseline gap-2"><dt>Pending</dt><dd className="font-semibold">{workload.pending}</dd></div>
           <div className="flex items-baseline gap-2"><dt>Overdue</dt><dd className="font-semibold">{workload.overdue}</dd></div>
           <div className="flex items-baseline gap-2"><dt>Due soon</dt><dd className="font-semibold">{workload.due_soon}</dd></div>
         </dl>
-        <p className="mt-1 text-sm text-muted">Counts include only follow-ups you can currently access. Due soon means the next {workload.horizon_days} days.</p>
+        <p className="mt-1 text-sm text-muted">Counts include only Follow-Ups you can currently access. Due soon means the next {workload.horizon_days} days.</p>
       </> : <p role="status" className="mt-2 text-sm text-muted">Loading workload overview…</p>}
     </section>
     <FloatingListTools
       compact
-      label="Follow-up filters"
+      label="Follow-Up filters"
       filterCount={activeFilterCount}
       clear={hasActiveFilters ? (
         <Button type="button" variant="quiet" onClick={clearFilters}>Clear filters</Button>
@@ -84,7 +84,7 @@ export function FollowupsList() {
             <FilterField
               label="Due date"
               htmlFor="followup-due-filter"
-              hint={<p id="followup-due-filter-hint" className="text-xs text-muted">For Pending follow-ups only.</p>}
+              hint={<p id="followup-due-filter-hint" className="text-xs text-muted">For Pending Follow-Ups only.</p>}
             >
               <Select
                 id="followup-due-filter"
@@ -146,8 +146,8 @@ export function FollowupsList() {
         : "The selected status filter is active and updates the list immediately."}
     </span>
     <Panel>
-      <PanelHeader title="Follow-up tasks" context={data ? `${data.items.length} on this page` : "Loading…"} />
-      {query.isPending ? <p role="status" className="p-5">Loading follow-ups…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
+      <PanelHeader title="Follow-Up tasks" context={data ? `${data.items.length} on this page` : "Loading…"} />
+      {query.isPending ? <p role="status" className="p-5">Loading Follow-Ups…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
         {data.items.length ? <div className={dataTable.scroll}><table className={dataTable.table}><thead className={dataTable.head}><tr>{["Student", "Category", "Due", "Responsible staff member", "Status"].map(label => <th key={label} scope="col" className={dataTable.headerCell}>{label}</th>)}</tr></thead><tbody>{data.items.map(row => {
           const dueAt = Date.parse(row.due_at);
           const reportAt = workload ? Date.parse(workload.generated_at) : Number.NaN;
@@ -155,7 +155,7 @@ export function FollowupsList() {
             && dueAt >= reportAt && dueAt <= reportAt + workload.horizon_days * 24 * 60 * 60 * 1000);
           return <tr key={row.id} className={dataTable.row}>
           <th scope="row" className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.student_name} photoUrl={row.student_profile_photo_url} photoUpdatedAt={row.student_profile_photo_updated_at} size="compact" /><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></span></th>
-          <td className={dataTable.cell}>{categoryLabel(row.category)}</td><td className={dataTable.cell}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" />{row.assigned_to_name}</span></td><td className={dataTable.cell}>{statusLabel(row.status)}{row.source_unavailable ? <span className="block text-sm text-muted">Related record unavailable</span> : null}</td>
+          <td className={dataTable.cell}>{categoryLabel(row.category)}</td><td className={dataTable.cell}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" />{row.assigned_to_name}</span></td><td className={dataTable.cell}>{statusLabel(row.status)}{row.source_unavailable ? <span className="block text-sm text-muted">Can&apos;t open related record</span> : null}</td>
         </tr>;
         })}</tbody></table></div> : <PanelMessage>
           <span className="font-semibold text-ink">{emptyTitle}.</span> {emptyCopy}

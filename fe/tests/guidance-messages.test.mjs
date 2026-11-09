@@ -260,7 +260,7 @@ test("conversation labels use human wording from each reader's side", () => {
   assert.ok(!threadTitle(referral, "staff").includes("Maria Santos"), "The Student is never a referral participant");
   assert.equal(threadSubtitle({ ...referral, relationship_referral_reference: "  " }, "staff"), "Referral coordination");
   assert.deepEqual(threadRoutingFacts(counseling, "staff"), { college: null, assignedTo: null });
-  assert.equal(threadStatusLabel("RESOLVED"), "Resolved");
+  assert.equal(threadStatusLabel("RESOLVED"), "Closed");
   assert.equal(unreadLabel(0), null);
   assert.equal(unreadLabel(2), "2 unread");
   assert.equal(threadTitle(thread({ student: person("s", "  ") }), "staff"), "Student");
@@ -336,20 +336,20 @@ test("only outcomes that may follow a stored Message keep the intent for retry",
 });
 
 test("send and status errors say what happened without backend jargon", () => {
-  assert.match(describeSendError(new TypeError("x"), "thread"), /could not be confirmed/);
-  assert.match(describeSendError(apiError(409), "thread"), /resolved, so your message was not sent/);
-  assert.match(describeSendError(apiError(409), "staff-office"), /no available Guidance Office routing/);
-  assert.match(describeSendError(apiError(409), "faculty-inquiry"), /Your inquiry could not be started/);
+  assert.match(describeSendError(new TypeError("x"), "thread"), /Couldn't confirm/);
+  assert.match(describeSendError(apiError(409), "thread"), /closed, so your message was not sent/);
+  assert.match(describeSendError(apiError(409), "staff-office"), /no Guidance Office staff available/);
+  assert.match(describeSendError(apiError(409), "faculty-inquiry"), /Couldn't start your inquiry/);
   assert.match(describeSendError(apiError(409, "guidance_messages_referral_voided"), "referral-coordination"), /voided/);
   assert.match(describeSendError(apiError(409, "guidance_messages_referral_voided"), "referral-coordination"), /read-only/);
-  assert.match(describeSendError(apiError(409, "guidance_messages_conflict"), "referral-coordination"), /resolved, so your message was not sent/);
+  assert.match(describeSendError(apiError(409, "guidance_messages_conflict"), "referral-coordination"), /closed, so your message was not sent/);
   assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "resolve"), /voided/);
   assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "reopen"), /voided/);
   assert.match(describeSendError(apiError(404), "student-counseling"), /choose another recipient/);
   assert.match(describeSendError(apiError(404), "counselor-direct"), /choose another Counselor/);
-  assert.match(describeSendError(apiError(409), "counselor-direct"), /could not be started right now/);
+  assert.match(describeSendError(apiError(409), "counselor-direct"), /Couldn't start a conversation with this Counselor right now/);
   assert.ok(
-    !/resolved, so your message was not sent/.test(describeSendError(apiError(409), "counselor-direct")),
+    !/closed, so your message was not sent/.test(describeSendError(apiError(409), "counselor-direct")),
     "A direct conversation never reports the resolved copy",
   );
   assert.match(describeSendError(apiError(422), "thread"), /4,000 characters/);

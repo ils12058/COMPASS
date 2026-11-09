@@ -13,17 +13,17 @@ export function GoodMoralDetailPage({ requestId }: { requestId: string }) {
 
   if (access.isStudent) {
     if (!access.canViewSelf) {
-      return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable." />;
+      return <GoodMoralUnavailable title="Good Moral request" message="You don't have access to this Good Moral request." />;
     }
     return <GoodMoralStudentDetail key={`${owner}:${requestId}`} requestId={requestId} canCancel={access.canRequestSelf} />;
   }
 
   if (access.hasOperationalWorkspace) {
     if (!access.canViewOperational) {
-      return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable to you." />;
+      return <GoodMoralUnavailable title="Good Moral request" message="You don't have access to this Good Moral request." />;
     }
     return <GoodMoralCounselorDetail key={`${owner}:${requestId}`} requestId={requestId} canManage={access.canManageOperational} canIssue={access.canIssue} canPrepare={access.canPrepare} />;
   }
 
-  return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable." />;
+  return <GoodMoralUnavailable title="Good Moral request" message="You don't have access to this Good Moral request." />;
 }

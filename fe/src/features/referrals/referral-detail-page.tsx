@@ -74,19 +74,19 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   const referralData = safeQueryData(referral);
 
   if (!referralAccess.canView) {
-    return <ReferralAccessUnavailable title="Referral unavailable" message="You don’t have access to review referrals." />;
+    return <ReferralAccessUnavailable title="Referral details" message="You don’t have access to review Referrals." />;
   }
   if (referral.isPending) {
     return <ReferralDetailSkeleton />;
   }
   if (!referralData) {
     if (referralErrorCode(referral.error) === "referral_not_found") {
-      return <ReferralAccessUnavailable title="Referral not found" message="This referral could not be found or is unavailable to you." />;
+      return <ReferralAccessUnavailable title="Referral not found" message="You don't have access to this Referral." />;
     }
     return (
         <div className={pageSheetWidth}>
         <ReferralHeading title="Referral" backHref="/portal/referrals" />
-        <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />
+        <ReferralQueryError error={referral.error} fallback="Couldn't load Referral details. Try again." onRetry={() => void referral.refetch()} />
       </div>
     );
   }
@@ -127,7 +127,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       {pdfError ? <Notice role="alert">{pdfError}</Notice> : null}
       {refreshFailed ? (
         <RefreshFailureNotice
-          message="The latest Referral details could not be refreshed. Showing the last confirmed record. Saving the status note and voiding wait until it refreshes."
+          message="Couldn't refresh the latest Referral details; showing the last confirmed record. Refresh before saving the status note or voiding this Referral."
           retrying={referral.isFetching}
           onRetry={() => void referral.refetch()}
         />
@@ -152,13 +152,13 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
       </RecordSection>
 
-      <RecordSection title="Student on referral">
+      <RecordSection title="Student on Referral">
         <div>
-          <dt className="text-xs font-semibold text-muted">Name on referral</dt>
+          <dt className="text-xs font-semibold text-muted">Name on Referral</dt>
           <dd className="mt-1 text-sm text-ink">{item.student_name_snapshot}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold text-muted">Course / Year / Block on referral</dt>
+          <dt className="text-xs font-semibold text-muted">Course / Year / Block on Referral</dt>
           <dd className="mt-1 text-sm text-ink">{item.course_year_block_snapshot}</dd>
         </div>
       </RecordSection>
@@ -169,7 +169,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dd className="mt-1 text-sm text-ink">{formatDateOnly(item.referred_on)}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold text-muted">Received by Guidance/GCO</dt>
+          <dt className="text-xs font-semibold text-muted">Received by the Guidance Office</dt>
           <dd className="mt-1 text-sm text-ink">{formatInstitutionalDateTime(item.received_at)}</dd>
         </div>
         <div>
@@ -190,7 +190,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dd className="mt-1 text-sm text-ink">{item.referrer_name}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-xs font-semibold text-muted">Reason for referral</dt>
+          <dt className="text-xs font-semibold text-muted">Reason for Referral</dt>
           <dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-6 text-ink">{item.reason}</dd>
         </div>
       </RecordSection>
@@ -228,16 +228,16 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       {/* Accounts that can only read a Referral have no operational actions to look for. */}
       {referralAccess.canManage ? (
       <Panel aria-labelledby="referral-operational-actions-heading">
-        <PanelHeader title="Operational actions" titleId="referral-operational-actions-heading" />
+        <PanelHeader title="Staff actions" titleId="referral-operational-actions-heading" />
         <PanelBody className="*:first:mt-0">
         {!isVoided ? (
           refreshFailed ? (
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Voiding is unavailable until the Referral refreshes.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Refresh this Referral before voiding it.</p>
           ) : canCheckCallSlips && linkedCurrent.isPending ? (
             <p role="status" className="mt-3 text-sm text-muted">Checking linked Call Slip state before enabling Referral void.</p>
           ) : canCheckCallSlips && linkedCurrent.isError ? (
             <div className="mt-3 max-w-2xl">
-              <p role="alert" className="text-sm text-danger">{callSlipErrorMessage(linkedCurrent.error, "Linked Call Slip state could not be checked. Refresh before voiding this Referral.")}</p>
+              <p role="alert" className="text-sm text-danger">{callSlipErrorMessage(linkedCurrent.error, "Couldn't check the linked Call Slip state. Refresh before voiding this Referral.")}</p>
               <Button className="mt-3" variant="secondary" onClick={() => void linkedCurrent.refetch()}>Refresh linked Call Slip state</Button>
             </div>
           ) : currentCallSlip ? (
@@ -284,7 +284,7 @@ function ReferralPdfDownload({ referral, onError }: { referral: ReferralDetailRe
       const response = await referralsDownloadPdf(referral.id);
       downloadBinaryResponse(response, institutionalPdfFallbackFilename("referralSlip", referral.id));
     } catch (caught) {
-      onError(referralErrorMessage(caught, "The document could not be released right now. Try again later."));
+      onError(referralErrorMessage(caught, "Couldn't release the document right now. Try again later."));
     } finally {
       setPending(false);
     }
@@ -342,7 +342,7 @@ function StatusNoteEditor({
         queryClient.invalidateQueries({ queryKey: getReferralsListQueryKey() }),
       ]);
     } catch (caught) {
-      setError(referralErrorMessage(caught, "The status note could not be updated."));
+      setError(referralErrorMessage(caught, "Couldn't update the status note. Try again."));
     }
   }
 
@@ -431,18 +431,18 @@ function VoidReferralButton({
           setOpen(false);
           setNotice("The Referral is already voided.");
         } else if (!refreshed) {
-          setError("The Referral could not be refreshed. Do not retry the void until the current record can be checked.");
+          setError("Couldn't refresh the Referral. Do not retry the void until the current record can be checked.");
         } else if (
           code === "referral_conflict" ||
           code === "referral_active_call_slip_conflict" ||
           code === "referral_completed_call_slip_conflict"
         ) {
-          setError(referralErrorMessage(caught, "The Referral could not be voided."));
+          setError(referralErrorMessage(caught, "Couldn't void the Referral. Try again."));
         } else {
           setError("The Referral is not shown as voided after refreshing. Review the current record before confirming again.");
         }
       } else {
-        setError(referralErrorMessage(caught, "The Referral could not be voided."));
+        setError(referralErrorMessage(caught, "Couldn't void the Referral. Try again."));
       }
     } finally {
       setVoiding(false);

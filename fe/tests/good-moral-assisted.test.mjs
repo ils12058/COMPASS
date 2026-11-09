@@ -37,7 +37,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) test(`${role} ini
 for (const role of ['STUDENT', 'IT_ADMIN', 'INSTITUTIONAL_OFFICER']) test(`${role} cannot initiate even with capabilities`, () => {
   const user = account(role); assert.equal(getGoodMoralAccess(user).canInitiate, false);
   const html = render(h(GoodMoralAssistedRequestPage), user);
-  assert.match(html, /Request initiation unavailable/); assert.doesNotMatch(html, /eligible-student-search/);
+  assert.match(html, /Start Good Moral request/); assert.doesNotMatch(html, /eligible-student-search/);
 });
 test('revoked capability hides the entry point', () => {
   for (const capabilities of [['good_moral.view'], ['good_moral.initiate']]) assert.equal(getGoodMoralAccess(account('COUNSELOR', capabilities)).canInitiate, false);
@@ -46,7 +46,7 @@ test('Student history and detail distinguish provenance and preserve cancellatio
   const user = account('STUDENT', ['good_moral.view_self', 'good_moral.request_self']);
   const detail = render(h(GoodMoralDetailPage, { requestId: item.id }), user);
   for (const html of [render(h(GoodMoralWorkspacePage, { filters }), user), detail]) {
-    assert.match(html, /Started by the Guidance and Counseling Office/); assert.doesNotMatch(html, /Operational Initiator/);
+    assert.match(html, /Started by the Guidance Office/); assert.doesNotMatch(html, /Operational Initiator/);
   }
   assert.match(detail, /Cancel request/);
   assert.equal(goodMoralInitiationLabel('STUDENT_SELF'), 'Requested by Student');
@@ -55,5 +55,5 @@ test('prerequisite and uncertain errors remain safe and actionable', () => {
   for (const code of ['good_moral_inventory_required', 'good_moral_exit_interview_required', 'good_moral_not_found', 'permission_denied']) {
     assert.doesNotMatch(assistedCreationError(new CompassApiError({ status: 409, body: { error: { code, message: 'PRIVATE INTERNAL DIAGNOSTIC' } }, headers: {}, method: 'POST', url: '/synthetic' })), /PRIVATE/);
   }
-  assert.match(assistedCreationError(new Error('network')), /Retry the same request/);
+  assert.match(assistedCreationError(new Error('network')), /retry the same request/);
 });

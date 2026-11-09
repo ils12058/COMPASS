@@ -64,7 +64,7 @@ export function GoodMoralCounselorDetail({
     return (
       <section className="max-w-2xl space-y-5">
         <Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral queue</Link>
-        {notFound ? <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1>} /> : <GoodMoralError error={detail.error} fallback="The Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
+        {notFound ? <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1>} /> : <GoodMoralError error={detail.error} fallback="Couldn't load Good Moral request. Try again." onRetry={() => void detail.refetch()} />}
       </section>
     );
   }
@@ -95,7 +95,7 @@ export function GoodMoralCounselorDetail({
         headingId="good-moral-counselor-detail-heading"
         title="Good Moral request"
         action={<PageAction label="Refresh" labelDetail="request" icon={RefreshCw} variant="secondary" disabled={detail.isFetching || inspecting || correctionOpen} onClick={() => void refresh()} />}
-        description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
+        description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)}` : `${goodMoralVariantLabel(item.variant)} request`}
         back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral queue</Link>}
       />
 

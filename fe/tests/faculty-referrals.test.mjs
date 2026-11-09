@@ -39,14 +39,14 @@ test("Referral validation preserves overlong content and identifies exact field 
 test("Policy denial, conflict and uncertain outcomes use safe actionable copy", () => {
   for (const code of ["faculty_referral_lookup_policy_unconfirmed", "faculty_referral_submission_policy_unconfirmed", "faculty_referral_policy_unconfirmed"]) {
     const message = facultyReferralError(error(403, code), "submit");
-    assert.match(message, /not available/);
+    assert.match(message, /don't have access/);
     assert.doesNotMatch(message, /Internal details|provider|policy_unconfirmed/);
   }
   assert.equal(uncertainSubmission(new TypeError("network")), true);
   assert.equal(uncertainSubmission(error(500, "unexpected")), true);
   assert.equal(uncertainSubmission(error(409, "referral_creation_conflict")), false);
   assert.match(facultyReferralError(error(409, "referral_creation_conflict"), "submit"), /Check My Referrals/);
-  assert.match(facultyReferralError(error(503, "unavailable"), "confirm"), /temporarily unavailable/);
+  assert.match(facultyReferralError(error(503, "unavailable"), "confirm"), /Couldn't check the Student right now/);
   assert.match(facultyReferralError(error(401, "session_expired"), "submit"), /No request will be repeated automatically/);
 });
 

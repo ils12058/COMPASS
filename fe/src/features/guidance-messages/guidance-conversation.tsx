@@ -38,7 +38,7 @@ import type { GuidanceThreadResponse } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
 import { cn } from "@/lib/utils/cn";
 
-const STUDENT_OFFICE_CONTEXT = "Guidance and Counseling Office";
+const STUDENT_OFFICE_CONTEXT = "Guidance Office";
 
 /** One conversation: who it is with, its Messages in order, and the composer. */
 export function GuidanceConversation({ threadId }: { threadId: string }) {
@@ -70,7 +70,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
 
   if (state.concealed) {
     return (
-      <ConversationFrame title="Conversation unavailable">
+      <ConversationFrame title="Conversation">
         <PanelMessage
           action={
             <GuardedPortalLink href="/portal/messages" className={buttonVariants({ variant: "secondary" })}>
@@ -98,7 +98,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
               </Button>
             }
           >
-            This conversation could not be loaded.
+            Couldn&apos;t load this conversation. Try again.
           </PanelMessage>
         ) : (
           <ConversationSkeleton />

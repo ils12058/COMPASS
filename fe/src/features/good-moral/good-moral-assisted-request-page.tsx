@@ -31,7 +31,7 @@ type Intent = { key: string } & (
 
 export function GoodMoralAssistedRequestPage() {
   const { user } = usePortalSession();
-  if (!getGoodMoralAccess(user).canInitiate) return <GoodMoralUnavailable title="Request initiation unavailable" message="You cannot start a Good Moral request for a Student with this account." />;
+  if (!getGoodMoralAccess(user).canInitiate) return <GoodMoralUnavailable title="Start Good Moral request" message="You don't have access to start Good Moral requests for Students." />;
   return <AssistedRequestForm />;
 }
 
@@ -104,7 +104,7 @@ function AssistedRequestForm() {
 
   return (
     <section className="space-y-5">
-      <GoodMoralHeading title="Start request for Student" description="Choose F4 for a current Bachelor's student or F6 for a completed UCN Bachelor's degree." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+      <GoodMoralHeading title="Start request for Student" description="Choose the current Student certificate for a Bachelor's program or the UCN Bachelor's graduate certificate for a completed degree." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       <Panel as="div">
         <PanelSection title="Student" titleId="assisted-student-heading">
           <fieldset disabled={locked} className="min-w-0">
@@ -115,12 +115,12 @@ function AssistedRequestForm() {
               label="Student for Good Moral request"
               optionDescription={(option) => {
                 const goodMoralOption = option as GoodMoralStudentOptionResponse;
-                if (goodMoralOption.id !== student?.id || goodMoralOption.variant !== "CURRENT_STUDENT") return goodMoralOption.variant === "GRADUATE" ? "F6 · UCN Bachelor's degree request" : "Select to request F4 or F6.";
+                if (goodMoralOption.id !== student?.id || goodMoralOption.variant !== "CURRENT_STUDENT") return goodMoralOption.variant === "GRADUATE" ? "Good Moral Certificate for UCN Bachelor's graduates (F6)" : "Select a Student to choose a certificate type.";
                 const context = goodMoralOption.f4_eligibility;
-                if (context?.status === "ELIGIBLE") return `F4 available · ${context.year_level ? `${context.year_level}${context.year_level === 1 ? "st" : context.year_level === 2 ? "nd" : context.year_level === 3 ? "rd" : "th"} Year` : "Bachelor's student"}`;
-                if (context?.status === "POSTGRADUATE_PROGRAM") return "F4 unavailable · Current program is postgraduate.";
-                if (context?.status === "UNCLASSIFIED_PROGRAM") return "F4 unavailable · Ask the Guidance Office to check this program.";
-                return "F4 availability couldn't be confirmed.";
+                if (context?.status === "ELIGIBLE") return `Good Moral Certificate for current Students (F4) available · ${context.year_level ? `${context.year_level}${context.year_level === 1 ? "st" : context.year_level === 2 ? "nd" : context.year_level === 3 ? "rd" : "th"} Year` : "Bachelor's Student"}`;
+                if (context?.status === "POSTGRADUATE_PROGRAM") return "Good Moral Certificate for current Students (F4) requires a Bachelor's program.";
+                if (context?.status === "UNCLASSIFIED_PROGRAM") return "Ask the Guidance Office to check this program before requesting a Good Moral Certificate for current Students (F4).";
+                return "Couldn't check the current Student certificate requirements. Try again.";
               }}
               onSelect={(selected) => {
                 // Only the verified options from this endpoint determine the variant.
@@ -129,7 +129,7 @@ function AssistedRequestForm() {
               }}
               page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false}
               isLoading={students.isPending || students.isFetching} isError={students.isError}
-              errorMessage="Students could not be loaded. Retry the search."
+              errorMessage="Couldn't load Students. Retry the search."
               onRetry={() => void students.refetch()} onPageChange={setPage}
             />
           </fieldset>
@@ -138,10 +138,10 @@ function AssistedRequestForm() {
           <PanelSection title="Certificate type" titleId="assisted-good-moral-certificate-type">
             <Label htmlFor="assisted-good-moral-variant">Request type <span aria-hidden="true">*</span></Label>
             <Select id="assisted-good-moral-variant" className="mt-2 max-w-xl" value={variant} onChange={(event) => { setVariant(event.target.value as "CURRENT_STUDENT" | "GRADUATE"); setIntent(null); }} disabled={locked}>
-              <option value="CURRENT_STUDENT" disabled={student.variant !== "CURRENT_STUDENT" || student.f4_eligibility?.status !== "ELIGIBLE"}>F4 · Current Student</option>
-              <option value="GRADUATE">F6 · UCN Bachelor&apos;s degree</option>
+              <option value="CURRENT_STUDENT" disabled={student.variant !== "CURRENT_STUDENT" || student.f4_eligibility?.status !== "ELIGIBLE"}>Good Moral Certificate for current Students (F4)</option>
+              <option value="GRADUATE">Good Moral Certificate for UCN Bachelor&apos;s graduates (F6)</option>
             </Select>
-            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the student&apos;s current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn&apos;t verified the degree or graduation date.</p>}
+            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the Student&apos;s current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn&apos;t verified the degree or graduation date.</p>}
           </PanelSection>
         ) : null}
         {student ? (

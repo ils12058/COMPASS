@@ -70,7 +70,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
       assert.equal(await nav.getByRole("link", { name: "My actions", exact: true }).count(), 1);
       assert.equal((await nav.locator("a").allTextContents())[1].trim(), "My actions");
     } else {
-      await shown(page.getByRole("heading", { name: "My actions unavailable" }));
+      await shown(page.getByRole("heading", { name: "My actions" }));
       assert.equal(await page.getByRole("link", { name: "My actions", exact: true }).count(), 0);
       assert.equal(state.reads.length, 0);
     }
@@ -198,7 +198,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
 {
   const state = world(); state.status = 500;
   await check("first load failure has Retry and never claims caught up", "/portal/actions", state.options(), async (page) => {
-    await shown(page.getByText("Your actions could not be loaded. Try again."));
+    await shown(page.getByText("Couldn't load your actions. Try again."));
     assert.equal(await page.getByText("You're all caught up.", { exact: true }).count(), 0);
     state.status = 200; state.items = [];
     await page.getByRole("button", { name: "Retry", exact: true }).click();

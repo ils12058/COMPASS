@@ -55,7 +55,7 @@ export function DirectCallSlipCreatePage() {
   });
 
   if (!access.canManageOperational) {
-    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="You don’t have access to issue call slips." />;
+    return <CallSlipAccessUnavailable title="Issue Call Slip" message="You don’t have access to issue Call Slips." />;
   }
 
   function prepare(event: FormEvent<HTMLFormElement>) {
@@ -99,9 +99,9 @@ export function DirectCallSlipCreatePage() {
         setConfirmOpen(false);
         setError(callSlipErrorMessage(caught, "This issuance attempt no longer matches its original details. Review the form and try again."));
       } else if (uncertainCallSlipMutation(caught)) {
-        setError("The issuance result could not be confirmed. Retry only with these same unchanged details to safely check the result.");
+        setError("Couldn't confirm the issuance result. Retry only with these same unchanged details to safely check the result.");
       } else {
-        setError(callSlipErrorMessage(caught, "The Call Slip could not be issued."));
+        setError(callSlipErrorMessage(caught, "Couldn't issue the Call Slip. Try again."));
       }
     }
   }
@@ -111,7 +111,7 @@ export function DirectCallSlipCreatePage() {
 
   return (
     <div className="space-y-5">
-      <CallSlipHeading title="Issue Call Slip" description="Issue a Call Slip without linking it to a referral." backHref="/portal/call-slips" />
+      <CallSlipHeading title="Issue Call Slip" description="Issue a Call Slip without linking it to a Referral." backHref="/portal/call-slips" />
       <form className="max-w-3xl" onSubmit={prepare} aria-busy={create.isPending}>
         <Panel as="div">
         <PanelSection
@@ -132,7 +132,7 @@ export function DirectCallSlipCreatePage() {
               hasNext={studentData?.has_next ?? false}
               isLoading={students.isPending}
               isError={students.isError}
-              errorMessage={callSlipErrorMessage(students.error, "Eligible Students could not be loaded.")}
+              errorMessage={callSlipErrorMessage(students.error, "Couldn't load eligible Students. Try again.")}
               onRetry={() => void students.refetch()}
               onPageChange={setStudentPage}
             />
@@ -167,15 +167,14 @@ export function DirectCallSlipCreatePage() {
         onConfirm={() => void issueConfirmed()}
       >
         <p>
-          Check the student and report details before issuing. The selected
-          notification option determines whether the student is notified.
+          Check the Student and report details before issuing. The selected notification option determines whether the Student is notified.
         </p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{student?.display_name ?? "Not selected"}{student?.institutional_id ? ` · ${student.institutional_id}` : ""}</dd></div>
           <div><dt className="text-xs font-semibold text-muted">Course / Year</dt><dd className="mt-1 text-ink">{draft.courseYear || "Not entered"}</dd></div>
           <div><dt className="text-xs font-semibold text-muted">Destination</dt><dd className="mt-1 text-ink">{selectedDestination}</dd></div>
           <div><dt className="text-xs font-semibold text-muted">Report date and time</dt><dd className="mt-1 text-ink">{formatInstitutionalDateTime(institutionalDateTimeInputToISO(draft.reportAt))} {INSTITUTION_TIME_ZONE_LABEL}</dd></div>
-          <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Live issuance — creates an in-app notification and queues required operational email." : "Historical / back-entry — no new issuance notification."}</dd></div>
+          <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Issuance mode</dt><dd className="mt-1 text-ink">{draft.notifyStudent ? "Issuing creates an in-app notification and queues the required email." : "Historical / back-entry — no new issuance notification."}</dd></div>
         </dl>
       </ConsequentialActionDialog>
     </div>

@@ -47,7 +47,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
   return <>
     <GoodMoralSection title="Official Receipt" labelledBy="good-moral-receipt-heading" actions={<ContextHelp title="Official Receipt inspection" sections={[
       { heading: "Record, then inspect", content: <p>Save the details printed on the receipt using Correct certificate details. Verification is a separate personal inspection of the physical receipt; it does not confirm Cashier records or cleared funds.</p> },
-      { heading: "Fees and corrections", content: <p>The expected fee is PHP 80.00 for F4 and F6 under the team-reported provisional decision. A receipt correction needs a new inspection. Other certificate corrections retain an unchanged receipt inspection but require preparation again.</p> },
+      { heading: "Fees and corrections", content: <p>The provisional fee is PHP 80.00 for both certificate types. Correcting receipt details requires another inspection; other certificate corrections keep an unchanged receipt inspection but require preparation again.</p> },
     ]} />}>
       <ReceiptFacts item={item} />
       <div className="mt-5 space-y-2 border-t border-border pt-4">
@@ -65,7 +65,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
       {inspection.uncertain ? <Button className="mt-3" variant="secondary" disabled={inspection.working} onClick={() => void inspection.checkOutcome()}>{inspection.working ? "Checking request…" : "Check current request"}</Button> : null}
       {history.length ? <details className="mt-5 border-t border-border pt-3">
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-focus">Receipt change history ({history.length})</summary>
-        <p className="my-2 text-xs leading-5 text-muted">Saved change metadata, newest first. Earlier receipt contents and historical inspection details are not included in this view.</p>
+        <p className="my-2 text-xs leading-5 text-muted">Changes to this receipt, newest first.</p>
         <ol className="divide-y divide-border">
           {history.map((revision) => <li key={revision.id} className="space-y-1 py-3 text-sm">
             <p className="font-semibold">Revision {revision.sequence} · {({ ASSIGNED: "Receipt recorded", REVISED: "Details revised", REPLACED: "Receipt replaced", REMOVED: "Receipt removed" } as Record<string, string>)[revision.change_kind] ?? "Receipt change"} · {revision.is_current ? "Current attachment" : "Historical change"}</p>
@@ -86,7 +86,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
       onOpenChange={(open) => { if (!open) inspection.close(); }}
       onConfirm={() => void inspection.confirm()}
       onCloseAutoFocus={(event) => { event.preventDefault(); const trigger = document.getElementById("good-moral-verify-trigger"); if (trigger) trigger.focus(); else focusHeading("good-moral-receipt-heading"); }}
-      completed={inspection.completed ? { title: "Receipt inspection recorded", children: "The saved physical receipt inspection is current. Preparation and issuance availability have been refreshed." } : null}
+      completed={inspection.completed ? { title: "Receipt inspection recorded", children: "The saved physical receipt inspection is current. Preparation and issuance Availability have been refreshed." } : null}
       choices={<div><Label className="flex min-h-11 items-start gap-3 font-normal leading-6" htmlFor="good-moral-inspection-attestation">
         <Input id="good-moral-inspection-attestation" type="checkbox" className="mt-1 size-5 min-h-5 w-5 shrink-0 accent-brand" checked={inspection.affirmed} disabled={inspection.working} onChange={(event) => inspection.setAffirmed(event.target.checked)} />
         <span>I personally inspected the physical Official Receipt and confirmed that these details match this Good Moral request.</span>

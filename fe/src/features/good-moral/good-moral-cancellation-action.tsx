@@ -70,7 +70,7 @@ export function GoodMoralCancelAction({
       return;
     }
     setBlockedUntilRefresh(true);
-    setError("The request could not be refreshed. Do not retry until its current state can be checked.");
+    setError("Couldn't refresh the request. Do not retry until its current state can be checked.");
   }
 
   async function submit() {
@@ -94,7 +94,7 @@ export function GoodMoralCancelAction({
         await reconcile();
         return;
       }
-      setError(goodMoralErrorMessage(caught, "The Good Moral request could not be cancelled."));
+      setError(goodMoralErrorMessage(caught, "Couldn't cancel Good Moral request. Try again."));
     }
   }
 

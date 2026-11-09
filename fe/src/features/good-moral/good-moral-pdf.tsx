@@ -28,7 +28,7 @@ export function GoodMoralPdfDownload({
         : await goodMoralDownloadCertificate(requestId);
       downloadBinaryResponse(response, institutionalPdfFallbackFilename("goodMoral", requestId));
     } catch (caught) {
-      setError(goodMoralErrorMessage(caught, "The certificate could not be released right now. Try again later."));
+      setError(goodMoralErrorMessage(caught, "Couldn't release the certificate right now. Try again later."));
     } finally {
       setPending(false);
     }
@@ -47,5 +47,5 @@ export function GoodMoralPdfDownload({
 }
 
 export function GoodMoralFulfillmentNotice() {
-  return <p className="max-w-lg text-sm leading-6 text-muted">The printed certificate needs the authorized physical signature and dry seal before it is complete. The printed issuer name is not a signature.</p>;
+  return <p className="max-w-lg text-sm leading-6 text-muted">The printed certificate needs the issuer’s handwritten signature and dry seal. The printed name alone is not a signature.</p>;
 }

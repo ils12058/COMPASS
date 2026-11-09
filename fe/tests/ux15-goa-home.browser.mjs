@@ -29,11 +29,11 @@ await check("GOA desktop canonical work, managed schedule and scoped operations"
   await shown(schedulePanel(page).getByRole("heading", { name: "Today's managed Appointments", exact: true }));
   await shown(operationsPanel(page).getByRole("heading", { name: "Office workload", exact: true }));
   assert.deepEqual(await workPanel(page).locator("h3").allTextContents(), [
-    "Review Guidance follow-up",
+    "Review Guidance Follow-Up",
     "Reply to Guidance Message",
     "Prepare Good Moral request",
     "Review Call Slip",
-    "Review Guidance follow-up",
+    "Review Guidance Follow-Up",
   ], "The Home keeps the canonical Work Queue order and shows a bounded five-item preview");
   assert.equal(await schedulePanel(page).locator("ul > li").count(), 5, "Only the first five managed Appointments are shown");
   await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
@@ -43,12 +43,12 @@ await check("GOA desktop canonical work, managed schedule and scoped operations"
   await shown(operationsPanel(page).getByText("Good Moral requests awaiting Counselor issuance", { exact: true }));
   await shown(page.locator('section[aria-labelledby="goa-destinations-heading"]').getByRole("link", { name: /Referrals/ }));
   assert.equal(await operationsPanel(page).getByText("Routine evaluations pending", { exact: true }).count(), 0, "Null Counselor-only metrics stay unavailable");
-  assert.equal(await page.getByText("Upcoming managed appointments", { exact: true }).count(), 0, "The operational snapshot does not repeat the managed schedule count");
+  assert.equal(await page.getByText("Upcoming managed Appointments", { exact: true }).count(), 0, "The operational snapshot does not repeat the managed schedule count");
   assert.equal(await page.getByText("Synthetic confidential counseling narrative", { exact: true }).count(), 0, "Confidential purpose text is never presented");
-  assert.equal(await page.getByRole("link", { name: "Issue Good Moral certificate", exact: true }).count(), 0, "GOA does not receive a Good Moral issuance action");
+  assert.equal(await page.getByRole("link", { name: "Issue Good Moral Certificate", exact: true }).count(), 0, "GOA does not receive a Good Moral issuance action");
   const targetLinks = [
     workPanel(page).getByRole("link", { name: "View all work", exact: true }),
-    workPanel(page).getByRole("link", { name: "Open follow-up", exact: true }).first(),
+    workPanel(page).getByRole("link", { name: "Open Follow-Up", exact: true }).first(),
     schedulePanel(page).getByRole("link", { name: "View full schedule", exact: true }),
     page.getByRole("link", { name: /Manage Appointments/ }),
   ];
@@ -56,7 +56,7 @@ await check("GOA desktop canonical work, managed schedule and scoped operations"
     const box = await link.boundingBox();
     assert.ok(box && box.height >= 44, "Primary Home links preserve the established 44px target height");
   }
-  const firstWorkAction = workPanel(page).getByRole("link", { name: "Open follow-up", exact: true }).first();
+  const firstWorkAction = workPanel(page).getByRole("link", { name: "Open Follow-Up", exact: true }).first();
   await firstWorkAction.focus();
   const focusState = await firstWorkAction.evaluate((node) => ({
     active: node === document.activeElement,
@@ -139,13 +139,13 @@ await check("GOA independent initial failures do not become empty states and can
   await workPanel(page).getByRole("button", { name: "Retry", exact: true }).click();
   await schedulePanel(page).getByRole("button", { name: "Retry", exact: true }).click();
   await operationsPanel(page).getByRole("button", { name: "Retry", exact: true }).click();
-  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }).first());
+  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
   await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
 });
 
 const stale = goaWorld();
 await check("GOA transient refresh failure retains confirmed data with a freshness notice", "/portal", stale.options(), async (page) => {
-  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }).first());
+  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
   await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
   stale.workStatus = 500;
   stale.appointmentsStatus = 500;
@@ -154,7 +154,7 @@ await check("GOA transient refresh failure retains confirmed data with a freshne
   await shown(workPanel(page).getByText("My work could not be refreshed. Showing the last confirmed items.", { exact: true }));
   await shown(schedulePanel(page).getByText("Today's managed Appointments could not be refreshed. Showing the last confirmed schedule.", { exact: true }));
   await shown(operationsPanel(page).getByText("Guidance Operations could not be refreshed. Showing the last confirmed office workload.", { exact: true }));
-  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }).first());
+  await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
   await screenshot(page, "after-goa-partial-stale-data");
 });
 

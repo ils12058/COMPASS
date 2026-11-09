@@ -106,7 +106,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
     assert.equal(await page.getByRole("dialog").count(), 0, "Docked, not modal");
     await shown(page.getByRole("heading", { name: "APT-CTX-0001", level: 1 }));
     assert.equal(await page.locator("[inert], [aria-hidden=true] #main-content").count(), 0, "The page stays usable beside the panel");
-    assert.equal(await panel(page).getByRole("button", { name: /Resolve conversation/ }).count(), role === "COUNSELOR" ? 1 : 0, "Only staff can resolve");
+    assert.equal(await panel(page).getByRole("button", { name: /Close conversation/ }).count(), role === "COUNSELOR" ? 1 : 0, "Only staff can resolve");
     await noHorizontalOverflow(page);
     await panel(page).getByRole("button", { name: "Close Messages" }).click();
     await hidden(panel(page));
@@ -141,7 +141,7 @@ for (const [label, role] of [["concealed context", "STUDENT"], ["GOA", "GUIDANCE
   const world = contextualWorld("STUDENT", backend);
   await check("first Message: no thread until the first send, then the same panel shows it", appointmentPath, world.options(), async (page) => {
     await trigger(page).click();
-    await shown(panel(page).getByText("No conversation has started for this counseling appointment yet."));
+    await shown(panel(page).getByText("No conversation has started for this counseling Appointment yet."));
     assert.equal(await history(panel(page)).count(), 0, "No fake bubbles");
     assert.equal(await panel(page).getByRole("link", { name: "Open full conversation" }).count(), 0);
     assert.equal(backend.state.threads.size, 0, "Opening creates nothing");
@@ -212,7 +212,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   await check(`a resolved thread stays readable (${role.toLowerCase()})`, appointmentPath, world.options(), async (page) => {
     await trigger(page).click();
     await shown(history(panel(page)).getByText("Good afternoon, Maria."));
-    await shown(panel(page).getByText("This conversation is resolved.", { exact: true }));
+    await shown(panel(page).getByText("This conversation is closed.", { exact: true }));
     assert.ok(await panel(page).getByRole("button", { name: "Send", exact: true }).isDisabled());
     if (role === "STUDENT") {
       assert.equal(await panel(page).getByRole("button", { name: /Reopen/ }).count(), 0);
@@ -431,7 +431,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   const world = contextualWorld("STUDENT", backend);
   await check("an open panel without a thread discovers one another tab started", appointmentPath, world.options({ initScripts: [enableRealtime] }), async (page) => {
     await trigger(page).click();
-    await shown(panel(page).getByText("No conversation has started for this counseling appointment yet."));
+    await shown(panel(page).getByText("No conversation has started for this counseling Appointment yet."));
     await world.ready();
     backend.addThread({ id: THREAD, kind: "COUNSELING", counselor: COUNSELOR, appointment: appointmentId });
     backend.addMessage(THREAD, STUDENT, "Started in another tab");

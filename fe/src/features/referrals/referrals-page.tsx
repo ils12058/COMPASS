@@ -120,7 +120,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
             <>
           <FilterField label="Origin" htmlFor="referrals-origin">
             <Select id="referrals-origin" value={draft.origin ?? ""} onChange={(event) => setDraft({ ...draft, origin: (event.target.value || undefined) as ReferralSubmissionChannel | undefined })}>
-              <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">GCO recorded</option>
+              <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">Recorded by the Guidance Office</option>
             </Select>
           </FilterField>
           <FormRevisionFilter id="referrals-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
@@ -148,7 +148,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         >
           <ListSearchField
             id="referrals-search"
-            label="Search referrals"
+            label="Search Referrals"
             maxLength={160}
             placeholder="Search reference, Student name, or Institutional ID"
             value={draft.search}
@@ -173,13 +173,13 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
         />
         {referrals.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void referrals.refetch()}>Retry</Button>}>
-            {referralErrorMessage(referrals.error, "Referrals could not be loaded.")}
+            {referralErrorMessage(referrals.error, "Couldn't load Referrals. Try again.")}
           </PanelMessage>
         ) : referrals.isPending ? (
           <ReferralListSkeleton framed={false} />
         ) : items.length === 0 ? (
           <PanelMessage action={filtered ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
-            {filtered ? "No referrals match these filters." : "No referrals have been recorded."}
+            {filtered ? "No Referrals match these filters." : "No Referrals have been recorded."}
           </PanelMessage>
         ) : (
           <>

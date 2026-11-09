@@ -12,7 +12,7 @@ export function presentStudentAction(item: StudentActionItem) {
     case StudentActionKind.INVENTORY_START:
       row = { title: "Individual Inventory", detail: "You haven't started this year's form.", href: "/portal/inventory", actionLabel: "Start Inventory" }; break;
     case StudentActionKind.INVENTORY_CONTINUE:
-      row = { title: "Individual Inventory", detail: "Your form for this academic year is still a draft.", href: "/portal/inventory/current", actionLabel: "Continue Inventory" }; break;
+      row = { title: "Individual Inventory", detail: "Your form for this Academic Year is still a draft.", href: "/portal/inventory/current", actionLabel: "Continue Inventory" }; break;
     case StudentActionKind.ROUTINE_INTAKE:
       row = { title: "Routine Interview", detail: "Your form is ready to complete.", href: `/portal/routine-interviews/${id}`, actionLabel: "Complete Routine Interview" }; break;
     case StudentActionKind.EXIT_INTERVIEW_START:
@@ -28,7 +28,7 @@ export function presentStudentAction(item: StudentActionItem) {
     case StudentActionKind.ECOUNSELING_CONSENT:
       row = { title: "E-Counseling consent", detail: item.pending_count && item.pending_count > 1 ? `${item.pending_count} consent decisions require your review.` : "A consent decision requires your review.", href: `/portal/e-counseling/${id}`, actionLabel: "Review consent" }; break;
     case StudentActionKind.ECOUNSELING_JOIN:
-      row = { title: "E-Counseling", detail: "Your online Counseling session is available to join now.", href: `/portal/e-counseling/${id}`, actionLabel: "Join E-Counseling" }; break;
+      row = { title: "E-Counseling", detail: "You can join your E-Counseling session now.", href: `/portal/e-counseling/${id}`, actionLabel: "Join E-Counseling" }; break;
     case StudentActionKind.GUIDANCE_MESSAGE_UNREAD:
       row = { title: "Guidance Messages", detail: "You have unread messages.", href: `/portal/messages/${id}`, actionLabel: "Read new Guidance message" }; break;
   }

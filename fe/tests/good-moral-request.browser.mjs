@@ -59,10 +59,10 @@ function fixture({ lifecycle, f4Status }) {
 {
   const f = fixture({ lifecycle: 'CURRENT', f4Status: 'POSTGRADUATE_PROGRAM' });
   await check('current Student re-enrolled in local postgraduate Program retains F6 request access', requestPath, f.options, async page => {
-    const f4 = page.getByRole('button', { name: 'F4 · Current Student', exact: true });
+    const f4 = page.getByRole('button', { name: 'Good Moral Certificate for current Students', exact: true });
     assert.equal(await f4.isDisabled(), true);
-    await page.getByRole('button', { name: "F6 · UCN Bachelor's degree", exact: true }).click();
-    await page.getByRole('heading', { name: "F6 · UCN Bachelor's degree request", exact: true }).waitFor();
+    await page.getByRole('button', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).click();
+    await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
     assert.equal(await page.locator("main h1").count(), 1);
     assert.equal(await page.getByRole("link", { name: "Back to Good Moral", exact: true }).count(), 1);
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems');
@@ -77,7 +77,7 @@ function fixture({ lifecycle, f4Status }) {
 {
   const f = fixture({ lifecycle: 'FORMER', f4Status: 'NOT_CURRENT' });
   await check('former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service', requestPath, f.options, async page => {
-    await page.getByRole('heading', { name: "F6 · UCN Bachelor's degree request", exact: true }).waitFor();
+    await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
     await page.getByText(/COMPASS doesn't verify your degree or graduation date/i).waitFor();
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems (UCN)');
     await page.getByLabel('Graduation date').fill('2020-06-30');

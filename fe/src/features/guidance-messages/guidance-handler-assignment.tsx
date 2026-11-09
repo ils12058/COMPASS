@@ -185,7 +185,7 @@ function AssignmentBody({
         ) : handlers.isError ? (
           <div role="alert">
             <p className="text-sm text-danger">
-              {errorStatus(handlers.error) === 404 ? "This conversation is no longer available to your account." : "Staff could not be loaded."}
+              {errorStatus(handlers.error) === 404 ? "This conversation is no longer available to your account." : "Couldn't load staff. Try again."}
             </p>
             {errorStatus(handlers.error) !== 404 ? (
               <Button className="mt-3" variant="secondary" onClick={() => void handlers.refetch()}>

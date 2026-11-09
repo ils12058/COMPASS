@@ -19,12 +19,12 @@ const inventoryStatus = { academic_year: year, status: 'DRAFT', form_revision: i
 for (const width of [320, 1440]) {
     const viewport = { width, height: 1000 };
     for (const [name, route, overrides, text] of [
-        ['referral-validation', '/portal/referrals', { '/api/v1/referrals': error('invalid_referral_request') }, 'Some referral details need attention. Review them and try again.'],
-        ['call-slip-validation', '/portal/call-slips', { '/api/v1/call-slips': error('invalid_call_slip_request') }, 'Some call slip details need attention. Review them and try again.'],
+        ['referral-validation', '/portal/referrals', { '/api/v1/referrals': error('invalid_referral_request') }, 'Some Referral details need attention. Review them and try again.'],
+        ['call-slip-validation', '/portal/call-slips', { '/api/v1/call-slips': error('invalid_call_slip_request') }, 'Some Call Slip details need attention. Review them and try again.'],
         ['appointment-validation', '/portal/appointments/manage', { '/api/v1/appointments': error('invalid_appointment_request') }, 'Some appointment details need attention. Review them and try again.'],
         ['counseling-validation', '/portal/counseling', { '/api/v1/counseling/me/encounters': error('counseling_invalid_request') }, 'Some counseling details need attention. Review them and try again.'],
-        ['hidden-referral', '/portal/referrals/long', { '/api/v1/referrals/long': error('referral_not_permitted', 404) }, 'This referral is unavailable.'],
-        ['hidden-call-slip', '/portal/call-slips/slip-density-test', { '/api/v1/call-slips/slip-density-test': error('call_slip_not_permitted', 404) }, 'This call slip is unavailable.'],
+        ['hidden-referral', '/portal/referrals/long', { '/api/v1/referrals/long': error('referral_not_permitted', 404) }, 'You don\'t have access to this Referral.'],
+        ['hidden-call-slip', '/portal/call-slips/slip-density-test', { '/api/v1/call-slips/slip-density-test': error('call_slip_not_permitted', 404) }, 'You don\'t have access to this Call Slip.'],
     ])
         await check(`${name}-${width}`, route, { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(staff), ...overrides } }, async (page) => { await oneAlert(page, text); await shown(page.getByRole('button', { name: 'Retry', exact: true })); });
     await check(`exit-access-conflict-${width}`, '/portal/exit-interviews', { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), '/api/v1/exit-interviews/me/status': error('exit_interview_opportunity_conflict', 409), '/api/v1/exit-interviews/me': empty } }, async (page) => {
@@ -40,14 +40,14 @@ for (const width of [320, 1440]) {
     await check(`referral-create-rejection-${width}`, '/portal/referrals/new', { viewport, overrides: { '/api/v1/auth/session': session(staff), '/api/v1/referrals/students': { ...empty, items: [student] }, 'POST /api/v1/referrals': error('invalid_referral_request') } }, async (page, { requests }) => {
         await page.getByRole('radio', { name: /Maria Santos/ }).check();
         await page.getByLabel('Course / Year / Block', { exact: true }).fill('BSIT / 4 / A');
-        await page.getByLabel('Reason for referral', { exact: true }).fill('Synthetic source wording');
+        await page.getByLabel('Reason for Referral', { exact: true }).fill('Synthetic source wording');
         await page.getByLabel('Referrer name', { exact: true }).fill('Synthetic Referrer');
         await page.getByLabel('Date referred', { exact: true }).fill('2026-10-01');
-        const submit = page.getByRole('button', { name: 'Record referral', exact: true });
+        const submit = page.getByRole('button', { name: 'Record Referral', exact: true });
         await submit.focus();
         await page.keyboard.press('Enter');
-        await oneAlert(page, 'Some referral details need attention.');
-        assert.equal(await page.getByLabel('Reason for referral', { exact: true }).inputValue(), 'Synthetic source wording');
+        await oneAlert(page, 'Some Referral details need attention.');
+        assert.equal(await page.getByLabel('Reason for Referral', { exact: true }).inputValue(), 'Synthetic source wording');
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/referrals').length, 1);
     });
     await check(`call-slip-issue-rejection-${width}`, '/portal/call-slips/new', { viewport, overrides: { '/api/v1/auth/session': session(staff), '/api/v1/call-slips/students': { ...empty, items: [student] }, 'POST /api/v1/call-slips': error('invalid_call_slip_request') } }, async (page, { requests }) => {
@@ -69,7 +69,7 @@ for (const width of [320, 1440]) {
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/call-slips').length, 1);
     });
     await check(`referral-action-consequences-${width}`, '/portal/referrals/long', { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(staff), 'POST /api/v1/referrals/long/actions': error('invalid_referral_request') } }, async (page, { requests }) => {
-        await shown(page.getByText('Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the student.', { exact: true }));
+        await shown(page.getByText('Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the Student.', { exact: true }));
         await page.getByRole('button', { name: 'Record Parent / Guardian call', exact: true }).click();
         await page.getByLabel('Action occurred', { exact: true }).fill('2026-10-08T09:00');
         await page.getByLabel('Remarks (optional)', { exact: true }).fill('Synthetic historical action');
@@ -78,7 +78,7 @@ for (const width of [320, 1440]) {
         await shown(dialog);
         assert.match(await dialog.innerText(), /This action cannot be edited or deleted after it is recorded/);
         await dialog.getByRole('button', { name: 'Record Parent / Guardian call', exact: true }).click();
-        await oneAlert(page, 'Some referral details need attention.');
+        await oneAlert(page, 'Some Referral details need attention.');
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/referrals/long/actions').length, 1);
         assert.equal(await page.getByLabel('Remarks (optional)', { exact: true }).inputValue(), 'Synthetic historical action');
     });

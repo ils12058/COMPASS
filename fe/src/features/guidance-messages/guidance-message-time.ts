@@ -59,13 +59,13 @@ export function threadActivityTime(value: string | null | undefined, now = new D
 /** The time printed beside one Message; its day comes from the separator above it. */
 export function messageTime(value: string): string {
   const date = parse(value);
-  return date ? timeOfDay.format(date) : "Time unavailable";
+  return date ? timeOfDay.format(date) : "Time not recorded";
 }
 
 /** The separator between days in a conversation. */
 export function messageDayLabel(value: string, now = new Date()): string {
   const date = parse(value);
-  if (!date) return "Date unavailable";
+  if (!date) return "Date not recorded";
   const day = institutionalDateInputValue(date);
   if (day === institutionalDateInputValue(now)) return "Today";
   if (day === institutionalDateInputValue(new Date(now.getTime() - DAY_MS))) return "Yesterday";
@@ -75,5 +75,5 @@ export function messageDayLabel(value: string, now = new Date()): string {
 /** A full readable date and time, such as a Counseling appointment's start. */
 export function guidanceDateTime(value: string | null | undefined): string {
   const date = parse(value);
-  return date ? dateTime.format(date) : "Date unavailable";
+  return date ? dateTime.format(date) : "Date not recorded";
 }

@@ -76,7 +76,7 @@ export function GoodMoralIssuedPdf({ requestId }: { requestId: string }) {
     if (openGoodMoralPrintPreview(response.data)) {
       setPrintNotice("The finalized PDF preview opened in a new tab. Use its Print action, or return here to download.");
     } else {
-      setPrintError("The print request and a new PDF preview could not be opened. Use the embedded PDF viewer below if available, or download the certificate.");
+      setPrintError("Couldn't open the print request and a new PDF preview. Use the embedded PDF viewer below if available, or download the certificate.");
     }
   }
 
@@ -99,7 +99,7 @@ export function GoodMoralIssuedPdf({ requestId }: { requestId: string }) {
       {pdf.isFetching ? <p role="status" className="text-sm text-muted">Preparing certificate PDF…</p> : null}
       {pdf.isError ? (
         <div className="space-y-2">
-          <p role="alert" className="max-w-lg text-sm leading-6 text-danger">The certificate is issued, but its PDF could not be prepared. Retry the PDF without issuing again.</p>
+          <p role="alert" className="max-w-lg text-sm leading-6 text-danger">The certificate is issued, but couldn&apos;t prepare its PDF. Retry the PDF without issuing again.</p>
           <Button variant="secondary" onClick={() => void pdf.refetch()} disabled={pdf.isFetching}>Retry PDF</Button>
         </div>
       ) : null}

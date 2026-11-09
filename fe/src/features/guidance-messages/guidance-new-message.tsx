@@ -141,7 +141,7 @@ function ReferralNewMessage({ referralId }: { referralId: string }) {
   if (context.isPending) {
     return (
       <ConversationFrame title="Message the Guidance Office">
-        <PanelMessage role="status">Checking this referral…</PanelMessage>
+        <PanelMessage role="status">Checking this Referral…</PanelMessage>
       </ConversationFrame>
     );
   }
@@ -159,7 +159,7 @@ function ReferralNewMessage({ referralId }: { referralId: string }) {
             )
           }
         >
-          {notFound ? "This referral is no longer available." : "This referral could not be loaded."}
+          {notFound ? "This Referral is no longer available." : "Couldn't load this Referral. Try again."}
         </PanelMessage>
       </ConversationFrame>
     );
@@ -174,14 +174,14 @@ function ReferralNewMessage({ referralId }: { referralId: string }) {
   if (!access.canManageReferralSelf) {
     return (
       <ConversationFrame title="Message the Guidance Office">
-        <PanelMessage>Your account cannot message about this referral.</PanelMessage>
+        <PanelMessage>Your account cannot message about this Referral.</PanelMessage>
       </ConversationFrame>
     );
   }
   if (!canStart) {
     return (
       <ConversationFrame title="Message the Guidance Office">
-        <PanelMessage>This referral cannot receive messages right now.</PanelMessage>
+        <PanelMessage>This Referral cannot receive messages right now.</PanelMessage>
       </ConversationFrame>
     );
   }
@@ -198,14 +198,13 @@ function ReferralNewMessage({ referralId }: { referralId: string }) {
                 checked
                 onSelect={() => undefined}
                 title={GUIDANCE_OFFICE_LABEL}
-                detail="Guidance and Counseling Office"
+                detail="Guidance Office"
               />
             </li>
           </ul>
         </fieldset>
         <p className="mt-4 text-sm text-muted">
-          This message is about the referral you submitted. It goes to the Guidance Office and
-          does not change the Referral record.
+          This message is about the Referral you submitted. It goes to the Guidance Office and does not change the Referral record.
         </p>
       </div>
       <GuidanceMessageComposer
@@ -268,7 +267,7 @@ function StudentNewMessage() {
                 checked={recipient === OFFICE_TARGET}
                 onSelect={() => setRecipient(OFFICE_TARGET)}
                 title={officeLabel}
-                detail="Guidance and Counseling Office"
+                detail="Guidance Office"
               />
             </li>
           </ul>
@@ -277,14 +276,14 @@ function StudentNewMessage() {
             <p role="status" className="mt-2 text-sm text-muted">Loading your Counseling relationships…</p>
           ) : options.isError ? (
             <div role="alert" className="mt-2">
-              <p className="text-sm text-danger">Your Counseling relationships could not be loaded.</p>
+              <p className="text-sm text-danger">Couldn&apos;t load your Counseling relationships. Try again.</p>
               <Button className="mt-2" variant="secondary" onClick={() => void options.refetch()}>
                 Retry
               </Button>
             </div>
           ) : relationships.length === 0 ? (
             <p className="mt-2 text-sm text-muted">
-              {page > 1 ? "No more Counseling relationships." : "You can message a Counselor here after a Counseling appointment with them."}
+              {page > 1 ? "No more Counseling relationships." : "You can message a Counselor here after a Counseling Appointment with them."}
             </p>
           ) : (
             <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
@@ -298,7 +297,7 @@ function StudentNewMessage() {
                       setRelationship(option);
                     }}
                     title={personName(option.counselor, "Counselor")}
-                    detail={`Counseling appointment · ${guidanceDateTime(option.starts_at)}`}
+                    detail={`Counseling Appointment · ${guidanceDateTime(option.starts_at)}`}
                   />
                 </li>
               ))}
@@ -317,7 +316,7 @@ function StudentNewMessage() {
         <p className="mt-4 text-sm text-muted">
           {recipient === OFFICE_TARGET
             ? "If you already have an open conversation with the Guidance Office, this message is added to it."
-            : "If you already have a conversation for this appointment, this message is added to it."}
+            : "If you already have a conversation for this Appointment, this message is added to it."}
         </p>
       </div>
       <GuidanceMessageComposer
@@ -357,7 +356,7 @@ function FacultyNewMessage() {
                 checked
                 onSelect={() => undefined}
                 title={GUIDANCE_OFFICE_LABEL}
-                detail="Guidance and Counseling Office"
+                detail="Guidance Office"
               />
             </li>
           </ul>
@@ -488,7 +487,7 @@ function StaffNewMessage() {
                 hasNext={pageData?.has_next ?? false}
                 isLoading={students.isPending}
                 isError={students.isError}
-                errorMessage="Students could not be loaded."
+                errorMessage="Couldn't load Students. Try again."
                 onRetry={() => void students.refetch()}
                 onPageChange={setStudentPage}
               />
@@ -512,7 +511,7 @@ function StaffNewMessage() {
                 hasNext={peerPageData?.has_next ?? false}
                 isLoading={peers.isPending}
                 isError={peers.isError}
-                errorMessage="Counselors could not be loaded."
+                errorMessage="Couldn't load Counselors. Try again."
                 onRetry={() => void peers.refetch()}
                 onPageChange={setPeerPage}
               />

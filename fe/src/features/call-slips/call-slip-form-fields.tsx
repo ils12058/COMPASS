@@ -99,7 +99,7 @@ export function CallSlipFormFields({
             />
             <span>
               <span className="block font-semibold">Live issuance</span>
-              <span className="mt-1 block text-muted">Issue this Call Slip now. COMPASS will create the Student&apos;s in-app notification and queue the required operational email.</span>
+              <span className="mt-1 block text-muted">Issue this Call Slip now. COMPASS will create the Student&apos;s in-app notification and queue the required email.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm leading-5 text-ink">

@@ -25,7 +25,7 @@ const KIND_LABELS: Record<ThreadKind, string> = {
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
   OPEN: "Open",
-  RESOLVED: "Resolved",
+  RESOLVED: "Closed",
 };
 
 const HANDLER_ROLE_LABELS: Record<GuidanceHandlerRole, string> = {
@@ -123,7 +123,7 @@ export const COUNSELOR_DIRECT_NOTICE =
 
 // The case-coordination surface's three exact copies. The ended copy is the proposal-specified
 // placeholder pending GCO wording (D-GMSG-15); do not substitute alternative institutional promises.
-export const CASE_COORDINATION_ENTRY_COPY = "Coordinate on this authorized case.";
+export const CASE_COORDINATION_ENTRY_COPY = "Coordinate on this case.";
 export const CASE_COORDINATION_ENDED_COPY = "Your case coordination access has ended.";
 export const CASE_COORDINATION_UNAVAILABLE_COPY =
   "This conversation is no longer available for new messages.";

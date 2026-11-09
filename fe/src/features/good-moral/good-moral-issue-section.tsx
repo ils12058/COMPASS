@@ -72,7 +72,7 @@ export function GoodMoralIssueSection({
       const latest = await onRefresh();
       setBlockedUntilRefresh(!latest);
       setConfirmOpen(false);
-      setNotice(latest ? "Good Moral certificate issued." : "Issuance was recorded, but the current request could not be refreshed.");
+      setNotice(latest ? "Good Moral Certificate issued." : "Issuance was recorded, but couldn't refresh the current request. Try again before taking another action.");
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
       if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready" || code?.startsWith("good_moral_receipt_")) {
@@ -85,7 +85,7 @@ export function GoodMoralIssueSection({
       if (code === "current_student_required") {
         await onRefresh();
         setConfirmOpen(false);
-        setError("This certificate can no longer be issued because the applicant is no longer a current student.");
+        setError("This certificate can no longer be issued because the applicant is no longer a current Student.");
         return;
       }
       if (uncertainGoodMoralMutation(caught)) {
@@ -95,17 +95,17 @@ export function GoodMoralIssueSection({
           setBlockedUntilRefresh(false);
           await invalidate();
           setError(null);
-          setNotice("Good Moral certificate issued.");
+          setNotice("Good Moral Certificate issued.");
         } else if (refreshed?.status === "READY_FOR_ISSUANCE") {
           setBlockedUntilRefresh(false);
-          setError("Issuance could not be confirmed. The request is still ready for issuance; review the certificate details before deliberately trying again.");
+          setError("Couldn't confirm the issuance. The request is still ready for issuance; review the certificate details before deliberately trying again.");
         } else {
           setBlockedUntilRefresh(true);
-          setError("Issuance could not be confirmed and the request could not be refreshed. Do not retry until its current state can be checked.");
+          setError("Couldn't confirm the issuance or refresh the request. Check its current status before trying again.");
         }
         return;
       }
-      setError(goodMoralErrorMessage(caught, "The Good Moral certificate could not be issued."));
+      setError(goodMoralErrorMessage(caught, "Couldn't issue the Good Moral Certificate. Try again."));
     } finally {
       setIssuing(false);
     }
@@ -117,7 +117,7 @@ export function GoodMoralIssueSection({
       setBlockedUntilRefresh(false);
       await invalidate();
       setError(null);
-      setNotice("Good Moral certificate issued.");
+      setNotice("Good Moral Certificate issued.");
     } else if (refreshed?.status === "READY_FOR_ISSUANCE") {
       setBlockedUntilRefresh(false);
       setError(null);
@@ -127,7 +127,7 @@ export function GoodMoralIssueSection({
       setError("This request was cancelled and cannot be issued.");
     } else {
       setBlockedUntilRefresh(true);
-      setError("The request state still cannot be verified. Issuance remains unavailable until it can be refreshed.");
+      setError("Couldn't check the request's status. Refresh it before issuing the certificate.");
     }
   }
 
@@ -138,7 +138,7 @@ export function GoodMoralIssueSection({
         title="Issuance review"
         description="Review certificate details before issuing."
       >
-        {item.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
+        {item.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing a Good Moral Certificate for UCN Bachelor&apos;s graduates (F6).</Notice> : null}
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />
           {item.variant === "CURRENT_STUDENT" ? (
@@ -173,7 +173,7 @@ export function GoodMoralIssueSection({
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Issue Good Moral certificate?"
+        title="Issue Good Moral Certificate?"
         confirmLabel="Issue certificate"
         pendingLabel="Issuing certificate…"
         pending={issuePending}
@@ -183,10 +183,9 @@ export function GoodMoralIssueSection({
         onConfirm={() => void confirmIssue()}
       >
         <p>
-          The issued certificate will record the approved form revision,
-          issuance date, and issuing counselor. Review the details below before issuing.
+          The issued certificate will record the approved form revision, issuance date, and issuing Counselor. Review the details below before issuing.
         </p>
-        {reviewed.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
+        {reviewed.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing a Good Moral Certificate for UCN Bachelor&apos;s graduates (F6).</Notice> : null}
         {reviewed.receipt_inspection ? <p className="text-sm">{receiptStatuses[reviewed.receipt_inspection.status].label} · Receipt {reviewed.official_receipt_number || "not recorded"}</p> : null}
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <GoodMoralField label="Applicant name" value={reviewed.applicant_name} />

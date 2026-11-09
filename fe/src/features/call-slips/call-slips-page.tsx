@@ -158,13 +158,13 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
         />
         {!data && slips.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slips.refetch()}>Retry</Button>}>
-            {callSlipErrorMessage(slips.error, "Your Call Slips could not be loaded.")}
+            {callSlipErrorMessage(slips.error, "Couldn't load your Call Slips. Try again.")}
           </PanelMessage>
         ) : slips.isPending ? (
-          <CallSlipListSkeleton label="Loading your call slips…" framed={false} />
+          <CallSlipListSkeleton label="Loading your Call Slips…" framed={false} />
         ) : items.length === 0 ? (
           <PanelMessage action={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
-            {hasFilters ? "No call slips match these filters." : "You do not have any call slips yet."}
+            {hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}
           </PanelMessage>
         ) : (
           <ul className="divide-y divide-border">
@@ -297,13 +297,13 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
         />
         {!data && slips.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slips.refetch()}>Retry</Button>}>
-            {callSlipErrorMessage(slips.error, "Call Slips could not be loaded.")}
+            {callSlipErrorMessage(slips.error, "Couldn't load Call Slips. Try again.")}
           </PanelMessage>
         ) : slips.isPending ? (
           <CallSlipListSkeleton framed={false} />
         ) : items.length === 0 ? (
           <PanelMessage action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
-            {hasFilters ? "No call slips match these filters." : "No call slips have been recorded."}
+            {hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}
           </PanelMessage>
         ) : (
           <>

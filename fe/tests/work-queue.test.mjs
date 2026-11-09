@@ -39,7 +39,7 @@ test("closed item kinds navigate to their source and use action-specific copy", 
     ["GUIDANCE_MESSAGE_REPLY", "Reply to Guidance Message", "messages"],
     ["ROUTINE_EVALUATION", "Review Routine Interview", "routine-interviews"],
     ["GOOD_MORAL_PREPARATION", "Prepare Good Moral request", "good-moral"],
-    ["GOOD_MORAL_ISSUANCE", "Issue Good Moral certificate", "good-moral"],
+    ["GOOD_MORAL_ISSUANCE", "Issue Good Moral Certificate", "good-moral"],
     ["CALL_SLIP_DUE", "Review Call Slip", "call-slips"],
   ];
   for (const [kind, title, domain] of expected) {

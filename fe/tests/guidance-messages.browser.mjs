@@ -117,7 +117,7 @@ for (const [label, account] of [
     assert.equal(await page.getByRole("link", { name: "Messages", exact: true }).count(), 0);
     const messagesPage = await openAdditionalPage(context, "/portal/messages", errors);
     try {
-      await shown(messagesPage.getByRole("heading", { name: "Messages unavailable" }));
+      await shown(messagesPage.getByRole("heading", { name: "Messages" }));
       assert.equal(world.backend.requests().length, 0, "No Messages request is made");
     } finally {
       await messagesPage.close();
@@ -142,7 +142,7 @@ for (const [label, account] of [
     for (const hiddenText of ["Bring your ID", "Good afternoon", "Thank you po", threadIds.office, "OFFICE", "COUNSELING", "RESOLVED"]) {
       assert.ok(!directoryText.includes(hiddenText), `The directory never shows ${hiddenText}`);
     }
-    await shown(page.getByText("Guidance and Counseling Office", { exact: true }));
+    await shown(page.getByText("Guidance Office", { exact: true }));
     const items = history(page).locator("ol > li");
     await eventually(async () => (await items.count()) === 3, "Three Messages render");
     const texts = await items.allInnerTexts();
@@ -215,7 +215,7 @@ for (const [label, account] of [
     await shown(page.getByText("You can read this conversation, but your account cannot send messages."));
     assert.equal(await composer(page).count(), 0);
     assert.equal(await page.getByRole("link", { name: "New message" }).count(), 0);
-    assert.equal(await page.getByRole("button", { name: /Resolve conversation/ }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: /Close conversation/ }).count(), 0);
     await page.waitForTimeout(1_500);
     assert.equal(backend.reads().length, 0);
   });
@@ -326,7 +326,7 @@ function longWorld() {
     const box = composer(page);
     await box.fill("Did this arrive?");
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    await shown(page.getByText("Your message could not be confirmed because the connection to COMPASS failed."));
+    await shown(page.getByText("Couldn't confirm your message because the connection to COMPASS failed. Try again."));
     assert.equal(await box.inputValue(), "Did this arrive?", "The draft is kept");
     assert.equal(await box.getAttribute("readonly"), "", "The unconfirmed text cannot be edited silently");
     await page.getByRole("button", { name: "Retry sending" }).click();
@@ -392,8 +392,8 @@ function longWorld() {
     const box = composer(page);
     await box.fill("Keep this text");
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    await shown(page.getByText("This conversation is resolved, so your message was not sent. Your text is still here."));
-    await shown(page.getByText("This conversation is resolved.", { exact: true }));
+    await shown(page.getByText("This conversation is closed, so your message was not sent. Your text is still here."));
+    await shown(page.getByText("This conversation is closed.", { exact: true }));
     assert.equal(await box.inputValue(), "Keep this text");
     assert.ok(await page.getByRole("button", { name: "Send", exact: true }).isDisabled());
     await shown(page.getByRole("link", { name: "start a new message" }));
@@ -410,14 +410,14 @@ function longWorld() {
   await check("staff resolve disables the composer; reopen restores it", threadPath(threadIds.office), world.options(), async (page) => {
     await shown(composer(page));
     // Keyboard activation, so the control has focus to return to in every engine.
-    await page.getByRole("button", { name: "Resolve conversation" }).focus();
+    await page.getByRole("button", { name: "Close conversation" }).focus();
     await page.keyboard.press("Enter");
-    const dialog = page.getByRole("alertdialog", { name: "Resolve this conversation?" });
+    const dialog = page.getByRole("alertdialog", { name: "Close this conversation?" });
     await shown(dialog.getByText(/Maria Santos will not be able to send messages here/));
-    await dialog.getByRole("button", { name: "Resolve conversation" }).click();
+    await dialog.getByRole("button", { name: "Close conversation" }).click();
     await hidden(dialog);
-    await shown(page.getByText("This conversation is resolved.", { exact: true }));
-    await shown(page.getByText("Conversation resolved."));
+    await shown(page.getByText("This conversation is closed.", { exact: true }));
+    await shown(page.getByText("Conversation closed."));
     assert.equal(await composer(page).getAttribute("readonly"), "");
     const reopen = page.getByRole("button", { name: "Reopen conversation" });
     await shown(reopen);
@@ -425,7 +425,7 @@ function longWorld() {
     await shown(row(page, threadIds.office).getByText("Resolved"));
     await shown(history(page).getByText("Good afternoon po."));
     await reopen.click();
-    await shown(page.getByRole("button", { name: "Resolve conversation" }));
+    await shown(page.getByRole("button", { name: "Close conversation" }));
     assert.equal(await composer(page).getAttribute("readonly"), null);
     assert.ok(backend.requests((request) => request.pathname.endsWith("/resolve")).length === 1);
     assert.ok(backend.requests((request) => request.pathname.endsWith("/reopen")).length === 1);
@@ -440,7 +440,7 @@ function longWorld() {
   await check("reopening while another Office conversation is open shows the conflict", threadPath(threadIds.resolved), world.options(), async (page) => {
     await page.getByRole("button", { name: "Reopen conversation" }).click();
     await shown(page.getByText("This conversation cannot be reopened because the Student already has an open Guidance Office conversation."));
-    await shown(page.getByText("This conversation is resolved.", { exact: true }));
+    await shown(page.getByText("This conversation is closed.", { exact: true }));
   });
 }
 
@@ -452,11 +452,11 @@ function longWorld() {
   backend.addMessage(threadIds.hidden, COUNSELOR, "SECRET OTHER THREAD");
   const world = messagesWorld(backend, messagesAccount("STUDENT"));
   await check("a guessed or malformed thread URL shows only an unavailable state", threadPath(threadIds.hidden), world.options(), async (page, { context, errors }) => {
-    await shown(page.getByRole("heading", { name: "Conversation unavailable" }));
+    await shown(page.getByRole("heading", { name: "Conversation" }));
     assert.equal(await page.getByText("SECRET OTHER THREAD").count(), 0);
     const malformedPage = await openAdditionalPage(context, "/portal/messages/not-a-thread", errors);
     try {
-      await shown(malformedPage.getByRole("heading", { name: "Conversation unavailable" }));
+      await shown(malformedPage.getByRole("heading", { name: "Conversation" }));
     } finally {
       await malformedPage.close();
     }
@@ -505,7 +505,7 @@ function longWorld() {
     await page.clock.fastForward(31_000);
     await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
     await shown(page.getByText("Account Bravo").first());
-    await shown(page.getByRole("heading", { name: "Conversation unavailable" }));
+    await shown(page.getByRole("heading", { name: "Conversation" }));
     assert.equal(await page.getByText("Bring your ID.").count(), 0, "A's Messages are gone");
     assert.equal(await page.getByText("Account A draft").count(), 0, "A's draft is gone");
     assert.equal(await page.evaluate(() => window.__overlap), false, "A's content never shared the screen with B");
@@ -707,11 +707,11 @@ for (const mode of ["disabled", "unavailable"]) {
     await second.goto(`${baseURL}${threadPath(threadIds.office)}`);
     await shown(composer(second));
     await eventually(() => world.sockets.length === 2 && world.sockets.every((socket) => socket.serverFrames.length > 0), "One ready socket per tab");
-    await page.getByRole("button", { name: "Resolve conversation" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Resolve conversation" }).click();
-    await shown(page.getByText("This conversation is resolved.", { exact: true }));
+    await page.getByRole("button", { name: "Close conversation" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Close conversation" }).click();
+    await shown(page.getByText("This conversation is closed.", { exact: true }));
     world.changed(threadIds.office);
-    await shown(second.getByText("This conversation is resolved.", { exact: true }));
+    await shown(second.getByText("This conversation is closed.", { exact: true }));
   });
 }
 

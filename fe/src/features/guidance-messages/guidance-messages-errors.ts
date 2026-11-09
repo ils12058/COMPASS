@@ -26,12 +26,12 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
   if (error instanceof AccountChangedError) return "The signed-in account changed, so this message was not shown here.";
   const code = status(error);
   if (code === null || code === 408) {
-    return "Your message could not be confirmed because the connection to COMPASS failed.";
+    return "Couldn't confirm your message because the connection to COMPASS failed. Try again.";
   }
   if (code === 503 && error instanceof CompassApiError && readApiErrorCode(error.body) === "guidance_message_content_unavailable") {
-    return "Messages are temporarily unavailable, so your message could not be confirmed.";
+    return "Couldn't confirm your message because Messages can't be opened right now. Try again.";
   }
-  if (code >= 500) return "COMPASS could not confirm your message.";
+  if (code >= 500) return "Couldn't confirm your message. Try again.";
   if (code === 401) return "Your session needs to be checked again. Your message was not sent and is still here.";
   if (code === 403) {
     if (
@@ -59,7 +59,7 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
       return "This Counselor is no longer available to receive messages. Your message was not sent; choose another Counselor.";
     }
     if (context === "referral-coordination") {
-      return "This referral is no longer available to your account. Your message was not sent.";
+      return "This Referral is no longer available to your account. Your message was not sent.";
     }
     return "This conversation is no longer available. Your message was not sent.";
   }
@@ -69,21 +69,21 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
       error instanceof CompassApiError &&
       readApiErrorCode(error.body) === "guidance_messages_referral_voided"
     ) {
-      return "This referral was voided, so the conversation is read-only. Your message was not sent.";
+      return "This Referral was voided, so the conversation is read-only. Your message was not sent.";
     }
     if (context === "faculty-inquiry") {
-      return "Your inquiry could not be started because the Guidance Office cannot receive it right now. Your message was not sent; try again later.";
+      return "Couldn't start your inquiry because the Guidance Office cannot receive it right now. Your message was not sent; try again later.";
     }
     if (context === "student-office") {
-      return "The Guidance Office cannot receive messages from your account right now. Your message was not sent; try again later or visit the Guidance Office.";
+      return "The Guidance Office can't receive messages from your account right now; your message was not sent. Try again later or visit the Guidance Office.";
     }
     if (context === "staff-office") {
-      return "A Guidance Office conversation cannot be started for this Student right now because their College has no available Guidance Office routing. Your message was not sent.";
+      return "This Student's College has no Guidance Office staff available to receive this conversation. Your message was not sent.";
     }
     if (context === "counselor-direct") {
-      return "A conversation with this Counselor could not be started right now. Your message was not sent; try again later.";
+      return "Couldn't start a conversation with this Counselor right now. Your message was not sent; try again later.";
     }
-    return "This conversation is resolved, so your message was not sent. Your text is still here.";
+    return "This conversation is closed, so your message was not sent. Your text is still here.";
   }
   return "Your message was not sent.";
 }
@@ -93,7 +93,7 @@ export function describeStatusChangeError(error: unknown, action: "resolve" | "r
     error instanceof CompassApiError &&
     readApiErrorCode(error.body) === "guidance_messages_referral_voided"
   ) {
-    return "This referral was voided, so this conversation cannot be resolved or reopened.";
+    return "This Referral was voided, so this conversation cannot be closed or reopened.";
   }
   const code = status(error);
   if (action === "reopen" && code === 409) {
@@ -102,14 +102,14 @@ export function describeStatusChangeError(error: unknown, action: "resolve" | "r
   if (code === 404 || code === 403) return "This conversation is no longer available to your account.";
   if (code === 401) return "Your session needs to be checked again before this conversation can change.";
   return action === "resolve"
-    ? "The conversation could not be resolved. Try again."
-    : "The conversation could not be reopened. Try again.";
+    ? "Couldn't close the conversation. Try again."
+    : "Couldn't reopen the conversation. Try again.";
 }
 
 export function describeOlderError(error: unknown): string {
   return status(error) === 503
-    ? "Older messages are temporarily unavailable."
-    : "Older messages could not be loaded. Try again.";
+    ? "Couldn't load older messages right now. Try again."
+    : "Couldn't load older messages. Try again.";
 }
 
 export function describeAssignError(error: unknown): string {
@@ -120,5 +120,5 @@ export function describeAssignError(error: unknown): string {
   }
   if (code === 404 || code === 403) return "This conversation is no longer available to your account.";
   if (code === 401) return "Your session needs to be checked again before this conversation can be assigned.";
-  return "The conversation could not be assigned. Try again.";
+  return "Couldn't assign the conversation. Try again.";
 }

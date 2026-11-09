@@ -47,7 +47,7 @@ export function GoodMoralStudentHistory({
               tone="danger"
               action={<Button variant="secondary" onClick={() => void history.refetch()}>Retry</Button>}
             >
-              {goodMoralErrorMessage(history.error, "Your Good Moral requests could not be loaded.")}
+              {goodMoralErrorMessage(history.error, "Couldn't load your Good Moral requests. Try again.")}
             </PanelMessage>
           ) : confirmed.data.items.length === 0 ? (
             <PanelMessage>You do not have any Good Moral requests yet.</PanelMessage>
@@ -57,7 +57,7 @@ export function GoodMoralStudentHistory({
                 <li key={item.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-center sm:px-5">
                   <div className="min-w-0">
                     <Link href={`/portal/good-moral/${item.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                      {item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
+                      {item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)}` : `${goodMoralVariantLabel(item.variant)} request`}
                     </Link>
                     <p className="mt-1 break-words text-sm text-muted">{item.applicant_name || "Applicant name not provided"}</p>
                     <p className="mt-1 text-sm text-muted">{goodMoralInitiationLabel(item.initiation_origin)}</p>
@@ -75,7 +75,7 @@ export function GoodMoralStudentHistory({
         </Panel>
       ) : (
         <Panel as="div">
-          <PanelMessage>Your request history is unavailable to this account.</PanelMessage>
+          <PanelMessage>You don&apos;t have access to your request history.</PanelMessage>
         </Panel>
       )}
     </section>

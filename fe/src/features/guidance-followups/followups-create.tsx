@@ -60,7 +60,7 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
   const create = useMutation({ mutationFn: (value: { data: FollowUpCreate; key: string }) => guidanceFollowupsCreate(value.data, { headers: { "Idempotency-Key": value.key } }) });
   const students = useGuidanceFollowupsEligibleStudents({ search, page }, { query: { enabled: !source } });
   const assignees = useGuidanceFollowupsEligibleAssignees({ student_id: studentId, category, source_kind: source?.source_kind, source_id: source?.source_id, page: assigneePage }, { query: { enabled: Boolean(studentId), retry: false } });
-  useUnsavedChangesGuard({ dirty: !create.isSuccess && Boolean(description || due || assignee || (!source && studentId) || category !== (source?.category ?? Category.ADMINISTRATIVE)), message: "Your follow-up has not been saved." });
+  useUnsavedChangesGuard({ dirty: !create.isSuccess && Boolean(description || due || assignee || (!source && studentId) || category !== (source?.category ?? Category.ADMINISTRATIVE)), message: "Your Follow-Up has not been saved." });
   async function submit(event: FormEvent) {
     event.preventDefault(); setError(null);
     const dueAt = institutionalDateTimeInputToISO(due);
@@ -78,20 +78,20 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
     router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
   }
   return <>
-    <PageHeader help={<FollowupsHelp />} title="Create follow-up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
+    <PageHeader help={<FollowupsHelp />} title="Create Follow-Up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
     <form onSubmit={event => void submit(event)}><Panel>
       <PanelSection title="What needs to be done?" titleId="followup-purpose" description="Choose the purpose, then describe the next action if more detail is needed.">
         <div><Label htmlFor="followup-category">Category</Label><Select id="followup-category" value={category} disabled={Boolean(source || submission)} onChange={event => { setCategory(event.target.value as Category); setAssignee(""); }}>
           {(source ? [source.category] : [Category.ADMINISTRATIVE, Category.STUDENT_CONTACT, Category.REFERRAL_ACTION]).map(value => <option key={value} value={value}>{categoryLabel(value)}</option>)}
         </Select></div>
         <div className="mt-4"><Label htmlFor="followup-description">Task description (optional)</Label><Textarea id="followup-description" maxLength={4000} value={description} disabled={Boolean(submission)} onChange={event => setDescription(event.target.value)} /><p className="mt-2 text-sm text-muted">Describe one next action in plain language. Include only the information needed to complete it.</p></div>
-        {!source ? <p className="mt-3 text-sm text-muted">For a counseling follow-up, open the Student’s authorized Counseling Encounter or Routine Interview and choose Create follow-up.</p> : null}
+        {!source ? <p className="mt-3 text-sm text-muted">To create a Counseling Follow-Up, open a Counseling Encounter or Routine Interview you can access and choose Create Follow-Up.</p> : null}
       </PanelSection>
       <PanelSection title="Student" titleId="followup-student-section">
         {source ? <div>
           <p className="font-semibold">{source.student_name}</p>
-          <p className="mt-1 text-sm text-muted">{categoryLabel(source.category)} · {source.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Operational coordination"}. Created from the authorized related record.</p>
-          {source.visibility === "COUNSELOR_CONFIDENTIAL" ? <p className="mt-2 text-sm text-muted">Only the authorized Counselor for this record can be assigned.</p> : null}
+          <p className="mt-1 text-sm text-muted">{categoryLabel(source.category)} · {source.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Staff coordination"}. Created from the related record you can access.</p>
+          {source.visibility === "COUNSELOR_CONFIDENTIAL" ? <p className="mt-2 text-sm text-muted">You can assign only the Counselor who has access to this record.</p> : null}
         </div> : <>
           <Label htmlFor="followup-student-search">Find a Student</Label><Input id="followup-student-search" placeholder="Search by name or institutional ID" value={search} disabled={Boolean(submission)} onChange={event => { setSearch(event.target.value); setPage(1); setStudentId(""); setAssignee(""); }} />
           {students.isPending ? <p role="status">Loading Students…</p> : students.isError ? <FollowupFailure error={students.error} retry={() => void students.refetch()} /> : <>
@@ -114,7 +114,7 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
       <PanelSection title="Due date and time" titleId="followup-due-section" description="Use Philippine Time. A due date is required.">
         <Label htmlFor="followup-due">Due date and time (Philippine Time)</Label><Input id="followup-due" type="datetime-local" required value={due} disabled={Boolean(submission)} onChange={event => setDue(event.target.value)} />
       </PanelSection>
-      <PanelFooter><Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating follow-up…" : submission ? "Retry the same follow-up" : "Create follow-up"}</Button>{error ? <p role="alert">{error} Return to Follow-Ups to check the saved record before starting another request.</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}</PanelFooter>
+      <PanelFooter><Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating Follow-Up…" : submission ? "Retry the same Follow-Up" : "Create Follow-Up"}</Button>{error ? <p role="alert">{error} Return to Follow-Ups to check the saved record before starting another request.</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}</PanelFooter>
     </Panel></form>
     <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(open) => { continuation.setOpen(open); if (!open) setError(null); }} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;

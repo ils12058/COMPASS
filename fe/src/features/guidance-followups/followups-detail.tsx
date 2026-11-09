@@ -31,7 +31,7 @@ import { formatInstitutionalDateTime, isoToInstitutionalDateTimeInput, instituti
 import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel, statusLabel, sourceDestination, nextFollowupHref } from "./followups-shared";
 
 type Action = "edit" | "reschedule" | "reassign" | "activity" | "complete" | "cancel";
-const actionLabel: Record<Action, string> = { edit: "Edit task details", reschedule: "Change due date", reassign: "Reassign", activity: "Record activity", complete: "Mark complete", cancel: "Cancel follow-up" };
+const actionLabel: Record<Action, string> = { edit: "Edit task details", reschedule: "Change due date", reassign: "Reassign", activity: "Record activity", complete: "Mark complete", cancel: "Cancel Follow-Up" };
 export function FollowupsDetail({ id }: { id: string }) {
   const { user } = usePortalSession();
   const access = followupAccess(user);
@@ -60,10 +60,10 @@ export function FollowupsDetail({ id }: { id: string }) {
     setAction(null);
   }
   if (!access.view) return <FollowupRestricted />;
-  if (query.isPending) return <p role="status">Loading follow-up…</p>;
+  if (query.isPending) return <p role="status">Loading Follow-Up…</p>;
   if (!item || (query.error instanceof CompassApiError && [403, 404].includes(query.error.status))) return <FollowupFailure error={query.error} retry={() => void query.refetch()} />;
   return <>
-    {query.isError ? <p role="alert">The latest details could not be confirmed. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
+    {query.isError ? <p role="alert">Couldn&apos;t confirm the latest details. Try again. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
     <PageHeader help={<FollowupsHelp />} title="Follow-Up" description={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student_name} photoUrl={item.student_profile_photo_url} photoUpdatedAt={item.student_profile_photo_updated_at} size="compact" />{item.student_name}</span>} back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} meta={<span ref={statusRef} tabIndex={-1} className="text-sm font-semibold">{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</span>} />
     <Panel>
       <PanelSection title="What needs to be done?" titleId="followup-description" description={categoryLabel(item.category)}>
@@ -78,26 +78,26 @@ export function FollowupsDetail({ id }: { id: string }) {
       <PanelSection title="Responsible staff member" titleId="followup-assignee">
         <p className="flex items-center gap-2"><PersonAvatar displayName={item.assigned_to_name} photoUrl={item.assigned_to_profile_photo_url} photoUpdatedAt={item.assigned_to_profile_photo_updated_at} size="compact" />{item.assigned_to_name}</p>
       </PanelSection>
-      {item.status === "COMPLETED" ? <PanelSection title="Completion outcome" titleId="followup-completion"><p className="whitespace-pre-wrap break-words">{item.outcome}</p><p className="mt-2 text-sm text-muted">Completed by {item.completed_by_name} · {item.completed_at ? formatInstitutionalDateTime(item.completed_at) : ""}</p><p className="mt-2 text-sm text-muted">Completing this follow-up ends this task. It does not close the related record. If more work is needed, create a new follow-up.</p></PanelSection> : item.status === "CANCELLED" ? <PanelSection title="Cancellation details" titleId="followup-cancellation">
+      {item.status === "COMPLETED" ? <PanelSection title="Completion outcome" titleId="followup-completion"><p className="whitespace-pre-wrap break-words">{item.outcome}</p><p className="mt-2 text-sm text-muted">Completed by {item.completed_by_name} · {item.completed_at ? formatInstitutionalDateTime(item.completed_at) : ""}</p><p className="mt-2 text-sm text-muted">Completing this Follow-Up ends this task. It does not close the related record. If more work is needed, create a new Follow-Up.</p></PanelSection> : item.status === "CANCELLED" ? <PanelSection title="Cancellation details" titleId="followup-cancellation">
         <p>Cancelled by {item.cancelled_by_name} · {item.cancelled_at ? formatInstitutionalDateTime(item.cancelled_at) : ""}</p>
         {cancellation?.remarks ? <p className="mt-2 whitespace-pre-wrap break-words">{cancellation.remarks}</p> : null}
       </PanelSection> : null}
     </Panel>
-    {access.manage && item.status === "COMPLETED" ? <Panel className="mt-5"><PanelSection title="What happens next" titleId="followup-next-action"><p>Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this follow-up or change the related record.</p><p className="mt-3"><Link href={nextFollowupHref(item)} className={buttonVariants({ variant: "secondary" })}>Create next follow-up</Link></p></PanelSection></Panel> : null}
+    {access.manage && item.status === "COMPLETED" ? <Panel className="mt-5"><PanelSection title="What happens next" titleId="followup-next-action"><p>Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this Follow-Up or change the related record.</p><p className="mt-3"><Link href={nextFollowupHref(item)} className={buttonVariants({ variant: "secondary" })}>Create next Follow-Up</Link></p></PanelSection></Panel> : null}
     {access.manage && item.status === "PENDING" ? <Panel className="mt-5"><PanelHeader title="Next actions" /><div className="space-y-4 p-5">
-      <PageActionGroup aria-label="Primary follow-up actions">
+      <PageActionGroup aria-label="Primary Follow-Up actions">
         <PageAction icon={ClipboardPenLine} label="Record activity" variant="secondary" disabled={query.isFetching || Boolean(action)} onClick={event => beginAction("activity", event.currentTarget)} />
         <PageAction icon={Check} label="Mark complete" disabled={query.isFetching || Boolean(action)} onClick={event => beginAction("complete", event.currentTarget)} />
       </PageActionGroup>
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button ref={moreActionsRef} variant="secondary" disabled={query.isFetching || Boolean(action)}>More actions <ChevronDown aria-hidden="true" size={16} /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuLabel className="text-xs font-semibold text-muted">Manage this follow-up</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs font-semibold text-muted">Manage this Follow-Up</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => beginAction("edit", moreActionsRef.current)}>Edit task details</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => beginAction("reschedule", moreActionsRef.current)}>Change due date</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => beginAction("reassign", moreActionsRef.current)}>Reassign</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-danger focus:bg-danger/10 focus:text-danger" onSelect={() => beginAction("cancel", moreActionsRef.current)}>Cancel follow-up</DropdownMenuItem>
+          <DropdownMenuItem className="text-danger focus:bg-danger/10 focus:text-danger" onSelect={() => beginAction("cancel", moreActionsRef.current)}>Cancel Follow-Up</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {action ? <FollowupActionForm item={item} confirmed={!query.isError && !query.isFetching} action={action} onClose={closeAction} /> : null}
@@ -105,8 +105,8 @@ export function FollowupsDetail({ id }: { id: string }) {
     <FollowupHistory item={item} />
     <Panel className="mt-5">
       <PanelHeader title="Related record and additional information" />
-      <PanelSection title="Access" titleId="followup-access"><p>{item.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Operational coordination"}</p></PanelSection>
-      {item.source ? <PanelSection title="Related record" titleId="followup-source"><Link className="font-semibold text-brand underline underline-offset-4" href={sourceDestination(item.source)}>Open related record</Link><p className="mt-2 text-sm text-muted">This follow-up has its own status. The related record keeps its own access rules and progress.</p></PanelSection> : item.source_unavailable ? <PanelSection title="Related record" titleId="followup-source"><p>The related record is no longer available to your account. This follow-up remains open and keeps its own status. Review whether the work is still needed. Completing or cancelling it records your reason but does not change the related record.</p></PanelSection> : <PanelSection title="Related record" titleId="followup-source"><p>This follow-up was created independently and is not linked to another Guidance record.</p></PanelSection>}
+      <PanelSection title="Access" titleId="followup-access"><p>{item.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Staff coordination"}</p></PanelSection>
+      {item.source ? <PanelSection title="Related record" titleId="followup-source"><Link className="font-semibold text-brand underline underline-offset-4" href={sourceDestination(item.source)}>Open related record</Link><p className="mt-2 text-sm text-muted">This Follow-Up has its own status. The related record keeps its own access rules and progress.</p></PanelSection> : item.source_unavailable ? <PanelSection title="Related record" titleId="followup-source"><p>The related record is no longer available to your account. This Follow-Up remains open and keeps its own status. Review whether the work is still needed. Completing or cancelling it records your reason but does not change the related record.</p></PanelSection> : <PanelSection title="Related record" titleId="followup-source"><p>This Follow-Up was created independently and is not linked to another Guidance record.</p></PanelSection>}
     </Panel>
   </>;
 }
@@ -140,7 +140,7 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
     if (action === "complete") return guidanceFollowupsComplete(item.id, { ...common, outcome: text }, options);
     return guidanceFollowupsCancel(item.id, { ...common, reason: text }, options);
   } });
-  useUnsavedChangesGuard({ dirty: !mutation.isSuccess && Boolean(text || assignee || due !== isoToInstitutionalDateTimeInput(item.due_at)), message: "Your follow-up changes have not been saved." });
+  useUnsavedChangesGuard({ dirty: !mutation.isSuccess && Boolean(text || assignee || due !== isoToInstitutionalDateTimeInput(item.due_at)), message: "Your Follow-Up changes have not been saved." });
   async function save() {
     setError(null);
     const result = await continuation.run(() => mutation.mutateAsync(), {
@@ -168,14 +168,14 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
           <Label htmlFor="followup-new-assignee">Responsible staff member</Label><Select id="followup-new-assignee" value={assignee} required disabled={mutation.isPending || assignees.isFetching} onChange={event => { setAssignee(event.target.value); setRequestKey(crypto.randomUUID()); }}><option value="">Choose a staff member</option>{assignees.data?.data.items.filter(row => row.id !== item.assigned_to_id).map(row => <option key={row.id} value={row.id}>{row.display_name}</option>)}</Select>
           {assignees.isError ? <FollowupFailure error={assignees.error} retry={() => void assignees.refetch()} /> : null}
           {assignees.data ? <CanonicalPagination page={assignees.data.data.page} hasNext={assignees.data.data.has_next} onPageChange={setStaffPage} /> : null}
-        </> : <><Label htmlFor="followup-action-text">{action === "edit" ? "Task description" : action === "complete" ? "Completion outcome" : action === "cancel" ? "Cancellation reason" : "Activity or update"}</Label><Textarea id="followup-action-text" maxLength={4000} value={text} required={action !== "edit"} disabled={mutation.isPending} onChange={event => { setText(event.target.value); setRequestKey(crypto.randomUUID()); }} />{action === "activity" ? <p className="text-sm text-muted">Record an action or update. This follow-up will remain Pending.</p> : action === "complete" ? <p className="text-sm text-muted">Record what was accomplished, then mark this follow-up as completed.</p> : null}</>}
+        </> : <><Label htmlFor="followup-action-text">{action === "edit" ? "Task description" : action === "complete" ? "Completion outcome" : action === "cancel" ? "Cancellation reason" : "Activity or update"}</Label><Textarea id="followup-action-text" maxLength={4000} value={text} required={action !== "edit"} disabled={mutation.isPending} onChange={event => { setText(event.target.value); setRequestKey(crypto.randomUUID()); }} />{action === "activity" ? <p className="text-sm text-muted">Record an action or update. This Follow-Up will remain Pending.</p> : action === "complete" ? <p className="text-sm text-muted">Record what was accomplished, then mark this Follow-Up as completed.</p> : null}</>}
         {error ? <p role="alert">{error}</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}
         {conflict ? <div className="space-y-2 border border-border p-3"><p>Latest saved version: {item.version}. Due {formatInstitutionalDateTime(item.due_at)}. Assigned to {item.assigned_to_name}. {statusLabel(item.status)}.</p><p className="whitespace-pre-wrap break-words">Saved description: {item.description || "None"}</p><Button variant="secondary" disabled={item.status !== "PENDING" || !confirmed} onClick={() => { setVersion(item.version); setRequestKey(crypto.randomUUID()); setConflict(false); setError(null); }}>I reviewed the latest details</Button></div> : null}
       </div>
-      <PanelFooter><Button type="submit" disabled={mutation.isPending || conflict || !confirmed}>{mutation.isPending ? "Saving follow-up…" : consequential ? `Review ${actionLabel[action].toLowerCase()}` : "Save changes"}</Button><Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>Close</Button></PanelFooter>
+      <PanelFooter><Button type="submit" disabled={mutation.isPending || conflict || !confirmed}>{mutation.isPending ? "Saving Follow-Up…" : consequential ? `Review ${actionLabel[action].toLowerCase().replace("follow-up", "Follow-Up")}` : "Save changes"}</Button><Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>Close</Button></PanelFooter>
     </form>
-    <ConsequentialActionDialog open={review} title={`${actionLabel[action]}?`} confirmLabel={actionLabel[action]} pendingLabel="Saving follow-up…" pending={mutation.isPending} error={null} variant={action === "cancel" ? "danger" : "primary"} onOpenChange={setReview} onConfirm={() => void save()}>
-      <p>{action === "reassign" ? "Responsibility transfers to the selected staff member. You may lose access after reassignment." : action === "complete" ? "This follow-up will be completed with the outcome you recorded." : "This follow-up will be cancelled with the reason you recorded."} Related Counseling records, Referrals and Appointments keep their own status.</p>
+    <ConsequentialActionDialog open={review} title={`${actionLabel[action]}?`} confirmLabel={actionLabel[action]} pendingLabel="Saving Follow-Up…" pending={mutation.isPending} error={null} variant={action === "cancel" ? "danger" : "primary"} onOpenChange={setReview} onConfirm={() => void save()}>
+      <p>{action === "reassign" ? "Responsibility transfers to the selected staff member. You may lose access after reassignment." : action === "complete" ? "This Follow-Up will be completed with the outcome you recorded." : "This Follow-Up will be cancelled with the reason you recorded."} Related Counseling records, Referrals and Appointments keep their own status.</p>
     </ConsequentialActionDialog>
     <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(open) => { continuation.setOpen(open); if (!open) setError(null); }} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;

@@ -97,7 +97,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
           filterCount={[filters.academicYearId, filters.formRevisionId, filters.variant, filters.status].filter(Boolean).length}
           clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={<>
-          {user.capabilities.includes("academic_years.view") ? <FilterField label="Academic Year" htmlFor="good-moral-year"><Select id="good-moral-year" name="academic_year_id" defaultValue={filters.academicYearId ?? ""}><option value="">All Academic Years</option>{filters.academicYearId && !years.data?.data.items.some((year) => year.id === filters.academicYearId) ? <option value={filters.academicYearId}>Selected Academic Year</option> : null}{(years.data?.data.items ?? []).map((year) => <option key={year.id} value={year.id}>{year.label}</option>)}</Select>{years.isError ? <p role="alert" className="mt-2 text-sm text-danger">Academic Years could not be loaded. <Button variant="quiet" onClick={() => void years.refetch()}>Retry</Button></p> : null}</FilterField> : null}
+          {user.capabilities.includes("academic_years.view") ? <FilterField label="Academic Year" htmlFor="good-moral-year"><Select id="good-moral-year" name="academic_year_id" defaultValue={filters.academicYearId ?? ""}><option value="">All Academic Years</option>{filters.academicYearId && !years.data?.data.items.some((year) => year.id === filters.academicYearId) ? <option value={filters.academicYearId}>Selected Academic Year</option> : null}{(years.data?.data.items ?? []).map((year) => <option key={year.id} value={year.id}>{year.label}</option>)}</Select>{years.isError ? <p role="alert" className="mt-2 text-sm text-danger">Couldn&apos;t load Academic Years. Try again. <Button variant="quiet" onClick={() => void years.refetch()}>Retry</Button></p> : null}</FilterField> : null}
           <FormRevisionFilter id="good-moral-revision" selectedId={filters.formRevisionId} defaultValue={filters.formRevisionId} options={page?.filter_options.form_revisions} />
           <FilterField label="Variant" htmlFor="good-moral-variant">
             <Select id="good-moral-variant" name="variant" defaultValue={filters.variant}>
@@ -144,7 +144,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
             tone="danger"
             action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}
           >
-            {goodMoralErrorMessage(queue.error, "Good Moral requests could not be loaded.")}
+            {goodMoralErrorMessage(queue.error, "Couldn't load Good Moral requests. Try again.")}
           </PanelMessage>
         ) : page.items.length === 0 ? (
           <PanelMessage
@@ -155,7 +155,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
         ) : (
           <div className={dataTable.scroll}>
             <table className={`${dataTable.table} min-w-[680px]`}>
-              <caption className="sr-only">Good Moral certificate request queue</caption>
+              <caption className="sr-only">Good Moral Certificate request queue</caption>
               <thead className={dataTable.head}>
                 <tr>
                   <SortableColumnHeader

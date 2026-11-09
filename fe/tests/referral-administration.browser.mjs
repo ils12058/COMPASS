@@ -66,12 +66,12 @@ for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${fac
   await check(`faculty-stage-${version}-${entry.split("/").at(-1)}-${width}-${scale}`,entry,{handler:f.handler,viewport:{width,height:1000}},async(page,observed)=>{
     await page.emulateMedia({ colorScheme: scale === 200 ? "dark" : "light", reducedMotion: "reduce" });
     await page.evaluate(scale => { document.documentElement.style.fontSize = `${scale}%`; }, scale);
-    const labels=["Submitted","Received by GCO","Administratively Closed"];
+    const labels=["Submitted","Received by the Guidance Office","Administratively Closed"];
     await shown(page.getByText(labels[version-1],{exact:true}).last());
     assert.equal(await page.getByText("Synthetic GCO actor",{exact:true}).count(),0);
     assert.equal(observed.requests.some(r=>r.pathname.startsWith("/api/v1/referrals")),false);
     if(entry.endsWith(id)) {
-      assert.equal(await page.getByText("Received by GCO · Philippine Time",{exact:true}).count(),version>=2?1:0);
+      assert.equal(await page.getByText("Received by the Guidance Office · Philippine Time",{exact:true}).count(),version>=2?1:0);
       assert.equal(await page.getByText("Administratively closed · Philippine Time",{exact:true}).count(),version===3?1:0);
       if(version===3) { await page.getByRole("button",{name:/Help/}).click(); await shown(page.getByText(/does not establish that Counseling/)); }
     }
@@ -81,7 +81,7 @@ for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${fac
 }
 for (const version of [1,2]) {
   await check(`policy-unavailable-${version}`,path,{handler:fixture({unavailable:true,version}).handler},async page=>{
-    await shown(page.getByText("Administrative action is unavailable. Current policy and record eligibility must be confirmed.",{exact:true}));
+    await shown(page.getByText("You can act after the current Referral details and permitted actions are checked.",{exact:true}));
     assert.equal(await page.getByRole("button",{name:/^(Acknowledge receipt|Close administratively)$/}).count(),0);
   });
 }
@@ -94,7 +94,7 @@ for (const error of [409,403,"lost"]) {
     assert.equal(await confirm(page,"Acknowledge receipt").isDisabled(),true);
     assert.equal(f.state.writes,1);
     await dialog(page).getByRole("button",{name:"Cancel",exact:true}).click();
-    await shown(page.getByText("Received by GCO",{exact:true}));
+    await shown(page.getByText("Received by the Guidance Office",{exact:true}));
     assert.equal(await page.getByText("Receipt acknowledged.",{exact:true}).count(),0);
     await page.getByRole("button",{name:"Refresh intake record",exact:true}).click();
     await shown(page.getByRole("button",{name:"Close administratively",exact:true}));
@@ -102,7 +102,7 @@ for (const error of [409,403,"lost"]) {
   });
 }
 await check("intake-error-disables-actions",path,{handler:fixture({readError:403}).handler},async page=>{
-  await shown(page.getByText("Intake details could not be refreshed. Actions are unavailable.",{exact:true}));
+  await shown(page.getByText("Couldn't refresh intake details. Try again before taking action.",{exact:true}));
   assert.equal(await page.getByRole("button",{name:"Acknowledge receipt",exact:true}).count(),0);
 });
 await check("keyboard-explicit-review-cancel",path,{handler:fixture().handler},async page=>{

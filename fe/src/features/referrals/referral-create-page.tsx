@@ -65,7 +65,7 @@ export function ReferralCreatePage() {
   });
 
   if (!access.canManage) {
-    return <ReferralAccessUnavailable title="Referral recording unavailable" message="You don’t have access to record referrals." />;
+    return <ReferralAccessUnavailable title="Record Referral" message="You don’t have access to record Referrals." />;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -75,7 +75,7 @@ export function ReferralCreatePage() {
 
     if (!student) return setError("Choose an eligible Student before recording the Referral.");
     if (!courseYearBlock.trim()) return setError("Course / Year / Block is required.");
-    if (!reason.trim()) return setError("Reason for referral is required.");
+    if (!reason.trim()) return setError("Reason for Referral is required.");
     if (!referrerName.trim()) return setError("Referrer name is required.");
     if (!referredOn) return setError("Date referred is required.");
     if (isFutureInstitutionalDateInput(referredOn)) return setError("Date referred cannot be in the future.");
@@ -117,11 +117,11 @@ export function ReferralCreatePage() {
     } catch (caught) {
       if (referralErrorCode(caught) === "idempotency_key_conflict") {
         intent.current = null;
-        setError(referralErrorMessage(caught, "The Referral could not be created."));
+        setError(referralErrorMessage(caught, "Couldn't create the Referral. Try again."));
       } else if (uncertainReferralMutation(caught)) {
-        setError("The Referral creation result could not be confirmed. Retry the same unchanged Referral details to safely check the result.");
+        setError("Couldn't confirm Referral creation result. Retry the same unchanged Referral details to safely check the result.");
       } else {
-        setError(referralErrorMessage(caught, "The Referral could not be created."));
+        setError(referralErrorMessage(caught, "Couldn't create the Referral. Try again."));
       }
     }
   }
@@ -130,7 +130,7 @@ export function ReferralCreatePage() {
 
   return (
     <div className="space-y-5">
-      <ReferralHeading title="Record referral" backHref="/portal/referrals" />
+      <ReferralHeading title="Record Referral" backHref="/portal/referrals" />
       {/* One sheet in the order of the paper referral: who was referred, the source details, then
           the dates. The form's one action area closes the sheet. */}
       <form className="max-w-3xl" onSubmit={submit} aria-busy={create.isPending}>
@@ -138,7 +138,7 @@ export function ReferralCreatePage() {
           <PanelSection
             title="Student"
             titleId="referral-student-heading"
-            description="Find the student named on the referral."
+            description="Find the Student named on the Referral."
           >
             <EligibleStudentPicker
               label="Choose Student"
@@ -153,7 +153,7 @@ export function ReferralCreatePage() {
               hasNext={studentPageData?.has_next ?? false}
               isLoading={eligibleStudents.isPending}
               isError={eligibleStudents.isError}
-              errorMessage={referralErrorMessage(eligibleStudents.error, "Eligible Students could not be loaded.")}
+              errorMessage={referralErrorMessage(eligibleStudents.error, "Couldn't load eligible Students. Try again.")}
               onRetry={() => void eligibleStudents.refetch()}
               onPageChange={setStudentPage}
             />
@@ -164,12 +164,12 @@ export function ReferralCreatePage() {
               <div className="grid gap-2">
                 <Label htmlFor="referral-course-year-block">Course / Year / Block</Label>
                 <Input id="referral-course-year-block" maxLength={255} required value={courseYearBlock} onChange={(event) => setCourseYearBlock(event.target.value)} />
-                <p className="text-xs text-muted">Enter the value shown on the source Referral. It will remain as entered on this referral.</p>
+                <p className="text-xs text-muted">Enter the value shown on the source Referral. It will remain as entered on this Referral.</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="referral-reason">Reason for referral</Label>
+                <Label htmlFor="referral-reason">Reason for Referral</Label>
                 <Textarea id="referral-reason" required rows={6} maxLength={10_000} value={reason} onChange={(event) => setReason(event.target.value)} />
-                <p className="text-xs text-muted">Copy the reason as written on the referral. Do not add a diagnosis or risk assessment here.</p>
+                <p className="text-xs text-muted">Copy the reason as written on the Referral. Do not add a diagnosis or risk assessment here.</p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="referral-referrer-name">Referrer name</Label>
@@ -187,9 +187,9 @@ export function ReferralCreatePage() {
                 <p className="text-xs leading-5 text-muted">The date the source Referral was made or signed. It is not the date entered into COMPASS.</p>
               </div>
               <div className="grid content-start gap-2">
-                <Label htmlFor="referral-received-at">Received by Guidance/GCO (optional)</Label>
+                <Label htmlFor="referral-received-at">Received by the Guidance Office (optional)</Label>
                 <Input id="referral-received-at" type="datetime-local" step="60" value={receivedAt} onChange={(event) => setReceivedAt(event.target.value)} />
-                <p className="text-xs leading-5 text-muted">Enter only when the actual Guidance/GCO receipt date and time are known. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
+                <p className="text-xs leading-5 text-muted">Enter the date and time the Guidance Office received this Referral, if known. Times use {INSTITUTION_TIME_ZONE_LABEL}.</p>
               </div>
             </div>
           </PanelSection>
@@ -198,7 +198,7 @@ export function ReferralCreatePage() {
             {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
             {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
             <Button type="submit" disabled={create.isPending || eligibleStudents.isPending}>
-              {create.isPending ? "Recording…" : "Record referral"}
+              {create.isPending ? "Recording…" : "Record Referral"}
             </Button>
             <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
           </PanelFooter>

@@ -52,7 +52,7 @@ export function ReferralActionsSection({
       <PanelHeader
         title="Actions taken"
         titleId="referral-actions-heading"
-        description="Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the student."
+        description="Record actions already taken. Adding an entry here does not place a call, send a letter, or notify the Student."
       />
       <ol className="divide-y divide-border">
         {actionRows.map((row) => {
@@ -135,7 +135,7 @@ export function ReferralActionEntry({
     setReconcileRequired(false);
     if (!current) {
       setReconcileRequired(true);
-      setError("The Referral could not be refreshed. Do not retry this action until the Referral detail can be checked.");
+      setError("Couldn't refresh the Referral. Do not retry this action until the Referral detail can be checked.");
       return "unavailable";
     }
     const recorded = current.actions.some((item) => item.action_type === actionType);
@@ -202,7 +202,7 @@ export function ReferralActionEntry({
           setError("The action was not found after refreshing the Referral. Review the source details and submit again only if the action is still unrecorded.");
         }
       } else {
-        setError(referralErrorMessage(caught, "The referral action could not be recorded."));
+        setError(referralErrorMessage(caught, "Couldn't record Referral action. Try again."));
       }
     } finally {
       setRecording(false);
@@ -266,7 +266,7 @@ export function ReferralActionEntry({
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
       <ConsequentialActionDialog
         open={review !== null}
-        title={review ? `${buttonLabel}?` : "Review referral action"}
+        title={review ? `${buttonLabel}?` : "Review Referral action"}
         confirmLabel={buttonLabel}
         pendingLabel="Recording…"
         pending={recordPending}
@@ -301,7 +301,7 @@ export function ReferralActionEntry({
               This action cannot be edited or deleted after it is recorded.
             </p>
             {reconcileRequired ? (
-              <p>Refresh the referral details before deliberately retrying this action.</p>
+              <p>Refresh the Referral details before deliberately retrying this action.</p>
             ) : null}
           </>
         ) : null}

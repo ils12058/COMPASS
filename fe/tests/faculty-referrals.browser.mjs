@@ -63,8 +63,8 @@ async function fill(page, reason = "Synthetic confidential concern") {
   await page.getByLabel("Referral reason", { exact: true }).fill(reason);
 }
 async function review(page) {
-  await page.getByRole("button", { name: "Review referral", exact: true }).click();
-  await shown(page.getByRole("heading", { name: "Review referral", exact: true }));
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Review Referral", exact: true }));
   await page.waitForFunction(() => document.activeElement?.id === "faculty-review-heading");
 }
 const facultyWrites = (requests) => requests.filter(r => r.pathname.startsWith(api) && r.method === "POST");
@@ -83,15 +83,15 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const scale of [100, 200])
     assert.equal(await page.locator("#faculty-review-heading").evaluate(e => e === document.activeElement), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, "Review fits enlarged text");
     if ((width === 1440 && scale === 100) || (width === 320 && scale === 200)) await page.screenshot({ path: join(artifacts, `review-${width}-${scale}.png`), fullPage: true });
-    await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+    await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
-    await shown(page.getByText("Your referral has been submitted to the Guidance and Counseling Office.", { exact: true }));
+    await shown(page.getByText("Your Referral has been submitted to the Guidance Office.", { exact: true }));
     assert.equal(f.calls.length, 1);
     assert.ok(f.calls[0].key);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, "Confirmation fits enlarged text");
     const storage = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage), location.href]));
     assert.ok(!/SYNTHETIC-EXACT-ID|synthetic-component-memory|Synthetic confidential concern/.test(storage), "No sensitive form data in URL or storage");
-    await page.getByRole("link", { name: "View referral details", exact: true }).click();
+    await page.getByRole("link", { name: "View Referral details", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Referral details", exact: true }));
     assert.equal(await page.getByText(/Synthetic confidential concern/).count(), 0);
     assert.equal(observed.requests.some(r => /\/api\/v1\/(?:referrals|accounts|counseling|guidance-followups)(?:\/|$)/.test(r.pathname)), false);
@@ -105,7 +105,7 @@ await check("default-unavailable-home-and-direct-submission", "/portal", { handl
   assert.equal(await page.locator(`a[href="${root}/new"]`).count(), 0);
   await page.screenshot({ path: join(artifacts, "home-unavailable.png"), fullPage: true });
   await navigate(page, root + "/new");
-  await shown(page.getByText("Digital Referrals are not available yet.", { exact: true }));
+  await shown(page.getByText("You can't submit digital Referrals right now.", { exact: true }));
   assert.equal(await page.getByLabel("Student institutional ID").count(), 0);
   assert.equal(facultyWrites(observed.requests).length, 0);
 });
@@ -121,22 +121,22 @@ await check("approved-home-uses-actual-own-records-and-primary-action", "/portal
   await page.screenshot({ path: join(artifacts, "home-approved.png"), fullPage: true });
 });
 await check("form-errors-focus-original-fields-and-preserve-input", root + "/new", { handler: fixture().handler }, async page => {
-  await page.getByRole("button", { name: "Review referral", exact: true }).click();
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
   await shown(page.getByText("Enter the exact institutional ID.", { exact: true }));
   assert.equal(await page.getByLabel("Student institutional ID").getAttribute("aria-invalid"), "true");
   assert.equal(await page.getByLabel("Student institutional ID").evaluate(e => e === document.activeElement), true);
   await page.getByLabel("Referral reason").fill("Preserved synthetic input");
-  await page.getByRole("button", { name: "Review referral", exact: true }).click();
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
   assert.equal(await page.getByLabel("Referral reason").inputValue(), "Preserved synthetic input");
 });
 const uncertainFixture = fixture({ uncertain: true });
 await check("uncertain-result-retains-exact-key-body-and-never-auto-retries", root + "/new", { handler: uncertainFixture.handler }, async (page, observed) => {
   const f = uncertainFixture;
   await fill(page); await review(page);
-  await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
   await shown(page.getByRole("button", { name: "Retry same submission", exact: true }));
   assert.equal(f.calls.length, 1);
-  assert.equal(await page.getByRole("button", { name: "Edit referral information" }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "Edit Referral information" }).isDisabled(), true);
   await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
   assert.equal(f.calls.length, 2);
@@ -147,12 +147,12 @@ await check("uncertain-result-retains-exact-key-body-and-never-auto-retries", ro
 for (const status of [403, 409]) {
   const f = fixture({ submitError: status });
   await check(`submission-refusal-${status}-is-not-success`, root + "/new", { handler: f.handler }, async page => {
-    await fill(page); await review(page); await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+    await fill(page); await review(page); await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
     await shown(page.getByRole("alert").first());
     assert.equal(await page.getByRole("heading", { name: "Referral submitted" }).count(), 0);
     assert.equal(f.calls.length, 1);
     await shown(page.getByText("Synthetic confidential concern", { exact: true }));
-    if (status === 403) await shown(page.getByRole("button", { name: "Check availability" }));
+    if (status === 403) await shown(page.getByRole("button", { name: "Check Availability" }));
   });
 }
 for (const status of [429, 503]) {
@@ -169,8 +169,8 @@ for (const status of [429, 503]) {
 await check("expired-confirmation-requires-deliberate-reconfirmation", root + "/new", { handler: fixture({ expiring: true }).handler }, async page => {
   await fill(page);
   await shown(page.getByText("Confirmation expired.", { exact: true }));
-  await page.getByRole("button", { name: "Review referral", exact: true }).click();
-  assert.equal(await page.getByRole("heading", { name: "Review referral", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  assert.equal(await page.getByRole("heading", { name: "Review Referral", exact: true }).count(), 0);
   await page.getByRole("button", { name: "Confirm Student again", exact: true }).click();
   await shown(page.getByText(/Confirmation expires /));
   assert.equal(await page.getByLabel("Referral reason").inputValue(), "Synthetic confidential concern");
@@ -181,10 +181,10 @@ await check("pagination-keeps-previous-on-empty-later-page", root, { handler: fi
   await shown(page.getByText("No referrals on this page. Go back to the previous page.", { exact: true }));
   assert.equal(await page.getByRole("button", { name: "Previous", exact: true }).isDisabled(), false);
   await page.getByRole("button", { name: "Previous", exact: true }).click();
-  await shown(page.getByRole("link", { name: `View referral ${record.reference_code}` }));
+  await shown(page.getByRole("link", { name: `View Referral ${record.reference_code}` }));
 });
 await check("safe-own-detail-404-never-probes-internal-record", `${root}/${recordId}`, { handler: fixture({ detailError: 404 }).handler }, async (page, observed) => {
-  await shown(page.getByText("This referral is not available. Return to My Referrals.", { exact: true }));
+  await shown(page.getByText("This Referral is not available. Return to My Referrals.", { exact: true }));
   assert.equal(observed.requests.some(r => r.pathname.startsWith("/api/v1/referrals")), false);
 });
 await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fixture().handler }, async page => {
@@ -207,7 +207,7 @@ await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fix
   await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
 });
 await check("own-list-policy-denial-hides-protected-results", root, { handler: fixture({ listError: 403 }).handler }, async page => {
-  await shown(page.getByText("Your submitted referrals are not available for this account right now.", { exact: true }));
+  await shown(page.getByText("You don't have access to your submitted Referrals.", { exact: true }));
   assert.equal(await page.getByText(longName, { exact: true }).count(), 0);
 });
 await check("empty-own-list-is-not-a-fabricated-total", root, { handler: fixture({ empty: true }).handler }, async page => {
@@ -217,7 +217,7 @@ await check("empty-own-list-is-not-a-fabricated-total", root, { handler: fixture
 await check("uniform-negative-confirmation-never-advances-to-review", root + "/new", { handler: fixture({ negative: true }).handler }, async page => {
   await page.getByLabel("Student institutional ID").fill("SYNTHETIC-NONCONFIRMED");
   await page.getByRole("button", { name: "Confirm Student", exact: true }).click();
-  await shown(page.getByText(/The Student could not be confirmed/));
+  await shown(page.getByText(/Couldn't confirm the Student/));
   assert.equal(await page.getByText(longName, { exact: true }).count(), 0);
 });
 let releaseSubmit;
@@ -226,7 +226,7 @@ const pendingFixture = fixture({ beforeSubmit: () => pendingSubmission });
 await check("pending-submit-prevents-duplicates", root + "/new", { handler: pendingFixture.handler }, async page => {
   try {
     await fill(page); await review(page);
-    await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+    await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
     await shown(page.getByRole("button", { name: "Submitting…", exact: true }));
     assert.equal(await page.getByRole("button", { name: "Submitting…", exact: true }).isDisabled(), true);
     assert.equal(pendingFixture.calls.length, 1);
@@ -254,12 +254,12 @@ await check("initial-loading-then-retry-never-claims-empty", root, { handler: re
   await shown(page.getByRole("button", { name: "Retry", exact: true }));
   retryFixture.state.listError = null;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await shown(page.getByRole("link", { name: `View referral ${record.reference_code}` }));
+  await shown(page.getByRole("link", { name: `View Referral ${record.reference_code}` }));
 });
 const roleChange = fixture({ submitError: 403, changeRole: true });
 await check("stale-role-revalidation-unmounts-faculty-form-without-replay", root + "/new", { handler: roleChange.handler }, async page => {
   await fill(page); await review(page);
-  await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
   assert.equal(await page.getByText("Synthetic confidential concern", { exact: true }).count(), 0);
   assert.equal(roleChange.calls.length, 1);
@@ -267,7 +267,7 @@ await check("stale-role-revalidation-unmounts-faculty-form-without-replay", root
 const endedSession = fixture({ submitError: 401 });
 await check("ended-session-uses-existing-sign-in-boundary-without-replay", root + "/new", { handler: endedSession.handler }, async page => {
   await fill(page); await review(page);
-  await page.getByRole("button", { name: "Submit referral", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
   await page.waitForURL(url => url.pathname === "/login");
   assert.equal(endedSession.calls.length, 1);
   assert.equal(await page.getByText("Synthetic confidential concern", { exact: true }).count(), 0);

@@ -97,7 +97,7 @@ async function issue(page) {
   await page.getByRole('button', { name: 'Issue certificate', exact: true }).click();
   const dialog = page.getByRole('alertdialog');
   await shown(dialog);
-  await shown(dialog.getByRole('heading', { name: 'Issue Good Moral certificate?' }));
+  await shown(dialog.getByRole('heading', { name: 'Issue Good Moral Certificate?' }));
   await dialog.getByRole('button', { name: 'Issue certificate', exact: true }).click();
 }
 async function prepared(page) {
@@ -234,7 +234,7 @@ for (const mode of ['blocked', 'throws']) {
     await prepared(page);
     await setFramePrint(page, 'unsupported');
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
-    await shown(page.getByRole('alert').filter({ hasText: 'The print request and a new PDF preview could not be opened.' }));
+    await shown(page.getByRole('alert').filter({ hasText: "Couldn't open the print request and a new PDF preview." }));
     assert.equal(await page.evaluate(() => window.pdfResources.revoked.includes(window.pdfResources.created.at(-1))), true);
     await downloaded(page);
     assert.equal(data.state.issueBodies.length, 0);
@@ -246,7 +246,7 @@ for (const mode of ['blocked', 'throws']) {
   const data = fixture({ pdfFailures: 1 });
   await check('issued-then-pdf-failure-and-retry-without-reissue', route, data.options, async page => {
     await issue(page);
-    await shown(page.getByRole('alert').filter({ hasText: 'The certificate is issued, but its PDF could not be prepared.' }));
+    await shown(page.getByRole('alert').filter({ hasText: "The certificate is issued, but couldn't prepare its PDF." }));
     assert.equal(await page.getByRole('button', { name: 'Print certificate', exact: true }).isDisabled(), true);
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
     await page.getByRole('button', { name: 'Retry PDF', exact: true }).click();
@@ -260,7 +260,7 @@ for (const mode of ['blocked', 'throws']) {
 {
   const data = fixture({ status: 'ISSUED', pdfFailures: 100, pdfStatus: 403 });
   await check('unauthorized-pdf-has-no-preview-and-retry-never-issues', route, data.options, async page => {
-    await shown(page.getByRole('alert').filter({ hasText: 'its PDF could not be prepared' }));
+    await shown(page.getByRole('alert').filter({ hasText: "couldn't prepare its PDF" }));
     await hidden(page.locator('iframe[title="Finalized certificate PDF"]'));
     assert.equal(await page.getByRole('button', { name: 'Print certificate', exact: true }).isDisabled(), true);
     await page.getByRole('button', { name: 'Download certificate', exact: true }).click();
@@ -275,7 +275,7 @@ for (const commit of [true, false]) {
     await issue(page);
     if (commit) await prepared(page);
     else {
-      await shown(page.getByRole('alert').filter({ hasText: 'Issuance could not be confirmed. The request is still ready for issuance' }));
+      await shown(page.getByRole('alert').filter({ hasText: "Couldn't confirm the issuance. The request is still ready for issuance" }));
       await hidden(page.getByRole('button', { name: 'Print certificate', exact: true }));
       assert.equal(data.state.pdfReads, 0);
     }

@@ -20,7 +20,7 @@ import type { UserSummary } from "@/lib/api/generated/model";
 
 export function StudentActionsPage() {
   const { user } = usePortalSession();
-  if (!hasStudentActions(user)) return <WorkspaceUnavailable title="My actions unavailable">Only students can use My actions.</WorkspaceUnavailable>;
+  if (!hasStudentActions(user)) return <WorkspaceUnavailable title="My actions">Only Students can use My actions.</WorkspaceUnavailable>;
   return <ActionList key={user.id} user={user} />;
 }
 
@@ -36,7 +36,7 @@ function ActionList({ user }: { user: UserSummary }) {
       <Panel>
         {query.isPending ? <PanelMessage role="status">Loading your actions…</PanelMessage> : null}
         {query.isError && !data ? <Notice role="alert" tone="warning" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>
-          {forbidden ? "You don't have access to My actions." : "Your actions could not be loaded. Try again."}
+          {forbidden ? "You don't have access to My actions." : "Couldn't load your actions. Try again."}
         </Notice> : null}
         {data?.items.length === 0 ? <PanelMessage>{query.isError ? "Your last confirmed result had no actions." : data.page === 1 ? "You're all caught up." : "No items on this page. Return to the previous page to check your actions."}</PanelMessage> : null}
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">

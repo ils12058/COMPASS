@@ -47,14 +47,14 @@ export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true 
     } catch (caught) {
       setReviewedAt(null);
       await onRefresh();
-      setError(goodMoralErrorMessage(caught, "Preparation could not be confirmed. Review the latest request before trying again."));
+      setError(goodMoralErrorMessage(caught, "Couldn't confirm the preparation. Review the latest request before trying again."));
     }
   }
 
   return <>
     <GoodMoralSection title="Certificate preparation">
       <p className="text-sm text-muted">{item.status === "READY_FOR_ISSUANCE"
-        ? "This request is marked ready for a Counselor’s final review. Any receipt blocker below must be resolved before issuance."
+        ? "This request is ready for a Counselor’s final review. Address any receipt issue below before issuing the certificate."
         : "Review the certificate details and physical receipt inspection before marking this request ready."}</p>
       {item.receipt_inspection?.blocker ? <p role="status" className="mt-3 text-sm text-muted">Resolve the receipt review above before preparation or issuance.</p> : null}
       {item.actions.can_prepare && confirmed ? <Button className="mt-4" onClick={() => {

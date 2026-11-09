@@ -40,10 +40,10 @@ test("null is omitted and authorized zero remains an explicit metric", () => {
   data.backlog.good_moral_preparation.count = 0;
   data.backlog.good_moral_preparation.oldest_waiting_since = null;
   const html = render(data, operationsAccount("GUIDANCE_OFFICE_ASSISTANT"));
-  assert.doesNotMatch(html, /Routine evaluations pending|Good Moral ready for issuance|Your upcoming appointments/);
+  assert.doesNotMatch(html, /Routine evaluations pending|Good Moral ready for issuance|Your upcoming Appointments/);
   assert.match(html, /Good Moral needs preparation/);
   assert.match(html, /<dd[^>]*>0<\/dd>/);
-  assert.match(html, /Upcoming managed appointments/);
+  assert.match(html, /Upcoming managed Appointments/);
 });
 
 test("returned backlog and schedule facts retain semantic labels and oldest associations", () => {
@@ -74,10 +74,10 @@ test("only existing exact-population routes link from metrics", () => {
   assert.equal(rows.backlog.find((row) => row.label === "Routine evaluations pending").href, undefined);
   assert.equal(rows.backlog.find((row) => row.label === "Good Moral needs preparation").href, "/portal/good-moral?status=REQUESTED");
   assert.equal(rows.backlog.find((row) => row.label === "Good Moral ready for issuance").href, "/portal/good-moral?status=READY_FOR_ISSUANCE");
-  assert.equal(rows.schedule.find((row) => row.label === "Your upcoming appointments").href, "/portal/appointments/my?status=UPCOMING");
+  assert.equal(rows.schedule.find((row) => row.label === "Your upcoming Appointments").href, "/portal/appointments/my?status=UPCOMING");
   assert.equal(rows.schedule.find((row) => row.label === "Active Call Slips").href, "/portal/call-slips?state=ACTIVE");
   const goa = presentOperations(operationsData("GUIDANCE_OFFICE_ASSISTANT"), operationsAccount("GUIDANCE_OFFICE_ASSISTANT"));
-  assert.equal(goa.schedule.find((row) => row.label === "Upcoming managed appointments").href, "/portal/appointments/manage?status=UPCOMING");
+  assert.equal(goa.schedule.find((row) => row.label === "Upcoming managed Appointments").href, "/portal/appointments/manage?status=UPCOMING");
 });
 
 test("empty wording is constrained to available workflows and leaves schedule context", () => {

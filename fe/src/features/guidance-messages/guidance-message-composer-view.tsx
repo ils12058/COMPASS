@@ -74,7 +74,7 @@ export function MessageComposerView({
       >
         {sendState.kind === "uncertain" ? (
           <div role="alert" className="mb-3 rounded-sm border border-warning/40 bg-surface-raised px-3 py-2.5 text-sm">
-            <p id={errorId} className="text-warning">{error ?? "Your message could not be confirmed."}</p>
+            <p id={errorId} className="text-warning">{error ?? "Couldn't confirm your message. Try again."}</p>
             <p className="mt-1 text-muted">Retry sends this same message again; it will not be posted twice.</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Button type="submit">Retry sending</Button>

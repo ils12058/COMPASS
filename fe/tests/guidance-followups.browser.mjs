@@ -105,7 +105,7 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
     await shown(page.getByRole("link", { name: "Synthetic Student", exact: true }));
     assert.match(await page.locator('[data-page-header=""]').textContent(), /Track the next actions assigned to Guidance staff/i);
     await shown(page.getByRole("heading", { name: "Workload overview", exact: true }));
-    await shown(page.getByText("Counts include only follow-ups you can currently access. Due soon means the next 7 days.", { exact: true }));
+    await shown(page.getByText("Counts include only Follow-Ups you can currently access. Due soon means the next 7 days.", { exact: true }));
     const overview = page.locator('section[aria-labelledby="followup-workload-heading"] dl');
     assert.equal(await overview.getByText("3", { exact: true }).count(), 1, "Pending is the authorized report total");
     assert.equal(await overview.getByText("1", { exact: true }).count(), 1, "Overdue is counted separately");
@@ -275,7 +275,7 @@ for (const mobile of [false, true]) {
     await shown(page.getByRole("heading", { name: "Student", exact: true }));
     await shown(page.getByRole("heading", { name: "Responsible staff member", exact: true }));
     await shown(page.getByRole("heading", { name: "Due date and time", exact: true }));
-    await shown(page.getByText(/For a counseling follow-up, open the Student’s authorized Counseling Encounter or Routine Interview/));
+    await shown(page.getByText(/To create a Counseling Follow-Up, open a Counseling Encounter or Routine Interview you can access/));
     await shown(page.getByText("Creating one does not contact the Student or send a Student notification."));
     await noHorizontalOverflow(page);
     await screenshot(page, mobile ? "create-standalone-phone" : "create-standalone-desktop");
@@ -283,18 +283,18 @@ for (const mobile of [false, true]) {
     await page.locator("#followup-assignee").selectOption(user("COUNSELOR").id);
     await page.getByLabel("Due date and time (Philippine Time)", { exact: true }).fill("2099-01-01T10:00");
     await page.getByLabel("Task description (optional)", { exact: true }).fill("Synthetic follow-up content");
-    await page.getByRole("button", { name: "Create follow-up", exact: true }).click();
+    await page.getByRole("button", { name: "Create Follow-Up", exact: true }).click();
     await shown(page.locator("form").getByRole("alert"));
     assert.equal(await page.getByLabel("Task description (optional)", { exact: true }).isDisabled(), true);
-    await page.getByRole("button", { name: "Retry the same follow-up", exact: true }).click();
+    await page.getByRole("button", { name: "Retry the same Follow-Up", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Follow-Up", exact: true }));
     assert.equal(fixture.writes.length, 2); assert.deepEqual(fixture.writes[0], fixture.writes[1]); assert.ok(fixture.writes[0].key);
     await noHorizontalOverflow(page); await screenshot(page, mobile ? "detail-phone" : "detail-desktop");
   });
 }
 for (const [empty, title, description] of [
-  ["no-assigned", "No follow-ups assigned", "Follow-ups appear here when a next action is assigned to you."],
-  ["no-pending", "No Pending follow-ups", "Choose another Status to review completed or cancelled work."],
+  ["no-assigned", "No Follow-Ups assigned", "Follow-Ups appear here when a next action is assigned to you."],
+  ["no-pending", "No Pending Follow-Ups", "Choose another Status to review completed or cancelled work."],
 ]) {
   const fixture = world("COUNSELOR", { empty });
   await check(`Follow-Up empty state explains ${empty}`, "/portal/follow-ups", { handler: fixture.handler }, async page => {
@@ -312,7 +312,7 @@ for (const [empty, title, description] of [
     await page.getByLabel("Status", { exact: true }).selectOption("COMPLETED");
     const message = page.locator('[data-density="compact"] p');
     await shown(message);
-    assert.match(await message.textContent(), /No matching follow-ups/);
+    assert.match(await message.textContent(), /No matching Follow-Ups/);
     assert.match(await message.textContent(), /Change Status or open Filters/);
   });
 }
@@ -321,12 +321,12 @@ for (const [empty, title, description] of [
   await check("Follow-Up list marks only an unavailable related record without exposing source identity", "/portal/follow-ups", { handler: fixture.handler }, async page => {
     await shown(page.getByRole("link", { name: "Synthetic Unavailable Student", exact: true }));
     const unavailable = page.getByRole("row").filter({ hasText: "Synthetic Unavailable Student" });
-    await shown(unavailable.getByText("Related record unavailable", { exact: true }));
-    assert.equal(await page.getByText("Related record unavailable", { exact: true }).count(), 1);
+    await shown(unavailable.getByText("Can't open related record", { exact: true }));
+    assert.equal(await page.getByText("Can't open related record", { exact: true }).count(), 1);
     for (const name of ["Synthetic Readable Student", "Synthetic Standalone Student"]) {
       const row = page.getByRole("row").filter({ hasText: name });
       await shown(row);
-      assert.equal(await row.getByText("Related record unavailable", { exact: true }).count(), 0, `${name} has no unavailable indicator`);
+      assert.equal(await row.getByText("Can't open related record", { exact: true }).count(), 0, `${name} has no unavailable indicator`);
     }
     assert.equal(await page.getByRole("link", { name: "Open related record", exact: true }).count(), 0, "the list exposes no source link");
     assert.equal(await page.getByText(sourceId, { exact: false }).count(), 0, "the list exposes no source identity");
@@ -340,8 +340,8 @@ for (const [empty, title, description] of [
   const fixture = world();
   await check("Follow-Up report explains source availability without a per-task projection", "/portal/follow-ups/report", { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "Workload", exact: true }));
-    await shown(page.getByText("Source availability is shown on each follow-up. This report counts only follow-ups you can access and does not include related-record details.", { exact: true }));
-    assert.equal(await page.getByText("Related record unavailable", { exact: true }).count(), 0);
+    await shown(page.getByText("Source Availability is shown on each Follow-Up. This report counts only Follow-Ups you can access and does not include related-record details.", { exact: true }));
+    assert.equal(await page.getByText("Can't open related record", { exact: true }).count(), 0);
     await noHorizontalOverflow(page);
   });
 }
@@ -362,7 +362,7 @@ for (const [empty, title, description] of [
     await page.waitForFunction(element => element === document.activeElement, await moreActions.elementHandle());
     assert.equal(await moreActions.evaluate(element => element === document.activeElement), true, "closing More actions restores focus");
     await moreActions.click();
-    for (const label of ["Edit task details", "Change due date", "Reassign", "Cancel follow-up"]) await shown(menu.getByRole("menuitem", { name: label, exact: true }));
+    for (const label of ["Edit task details", "Change due date", "Reassign", "Cancel Follow-Up"]) await shown(menu.getByRole("menuitem", { name: label, exact: true }));
     await menu.getByRole("menuitem", { name: "Edit task details", exact: true }).click();
     await page.getByRole("textbox", { name: "Task description", exact: true }).fill("Retained synthetic edit");
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -382,7 +382,7 @@ for (const [empty, title, description] of [
     await shown(page.getByRole("heading", { name: "Completion outcome", exact: true }));
     await shown(page.getByText("Due date changed", { exact: false }));
     await shown(page.getByText("Completed · Synthetic Counselor", { exact: true }));
-    await shown(page.getByText("Completing this follow-up ends this task. It does not close the related record. If more work is needed, create a new follow-up.", { exact: true }));
+    await shown(page.getByText("Completing this Follow-Up ends this task. It does not close the related record. If more work is needed, create a new Follow-Up.", { exact: true }));
     assert.equal(await page.getByRole("button", { name: "More actions", exact: true }).count(), 0, "terminal records have no mutation menu");
     await noHorizontalOverflow(page); await screenshot(page, "detail-completed-desktop");
     assert.equal(fixture.writes.length, 3); assert.ok(fixture.writes.every(row => row.key));
@@ -392,8 +392,8 @@ for (const [empty, title, description] of [
   const fixture = world("COUNSELOR", { source: true, sourceKind: "REFERRAL", completed: true });
   await check("A completed follow-up offers one explicit next-task link to its readable source", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "What happens next", exact: true }));
-    await shown(page.getByText("Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this follow-up or change the related record.", { exact: true }));
-    const action = page.getByRole("link", { name: "Create next follow-up", exact: true });
+    await shown(page.getByText("Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this Follow-Up or change the related record.", { exact: true }));
+    const action = page.getByRole("link", { name: "Create next Follow-Up", exact: true });
     await shown(action);
     assert.equal(await action.count(), 1);
     const href = await action.getAttribute("href");
@@ -410,7 +410,7 @@ for (const [empty, title, description] of [
   const fixture = world("COUNSELOR", { source: true, sourceUnavailable: true, completed: true });
   await check("An unavailable related record starts the next task as a standalone follow-up", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "What happens next", exact: true }));
-    const href = await page.getByRole("link", { name: "Create next follow-up", exact: true }).getAttribute("href");
+    const href = await page.getByRole("link", { name: "Create next Follow-Up", exact: true }).getAttribute("href");
     assert.equal(href, `/portal/follow-ups/new?student_id=${studentId}&student_name=Synthetic%20Student`);
     const query = new URLSearchParams(href.split("?")[1]);
     assert.deepEqual([...query.keys()], ["student_id", "student_name"]);
@@ -427,7 +427,7 @@ for (const [fixture, reason] of [
 ]) {
   await check(`No next-task action is offered for ${reason}`, `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     assert.equal(await page.getByRole("heading", { name: "What happens next", exact: true }).count(), 0);
-    assert.equal(await page.getByRole("link", { name: "Create next follow-up", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("link", { name: "Create next Follow-Up", exact: true }).count(), 0);
   });
 }
 {
@@ -443,7 +443,7 @@ for (const [fixture, reason] of [
   const fixture = world();
   await check("Recording activity logs progress, leaves the follow-up Pending, and restores focus", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     await page.getByRole("button", { name: "Record activity", exact: true }).click();
-    await shown(page.getByText("Record an action or update. This follow-up will remain Pending.", { exact: true }));
+    await shown(page.getByText("Record an action or update. This Follow-Up will remain Pending.", { exact: true }));
     await page.getByLabel("Activity or update", { exact: true }).fill("Attempted Student contact; no answer.");
     await noHorizontalOverflow(page); await screenshot(page, "record-activity-desktop");
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -460,13 +460,13 @@ for (const [fixture, reason] of [
   const fixture = world();
   await check("Cancellation requires confirmation and leaves a readable terminal record", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     await page.getByRole("button", { name: "More actions", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Cancel follow-up", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Cancel Follow-Up", exact: true }).click();
     await page.getByLabel("Cancellation reason", { exact: true }).fill("The next action is no longer needed.");
-    await page.getByRole("button", { name: "Review cancel follow-up", exact: true }).click();
+    await page.getByRole("button", { name: "Review cancel Follow-Up", exact: true }).click();
     const dialog = page.getByRole("alertdialog"); await shown(dialog);
     assert.equal(fixture.writes.length, 0, "the request waits for explicit confirmation");
     await screenshot(page, "cancel-confirmation-desktop");
-    await dialog.getByRole("button", { name: "Cancel follow-up", exact: true }).click();
+    await dialog.getByRole("button", { name: "Cancel Follow-Up", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Cancellation details", exact: true }));
     await shown(page.getByText("The next action is no longer needed.", { exact: true }).first());
     await shown(page.getByText("Cancelled · Synthetic Counselor", { exact: true }));
@@ -491,7 +491,7 @@ for (const [sourceKind, category, visibility] of [
     assert.equal(parameters.get("category"), category);
     assert.equal(parameters.get("source_kind"), sourceKind);
     assert.equal(parameters.get("source_id"), sourceId);
-    if (visibility === "COUNSELOR_CONFIDENTIAL") await shown(page.getByText("Only the authorized Counselor for this record can be assigned.", { exact: true }));
+    if (visibility === "COUNSELOR_CONFIDENTIAL") await shown(page.getByText("You can assign only the Counselor who has access to this record.", { exact: true }));
     else await shown(page.getByText(/Operational coordination.*Created from the authorized related record/));
     await noHorizontalOverflow(page);
     if (sourceKind === "COUNSELING_ENCOUNTER") await screenshot(page, "create-counseling-linked-desktop");
@@ -504,7 +504,7 @@ for (const [sourceKind, category, visibility] of [
     await page.getByRole("button", { name: "Recover assignment for Synthetic Student", exact: true }).click();
     await page.getByLabel("Responsible staff member", { exact: true }).selectOption(user("GUIDANCE_OFFICE_ASSISTANT").id);
     await page.getByRole("button", { name: "Recover assignment", exact: true }).click();
-    await shown(page.getByText("No operational follow-ups need recovery in your current scope.", { exact: true }));
+    await shown(page.getByText("No Follow-Ups need a new owner.", { exact: true }));
     assert.equal(fixture.writes.length, 1); await hidden(page.getByText("Protected synthetic description", { exact: true }));
     await noHorizontalOverflow(page);
   });
@@ -512,7 +512,7 @@ for (const [sourceKind, category, visibility] of [
 {
   const fixture = world("COUNSELOR", { sourceUnavailable: true });
   await check("An unavailable related record is explained without a broken link and the task stays actionable", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
-    await shown(page.getByText("The related record is no longer available to your account. This follow-up remains open and keeps its own status. Review whether the work is still needed. Completing or cancelling it records your reason but does not change the related record.", { exact: true }));
+    await shown(page.getByText("The related record is no longer available to your account. This Follow-Up remains open and keeps its own status. Review whether the work is still needed. Completing or cancelling it records your reason but does not change the related record.", { exact: true }));
     assert.equal(await page.getByRole("link", { name: "Open related record", exact: true }).count(), 0, "no broken source link");
     const activity = page.getByRole("button", { name: "Record activity", exact: true });
     await shown(activity);
@@ -527,7 +527,7 @@ for (const [sourceKind, category, visibility] of [
   const fixture = world("COUNSELOR", { sourceUnavailable: true });
   await check("An unavailable linked source shows a generic context message without count, task link or create link", `/portal/counseling/encounters/${sourceId}`, { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "Counseling Encounter", exact: true }));
-    const message = page.getByText("Linked follow-ups are not available for this record.", { exact: true });
+    const message = page.getByText("Linked Follow-Ups are not available for this record.", { exact: true });
     await shown(message);
     const panel = page.locator("section").filter({ has: message });
     assert.equal(await panel.count(), 1);
@@ -535,14 +535,14 @@ for (const [sourceKind, category, visibility] of [
     assert.equal(await panel.getByRole("link").count(), 0, "no task link or create link");
     assert.equal(await panel.getByRole("button").count(), 0);
     assert.equal(await panel.getByText(/^\d+$/).count(), 0, "no count");
-    assert.equal(await page.getByRole("heading", { name: "Linked follow-ups", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("heading", { name: "Linked Follow-Ups", exact: true }).count(), 0);
     await noHorizontalOverflow(page); await screenshot(page, "encounter-source-unavailable-desktop");
   });
 }
 for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const fixture = world(role);
   await check(`${role} has no Follow-Up workspace even with capability strings`, `/portal/follow-ups/${id}`, { handler: fixture.handler }, async (page, { requests }) => {
-    await shown(page.getByText("Your account does not have access to Guidance Follow-Ups.", { exact: false }));
+    await shown(page.getByText("You don't have access to Guidance Follow-Ups.", { exact: false }));
     assert.equal(requests.some(row => row.pathname.startsWith("/api/v1/guidance-followups")), false);
   });
 }
@@ -553,12 +553,12 @@ for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     await help.focus(); await page.keyboard.press("Enter");
     await shown(page.getByRole("heading", { name: "Confidentiality", exact: true }));
     await shown(page.getByText(/Follow-Ups do not automatically contact the Student/));
-    await shown(page.getByRole("heading", { name: "When a related record becomes unavailable", exact: true }));
-    await shown(page.getByText("The follow-up keeps its own status and remains independently owned. Only the link to the related record becomes unavailable. Completing or cancelling the follow-up records your decision and does not change the related record.", { exact: true }));
+    await shown(page.getByRole("heading", { name: "When you can't open a related record", exact: true }));
+    await shown(page.getByText("You can still complete or cancel the Follow-Up when you can no longer open its related record. Its owner and status stay the same until you act; completing or cancelling it does not change the related record.", { exact: true }));
     await shown(page.getByRole("heading", { name: "Completion and further action", exact: true }));
-    await shown(page.getByText("Completing a follow-up ends that task. It does not close the related record. If more work is needed, create a new follow-up.", { exact: true }));
-    await shown(page.getByRole("heading", { name: "Creating the next follow-up", exact: true }));
-    await shown(page.getByText("The next follow-up is a separate task with its own responsible staff member and due date. When the related record is still available, the new task is linked to it and takes its classification from that record. When the related record is unavailable, the new task is created without a link and does not inherit the earlier task's confidential classification.", { exact: true }));
+    await shown(page.getByText("Completing a Follow-Up ends that task. It does not close the related record. If more work is needed, create a new Follow-Up.", { exact: true }));
+    await shown(page.getByRole("heading", { name: "Creating the next Follow-Up", exact: true }));
+    await shown(page.getByText("Each new Follow-Up has its own staff member and due date. If you can still open the related record, it keeps that link and confidentiality setting.", { exact: true }));
     await page.keyboard.press("Escape");
     assert.equal(await help.evaluate(el => el === document.activeElement), true);
   });

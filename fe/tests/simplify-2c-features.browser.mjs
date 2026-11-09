@@ -40,7 +40,7 @@ if(!before) {
   for(const name of ['exit','good-moral']) {
     const entry=featureCases.find(row=>row[0]===name);
     await h.check(`${name}-blocked`,entry[1],featureWorld(name,'blocked').options(),async page=>{
-      await h.shown(name==='exit'?page.getByRole('link',{name:'Open Individual Inventory',exact:true}):page.getByText("Submit this year's Individual Inventory to request F4.",{exact:true}));
+      await h.shown(name==='exit'?page.getByRole('link',{name:'Open Individual Inventory',exact:true}):page.getByText("Submit this year's Individual Inventory to request a Good Moral Certificate for current Students.",{exact:true}));
       assert.equal(await page.locator('main img[src*="illustrations"]').count(),0);
     });
   }

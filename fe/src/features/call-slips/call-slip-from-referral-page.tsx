@@ -54,14 +54,14 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
     { query: { enabled: canUse, retry: false } },
   );
 
-  if (!referralAccess.canView) return <ReferralAccessUnavailable title="Referral review unavailable" message="Review access is required to issue a linked Call Slip." />;
-  if (!callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Linked Call Slip issuance unavailable" message="Call Slip management access is required." />;
-  if (referral.isError) return <ReferralQueryError error={referral.error} fallback="The source Referral could not be loaded." onRetry={() => void referral.refetch()} />;
+  if (!referralAccess.canView) return <ReferralAccessUnavailable title="Review Referral" message="You don't have access to review this Referral and issue a linked Call Slip." />;
+  if (!callSlipAccess.canManageOperational) return <CallSlipAccessUnavailable title="Issue linked Call Slip" message="You don't have access to issue Call Slips." />;
+  if (referral.isError) return <ReferralQueryError error={referral.error} fallback="Couldn't load the source Referral. Try again." onRetry={() => void referral.refetch()} />;
   if (referral.isPending || current.isPending || history.isPending) {
     return <LinkedCallSlipCheckLoading />;
   }
-  if (current.isError) return <CallSlipQueryError error={current.error} fallback="Current linked Call Slip state could not be checked. Issuance is unavailable until it can be refreshed." onRetry={() => void current.refetch()} />;
-  if (history.isError) return <CallSlipQueryError error={history.error} fallback="Linked Call Slip history could not be loaded." onRetry={() => void history.refetch()} />;
+  if (current.isError) return <CallSlipQueryError error={current.error} fallback="Couldn't check the linked Call Slip's status. Refresh it before issuing a new Call Slip." onRetry={() => void current.refetch()} />;
+  if (history.isError) return <CallSlipQueryError error={history.error} fallback="Couldn't load the linked Call Slip history. Try again." onRetry={() => void history.refetch()} />;
 
   const item = referral.data.data;
   const currentSlip = current.data.data.items[0];
@@ -80,7 +80,7 @@ export function CallSlipFromReferralPage({ referralId }: { referralId: string })
     );
   }
   if (item.voided_at) {
-    return <CallSlipAccessUnavailable title="Linked issuance unavailable" message="A voided Referral cannot receive a new linked Call Slip." />;
+    return <CallSlipAccessUnavailable title="Issue linked Call Slip" message="A voided Referral cannot receive a new linked Call Slip." />;
   }
 
   async function refreshContext() {
@@ -204,9 +204,9 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
         await onRefresh();
         setError(callSlipErrorMessage(caught, "The Call Slip conflicts with current Referral or linked Call Slip state. Review the refreshed records before another attempt."));
       } else if (uncertainCallSlipMutation(caught)) {
-        setError("The Call Slip issuance result could not be confirmed. Retry the same unchanged details to safely check the result.");
+        setError("Couldn't confirm Call Slip issuance result. Retry the same unchanged details to safely check the result.");
       } else {
-        setError(callSlipErrorMessage(caught, "The linked Call Slip could not be issued."));
+        setError(callSlipErrorMessage(caught, "Couldn't issue the linked Call Slip. Try again."));
       }
     }
   }
@@ -226,7 +226,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
         <PanelSection
           title="Call Slip details"
           titleId="linked-call-slip-details-heading"
-          description="Student and Referral are fixed. Course / Year is prefilled from the referral and can be changed to match the Call Slip."
+          description="Student and Referral are fixed. Course / Year is prefilled from the Referral and can be changed to match the Call Slip."
         >
           <CallSlipFormFields draft={draft} onChange={setDraft} />
         </PanelSection>

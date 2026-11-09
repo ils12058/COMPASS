@@ -48,7 +48,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
     for (const label of [labels[0], labels[1], labels[4]]) assert.equal(await row(page, label).locator("a").count(), 0);
     assert.equal(await row(page, labels[2]).locator("a").getAttribute("href"), "/portal/good-moral?status=REQUESTED");
     assert.equal(await row(page, labels[3]).locator("a").getAttribute("href"), "/portal/good-moral?status=READY_FOR_ISSUANCE");
-    assert.equal(await row(page, "Your upcoming appointments").locator("a").getAttribute("href"), "/portal/appointments/my?status=UPCOMING");
+    assert.equal(await row(page, "Your upcoming Appointments").locator("a").getAttribute("href"), "/portal/appointments/my?status=UPCOMING");
     assert.equal(await row(page, "Active Call Slips").locator("a").getAttribute("href"), "/portal/call-slips?state=ACTIVE");
     const link = page.getByRole("link", { name: "Open My work", exact: true });
     await link.focus();
@@ -75,11 +75,11 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
       if (role === "GUIDANCE_OFFICE_ASSISTANT") {
         await hidden(page.getByText(labels[1], { exact: true }));
         await hidden(page.getByText(labels[3], { exact: true }));
-        await hidden(page.getByText("Your upcoming appointments", { exact: true }));
-        assert.equal(await row(page, "Upcoming managed appointments").locator("a").getAttribute("href"), "/portal/appointments/manage?status=UPCOMING");
+        await hidden(page.getByText("Your upcoming Appointments", { exact: true }));
+        assert.equal(await row(page, "Upcoming managed Appointments").locator("a").getAttribute("href"), "/portal/appointments/manage?status=UPCOMING");
       }
     } else {
-      await shown(page.getByRole("heading", { name: "Guidance operations unavailable" }));
+      await shown(page.getByRole("heading", { name: "Guidance Operations" }));
       assert.equal(await nav.getByRole("link", { name: "Guidance operations", exact: true }).count(), 0);
       assert.equal(state.reads, 0);
     }
@@ -125,7 +125,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
 {
   const state = world(); state.status = 500;
   await check("first-load error offers Retry without fabricated zeroes", "/portal/operations", state.options(), async (page) => {
-    await shown(page.getByText("Guidance operations could not be loaded. Try again."));
+    await shown(page.getByText("Couldn't load Guidance Operations. Try again."));
     assert.equal(await page.getByRole("main").locator("dd").count(), 0);
     state.status = 200;
     await page.getByRole("button", { name: "Retry", exact: true }).click();
@@ -153,7 +153,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
     state.data.backlog.guidance_messages = null;
     await page.clock.fastForward(31_000);
     await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
-    await shown(page.getByText("Upcoming managed appointments", { exact: true }));
+    await shown(page.getByText("Upcoming managed Appointments", { exact: true }));
     await hidden(page.getByText(labels[0], { exact: true }));
     await hidden(page.getByText(labels[1], { exact: true }));
   });

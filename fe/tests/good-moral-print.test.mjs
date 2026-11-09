@@ -25,7 +25,7 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
     assert.match(html, /Download certificate/);
     assert.match(html, /Frozen Issuer Name/);
     assert.match(html, variant === 'CURRENT_STUDENT' ? /UCN-OP-GCO-01F4/ : /UCN-OP-GCO-01F6/);
-    assert.match(html, /physical signature and dry seal/);
+    assert.match(html, /handwritten signature and dry seal/);
     assert.doesNotMatch(html, /Issue certificate|printed successfully/);
     for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) assert.doesNotMatch(render(certificate(status, variant)), /Print certificate|Finalized certificate PDF/);
     const blocked = certificate('ISSUED', variant);
@@ -36,7 +36,9 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
 test('Student download stays self-service with no new printing or automatic PDF retrieval', () => {
   const student = { ...counselor, role: 'STUDENT', student_lifecycle_status: 'CURRENT', capabilities: ['good_moral.view_self'] };
   const html = render(certificate('ISSUED'), student);
-  assert.match(html, /Download certificate|physical signature and dry seal/);
+  assert.match(html, /Download certificate|handwritten signature and dry seal/);
+  assert.match(html, /Good Moral Certificate for current Students/);
+  assert.doesNotMatch(html, /UCN-OP-GCO-01F[46]|Official form code/);
   assert.doesNotMatch(html, /Print certificate|Preparing certificate PDF|Finalized certificate PDF/);
 });
 

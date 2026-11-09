@@ -207,7 +207,7 @@ async function assertActionPlacement(page, name, labels, width) {
 
 await check("P2A Call Slip detail keeps authorized commands clear across widths", `/portal/call-slips/${slip.id}`, { handler: callSlipHandler("COUNSELOR") }, async (page) => {
   await shown(page.getByRole("heading", { name: "Call Slip / Interview Permit", exact: true }));
-  await shown(page.getByRole("heading", { name: "Operational actions", exact: true }));
+  await shown(page.getByRole("heading", { name: "Staff actions", exact: true }));
   await shown(page.getByRole("link", { name: expectRails ? "Open Referral REF-P2A-0007" : "Open linked Referral REF-P2A-0007", exact: true }));
   for (const width of widths) {
     await page.setViewportSize({ width, height: width < 400 ? 820 : 900 });
@@ -228,7 +228,7 @@ await check("P2A Call Slip detail keeps authorized commands clear across widths"
 
 await check("P2A Student Call Slip keeps the PDF action near the mobile heading", `/portal/call-slips/${slip.id}`, { handler: callSlipHandler("STUDENT"), device: "phone" }, async (page) => {
   await shown(page.getByText("Show this Call Slip to your instructor and report to Guidance Office.", { exact: true }));
-  await hidden(page.getByRole("heading", { name: "Operational actions", exact: true }));
+  await hidden(page.getByRole("heading", { name: "Staff actions", exact: true }));
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await shown(download);
   if (expectRails) {

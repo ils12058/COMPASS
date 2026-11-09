@@ -34,12 +34,12 @@ const responsiveMeasurements = [];
 await check("desktop-agenda-and-canonical-work", "/portal", counselorWorld({ appointments: appointmentsToday, work: canonicalWork }).options(), async (page, { requests }) => {
   await shown(agenda(page).getByRole("heading", { name: "Today's appointments", exact: true }));
   await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   assert.deepEqual(await work(page).locator("h3").allTextContents(), [
-    "Review Guidance follow-up",
+    "Review Guidance Follow-Up",
     "Review Routine Interview",
     "Reply to Guidance Message",
-    "Issue Good Moral certificate",
+    "Issue Good Moral Certificate",
     "Review Call Slip",
   ]);
   assert.equal(await agenda(page).locator("li").count(), 2, "Cancelled and next-day appointments are excluded by the source filters");
@@ -68,7 +68,7 @@ await check("desktop-agenda-and-canonical-work", "/portal", counselorWorld({ app
 
 await check("confirmed-empty-agenda-keeps-work-visible", "/portal", counselorWorld({ appointments: [], work: canonicalWork.slice(0, 1) }).options(), async (page) => {
   await shown(agenda(page).getByText("No scheduled appointments today.", { exact: true }));
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   assert.equal(await page.getByRole("heading", { name: "No items currently need attention in My work.", exact: true }).count(), 0);
 });
 
@@ -142,7 +142,7 @@ await check("partial-failure-keeps-independent-projection-usable", "/portal", pa
   await agenda(page).getByRole("button", { name: "Retry", exact: true }).click();
   await work(page).getByRole("button", { name: "Retry", exact: true }).click();
   await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
 });
 
 const stale = counselorWorld({ appointments: appointmentsToday.slice(0, 1), work: canonicalWork.slice(0, 1) });
@@ -177,7 +177,7 @@ const switched = counselorWorld({
 });
 await check("account-switch-removes-counselor-private-projections", "/portal", switched.options(), async (page) => {
   await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   switched.account = {
     ...switched.account,
     id: "synthetic-student-account-B",
@@ -195,7 +195,7 @@ await check("account-switch-removes-counselor-private-projections", "/portal", s
   await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
   await shown(page.getByRole("heading", { level: 1, name: "Good morning, Blair", exact: true }));
   await hidden(agenda(page));
-  await hidden(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await hidden(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   await hidden(page.getByText("AlexandriaMariaCatherineJohnsonWilliams", { exact: true }));
   assert.equal(await page.locator("#head-guidance-oversight-heading").count(), 0);
 });
@@ -204,7 +204,7 @@ await check("keyboard-order-follows-work-before-agenda", "/portal", counselorWor
   appointments: appointmentsToday.slice(0, 2),
   work: canonicalWork,
 }).options(), async (page) => {
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   const appointmentLinks = agenda(page).locator("li a");
   if (process.env.COMPASS_UI_BROWSER === "webkit") {
     // macOS WebKit does not include links in Tab navigation by default. Match the established
@@ -235,7 +235,7 @@ await check("responsive-home-reflows-at-requested-widths-and-enlarged-text", "/p
   work: canonicalWork,
 }).options(), async (page) => {
   await shown(agenda(page));
-  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
+  await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   for (const width of [320, 360, 390, 768, 1024, 1440]) {
     for (const enlarged of [false, true]) {
       await page.setViewportSize({ width, height: 1000 });

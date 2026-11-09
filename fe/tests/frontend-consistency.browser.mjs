@@ -42,7 +42,7 @@ for (const width of [320, 393, 1440]) {
   const cases = [
     ["call-list", "/portal/call-slips", ["Issue Call Slip"]],
     ["call-detail", `/portal/call-slips/${slip.id}`, ["Download Call Slip"]],
-    ["referral-list", "/portal/referrals", ["Record referral"]],
+    ["referral-list", "/portal/referrals", ["Record Referral"]],
     ["referral-detail", "/portal/referrals/long", ["Download Referral Slip"]],
     ["service-list", "/portal/services", ["Create Service"]],
     ["service-detail", `/portal/services/${serviceId}`, ["Edit Service"]],
