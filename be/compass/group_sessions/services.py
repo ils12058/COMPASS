@@ -66,69 +66,44 @@ INTERNAL_FACILITATOR_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSIS
 def _normalize_facilitator_assignments(
     *,
     assignments: list[dict[str, Any]] | None,
-    legacy_facilitator_ids: list[uuid.UUID] | None,
-    lead_facilitator_id: uuid.UUID | None,
 ) -> list[dict[str, Any]] | None:
-    """Normalize the mixed identity request and keep the legacy Counselor input compatible."""
+    """Normalize the mixed internal/external facilitator identity request."""
 
     if assignments is None:
-        if legacy_facilitator_ids is not None and not isinstance(legacy_facilitator_ids, list):
-            raise ValidationError("Facilitator IDs must be a list.")
-        if legacy_facilitator_ids is None:
-            return None
-        normalized = [
+        return None
+    if not isinstance(assignments, list) or not all(isinstance(raw, dict) for raw in assignments):
+        raise ValidationError("Facilitators must be provided as a list.")
+    normalized = []
+    for raw in assignments:
+        kind = raw.get("kind")
+        if kind not in GroupSessionFacilitatorKind.values:
+            raise ValidationError("Each facilitator must be INTERNAL or EXTERNAL.")
+        internal_user_id = raw.get("internal_user_id")
+        raw_external_name = raw.get("external_display_name", "")
+        if not isinstance(raw_external_name, str):
+            raise ValidationError("External facilitator names must be text.")
+        external_name = raw_external_name.strip()
+        is_lead = raw.get("is_lead", False)
+        if type(is_lead) is not bool:
+            raise ValidationError("Facilitator lead status must be a boolean.")
+        if kind == GroupSessionFacilitatorKind.INTERNAL:
+            if not isinstance(internal_user_id, uuid.UUID):
+                raise ValidationError("Select an internal facilitator account.")
+            if external_name:
+                raise ValidationError("An internal facilitator cannot include an external name.")
+        else:
+            if internal_user_id is not None:
+                raise ValidationError("An external guest cannot be linked to a COMPASS account.")
+            if not external_name or len(external_name) > 255:
+                raise ValidationError("Enter an external facilitator name up to 255 characters.")
+        normalized.append(
             {
-                "kind": GroupSessionFacilitatorKind.INTERNAL,
-                "internal_user_id": user_id,
-                "external_display_name": "",
-                "is_lead": False,
+                "kind": kind,
+                "internal_user_id": internal_user_id,
+                "external_display_name": external_name,
+                "is_lead": is_lead,
             }
-            for user_id in legacy_facilitator_ids
-        ]
-    else:
-        if not isinstance(assignments, list) or not all(
-            isinstance(raw, dict) for raw in assignments
-        ):
-            raise ValidationError("Facilitators must be provided as a list.")
-        if legacy_facilitator_ids:
-            raise ValidationError("Use either facilitators or facilitator_ids, not both.")
-        normalized = []
-        for raw in assignments:
-            kind = raw.get("kind")
-            if kind not in GroupSessionFacilitatorKind.values:
-                raise ValidationError("Each facilitator must be INTERNAL or EXTERNAL.")
-            internal_user_id = raw.get("internal_user_id")
-            raw_external_name = raw.get("external_display_name", "")
-            if not isinstance(raw_external_name, str):
-                raise ValidationError("External facilitator names must be text.")
-            external_name = raw_external_name.strip()
-            is_lead = raw.get("is_lead", False)
-            if type(is_lead) is not bool:
-                raise ValidationError("Facilitator lead status must be a boolean.")
-            if kind == GroupSessionFacilitatorKind.INTERNAL:
-                if not isinstance(internal_user_id, uuid.UUID):
-                    raise ValidationError("Select an internal facilitator account.")
-                if external_name:
-                    raise ValidationError(
-                        "An internal facilitator cannot include an external name."
-                    )
-            else:
-                if internal_user_id is not None:
-                    raise ValidationError(
-                        "An external guest cannot be linked to a COMPASS account."
-                    )
-                if not external_name or len(external_name) > 255:
-                    raise ValidationError(
-                        "Enter an external facilitator name up to 255 characters."
-                    )
-            normalized.append(
-                {
-                    "kind": kind,
-                    "internal_user_id": internal_user_id,
-                    "external_display_name": external_name,
-                    "is_lead": is_lead,
-                }
-            )
+        )
 
     seen_internal: set[uuid.UUID] = set()
     seen_external: set[str] = set()
@@ -143,18 +118,6 @@ def _normalize_facilitator_assignments(
             if identity in seen_external:
                 raise ValidationError("An external facilitator may be assigned only once.")
             seen_external.add(identity)
-
-    if lead_facilitator_id is not None:
-        matching = [
-            item
-            for item in normalized
-            if item["kind"] == GroupSessionFacilitatorKind.INTERNAL
-            and item["internal_user_id"] == lead_facilitator_id
-        ]
-        if not matching:
-            raise ValidationError("The lead facilitator must be one of the assigned facilitators.")
-        for item in normalized:
-            item["is_lead"] = item is matching[0]
 
     leads = [item for item in normalized if item["is_lead"]]
     if len(leads) > 1:
@@ -429,8 +392,6 @@ def create_group_session(
     reg_opens_at: datetime | None = None,
     reg_closes_at: datetime | None = None,
     facilitators: list[dict[str, Any]] | None = None,
-    facilitator_ids: list[uuid.UUID] | None = None,
-    lead_facilitator_id: uuid.UUID | None = None,
 ) -> GroupSession:
     """Create a new group session in DRAFT status."""
     cleaned_title = title.strip()
@@ -454,14 +415,7 @@ def create_group_session(
         raise ValidationError("Registration must open before the session starts.")
     if reg_closes_at and reg_closes_at > starts_at:
         raise ValidationError("Registration must close on or before session start time.")
-    assignments = (
-        _normalize_facilitator_assignments(
-            assignments=facilitators,
-            legacy_facilitator_ids=facilitator_ids or [],
-            lead_facilitator_id=lead_facilitator_id,
-        )
-        or []
-    )
+    assignments = _normalize_facilitator_assignments(assignments=facilitators) or []
     internal_ids = tuple(
         item["internal_user_id"]
         for item in assignments
@@ -550,15 +504,9 @@ def update_group_session(
     reg_opens_at_provided: bool | None = None,
     reg_closes_at_provided: bool | None = None,
     facilitators: list[dict[str, Any]] | None = None,
-    facilitator_ids: list[uuid.UUID] | None = None,
-    lead_facilitator_id: uuid.UUID | None = None,
 ) -> GroupSession:
     """Update an existing group session and notify registered students on material reschedule."""
-    assignments = _normalize_facilitator_assignments(
-        assignments=facilitators,
-        legacy_facilitator_ids=facilitator_ids,
-        lead_facilitator_id=lead_facilitator_id,
-    )
+    assignments = _normalize_facilitator_assignments(assignments=facilitators)
     new_facilitator_ids = tuple(
         item["internal_user_id"]
         for item in assignments or []

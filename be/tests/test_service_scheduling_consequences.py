@@ -11,6 +11,7 @@ from compass.service_catalog.bootstrap import sync_canonical_services
 from compass.service_catalog.models import ServiceDeliveryMode
 from compass.service_catalog.services import (
     ServiceSchedulingConsequenceReviewRequired,
+    service_booking_pathways,
     set_service_active,
     update_service,
 )
@@ -184,7 +185,7 @@ def test_disabling_booking_requires_review_and_preserves_existing_reservation():
     )
     before = _appointment_snapshot(appointment)
 
-    changes = {"appointment_booking_enabled": False}
+    changes = {"booking_pathways": []}
     with pytest.raises(ServiceSchedulingConsequenceReviewRequired):
         update_service(
             service_id=service.pk,
@@ -193,7 +194,7 @@ def test_disabling_booking_requires_review_and_preserves_existing_reservation():
         )
 
     service.refresh_from_db()
-    assert service.appointment_booking_enabled is True
+    assert service_booking_pathways(service) == ("FLEXIBLE_APPOINTMENT",)
     assert service.cancellation_cutoff_minutes == 30
     assert _appointment_snapshot(appointment) == before
 
@@ -203,7 +204,7 @@ def test_disabling_booking_requires_review_and_preserves_existing_reservation():
         context=context(actor),
         acknowledge_scheduling_consequences=True,
     )
-    assert updated.appointment_booking_enabled is False
+    assert service_booking_pathways(updated) == ()
     assert updated.default_appointment_duration_minutes is None
     assert updated.cancellation_cutoff_minutes is None
     assert _appointment_snapshot(appointment) == before
@@ -230,10 +231,10 @@ def test_disabling_booking_ignores_terminal_appointments():
 
     disabled = update_service(
         service_id=service.pk,
-        changes={"appointment_booking_enabled": False},
+        changes={"booking_pathways": []},
         context=context(actor),
     )
-    assert disabled.appointment_booking_enabled is False
+    assert service_booking_pathways(disabled) == ()
 
 
 @pytest.mark.django_db

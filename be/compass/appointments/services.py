@@ -37,7 +37,7 @@ from compass.notifications.services import create_notification_for_event
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
-from compass.service_catalog.models import DeliveryMode, Service
+from compass.service_catalog.models import BookingPathwayCode, DeliveryMode, Service
 from compass.service_catalog.scheduling import (
     lock_schedule_users,
     provider_schedule_conflict,
@@ -46,6 +46,7 @@ from compass.service_catalog.scheduling import (
 )
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
+    service_accepts_appointments,
     service_counselor_eligible,
     service_eligible_counselors,
     service_has_eligible_counselor_q,
@@ -525,7 +526,7 @@ def list_booking_services(
         Service.objects.filter(
             service_has_eligible_counselor_q(),
             is_active=True,
-            appointment_booking_enabled=True,
+            booking_pathways__code=BookingPathwayCode.FLEXIBLE_APPOINTMENT,
             default_appointment_duration_minutes__isnull=False,
             delivery_mode_assignments__mode__in=DeliveryMode.values,
         )
@@ -568,7 +569,7 @@ def _validate_booking_service(service: Service, provider: User, delivery_mode: s
 
     if not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is inactive.")
-    if not service.appointment_booking_enabled:
+    if not service_accepts_appointments(service):
         raise AppointmentNotSchedulable("The selected Service does not accept Appointments.")
     if service.default_appointment_duration_minutes is None:
         raise AppointmentNotSchedulable("The selected Service has no schedulable duration.")
@@ -824,7 +825,7 @@ def _validate_current_scheduling(*, service: Service, delivery_mode: str) -> Non
     Fulfilling the Appointment as booked never calls this: its saved provenance stands.
     """
 
-    if not service.is_active or not service.appointment_booking_enabled:
+    if not service.is_active or not service_accepts_appointments(service):
         raise AppointmentNotSchedulable(
             "The Appointment Service is no longer operationally schedulable."
         )
@@ -1763,7 +1764,7 @@ def list_eligible_counselors(
     service = Service.objects.filter(pk=service_id).first()
     if service is None or not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is not bookable.")
-    if not service.appointment_booking_enabled:
+    if not service_accepts_appointments(service):
         raise AppointmentNotSchedulable("The selected Service does not accept Appointments.")
     if not service_supports_delivery_mode(service, normalized_mode):
         raise AppointmentNotSchedulable("The Service does not support the requested delivery mode.")

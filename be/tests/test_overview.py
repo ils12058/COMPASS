@@ -32,7 +32,7 @@ from compass.organization.models import (
 )
 from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
-from compass.service_catalog.models import Service
+from compass.service_catalog.models import BookingPathwayCode, Service, ServiceBookingPathway
 from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 from tests.test_good_moral import make_guarded_good_moral
@@ -87,14 +87,17 @@ def auth_client(user: User) -> Client:
 
 
 def make_service(code: str = "OVERVIEW_SERVICE") -> Service:
-    return Service.objects.create(
+    service = Service.objects.create(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_booking_enabled=True,
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         is_active=True,
     )
+    ServiceBookingPathway.objects.create(
+        service=service, code=BookingPathwayCode.FLEXIBLE_APPOINTMENT
+    )
+    return service
 
 
 def make_revision(key: str) -> FormRevision:

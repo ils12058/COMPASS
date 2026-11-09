@@ -29,10 +29,8 @@ from compass.common.errors import APIError
 from compass.organization.models import Campus, College, CounselorResponsibility
 from compass.service_catalog.api import _raise_slot_error
 from compass.service_catalog.models import (
-    Service,
     ServiceCounselorProvider,
     ServiceDeliveryMode,
-    ServiceProviderRole,
 )
 from compass.service_catalog.services import (
     InvalidServiceCatalogInput,
@@ -112,7 +110,7 @@ def configured_service(actor: User, *, active: bool = False, **overrides):
         "code": "SYNTHETIC_SERVICE",
         "name": "Synthetic Service",
         "description": "Synthetic test configuration.",
-        "appointment_booking_enabled": True,
+        "booking_pathways": ["FLEXIBLE_APPOINTMENT"],
         "default_appointment_duration_minutes": 60,
         "delivery_modes": ["IN_PERSON", "ONLINE"],
     }
@@ -169,6 +167,7 @@ def test_create_normalizes_code_uses_uuid_and_starts_inactive_with_all_counselor
     service = create_service(
         code="  synthetic_service  ",
         name=" Synthetic Service ",
+        booking_pathways=[],
         context=context(actor),
     )
 
@@ -176,12 +175,11 @@ def test_create_normalizes_code_uses_uuid_and_starts_inactive_with_all_counselor
     assert service.code == "SYNTHETIC_SERVICE"
     assert service.name == "Synthetic Service"
     assert not service.is_active
-    assert service.appointment_booking_enabled is False
+    assert list(service.booking_pathways.all()) == []
     assert service.default_appointment_duration_minutes is None
     assert service.cancellation_cutoff_minutes is None
     assert service.provider_coverage == "ALL_COUNSELORS"
     assert list(service.delivery_mode_assignments.all()) == []
-    assert not ServiceProviderRole.objects.filter(service=service).exists()
     assert activation_blockers(service) == ("DELIVERY_MODE_MISSING",)
 
 
@@ -189,9 +187,13 @@ def test_create_normalizes_code_uses_uuid_and_starts_inactive_with_all_counselor
 def test_duplicate_code_is_a_conflict_and_code_is_not_updateable():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
-    service = create_service(code="SYNTHETIC", name="Synthetic", context=context(actor))
+    service = create_service(
+        code="SYNTHETIC", name="Synthetic", booking_pathways=[], context=context(actor)
+    )
     with pytest.raises(ServiceCatalogConflict, match="already exists"):
-        create_service(code=" synthetic ", name="Other", context=context(actor))
+        create_service(
+            code=" synthetic ", name="Other", booking_pathways=[], context=context(actor)
+        )
     with pytest.raises(InvalidServiceCatalogInput, match="unsupported fields"):
         update_service(
             service_id=service.pk,
@@ -209,7 +211,7 @@ def test_booking_settings_are_appointment_only_and_bounded():
             create_service(
                 code=f"BAD_DURATION_{abs(duration)}",
                 name="Bad duration",
-                appointment_booking_enabled=True,
+                booking_pathways=["FLEXIBLE_APPOINTMENT"],
                 default_appointment_duration_minutes=duration,
                 context=context(actor),
             )
@@ -226,17 +228,9 @@ def test_booking_settings_are_appointment_only_and_bounded():
             create_service(
                 code=f"NO_BOOKING_{setting.upper()}",
                 name="No booking",
-                appointment_booking_enabled=False,
+                booking_pathways=[],
                 context=context(actor),
                 **{setting: value},
-            )
-    with pytest.raises(IntegrityError):
-        with transaction.atomic():
-            Service.objects.create(
-                code="RAW_NO_BOOKING",
-                name="Raw",
-                appointment_booking_enabled=False,
-                default_appointment_duration_minutes=60,
             )
 
 
@@ -259,23 +253,22 @@ def test_turning_booking_off_clears_appointment_settings_atomically():
     with pytest.raises(ServiceCatalogConflict, match="Appointment booking"):
         update_service(
             service_id=service.pk,
-            changes={"appointment_booking_enabled": False, "cancellation_cutoff_minutes": 15},
+            changes={"booking_pathways": [], "cancellation_cutoff_minutes": 15},
             context=context(actor),
         )
 
     changed = update_service(
         service_id=service.pk,
-        changes={"appointment_booking_enabled": False},
+        changes={"booking_pathways": []},
         context=context(actor),
     )
     assert changed.is_active
-    assert changed.appointment_booking_enabled is False
+    assert list(changed.booking_pathways.all()) == []
     assert changed.default_appointment_duration_minutes is None
     assert changed.cancellation_cutoff_minutes is None
     assert changed.requires_current_inventory is False
     event = AuditEvent.objects.filter(action="service.updated").latest("occurred_at")
     assert set(event.metadata["changed_fields"]) == {
-        "appointment_booking_enabled",
         "booking_pathways",
         "default_appointment_duration_minutes",
         "cancellation_cutoff_minutes",
@@ -292,24 +285,34 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
     inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
     with pytest.raises(InvalidServiceCatalogInput, match="delivery_modes"):
         create_service(
-            code="BAD_MODE", name="Bad mode", delivery_modes=["PHONE"], context=context(actor)
+            code="BAD_MODE",
+            name="Bad mode",
+            booking_pathways=[],
+            delivery_modes=["PHONE"],
+            context=context(actor),
         )
     with pytest.raises(InvalidServiceCatalogInput, match="duplicates"):
         create_service(
             code="DUP_MODE",
             name="Duplicate mode",
+            booking_pathways=[],
             delivery_modes=["ONLINE", "ONLINE"],
             context=context(actor),
         )
     with pytest.raises(InvalidServiceCatalogInput, match="provider_coverage"):
         create_service(
-            code="BAD_COVERAGE", name="Bad", provider_coverage="SOME", context=context(actor)
+            code="BAD_COVERAGE",
+            name="Bad",
+            booking_pathways=[],
+            provider_coverage="SOME",
+            context=context(actor),
         )
     selected = {"provider_coverage": "SELECTED_COUNSELORS"}
     with pytest.raises(ServiceCatalogConflict, match="Only Counselors"):
         create_service(
             code="GOA_PROVIDER",
             name="GOA provider",
+            booking_pathways=[],
             selected_counselor_ids=[staff.pk],
             context=context(actor),
             **selected,
@@ -318,6 +321,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
         create_service(
             code="INACTIVE_PROVIDER",
             name="Inactive provider",
+            booking_pathways=[],
             selected_counselor_ids=[inactive.pk],
             context=context(actor),
             **selected,
@@ -326,6 +330,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
         create_service(
             code="UNKNOWN_PROVIDER",
             name="Unknown provider",
+            booking_pathways=[],
             selected_counselor_ids=[uuid.uuid4()],
             context=context(actor),
             **selected,
@@ -334,6 +339,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
         create_service(
             code="DUP_PROVIDER",
             name="Duplicate provider",
+            booking_pathways=[],
             selected_counselor_ids=[counselor.pk, counselor.pk],
             context=context(actor),
             **selected,
@@ -342,6 +348,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
         create_service(
             code="ALL_WITH_SELECTION",
             name="All with selection",
+            booking_pathways=[],
             selected_counselor_ids=[counselor.pk],
             context=context(actor),
         )
@@ -369,14 +376,16 @@ def test_activation_requires_modes_duration_when_booking_and_selected_counselors
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    incomplete = create_service(code="INCOMPLETE", name="Incomplete", context=context(actor))
+    incomplete = create_service(
+        code="INCOMPLETE", name="Incomplete", booking_pathways=[], context=context(actor)
+    )
     with pytest.raises(ServiceCatalogConflict, match="delivery mode"):
         set_service_active(service_id=incomplete.pk, is_active=True, context=context(actor))
 
     no_duration = create_service(
         code="BOOKING_NO_DURATION",
         name="Booking no duration",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         delivery_modes=["IN_PERSON"],
         context=context(actor),
     )
@@ -387,6 +396,7 @@ def test_activation_requires_modes_duration_when_booking_and_selected_counselors
     no_counselors = create_service(
         code="SELECTED_EMPTY",
         name="Selected empty",
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         provider_coverage="SELECTED_COUNSELORS",
         context=context(actor),
@@ -407,6 +417,7 @@ def test_activation_requires_modes_duration_when_booking_and_selected_counselors
     walk_in_only = create_service(
         code="NO_BOOKING",
         name="No booking",
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(actor),
     )
@@ -451,7 +462,7 @@ def test_enable_disable_and_equivalent_updates_are_idempotent_without_fake_audit
 
 
 @pytest.mark.django_db
-def test_counselor_qualification_follows_coverage_not_college_or_legacy_roles():
+def test_counselor_qualification_follows_coverage_not_college():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     selected = make_user("selected@example.edu", "COUNSELOR")
@@ -468,10 +479,6 @@ def test_counselor_qualification_follows_coverage_not_college_or_legacy_roles():
     CounselorResponsibility.objects.create(college=college, counselor=unselected)
 
     everyone = configured_service(actor, code="EVERYONE", active=True)
-    # Historical GOA provider rows survive but never grant eligibility.
-    ServiceProviderRole.objects.create(
-        service=everyone, role=Role.objects.get(code="GUIDANCE_OFFICE_ASSISTANT")
-    )
     assert service_counselor_eligible(everyone, selected)
     assert service_counselor_eligible(everyone, unselected)
     assert service_counselor_eligible(everyone, head)
@@ -569,7 +576,7 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
     actor = make_user("admin@example.edu", "IT_ADMIN")
     active_service = configured_service(actor, active=True)
     inactive_service = create_service(
-        code="DRAFT_SERVICE", name="Draft Service", context=context(actor)
+        code="DRAFT_SERVICE", name="Draft Service", booking_pathways=[], context=context(actor)
     )
     student = make_user("student@example.edu", "STUDENT")
     client = auth_client(student)
@@ -578,7 +585,7 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()["items"]] == [str(active_service.pk)]
     row = listed.json()["items"][0]
-    assert row["appointment_booking_enabled"] is True
+    assert row["booking_pathways"] == ["FLEXIBLE_APPOINTMENT"]
     assert row["provider_coverage"] == "ALL_COUNSELORS"
     assert "selected_counselor_ids" not in row
     assert client.get(f"/api/v1/services/{active_service.pk}").status_code == 200
@@ -586,7 +593,7 @@ def test_student_can_read_only_active_catalog_and_cannot_manage():
     assert client.get("/api/v1/services?include_inactive=true").status_code == 403
     denied = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "NOPE", "name": "Nope"}),
+        data=json.dumps({"code": "NOPE", "name": "Nope", "booking_pathways": []}),
         content_type="application/json",
         **csrf(client),
     )
@@ -615,6 +622,7 @@ def test_booking_filter_replaces_policy_filter():
     walk_in = create_service(
         code="WALK_IN_ONLY",
         name="Walk-in only",
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(admin),
     )
@@ -625,8 +633,8 @@ def test_booking_filter_replaces_policy_filter():
         return [row["code"] for row in client.get("/api/v1/services", params).json()["items"]]
 
     assert codes() == ["BOOKABLE", "WALK_IN_ONLY"]
-    assert codes(appointment_booking_enabled="true") == ["BOOKABLE"]
-    assert codes(appointment_booking_enabled="false") == ["WALK_IN_ONLY"]
+    assert codes(flexible_appointment_booking="true") == ["BOOKABLE"]
+    assert codes(flexible_appointment_booking="false") == ["WALK_IN_ONLY"]
 
 
 @pytest.mark.django_db
@@ -643,7 +651,7 @@ def test_admin_and_head_can_manage_with_recent_mfa_but_revoke_and_stale_mfa_win(
     stale = auth_client(admin, recent_mfa=False)
     stale_response = stale.post(
         "/api/v1/services",
-        data=json.dumps({"code": "STALE", "name": "Stale"}),
+        data=json.dumps({"code": "STALE", "name": "Stale", "booking_pathways": []}),
         content_type="application/json",
         **csrf(stale),
     )
@@ -657,6 +665,7 @@ def test_admin_and_head_can_manage_with_recent_mfa_but_revoke_and_stale_mfa_win(
             {
                 "code": " ADMIN_SERVICE ",
                 "name": "Admin Service",
+                "booking_pathways": [],
                 "delivery_modes": ["IN_PERSON"],
                 "provider_coverage": "SELECTED_COUNSELORS",
                 "selected_counselor_ids": [str(selected.pk)],
@@ -702,6 +711,7 @@ def test_strict_api_rejects_retired_and_activation_fields_and_has_no_delete_endp
         {"appointment_policy": "REQUIRED"},
         {"provider_roles": ["COUNSELOR"]},
         {"default_duration_minutes": 60},
+        {"appointment_booking_enabled": True},
     ):
         bad_create = client.post(
             "/api/v1/services",
@@ -713,7 +723,7 @@ def test_strict_api_rejects_retired_and_activation_fields_and_has_no_delete_endp
 
     created = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "STRICT", "name": "Strict"}),
+        data=json.dumps({"code": "STRICT", "name": "Strict", "booking_pathways": []}),
         content_type="application/json",
         **headers,
     )
@@ -735,9 +745,9 @@ def test_strict_api_rejects_retired_and_activation_fields_and_has_no_delete_endp
     assert deleted.status_code == 405
 
 
-# COMPASS-SVC-1: independent booking configuration, legacy API and scheduling guards.
+# COMPASS-SVC-1: independent booking configuration and scheduling guards.
 @pytest.mark.django_db
-def test_booking_pathways_backwards_compatible_create_and_partial_updates():
+def test_booking_pathways_create_and_partial_updates():
     from compass.service_catalog.models import ServiceBookingPathway
     from compass.service_catalog.services import service_booking_pathways
 
@@ -754,14 +764,14 @@ def test_booking_pathways_backwards_compatible_create_and_partial_updates():
         changes={"booking_pathways": ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"]},
         context=context(admin),
     )
-    assert updated.appointment_booking_enabled is True
+    assert "FLEXIBLE_APPOINTMENT" in service_booking_pathways(updated)
     assert set(service_booking_pathways(updated)) == {
         "FLEXIBLE_APPOINTMENT",
         "FIXED_DATE_SLOT",
         "GROUP_SESSION",
     }
 
-    # Legacy callers may update flexible booking without resetting other pathways.
+    # Unrelated updates preserve the configured pathways.
     updated = update_service(
         service_id=flexible.pk,
         changes={"description": "New description"},
@@ -770,10 +780,10 @@ def test_booking_pathways_backwards_compatible_create_and_partial_updates():
     assert len(service_booking_pathways(updated)) == 3
     updated = update_service(
         service_id=flexible.pk,
-        changes={"appointment_booking_enabled": False},
+        changes={"booking_pathways": ["FIXED_DATE_SLOT", "GROUP_SESSION"]},
         context=context(admin),
     )
-    assert not updated.appointment_booking_enabled
+    assert "FLEXIBLE_APPOINTMENT" not in service_booking_pathways(updated)
     assert set(service_booking_pathways(updated)) == {"FIXED_DATE_SLOT", "GROUP_SESSION"}
     assert updated.default_appointment_duration_minutes is None
     assert updated.cancellation_cutoff_minutes is None
@@ -800,7 +810,7 @@ def test_independent_booking_pathway_validation_and_no_duplicate_rows():
         context=context(admin),
     )
     assert service_booking_pathways(service) == ("FIXED_DATE_SLOT", "GROUP_SESSION")
-    assert not service.appointment_booking_enabled
+    assert "FLEXIBLE_APPOINTMENT" not in service_booking_pathways(service)
     assert service.default_appointment_duration_minutes is None
     assert set_service_active(
         service_id=service.pk, is_active=True, context=context(admin)
@@ -813,13 +823,10 @@ def test_independent_booking_pathway_validation_and_no_duplicate_rows():
                 changes={"booking_pathways": invalid},
                 context=context(admin),
             )
-    with pytest.raises(InvalidServiceCatalogInput):
+    with pytest.raises(InvalidServiceCatalogInput, match="unsupported fields"):
         update_service(
             service_id=service.pk,
-            changes={
-                "appointment_booking_enabled": False,
-                "booking_pathways": ["FLEXIBLE_APPOINTMENT"],
-            },
+            changes={"appointment_booking_enabled": True},
             context=context(admin),
         )
     with pytest.raises(IntegrityError), transaction.atomic():
@@ -854,7 +861,7 @@ def test_pathway_api_permissions_mfa_and_student_active_only_visibility():
     )
     assert created.status_code == 201
     item = created.json()
-    assert item["appointment_booking_enabled"] is False
+    assert "FLEXIBLE_APPOINTMENT" not in item["booking_pathways"]
     assert item["booking_pathways"] == ["FIXED_DATE_SLOT", "GROUP_SESSION"]
     assert item["activation_blockers"] == []
     student_client = auth_client(student)
@@ -879,7 +886,7 @@ def test_pathway_api_permissions_mfa_and_student_active_only_visibility():
     assert visible.status_code == 200
     assert visible.json()["booking_pathways"] == ["FIXED_DATE_SLOT", "GROUP_SESSION"]
 
-    # Contradictory old+new fields and duplicate pathways fail closed.
+    # Retired booking fields and duplicate pathways fail closed.
     conflict = client.patch(
         f"/api/v1/services/{item['id']}",
         data=json.dumps(
@@ -972,37 +979,5 @@ def test_disabling_flexible_pathway_preserves_scheduled_appointment_after_review
     assert appointment.starts_at == starts
     assert appointment.status == AppointmentStatus.SCHEDULED
     assert appointment.service_id == altered.pk
-    assert not altered.appointment_booking_enabled
+    assert "FLEXIBLE_APPOINTMENT" not in service_booking_pathways(altered)
     assert set(service_booking_pathways(altered)) == {"FIXED_DATE_SLOT", "GROUP_SESSION"}
-
-
-@pytest.mark.django_db
-def test_pathway_backfill_is_idempotent_and_preserves_legacy_rows():
-    import importlib
-
-    from django.apps import apps
-    from django.db import connection
-
-    from compass.service_catalog.models import ServiceBookingPathway
-
-    legacy = Service.objects.create(
-        code="BACKFILL_LEGACY",
-        name="Previously bookable",
-        appointment_booking_enabled=True,
-        default_appointment_duration_minutes=30,
-    )
-    no_booking = Service.objects.create(code="BACKFILL_UNAVAILABLE", name="Not bookable")
-    assert not ServiceBookingPathway.objects.filter(service=legacy).exists()
-    operation = importlib.import_module("compass.service_catalog.migrations.0002_booking_pathways")
-    # Reuse the active test database's schema through a minimal migration editor proxy.
-    editor = type("Editor", (), {"connection": connection})()
-    operation.backfill_flexible_bookings(apps, editor)
-    operation.backfill_flexible_bookings(apps, editor)
-    assert (
-        ServiceBookingPathway.objects.filter(service=legacy, code="FLEXIBLE_APPOINTMENT").count()
-        == 1
-    )
-    assert not ServiceBookingPathway.objects.filter(service=no_booking).exists()
-    legacy.refresh_from_db()
-    assert legacy.appointment_booking_enabled
-    assert legacy.default_appointment_duration_minutes == 30

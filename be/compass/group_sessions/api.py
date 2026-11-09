@@ -136,8 +136,6 @@ class GroupSessionCreateRequest(Schema):
     capacity: int
     reg_opens_at: datetime | None = None
     reg_closes_at: datetime | None = None
-    facilitator_ids: list[uuid.UUID] = []
-    lead_facilitator_id: uuid.UUID | None = None
     facilitators: list[GroupSessionFacilitatorRequest] | None = None
 
 
@@ -151,8 +149,6 @@ class GroupSessionUpdateRequest(Schema):
     capacity: int | None = None
     reg_opens_at: datetime | None = None
     reg_closes_at: datetime | None = None
-    facilitator_ids: list[uuid.UUID] | None = None
-    lead_facilitator_id: uuid.UUID | None = None
     facilitators: list[GroupSessionFacilitatorRequest] | None = None
 
 
@@ -622,8 +618,6 @@ def create_session(
                 if data.facilitators is not None
                 else None
             ),
-            facilitator_ids=data.facilitator_ids,
-            lead_facilitator_id=data.lead_facilitator_id,
         )
         return Status(201, _serialize_session(session, actor=actor))
     except ValidationError as exc:
@@ -715,8 +709,6 @@ def update_session(
                 if data.facilitators is not None
                 else None
             ),
-            facilitator_ids=data.facilitator_ids,
-            lead_facilitator_id=data.lead_facilitator_id,
         )
         return _serialize_session(session, actor=actor)
     except ValidationError as exc:

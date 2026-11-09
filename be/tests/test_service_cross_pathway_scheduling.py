@@ -100,7 +100,6 @@ def schedule_env(db):
     service = create_service(
         code="CORR1B_CROSS_PATH",
         name="Cross-pathway Consultation and Workshops",
-        appointment_booking_enabled=True,
         default_appointment_duration_minutes=60,
         delivery_modes=["IN_PERSON", "ONLINE"],
         booking_pathways=[
@@ -214,7 +213,13 @@ def test_flexible_availability_omits_published_slots_and_group_facilitation(sche
         starts_at=start + timedelta(hours=3),
         ends_at=start + timedelta(hours=4),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=group_session.pk, actor=counselor)
 
@@ -286,7 +291,13 @@ def test_internal_facilitators_cannot_accept_overlapping_appointments_or_group_s
         starts_at=start,
         ends_at=start + timedelta(hours=1),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     with pytest.raises(ValidationError, match="overlapping Appointment"):
         publish_group_session(session_id=appointment_conflict.pk, actor=counselor)
@@ -298,7 +309,13 @@ def test_internal_facilitators_cannot_accept_overlapping_appointments_or_group_s
         starts_at=start + timedelta(hours=2),
         ends_at=start + timedelta(hours=3),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=first.pk, actor=counselor)
     with pytest.raises(AppointmentTimeConflict, match="published Group Session"):
@@ -315,7 +332,13 @@ def test_internal_facilitators_cannot_accept_overlapping_appointments_or_group_s
         starts_at=start + timedelta(hours=2, minutes=30),
         ends_at=start + timedelta(hours=3, minutes=30),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     with pytest.raises(ValidationError, match="overlapping.*Group Session"):
         publish_group_session(session_id=second.pk, actor=counselor)
@@ -336,7 +359,13 @@ def test_internal_facilitators_cannot_accept_overlapping_appointments_or_group_s
         starts_at=slot_start,
         ends_at=slot_start + timedelta(hours=1),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     with pytest.raises(ValidationError, match="published Fixed Slot"):
         publish_group_session(session_id=slot_conflict.pk, actor=counselor)
@@ -428,7 +457,13 @@ def test_group_registration_stays_separate_and_internal_goa_is_not_an_appointmen
         starts_at=start,
         ends_at=start + timedelta(hours=1),
         capacity=10,
-        facilitator_ids=[goa.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": goa.pk,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.pk, actor=counselor)
     appointments_before = Appointment.objects.count()
@@ -502,7 +537,13 @@ def test_concurrent_appointment_and_group_session_publication_have_one_provider_
         starts_at=start,
         ends_at=start + timedelta(hours=1),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     barrier = Barrier(2)
 

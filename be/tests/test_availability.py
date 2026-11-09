@@ -98,7 +98,7 @@ def active_service(
     service = create_service(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_booking_enabled=duration is not None,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"] if duration is not None else [],
         default_appointment_duration_minutes=duration,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
         context=context(actor),
@@ -509,7 +509,7 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
     inactive_service = create_service(
         code="INACTIVE",
         name="Inactive",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(actor),
     )

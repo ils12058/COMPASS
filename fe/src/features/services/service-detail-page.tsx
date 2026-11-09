@@ -66,7 +66,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function BookingFacts({ service }: { service: ServiceResponse }) {
-  if (!service.appointment_booking_enabled) {
+  if (!service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT)) {
     return (
       <dl className="mt-4">
         <Fact label="Appointment booking">Not available</Fact>
@@ -100,7 +100,7 @@ function CounselingDeliveryFacts({ service }: { service: ServiceResponse }) {
   const state = {
     inPerson: service.delivery_modes.includes(DeliveryMode.IN_PERSON),
     online: service.delivery_modes.includes(DeliveryMode.ONLINE),
-    bookingEnabled: service.appointment_booking_enabled,
+    bookingEnabled: service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT),
   };
   return (
     <PanelSection title="Counseling delivery" titleId="service-delivery-heading">
@@ -329,9 +329,9 @@ export function ServiceDetailPage() {
           <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Fact label="Flexible individual appointments">
               {service.is_active &&
-              (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
+              service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT)
                 ? "Enabled; availability depends on Counselor schedules"
-                : (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
+                : service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT)
                   ? "Configured · unavailable while the Service is inactive"
                   : "Not configured"}
             </Fact>

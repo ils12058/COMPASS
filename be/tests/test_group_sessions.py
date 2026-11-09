@@ -113,8 +113,13 @@ def test_create_group_session_success(group_service, counselor):
         starts_at=starts_at,
         ends_at=ends_at,
         capacity=30,
-        facilitator_ids=[counselor.id],
-        lead_facilitator_id=counselor.id,
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     assert session.status == GroupSessionStatus.DRAFT
@@ -218,7 +223,6 @@ def test_create_group_session_rejects_missing_pathway(counselor):
     plain_svc = create_service(
         code="INDIVIDUAL_COUNSELING",
         name="Individual Counseling",
-        appointment_booking_enabled=True,
         default_appointment_duration_minutes=60,
         delivery_modes=["IN_PERSON"],
         booking_pathways=[BookingPathwayCode.FLEXIBLE_APPOINTMENT],
@@ -238,7 +242,13 @@ def test_create_group_session_rejects_missing_pathway(counselor):
             starts_at=now + timedelta(days=1),
             ends_at=now + timedelta(days=1, hours=1),
             capacity=20,
-            facilitator_ids=[counselor.id],
+            facilitators=[
+                {
+                    "kind": "INTERNAL",
+                    "internal_user_id": counselor.id,
+                    "is_lead": True,
+                }
+            ],
         )
 
 
@@ -289,7 +299,13 @@ def test_publish_and_update_lifecycle(group_service, counselor, other_counselor)
         starts_at=now + timedelta(days=3),
         ends_at=now + timedelta(days=3, hours=1),
         capacity=15,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     # Update in DRAFT
@@ -298,8 +314,18 @@ def test_publish_and_update_lifecycle(group_service, counselor, other_counselor)
         actor=counselor,
         title="Advanced Leadership Lab",
         capacity=20,
-        facilitator_ids=[counselor.id, other_counselor.id],
-        lead_facilitator_id=counselor.id,
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            },
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": other_counselor.id,
+                "is_lead": False,
+            },
+        ],
     )
     assert updated.title == "Advanced Leadership Lab"
     assert updated.capacity == 20
@@ -337,7 +363,13 @@ def test_student_registration_and_capacity_enforcement(group_service, counselor,
         starts_at=now + timedelta(days=4),
         ends_at=now + timedelta(days=4, hours=1),
         capacity=1,  # Capacity 1
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -389,7 +421,13 @@ def test_session_cancellation_cascades_to_registrations(
         starts_at=now + timedelta(days=5),
         ends_at=now + timedelta(days=5, hours=2),
         capacity=20,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -428,7 +466,13 @@ def test_record_attendance_and_roster_csv(group_service, counselor, student, stu
         starts_at=now + timedelta(days=1),
         ends_at=now + timedelta(days=1, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -488,7 +532,13 @@ def test_group_session_operational_metrics(group_service, counselor, student):
         starts_at=now + timedelta(days=1),
         ends_at=now + timedelta(days=1, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session1.id, actor=counselor)
 
@@ -548,7 +598,13 @@ def test_group_session_api_auth_mfa_and_role_capability_boundaries(
         starts_at=now + timedelta(days=2),
         ends_at=now + timedelta(days=2, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -635,7 +691,13 @@ def test_group_session_api_privacy_redaction_and_reschedule_notification(
         starts_at=starts_at,
         ends_at=ends_at,
         capacity=15,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -829,7 +891,13 @@ def test_group_session_student_eligibility_and_cancelled_attendance_guard(
         starts_at=now + timedelta(days=2),
         ends_at=now + timedelta(days=2, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -884,7 +952,13 @@ def test_group_session_concurrent_registration_capacity_enforcement():
         starts_at=now + timedelta(days=4),
         ends_at=now + timedelta(days=4, hours=1),
         capacity=1,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
 
@@ -921,7 +995,13 @@ def test_group_session_draft_withdrawal_preserves_record_and_audit(group_service
         starts_at=now + timedelta(days=5),
         ends_at=now + timedelta(days=5, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     client = auth_client(counselor, recent_mfa=True)
@@ -979,7 +1059,13 @@ def test_group_session_concurrent_withdrawal_records_one_transition(group_servic
         starts_at=timezone.now() + timedelta(days=6),
         ends_at=timezone.now() + timedelta(days=6, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     def withdraw() -> str:
@@ -1019,7 +1105,13 @@ def test_postgresql_prevents_physical_deletion_of_group_session(group_service, c
         starts_at=timezone.now() + timedelta(days=7),
         ends_at=timezone.now() + timedelta(days=7, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
     from compass.group_sessions.models import GroupSession
 
@@ -1052,7 +1144,13 @@ def test_postgresql_preserves_removed_facilitator_identity_on_direct_delete(
         starts_at=timezone.now() + timedelta(days=7),
         ends_at=timezone.now() + timedelta(days=7, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     facilitator = session.facilitators.get()
     table = connection.ops.quote_name(GroupSessionFacilitator._meta.db_table)
@@ -1082,7 +1180,13 @@ def test_group_session_lifecycle_migration_refuses_rollback_while_history_exists
         starts_at=timezone.now() + timedelta(days=9),
         ends_at=timezone.now() + timedelta(days=9, hours=1),
         capacity=5,
-        facilitator_ids=[counselor.pk],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.pk,
+                "is_lead": True,
+            }
+        ],
     )
     migration = import_module(
         "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session"
@@ -1113,7 +1217,18 @@ def test_group_session_staff_scope_and_facilitator_participant_privacy(
         starts_at=now + timedelta(days=6),
         ends_at=now + timedelta(days=6, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id, other_counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            },
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": other_counselor.id,
+                "is_lead": False,
+            },
+        ],
     )
     publish_group_session(session_id=session.id, actor=counselor)
     registration = register_student(session_id=session.id, student=student)
@@ -1228,7 +1343,13 @@ def test_group_session_goa_and_supervisor_are_limited_to_direct_responsibility(
         starts_at=now + timedelta(days=7),
         ends_at=now + timedelta(days=7, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     published = publish_group_session(session_id=session.id, actor=counselor)
@@ -1252,7 +1373,13 @@ def test_group_session_current_account_and_capability_are_rechecked(group_servic
         starts_at=now + timedelta(days=8),
         ends_at=now + timedelta(days=8, hours=1),
         capacity=10,
-        facilitator_ids=[counselor.id],
+        facilitators=[
+            {
+                "kind": "INTERNAL",
+                "internal_user_id": counselor.id,
+                "is_lead": True,
+            }
+        ],
     )
 
     set_user_capability_override(

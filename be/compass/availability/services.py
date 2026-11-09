@@ -28,6 +28,7 @@ from compass.common.institutional_time import institution_timezone_name, institu
 from compass.service_catalog.models import DeliveryMode, Service
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
+    service_accepts_appointments,
     service_counselor_eligible,
     service_supports_delivery_mode,
 )
@@ -748,7 +749,7 @@ def compute_base_availability(
     # The Appointment duration only shapes booking suitability, so it applies only while the
     # Service accepts Appointments (ADR-089).
     if (
-        service.appointment_booking_enabled
+        service_accepts_appointments(service)
         and service.default_appointment_duration_minutes is not None
     ):
         minimum = timedelta(minutes=service.default_appointment_duration_minutes)

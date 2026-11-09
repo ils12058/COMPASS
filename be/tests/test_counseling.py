@@ -103,7 +103,7 @@ def create_counseling_service(
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
@@ -458,7 +458,7 @@ def test_linked_create_rejects_wrong_service_and_smuggled_student_or_mode():
     other_service = create_service(
         code="GOOD_MORAL",
         name="Good Moral",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -1010,7 +1010,7 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
     other_service = create_service(
         code="OTHER_APPOINTMENT_SERVICE",
         name="Other Appointment Service",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -1277,7 +1277,7 @@ def test_historical_encounter_appointment_candidates_mirror_update_authority():
     other_service = create_service(
         code="CORRECTION_OTHER",
         name="Correction Other",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],

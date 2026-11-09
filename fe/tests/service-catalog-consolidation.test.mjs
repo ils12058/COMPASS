@@ -37,7 +37,6 @@ const service = {
   code: "PSYCH_TESTING",
   name: "Psychological Testing",
   description: "",
-  appointment_booking_enabled: true,
   booking_pathways: ["FLEXIBLE_APPOINTMENT"],
   default_appointment_duration_minutes: null,
   cancellation_cutoff_minutes: null,
@@ -111,7 +110,7 @@ test("a booking-off Service shows no Appointment settings", () => {
     seed: (client) => {
       client.setQueryData(
         getServicesGetQueryKey(SERVICE),
-        ok({ ...service, appointment_booking_enabled: false, provider_coverage: "ALL_COUNSELORS", is_active: true, activation_blockers: [] }),
+        ok({ ...service, booking_pathways: [], provider_coverage: "ALL_COUNSELORS", is_active: true, activation_blockers: [] }),
       );
     },
   });

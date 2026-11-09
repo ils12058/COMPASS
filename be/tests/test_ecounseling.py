@@ -126,7 +126,7 @@ def create_counseling_service(admin: User):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON", "ONLINE"],
@@ -698,7 +698,7 @@ def test_counselor_workspace_recorded_is_this_appointments_own_counseling_match(
     career_service = create_service(
         code="CAREER_GUIDANCE",
         name="Recorded Projection Career Guidance",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON", "ONLINE"],
@@ -797,7 +797,7 @@ def test_appointment_detail_and_ecounseling_workspace_agree_on_the_documentation
     other_service = create_service(
         code="CAREER_GUIDANCE",
         name="Parity Career Guidance",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON", "ONLINE"],

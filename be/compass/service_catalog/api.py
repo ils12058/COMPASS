@@ -103,12 +103,9 @@ class ServiceCreateRequest(StrictSchema):
     code: str
     name: str
     description: str = ""
-    # Whether Students may create new Appointments for this Service. It does not make an
-    # Appointment mandatory for workflows with their own direct initiation.
-    appointment_booking_enabled: bool = False
-    # Optional for legacy API callers; independent pathways can coexist.
-    booking_pathways: list[BookingPathway] | None = None
-    # Appointment-only settings; they must stay empty while booking is unavailable.
+    # The only booking configuration: independent pathways may coexist.
+    booking_pathways: list[BookingPathway]
+    # Appointment-only settings; they must stay empty without the FLEXIBLE_APPOINTMENT pathway.
     default_appointment_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
     requires_current_inventory: bool = False
@@ -120,7 +117,6 @@ class ServiceCreateRequest(StrictSchema):
 class ServiceUpdateRequest(StrictSchema):
     name: str = ""
     description: str = ""
-    appointment_booking_enabled: bool = False
     booking_pathways: list[BookingPathway] | None = None
     default_appointment_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
@@ -141,7 +137,6 @@ class ServiceResponse(StrictSchema):
     code: str
     name: str
     description: str
-    appointment_booking_enabled: bool
     booking_pathways: list[BookingPathway]
     default_appointment_duration_minutes: int | None
     cancellation_cutoff_minutes: int | None
@@ -366,7 +361,6 @@ def _service(item) -> dict[str, object]:
         "code": item.code,
         "name": item.name,
         "description": item.description,
-        "appointment_booking_enabled": item.appointment_booking_enabled,
         "booking_pathways": service_booking_pathways(item),
         "default_appointment_duration_minutes": item.default_appointment_duration_minutes,
         "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
@@ -387,10 +381,6 @@ def _request_values(payload, fields: dict[str, object]) -> dict[str, object]:
     values = dict(fields)
     if "booking_pathways" in values and values["booking_pathways"] is not None:
         values["booking_pathways"] = [value.value for value in payload.booking_pathways]
-        if "appointment_booking_enabled" not in payload.model_fields_set:
-            values["appointment_booking_enabled"] = (
-                BookingPathway.FLEXIBLE_APPOINTMENT.value in values["booking_pathways"]
-            )
     if "delivery_modes" in values:
         values["delivery_modes"] = [value.value for value in payload.delivery_modes]
     if "provider_coverage" in values:
@@ -410,7 +400,7 @@ def services_list(
     request,
     include_inactive: bool = False,
     search: str | None = None,
-    appointment_booking_enabled: bool | None = None,
+    flexible_appointment_booking: bool | None = None,
     ordering: ServiceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -422,7 +412,7 @@ def services_list(
         result = list_services(
             include_inactive=include_inactive,
             search=search,
-            appointment_booking_enabled=appointment_booking_enabled,
+            flexible_appointment_booking=flexible_appointment_booking,
             ordering=ordering,
             page=page,
             page_size=page_size,

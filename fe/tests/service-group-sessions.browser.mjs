@@ -37,7 +37,6 @@ const service = {
   code: "CAREER_WORKSHOP",
   name: "Career Planning Workshop",
   description: "Workshops and group sessions for students.",
-  appointment_booking_enabled: false,
   booking_pathways: ["GROUP_SESSION"],
   default_appointment_duration_minutes: 60,
   cancellation_cutoff_minutes: 60,
@@ -186,7 +185,6 @@ await check(
   };
   const managedService = {
     ...service,
-    appointment_booking_enabled: false,
     booking_pathways: ["GROUP_SESSION"],
   };
   const draft = {

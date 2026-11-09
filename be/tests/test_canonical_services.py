@@ -25,15 +25,16 @@ from compass.service_catalog.bootstrap import (
 )
 from compass.service_catalog.models import (
     Service,
+    ServiceBookingPathway,
     ServiceCounselorProvider,
     ServiceDeliveryMode,
-    ServiceProviderRole,
 )
 from compass.service_catalog.services import (
     CanonicalServiceRequired,
     CanonicalServiceReserved,
     ServiceSchedulingConsequenceReviewRequired,
     create_service,
+    service_booking_pathways,
     set_service_active,
     update_service,
 )
@@ -89,14 +90,12 @@ def test_fresh_sync_is_active_bookable_idempotent_and_audited_once():
     assert "created" in first_output.getvalue()
     assert service.name == "Counseling"
     assert service.is_active
-    assert service.appointment_booking_enabled
+    assert service_booking_pathways(service) == ("FLEXIBLE_APPOINTMENT",)
     assert service.default_appointment_duration_minutes == 60
     assert service.cancellation_cutoff_minutes == 30
     assert not service.requires_current_inventory
     assert service.provider_coverage == "ALL_COUNSELORS"
     assert set(service.delivery_mode_assignments.values_list("mode", flat=True)) == {"IN_PERSON"}
-    # Counselor is the implicit provider class: no legacy role rows are written.
-    assert not ServiceProviderRole.objects.filter(service=service).exists()
     assert canonical_counseling_readiness() == (True, "ok")
     assert get_counseling_service().pk == service.pk
     events = service_events()
@@ -140,7 +139,7 @@ def test_existing_customization_and_references_survive_sync():
         code="COUNSELING",
         name="Guidance Counseling",
         description="Locally configured",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=45,
         cancellation_cutoff_minutes=60,
         requires_current_inventory=True,
@@ -171,7 +170,7 @@ def test_existing_customization_and_references_survive_sync():
     assert result.service_id == appointment.service_id == service.pk
     assert service.name == "Guidance Counseling"
     assert service.description == "Locally configured"
-    assert service.appointment_booking_enabled
+    assert "FLEXIBLE_APPOINTMENT" in service_booking_pathways(service)
     assert service.default_appointment_duration_minutes == 45
     assert service.cancellation_cutoff_minutes == 60
     assert service.requires_current_inventory
@@ -222,7 +221,7 @@ def test_existing_required_drift_repairs_in_place_without_resetting_valid_settin
         code="COUNSELING",
         name="",
         description="Keep this description",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=None,
         cancellation_cutoff_minutes=45,
         requires_current_inventory=True,
@@ -256,7 +255,7 @@ def test_booking_off_counseling_stays_off_and_unselected_coverage_is_reported():
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Locally named Counseling",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=AuditContext.user(admin),
     )
@@ -266,7 +265,7 @@ def test_booking_off_counseling_stays_off_and_unselected_coverage_is_reported():
     assert service.pk == result.service_id
     assert service.is_active
     assert service.name == "Locally named Counseling"
-    assert service.appointment_booking_enabled is False
+    assert service_booking_pathways(service) == ()
     assert canonical_counseling_readiness() == (True, "ok")
 
     # A selection without any active Counselor is reported, never widened by sync.
@@ -309,12 +308,12 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
     admin = user("admin@example.edu", "IT_ADMIN")
     context = AuditContext.user(admin)
     with pytest.raises(CanonicalServiceReserved, match="system-managed"):
-        create_service(code=" counseling ", name="Manual", context=context)
+        create_service(code=" counseling ", name="Manual", booking_pathways=[], context=context)
     assert not Service.objects.filter(code="COUNSELING").exists()
 
     service = Service.objects.get(pk=sync_canonical_services().service_id)
     with pytest.raises(CanonicalServiceReserved, match="system-managed"):
-        create_service(code="COUNSELING", name="Duplicate", context=context)
+        create_service(code="COUNSELING", name="Duplicate", booking_pathways=[], context=context)
     with pytest.raises(CanonicalServiceRequired, match="cannot be disabled"):
         set_service_active(service_id=service.pk, is_active=False, context=context)
     service.refresh_from_db()
@@ -322,10 +321,10 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
 
     changed = update_service(
         service_id=service.pk,
-        changes={"appointment_booking_enabled": False},
+        changes={"booking_pathways": []},
         context=context,
     )
-    assert changed.is_active and changed.appointment_booking_enabled is False
+    assert changed.is_active and service_booking_pathways(changed) == ()
     assert changed.cancellation_cutoff_minutes is None
     assert canonical_counseling_readiness() == (True, "ok")
     assert sync_canonical_services().outcome == "unchanged"
@@ -356,6 +355,7 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
     ordinary = create_service(
         code="OTHER_SERVICE",
         name="Other",
+        booking_pathways=[],
         context=context,
         delivery_modes=["IN_PERSON"],
     )
@@ -373,7 +373,7 @@ def test_api_rejects_reserved_create_and_disable_and_retired_provider_roles():
     client, headers = auth_client(admin)
     create_response = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "COUNSELING", "name": "Manual"}),
+        data=json.dumps({"code": "COUNSELING", "name": "Manual", "booking_pathways": []}),
         content_type="application/json",
         **headers,
     )
@@ -408,7 +408,7 @@ def test_service_projection_marks_only_canonical_services_as_system_required():
     canonical = Service.objects.get(pk=sync_canonical_services().service_id)
     created = client.post(
         "/api/v1/services",
-        data=json.dumps({"code": "ADMISSION", "name": "Admission"}),
+        data=json.dumps({"code": "ADMISSION", "name": "Admission", "booking_pathways": []}),
         content_type="application/json",
         **headers,
     )
@@ -469,8 +469,8 @@ def test_readiness_requires_canonical_configuration_but_not_daily(client):
     assert client.get("/api/v1/health/ready").status_code == 200
     ServiceDeliveryMode.objects.create(service=service, mode="ONLINE")
     assert client.get("/api/v1/health/ready").status_code == 200
+    ServiceBookingPathway.objects.filter(service=service).delete()
     Service.objects.filter(pk=service.pk).update(
-        appointment_booking_enabled=False,
         default_appointment_duration_minutes=None,
         cancellation_cutoff_minutes=None,
     )

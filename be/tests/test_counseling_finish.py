@@ -619,6 +619,7 @@ def test_finish_rejects_a_non_canonical_counseling_service():
     other_service = create_service(
         code="CAREER_GUIDANCE",
         name="Career Guidance",
+        booking_pathways=[],
         context=context(admin),
     )
     appointment = make_appointment(student=student, provider=counselor, service=other_service)

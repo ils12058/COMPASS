@@ -645,7 +645,7 @@ def test_accounts_are_a_name_directory_and_services_a_code_catalog():
     assert client.get("/api/v1/accounts", {"ordering": "last_name"}).status_code == 422
 
     for code, name in (("ZULU", "Alpha support"), ("ALPHA", "Zebra care"), ("MIKE", "Mid help")):
-        create_service(code=code, name=name, context=context(admin))
+        create_service(code=code, name=name, booking_pathways=[], context=context(admin))
     services = client.get("/api/v1/services", {"include_inactive": "true"}).json()
     assert services["ordering"] == "CODE_ASC"
     codes = [row["code"] for row in services["items"]]

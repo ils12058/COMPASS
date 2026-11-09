@@ -2250,12 +2250,23 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     ]
     for schema_name in ("ServiceResponse", "ServiceCreateRequest", "ServiceUpdateRequest"):
         properties = schemas[schema_name]["properties"]
-        assert "appointment_booking_enabled" in properties
+        assert "booking_pathways" in properties
+        assert "appointment_booking_enabled" not in properties
         assert "default_appointment_duration_minutes" in properties
         assert "provider_coverage" in properties
         assert not {"appointment_policy", "provider_roles", "default_duration_minutes"} & set(
             properties
         )
+    assert "booking_pathways" in schemas["ServiceCreateRequest"]["required"]
+    assert schemas["BookingPathway"]["enum"] == [
+        "FLEXIBLE_APPOINTMENT",
+        "FIXED_DATE_SLOT",
+        "GROUP_SESSION",
+    ]
+    for schema_name in ("GroupSessionCreateRequest", "GroupSessionUpdateRequest"):
+        properties = schemas[schema_name]["properties"]
+        assert "facilitators" in properties
+        assert not {"facilitator_ids", "lead_facilitator_id"} & set(properties)
     assert set(schemas["ServiceProviderCandidate"]["properties"]) == {
         "id",
         "display_name",

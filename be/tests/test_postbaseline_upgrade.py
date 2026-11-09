@@ -104,6 +104,9 @@ def test_postbaseline_upgrade_preserves_records_and_supports_forward_recovery(dj
             ("appointments", "Appointment"),
         ]
         original = {key: list(manager(*key).order_by("pk").values()) for key in models}
+        # The forward plan drops the legacy booking flag; only retained columns are compared.
+        for row in original[("service_catalog", "Service")]:
+            del row["appointment_booking_enabled"]
         executor = MigrationExecutor(db)
         executor.migrate(full)
         current = executor.loader.project_state(full).apps
@@ -130,7 +133,10 @@ def test_postbaseline_upgrade_preserves_records_and_supports_forward_recovery(dj
                 raise RuntimeError("Synthetic component failure")
         MigrationExecutor(db).migrate(full)
         for key, rows in original.items():
-            assert list(manager(*key).order_by("pk").values()) == rows
+            recovered = list(current.get_model(*key).objects.using(alias).order_by("pk").values())
+            assert [
+                {name: row[name] for name in old} for old, row in zip(rows, recovered, strict=True)
+            ] == rows
         assert (
             current.get_model("appointments", "Appointment")
             .objects.using(alias)

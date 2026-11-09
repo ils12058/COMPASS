@@ -134,7 +134,7 @@ def test_booking_discovery_respects_coverage_default_and_cross_college_choice():
     testing = create_service(
         code="PSYCH_TESTING",
         name="Psychological Testing",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -239,6 +239,7 @@ def test_booking_disabled_services_are_not_bookable_or_duration_shaped():
     walk_in = create_service(
         code="WALK_IN_ONLY",
         name="Walk-in only",
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(admin),
     )
@@ -466,7 +467,7 @@ def test_disabling_booking_keeps_existing_appointments_fulfillable():
 
     update_service(
         service_id=service.pk,
-        changes={"appointment_booking_enabled": False},
+        changes={"booking_pathways": []},
         context=context(admin),
         acknowledge_scheduling_consequences=True,
     )

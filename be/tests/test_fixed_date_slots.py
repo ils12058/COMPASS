@@ -146,7 +146,6 @@ def env():
     service = create_service(
         code="FIXED_CAREER_SVC",
         name="Career Guidance Consultation",
-        appointment_booking_enabled=True,
         booking_pathways=[
             BookingPathwayCode.FLEXIBLE_APPOINTMENT,
             BookingPathwayCode.FIXED_DATE_SLOT,
@@ -358,7 +357,6 @@ def test_create_fixed_slot_unqualified_counselor_and_unsupported_mode(env):
     service_sel = create_service(
         code="SELECTED_COUNSELOR_SVC",
         name="Specialized Consultation",
-        appointment_booking_enabled=True,
         booking_pathways=[
             BookingPathwayCode.FLEXIBLE_APPOINTMENT,
             BookingPathwayCode.FIXED_DATE_SLOT,
@@ -1162,7 +1160,6 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     other_service = create_service(
         code="OTHER_FIXED_SVC",
         name="Other Fixed Slot Service",
-        appointment_booking_enabled=True,
         booking_pathways=[
             BookingPathwayCode.FLEXIBLE_APPOINTMENT,
             BookingPathwayCode.FIXED_DATE_SLOT,

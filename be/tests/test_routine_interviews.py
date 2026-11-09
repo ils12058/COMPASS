@@ -118,7 +118,7 @@ def create_counseling_service(actor: User, *, modes: list[str] | None = None):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=modes or ["IN_PERSON", "ONLINE"],
@@ -997,7 +997,7 @@ def test_student_appointment_candidate_discovery_is_routine_owned_filtered_priva
     other_service = create_service(
         code="OTHER_SERVICE",
         name="Other Service",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -1325,7 +1325,7 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
     other_service = create_service(
         code="OTHER_ROUTINE_SERVICE",
         name="Other Routine Service",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         default_appointment_duration_minutes=None,
         cancellation_cutoff_minutes=None,
         delivery_modes=["IN_PERSON"],

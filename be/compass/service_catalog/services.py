@@ -144,7 +144,7 @@ class ServiceProviderConfiguration:
 @dataclass(frozen=True, slots=True)
 class _ServiceConfiguration:
     name: str
-    appointment_booking_enabled: bool
+    booking_pathways: frozenset[str]
     default_appointment_duration_minutes: int | None
     cancellation_cutoff_minutes: int | None
     requires_current_inventory: bool
@@ -335,16 +335,14 @@ def _configured_pathways(service_id: UUID) -> frozenset[str]:
 
 
 def service_booking_pathways(service: Service) -> tuple[str, ...]:
-    """Public catalog representation; the legacy flag remains canonical for flexible booking.
-
-    This fallback also protects older integrations that write Service rows directly before
-    they are migrated. Only the Catalog mutation services write pathway relationships.
-    """
+    """Canonical booking routes: only persisted ServiceBookingPathway rows count."""
     paths = {path.code for path in service.booking_pathways.all()}
-    paths.discard(BookingPathwayCode.FLEXIBLE_APPOINTMENT)
-    if service.appointment_booking_enabled:
-        paths.add(BookingPathwayCode.FLEXIBLE_APPOINTMENT)
     return tuple(code for code in BookingPathwayCode.values if code in paths)
+
+
+def service_accepts_appointments(service: Service) -> bool:
+    """Whether new flexible Appointments may be booked for this Service."""
+    return BookingPathwayCode.FLEXIBLE_APPOINTMENT in service_booking_pathways(service)
 
 
 def _replace_pathways(service: Service, codes: frozenset[str]) -> None:
@@ -375,7 +373,7 @@ def _selected_counselor_ids(service_id: UUID) -> frozenset[UUID]:
 def _current_configuration(service: Service) -> _ServiceConfiguration:
     return _ServiceConfiguration(
         name=service.name,
-        appointment_booking_enabled=service.appointment_booking_enabled,
+        booking_pathways=_configured_pathways(service.pk),
         default_appointment_duration_minutes=service.default_appointment_duration_minutes,
         cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
         requires_current_inventory=service.requires_current_inventory,
@@ -400,7 +398,7 @@ def _blockers(configuration: _ServiceConfiguration) -> tuple[str, ...]:
     if not configuration.delivery_modes:
         blockers.append(ServiceActivationBlocker.DELIVERY_MODE_MISSING)
     if (
-        configuration.appointment_booking_enabled
+        BookingPathwayCode.FLEXIBLE_APPOINTMENT in configuration.booking_pathways
         and configuration.default_appointment_duration_minutes is None
     ):
         blockers.append(ServiceActivationBlocker.APPOINTMENT_DURATION_MISSING)
@@ -534,8 +532,6 @@ def _scheduling_consequences(
     service: Service,
     current: _ServiceConfiguration,
     proposed: _ServiceConfiguration,
-    current_pathways: frozenset[str],
-    proposed_pathways: frozenset[str],
     now: datetime,
     service_deactivating: bool = False,
 ) -> _ServiceSchedulingConsequences:
@@ -561,14 +557,9 @@ def _scheduling_consequences(
         ends_at__gt=now,
     )
     removed_modes = current.delivery_modes - proposed.delivery_modes
-    removed_pathways = current_pathways - proposed_pathways
+    removed_pathways = current.booking_pathways - proposed.booking_pathways
     appointment_dependency = bool(
         (service_deactivating and active_scheduled.exists())
-        or (
-            current.appointment_booking_enabled
-            and not proposed.appointment_booking_enabled
-            and active_scheduled.exists()
-        )
         or (
             BookingPathwayCode.FLEXIBLE_APPOINTMENT in removed_pathways
             and active_scheduled.exists()
@@ -682,7 +673,7 @@ def list_services(
     *,
     include_inactive: bool = False,
     search: str | None = None,
-    appointment_booking_enabled: bool | None = None,
+    flexible_appointment_booking: bool | None = None,
     ordering: str | ServiceOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -703,12 +694,10 @@ def list_services(
     if search and search.strip():
         term = search.strip()[:160]
         qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
-    if appointment_booking_enabled is not None:
-        qs = qs.filter(
-            appointment_booking_enabled=_normalize_bool(
-                appointment_booking_enabled, "appointment_booking_enabled"
-            )
-        )
+    if flexible_appointment_booking is not None:
+        enabled = _normalize_bool(flexible_appointment_booking, "flexible_appointment_booking")
+        pathway_filter = Q(booking_pathways__code=BookingPathwayCode.FLEXIBLE_APPOINTMENT)
+        qs = qs.filter(pathway_filter) if enabled else qs.exclude(pathway_filter)
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
     return ServicePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size, resolved)
@@ -819,7 +808,7 @@ def create_service(
     *,
     code: str,
     name: str,
-    appointment_booking_enabled: bool = False,
+    booking_pathways: list[str] | tuple[str, ...],
     description: str | None = "",
     default_appointment_duration_minutes: int | None = None,
     cancellation_cutoff_minutes: int | None = None,
@@ -827,7 +816,6 @@ def create_service(
     delivery_modes: list[str] | tuple[str, ...] | None = None,
     provider_coverage: str = ServiceProviderCoverage.ALL_COUNSELORS,
     selected_counselor_ids: list[UUID] | tuple[UUID, ...] | None = None,
-    booking_pathways: list[str] | tuple[str, ...] | None = None,
     context: AuditContext,
 ) -> Service:
     """Create an inactive Service; it may be incomplete until it is enabled separately."""
@@ -837,16 +825,8 @@ def create_service(
         raise CanonicalServiceReserved(
             "COUNSELING is system-managed. Run sync_canonical_services to provision it."
         )
-    booking = _normalize_bool(appointment_booking_enabled, "appointment_booking_enabled")
-    pathways = (
-        _normalize_pathways(booking_pathways)
-        if booking_pathways is not None
-        else frozenset({BookingPathwayCode.FLEXIBLE_APPOINTMENT} if booking else ())
-    )
-    if (BookingPathwayCode.FLEXIBLE_APPOINTMENT in pathways) != booking:
-        raise InvalidServiceCatalogInput(
-            "Flexible individual appointment settings must agree with the selected pathways."
-        )
+    pathways = _normalize_pathways(booking_pathways)
+    booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in pathways
     duration, cutoff, requires_inventory = _normalize_booking_settings(
         booking_enabled=booking,
         duration=_normalize_duration(default_appointment_duration_minutes),
@@ -873,7 +853,6 @@ def create_service(
                 code=normalized_code,
                 name=normalized_name,
                 description=normalized_description,
-                appointment_booking_enabled=booking,
                 default_appointment_duration_minutes=duration,
                 cancellation_cutoff_minutes=cutoff,
                 requires_current_inventory=requires_inventory,
@@ -902,7 +881,6 @@ _UPDATABLE_FIELDS = frozenset(
     {
         "name",
         "description",
-        "appointment_booking_enabled",
         *APPOINTMENT_SETTING_FIELDS,
         "delivery_modes",
         "provider_coverage",
@@ -933,12 +911,6 @@ def update_service(
         if service is None:
             raise ServiceCatalogNotFound("The requested Service was not found.")
         current = _current_configuration(service)
-        current_pathways = _configured_pathways(service.pk)
-        # The old flag controls existing individual Appointment endpoints. A catalog
-        # write repairs any pre-migration relationship drift while preserving new paths.
-        effective_current_pathways = current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
-        if service.appointment_booking_enabled:
-            effective_current_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
 
         next_name = _normalize_name(changes["name"]) if "name" in changes else service.name
         next_description = (
@@ -946,24 +918,12 @@ def update_service(
             if "description" in changes
             else service.description
         )
-        next_booking = (
-            _normalize_bool(changes["appointment_booking_enabled"], "appointment_booking_enabled")
-            if "appointment_booking_enabled" in changes
-            else service.appointment_booking_enabled
+        next_pathways = (
+            _normalize_pathways(changes["booking_pathways"])
+            if "booking_pathways" in changes
+            else current.booking_pathways
         )
-        if "booking_pathways" in changes:
-            next_pathways = _normalize_pathways(changes["booking_pathways"])
-            pathway_booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in next_pathways
-            if "appointment_booking_enabled" in changes and next_booking != pathway_booking:
-                raise InvalidServiceCatalogInput(
-                    "Flexible individual appointment settings must agree with "
-                    "the selected pathways."
-                )
-            next_booking = pathway_booking
-        else:
-            next_pathways = effective_current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
-            if next_booking:
-                next_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+        next_booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in next_pathways
 
         next_duration, next_cutoff, next_requirement = _normalize_booking_settings(
             booking_enabled=next_booking,
@@ -1007,7 +967,7 @@ def update_service(
 
         proposed = _ServiceConfiguration(
             name=next_name,
-            appointment_booking_enabled=next_booking,
+            booking_pathways=next_pathways,
             default_appointment_duration_minutes=next_duration,
             cancellation_cutoff_minutes=next_cutoff,
             requires_current_inventory=next_requirement,
@@ -1021,7 +981,6 @@ def update_service(
         scalar_values = {
             "name": next_name,
             "description": next_description,
-            "appointment_booking_enabled": next_booking,
             "default_appointment_duration_minutes": next_duration,
             "cancellation_cutoff_minutes": next_cutoff,
             "requires_current_inventory": next_requirement,
@@ -1034,7 +993,7 @@ def update_service(
             changed_fields.append("delivery_modes")
         if current.selected_counselor_ids != next_selected:
             changed_fields.append("selected_counselor_ids")
-        if current_pathways != next_pathways:
+        if current.booking_pathways != next_pathways:
             changed_fields.append("booking_pathways")
         if not changed_fields:
             return get_service(service.pk)
@@ -1043,8 +1002,6 @@ def update_service(
             service=service,
             current=current,
             proposed=proposed,
-            current_pathways=effective_current_pathways,
-            proposed_pathways=next_pathways,
             now=current_time,
         )
         _require_review(consequences, acknowledge_scheduling_consequences)
@@ -1061,7 +1018,7 @@ def update_service(
             )
         if current.selected_counselor_ids != next_selected:
             _replace_selection(service, next_selected)
-        if current_pathways != next_pathways:
+        if current.booking_pathways != next_pathways:
             _replace_pathways(service, next_pathways)
         record_event(
             context=context,
@@ -1106,16 +1063,10 @@ def set_service_active(
             _validate_active_configuration(_current_configuration(service))
         else:
             current = _current_configuration(service)
-            current_pathways = _configured_pathways(service.pk)
-            effective_pathways = current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
-            if service.appointment_booking_enabled:
-                effective_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
             consequences = _scheduling_consequences(
                 service=service,
                 current=current,
                 proposed=current,
-                current_pathways=effective_pathways,
-                proposed_pathways=effective_pathways,
                 now=current_time,
                 service_deactivating=True,
             )

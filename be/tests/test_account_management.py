@@ -917,7 +917,6 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
     service = Service.objects.create(
         code="ROLE_CHANGE_APPOINTMENT",
         name="Role change Appointment",
-        appointment_booking_enabled=False,
     )
     now = timezone.now()
     appointment = Appointment.objects.create(

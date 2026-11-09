@@ -156,7 +156,7 @@ def make_service(actor: User, *, duration: int = 60):
     service = create_service(
         code=f"ERGONOMICS_{uuid4().hex[:8].upper()}",
         name="Ergonomics Service",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=duration,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -1052,7 +1052,7 @@ def test_slot_discovery_rejects_non_schedulable_service():
     service = create_service(
         code=f"NO_APPOINTMENT_{uuid4().hex[:8].upper()}",
         name="No Appointment",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(admin),
     )

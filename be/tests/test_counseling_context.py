@@ -132,7 +132,7 @@ def make_counseling_service(admin: User):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         requires_current_inventory=False,
@@ -1086,7 +1086,7 @@ def test_detail_projects_whether_the_appointment_encounter_is_recorded(world):
     other_service = create_service(
         code="CAREER_GUIDANCE",
         name="Context Career Guidance",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         delivery_modes=["IN_PERSON"],
         context=audit_context(world["admin"]),

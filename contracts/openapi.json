@@ -18710,15 +18710,6 @@
             "title": "Ends At",
             "type": "string"
           },
-          "facilitator_ids": {
-            "default": [],
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Facilitator Ids",
-            "type": "array"
-          },
           "facilitators": {
             "anyOf": [
               {
@@ -18732,18 +18723,6 @@
               }
             ],
             "title": "Facilitators"
-          },
-          "lead_facilitator_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lead Facilitator Id"
           },
           "reg_closes_at": {
             "anyOf": [
@@ -19364,21 +19343,6 @@
             ],
             "title": "Ends At"
           },
-          "facilitator_ids": {
-            "anyOf": [
-              {
-                "items": {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Facilitator Ids"
-          },
           "facilitators": {
             "anyOf": [
               {
@@ -19392,18 +19356,6 @@
               }
             ],
             "title": "Facilitators"
-          },
-          "lead_facilitator_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lead Facilitator Id"
           },
           "reg_closes_at": {
             "anyOf": [
@@ -29160,24 +29112,12 @@
       "ServiceCreateRequest": {
         "additionalProperties": false,
         "properties": {
-          "appointment_booking_enabled": {
-            "default": false,
-            "title": "Appointment Booking Enabled",
-            "type": "boolean"
-          },
           "booking_pathways": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/BookingPathway"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Booking Pathways"
+            "items": {
+              "$ref": "#/components/schemas/BookingPathway"
+            },
+            "title": "Booking Pathways",
+            "type": "array"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [
@@ -29245,7 +29185,8 @@
         },
         "required": [
           "code",
-          "name"
+          "name",
+          "booking_pathways"
         ],
         "title": "ServiceCreateRequest",
         "type": "object"
@@ -29476,10 +29417,6 @@
             "title": "Activation Blockers",
             "type": "array"
           },
-          "appointment_booking_enabled": {
-            "title": "Appointment Booking Enabled",
-            "type": "boolean"
-          },
           "booking_pathways": {
             "items": {
               "$ref": "#/components/schemas/BookingPathway"
@@ -29564,7 +29501,6 @@
           "code",
           "name",
           "description",
-          "appointment_booking_enabled",
           "booking_pathways",
           "default_appointment_duration_minutes",
           "cancellation_cutoff_minutes",
@@ -29826,11 +29762,6 @@
           "acknowledge_scheduling_consequences": {
             "default": false,
             "title": "Acknowledge Scheduling Consequences",
-            "type": "boolean"
-          },
-          "appointment_booking_enabled": {
-            "default": false,
-            "title": "Appointment Booking Enabled",
             "type": "boolean"
           },
           "booking_pathways": {
@@ -71399,7 +71330,7 @@
           },
           {
             "in": "query",
-            "name": "appointment_booking_enabled",
+            "name": "flexible_appointment_booking",
             "required": false,
             "schema": {
               "anyOf": [
@@ -71410,7 +71341,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Appointment Booking Enabled"
+              "title": "Flexible Appointment Booking"
             }
           },
           {

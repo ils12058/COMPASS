@@ -9,6 +9,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.service_catalog.models import (
     Service,
+    ServiceBookingPathway,
     ServiceCounselorProvider,
     ServiceDeliveryMode,
     ServiceProviderCoverage,
@@ -20,7 +21,7 @@ def legacy_counseling_service(
     *,
     code: str,
     name: str,
-    appointment_booking_enabled: bool,
+    booking_pathways: list[str],
     context,
     description: str = "",
     default_appointment_duration_minutes: int | None = None,
@@ -35,11 +36,13 @@ def legacy_counseling_service(
         code=code,
         name=name,
         description=description,
-        appointment_booking_enabled=appointment_booking_enabled,
         default_appointment_duration_minutes=default_appointment_duration_minutes,
         cancellation_cutoff_minutes=cancellation_cutoff_minutes,
         requires_current_inventory=requires_current_inventory,
         provider_coverage=provider_coverage,
+    )
+    ServiceBookingPathway.objects.bulk_create(
+        [ServiceBookingPathway(service=service, code=pathway) for pathway in booking_pathways]
     )
     ServiceDeliveryMode.objects.bulk_create(
         [ServiceDeliveryMode(service=service, mode=mode) for mode in delivery_modes or []]

@@ -22,6 +22,7 @@ REVIEWED = [
     ("group_sessions", "0002_alter_groupsessionfacilitator_group_session"),
     ("group_sessions", "0003_group_session_scheduling_and_external_facilitators"),
     ("service_catalog", "0004_serviceappointmentslot_withdrawn_at_and_more"),
+    ("service_catalog", "0005_remove_legacy_booking_flag_and_provider_roles"),
 ]
 LIVE_STATE = {"group_sessions": "0001_initial", "service_catalog": "0003_fixed_date_slots"}
 

@@ -127,7 +127,7 @@ export function ServicesListPage() {
     {
       ...(includeInactive ? { include_inactive: true } : {}),
       ...(search ? { search } : {}),
-      ...(booking ? { appointment_booking_enabled: booking === "available" } : {}),
+      ...(booking ? { flexible_appointment_booking: booking === "available" } : {}),
       ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
       page,
       page_size: 20,
@@ -314,8 +314,8 @@ export function ServicesListPage() {
                     </dt>
                     <dd className="mt-1 text-ink">
                       <p>{pathwaySummary(service.booking_pathways)}</p>
-                      <p className="mt-1 text-muted">{serviceBookingLabel(service.appointment_booking_enabled)}
-                      {service.appointment_booking_enabled &&
+                      <p className="mt-1 text-muted">{serviceBookingLabel(service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT))}
+                      {service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT) &&
                       service.default_appointment_duration_minutes !== null
                         ? " · " + service.default_appointment_duration_minutes + " min"
                         : ""}</p>

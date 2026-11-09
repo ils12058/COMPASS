@@ -93,7 +93,6 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
                 service = Service.objects.create(
                     code=COUNSELING_SERVICE_CODE,
                     name=COUNSELING_NAME,
-                    appointment_booking_enabled=True,
                     default_appointment_duration_minutes=COUNSELING_DURATION_MINUTES,
                     cancellation_cutoff_minutes=COUNSELING_CANCELLATION_CUTOFF_MINUTES,
                     requires_current_inventory=False,
@@ -126,14 +125,14 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
     ):
         changes["name"] = COUNSELING_NAME
 
+    configuration = _current_configuration(service)
     duration = service.default_appointment_duration_minutes
-    if service.appointment_booking_enabled and (
+    if BookingPathwayCode.FLEXIBLE_APPOINTMENT in configuration.booking_pathways and (
         duration is None
         or not MIN_SERVICE_DURATION_MINUTES <= duration <= MAX_SERVICE_DURATION_MINUTES
     ):
         changes["default_appointment_duration_minutes"] = COUNSELING_DURATION_MINUTES
 
-    configuration = _current_configuration(service)
     valid_modes = configuration.delivery_modes & set(DeliveryMode.values)
     if not valid_modes:
         valid_modes = frozenset({DeliveryMode.IN_PERSON})

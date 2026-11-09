@@ -648,21 +648,21 @@ Counseling Office offers. A Service is more fundamental than Appointment
 ([ADR-089](docs/decisions/ADR-089-service-catalog-consolidation-and-counselor-qualification.md)
 refines ADR-018). Each Service stores:
 
-- `appointment_booking_enabled`, whether the Service can be newly booked through Appointments. An
-  enabled Service does not require every workflow to start from an Appointment: canonical
-  Counseling is bookable and still records walk-in, called-in, and referred sessions.
+- `booking_pathways`, the only booking configuration: `FLEXIBLE_APPOINTMENT` (newly bookable
+  through Appointments), `FIXED_DATE_SLOT`, and `GROUP_SESSION` are independent and may coexist. A
+  Service with `FLEXIBLE_APPOINTMENT` does not require every workflow to start from an Appointment:
+  canonical Counseling is bookable and still records walk-in, called-in, and referred sessions.
 - One or more supported delivery modes (`IN_PERSON` and/or `ONLINE`).
 - Appointment-only settings: `default_appointment_duration_minutes` (1–480), an optional
-  `cancellation_cutoff_minutes`, and `requires_current_inventory`. They are unset while booking is
-  off, and turning booking off clears them.
+  `cancellation_cutoff_minutes`, and `requires_current_inventory`. They are unset while the
+  `FLEXIBLE_APPOINTMENT` pathway is absent, and removing that pathway clears them.
 - `provider_coverage`: `ALL_COUNSELORS`, or `SELECTED_COUNSELORS` with explicit Counselor rows.
 
 Counselor is the only provider class. A Counselor qualifies for new work on a Service when the
 account is active, its primary role is COUNSELOR, and coverage is all Counselors or selects them;
-Head Guidance Counselors qualify through their Counselor role. Legacy provider-role rows remain as
-history and are never used for eligibility. Guidance Office Assistants can administer scoped
-Appointments but cannot act as providers. ONLINE Counseling is a delivery mode, not a separate
-E-Counseling Service.
+Head Guidance Counselors qualify through their Counselor role. Guidance Office Assistants can
+administer scoped Appointments but cannot act as providers. ONLINE Counseling is a delivery mode,
+not a separate E-Counseling Service.
 
 New Services are created inactive and are enabled explicitly only after the active configuration
 invariant is satisfied: an active bookable Service needs a duration, and an active

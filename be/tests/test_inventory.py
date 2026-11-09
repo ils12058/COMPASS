@@ -205,7 +205,7 @@ def active_service(actor: User, *, requires_inventory: bool):
     service = legacy_counseling_service(
         code="COUNSELING",
         name="Counseling",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         requires_current_inventory=requires_inventory,

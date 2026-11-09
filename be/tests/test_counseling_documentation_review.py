@@ -183,7 +183,7 @@ def test_worklist_excludes_states_that_need_no_reconciliation():
     other = make_user("review-exclusions-other@example.edu", "COUNSELOR")
     inactive_student = make_user("review-exclusions-inactive@example.edu", "STUDENT", active=False)
     other_service = create_service(
-        code="CAREER_GUIDANCE", name="Career Guidance", context=context(admin)
+        code="CAREER_GUIDANCE", name="Career Guidance", booking_pathways=[], context=context(admin)
     )
 
     cancelled_bare = make_appointment(

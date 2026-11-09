@@ -138,7 +138,7 @@ function initialFromService(
     code: service.code,
     name: service.name,
     description: service.description,
-    bookingEnabled: service.appointment_booking_enabled,
+    bookingEnabled: service.booking_pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT),
     fixedDateSlots: service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) ?? false,
     groupSessions: service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) ?? false,
     defaultDuration:
@@ -628,7 +628,6 @@ export function CreateServicePage() {
       code: values.code,
       name: values.name,
       description: values.description,
-      appointment_booking_enabled: values.bookingEnabled,
       booking_pathways: configuredBookingPathways(values),
       default_appointment_duration_minutes: values.bookingEnabled
         ? nullableInteger(values.defaultDuration)
@@ -695,7 +694,9 @@ function reviewedChange(
       Array.isArray(nextModes) &&
       !nextModes.includes(DeliveryMode.ONLINE),
     bookingTurnedOff:
-      service.appointment_booking_enabled && changes.appointment_booking_enabled === false,
+      currentPathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT) &&
+      Array.isArray(nextPathways) &&
+      !nextPathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT),
     fixedSlotPathwayRemoved:
       currentPathways.includes(BookingPathway.FIXED_DATE_SLOT) &&
       Array.isArray(nextPathways) &&
@@ -762,11 +763,8 @@ export function EditServicePage() {
     if (values.description !== service.description) {
       changes.description = values.description;
     }
-    if (values.bookingEnabled !== service.appointment_booking_enabled) {
-      changes.appointment_booking_enabled = values.bookingEnabled;
-    }
     const nextPathways = configuredBookingPathways(values);
-    if (!sameStringSet(nextPathways, service.booking_pathways ?? (service.appointment_booking_enabled ? [BookingPathway.FLEXIBLE_APPOINTMENT] : []))) {
+    if (!sameStringSet(nextPathways, service.booking_pathways)) {
       changes.booking_pathways = nextPathways;
     }
     // Turning booking off clears Appointment-only settings on the server.

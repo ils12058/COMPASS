@@ -4,7 +4,7 @@ import { user } from "./support/ui-hierarchy-fixtures.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("release-unblock");
-const service = { id: "release-service", code: "WORKSHOP", name: "Career Workshop", description: "", booking_pathways: ["GROUP_SESSION"], delivery_modes: ["IN_PERSON"], is_active: true, appointment_booking_enabled: false, activation_blockers: [], is_system_required: false, provider_coverage: "ALL_COUNSELORS" };
+const service = { id: "release-service", code: "WORKSHOP", name: "Career Workshop", description: "", booking_pathways: ["GROUP_SESSION"], delivery_modes: ["IN_PERSON"], is_active: true, activation_blockers: [], is_system_required: false, provider_coverage: "ALL_COUNSELORS" };
 const event = { id: "release-session", service_id: service.id, service_name: service.name, title: "Career planning", description: "Plan your next steps.", starts_at: "2026-11-12T01:00:00Z", ends_at: "2026-11-12T02:00:00Z", status: "PUBLISHED", delivery_mode: "IN_PERSON", venue_or_meeting_url: "Room A", reg_opens_at: null, reg_closes_at: null, capacity: 20, active_registrations_count: 1, seats_remaining: 19, is_registered_by_me: false, can_register: true, facilitators: [], can_manage: true, can_view: true, can_access_participants: true, can_record_attendance: true, can_export_roster: true, can_complete: false, version: 1, schedule_revision: 1 };
 const metrics = { total_sessions: 1, published_sessions: 1, completed_sessions: 0, total_registrations: 1, capacity_utilization_percent: 5, attendance_rate_percent: 0 };
 const pageOf = items => ({ items, page: 1, page_size: 50, has_next: false, ordering: "NAME_ASC" });

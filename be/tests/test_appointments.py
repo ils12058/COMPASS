@@ -46,7 +46,7 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
 )
-from compass.service_catalog.models import Service, ServiceDeliveryMode
+from compass.service_catalog.models import Service, ServiceBookingPathway, ServiceDeliveryMode
 from compass.service_catalog.services import create_service, set_service_active, update_service
 from compass.student_academics.models import StudentAcademicProfile
 
@@ -130,7 +130,7 @@ def active_service(
     service = create_service(
         code=code,
         name=code.replace("_", " ").title(),
-        appointment_booking_enabled=booking,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"] if booking else [],
         default_appointment_duration_minutes=duration if booking else None,
         cancellation_cutoff_minutes=cutoff if booking else None,
         requires_current_inventory=requires_current_inventory,
@@ -312,7 +312,7 @@ def test_service_policy_and_delivery_mode_gate_booking():
     none_service = create_service(
         code="NO_APPOINTMENT",
         name="No Appointment",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         delivery_modes=["IN_PERSON"],
         context=context(actor),
     )
@@ -995,7 +995,7 @@ def test_database_constraints_preserve_local_appointment_invariants():
     service = create_service(
         code="CONSTRAINT_SERVICE",
         name="Constraint Service",
-        appointment_booking_enabled=False,
+        booking_pathways=[],
         context=context(student),
     )
     now = timezone.now()
@@ -1288,7 +1288,7 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     inactive = create_service(
         code="BOOK_INACTIVE",
         name="Book Inactive",
-        appointment_booking_enabled=True,
+        booking_pathways=["FLEXIBLE_APPOINTMENT"],
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         delivery_modes=["IN_PERSON"],
@@ -1297,12 +1297,12 @@ def test_booking_service_discovery_is_appointment_owned_filtered_and_paginated()
     invalid_provider = Service.objects.create(
         code="BOOK_NO_COUNSELOR",
         name="Book No Counselor",
-        appointment_booking_enabled=True,
         default_appointment_duration_minutes=60,
         cancellation_cutoff_minutes=30,
         provider_coverage="SELECTED_COUNSELORS",
         is_active=True,
     )
+    ServiceBookingPathway.objects.create(service=invalid_provider, code="FLEXIBLE_APPOINTMENT")
     ServiceDeliveryMode.objects.create(service=invalid_provider, mode="IN_PERSON")
 
     anonymous = Client().get("/api/v1/appointments/booking/services")

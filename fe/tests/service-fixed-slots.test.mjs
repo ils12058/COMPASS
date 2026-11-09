@@ -49,7 +49,6 @@ const service = {
   code: "SCHOLARSHIP_REVIEW",
   name: "Scholarship Consultation",
   description: "Fixed date consultations for applicants.",
-  appointment_booking_enabled: false,
   booking_pathways: ["FIXED_DATE_SLOT"],
   default_appointment_duration_minutes: 30,
   cancellation_cutoff_minutes: 60,

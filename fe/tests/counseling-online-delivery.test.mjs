@@ -54,7 +54,7 @@ function serviceResponse(overrides = {}) {
     code: "COUNSELING",
     name: "Counseling",
     description: "",
-    appointment_booking_enabled: true,
+    booking_pathways: ["FLEXIBLE_APPOINTMENT"],
     default_appointment_duration_minutes: 60,
     cancellation_cutoff_minutes: 30,
     requires_current_inventory: false,
@@ -153,7 +153,7 @@ test("Counseling detail shows scheduling state and discloses configuration seman
   assert.doesNotMatch(html, /provider is (ready|healthy)/);
   const onlineOnly = detail(serviceResponse({ delivery_modes: ["ONLINE"] }), serviceManager);
   assert.match(onlineOnly, />In person<\/dt><dd[^>]*>Not enabled</);
-  const bookingOff = detail(serviceResponse({ delivery_modes: ["ONLINE"], appointment_booking_enabled: false, default_appointment_duration_minutes: null, cancellation_cutoff_minutes: null }), serviceManager);
+  const bookingOff = detail(serviceResponse({ delivery_modes: ["ONLINE"], booking_pathways: [], default_appointment_duration_minutes: null, cancellation_cutoff_minutes: null }), serviceManager);
   assert.match(bookingOff, />New E-Counseling appointments<\/dt><dd[^>]*>Unavailable</);
 });
 
