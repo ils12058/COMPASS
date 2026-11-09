@@ -57,7 +57,7 @@ const mappings = [
     [inventoryErrorMessage, 'inventory_conflict', /Review your answers and inventory status/],
     [referralErrorMessage, 'invalid_referral_request', /Some Referral details need attention/],
     [callSlipErrorMessage, 'invalid_call_slip_request', /Some Call Slip details need attention/],
-    [routineErrorMessage, 'routine_interview_form_revision_unsupported', /can't be used.*Contact the Guidance Office administrator/],
+    [routineErrorMessage, 'routine_interview_form_revision_unsupported', /can't be used.*Contact the Guidance Office\./],
     [appointmentErrorMessage, 'appointment_default_provider_unresolved', /could not be selected.*Choose an eligible counselor/],
     [counselingErrorMessage, 'counseling_invalid_request', /Some counseling details need attention/],
     [servicesErrorMessage, 'invalid_service_catalog_request', /Some service details need attention/],
@@ -78,7 +78,9 @@ for (const [produce, code] of [[referralErrorMessage, 'referral_not_permitted'],
         const text = produce(api(code, 404), fallback);
         assert.match(text, [referralErrorMessage, callSlipErrorMessage].includes(produce)
             ? /^You don't have access to this (Referral|Call Slip)\.$/
-            : /unavailable|not available|could not be found|no longer available/);
+            : [counselingErrorMessage, inventoryErrorMessage, exitInterviewErrorMessage].includes(produce)
+                ? /You don't have access/
+                : /unavailable|not available|could not be found|no longer available/);
         assert.doesNotMatch(text, /exists|another account|owner|tenant|capability/);
     });
 test('Routine forbidden and not-found records preserve identical concealment', () => assert.equal(routineErrorMessage(api('routine_interview_not_found', 404), fallback), routineErrorMessage(api('routine_interview_not_permitted', 403), fallback)));

@@ -133,7 +133,7 @@ export function ExitInterviewOperationalList({
               label="Academic Year"
               htmlFor="exit-interview-year"
               hint={academicYears.isError ? (
-                <p id="exit-interview-year-error" className="text-xs text-warning">Academic Year choices could not be loaded.</p>
+                <p id="exit-interview-year-error" className="text-xs text-warning">Couldn&apos;t load Academic Year choices.</p>
               ) : null}
             >
               <Select
@@ -146,7 +146,7 @@ export function ExitInterviewOperationalList({
                 <option value="">All Academic Years</option>
                 {academicYearId && !selectedYearKnown ? (
                   <option value={academicYearId}>
-                    {academicYears.isPending ? "Loading academic year…" : "Selected Academic Year"}
+                    {academicYears.isPending ? "Loading Academic Year…" : "Selected Academic Year"}
                   </option>
                 ) : null}
                 {years.map((year) => (
@@ -172,7 +172,7 @@ export function ExitInterviewOperationalList({
       {queue.isError && page && !hideStaleQueue ? (
         <ExitInterviewError
           error={queue.error}
-          fallback="The Exit Interview responses could not be refreshed. Showing the last confirmed results."
+          fallback="Couldn't refresh the Exit Interview responses. Showing the last confirmed results."
           onRetry={() => void queue.refetch()}
         />
       ) : null}
@@ -205,7 +205,7 @@ export function ExitInterviewOperationalList({
           <ExitInterviewListSkeleton label="Loading Exit Interview responses…" framed={false} />
         ) : queue.isError && (!page || hideStaleQueue) ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}>
-            {exitInterviewErrorMessage(queue.error, "The Exit Interview responses could not be loaded.")}
+            {exitInterviewErrorMessage(queue.error, "Couldn't load the Exit Interview responses.")}
           </PanelMessage>
         ) : !page ? null : page.items.length === 0 && page.page > 1 ? (
           <PanelMessage

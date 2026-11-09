@@ -80,8 +80,8 @@ type RecordEncounterFormProps = {
 // Who and what an Encounter recorded from this origin is fixed to.
 export function encounterProvenanceNote(entryMode: CounselingEntryMode): string {
   return entryMode === "APPOINTMENT"
-    ? "The Appointment sets the student, Service, and delivery mode. You are recorded as the counselor."
-    : "You are recorded as the counselor for this encounter.";
+    ? "The Appointment sets the Student, Service, and delivery mode. You are recorded as the Counselor."
+    : "You are recorded as the Counselor for this encounter.";
 }
 
 export function encounterCreatePayload(
@@ -278,13 +278,13 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
     return (
       <Panel aria-labelledby="record-encounter-source-heading">
         <PanelHeader
-          title="Record counseling encounter"
+          title="Record Counseling Encounter"
           titleId="record-encounter-source-heading"
           actions={onCancel && !uncertain ? <Button variant="quiet" onClick={onCancel}>Close</Button> : undefined}
         />
         <PanelBody>
           <div role="group" aria-label="Counseling interaction source" className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={() => changeSource("appointment")}>From Counseling appointment</Button>
+            <Button variant="secondary" onClick={() => changeSource("appointment")}>From Counseling Appointment</Button>
             <Button variant="secondary" onClick={() => changeSource("direct")}>Walk-in / called-in / referred</Button>
           </div>
         </PanelBody>
@@ -311,7 +311,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
         </div>
         {scheduled ? (
           <div className="min-w-0 sm:col-span-2">
-            <dt className="text-xs font-semibold text-muted">Scheduled appointment</dt>
+            <dt className="text-xs font-semibold text-muted">Scheduled Appointment</dt>
             <dd className="mt-1 text-sm text-ink">{scheduled}</dd>
           </div>
         ) : null}
@@ -366,7 +366,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
   return (
     <Panel aria-labelledby="record-encounter-heading">
       <PanelHeader
-        title="Record counseling encounter"
+        title="Record Counseling Encounter"
         titleId="record-encounter-heading"
         description={preset ? undefined : source === "appointment" ? "Choose an Appointment." : "Choose a Student."}
         actions={!preset && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={() => changeSource(source === "appointment" ? "direct" : "appointment")}>Change source</Button> : undefined}
@@ -381,9 +381,9 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading counseling appointments…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="text-sm text-muted">No eligible counseling appointments match this search.</p> : (
+          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Counseling Appointments…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Couldn't load Counseling Appointments.")}</p> : appointments.length === 0 ? <p className="text-sm text-muted">No Counseling Appointments you can use match this search.</p> : (
             <>
-              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Counseling Appointment candidates">
+              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Counseling Appointment choices">
                 {appointments.map((candidate) => (
                   <li key={candidate.id}>
                     <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); clearTimes(); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
@@ -396,7 +396,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
                   </li>
                 ))}
               </ul>
-              <CanonicalPagination className="border-t-0 pb-0" label="Appointment candidate pages" page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
+              <CanonicalPagination className="border-t-0 pb-0" label="Appointment choice pages" page={appointmentCandidates.data?.data.page ?? page} hasNext={appointmentCandidates.data?.data.has_next ?? false} onPageChange={setPage} />
             </>
           )}
         </div>
@@ -404,8 +404,8 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
 
       {!preset && source === "direct" ? (
         <div className="space-y-5 px-4 py-4 sm:px-5">
-          {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Counseling recording options could not be loaded.")}</p> : options ? (
-            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is available for this counseling service.</p> : null}</div>
+          {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Couldn't load Counseling recording options.")}</p> : options ? (
+            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is available for this counseling Service.</p> : null}</div>
           ) : null}
           <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); clearTimes(); setError(null); }}>
             <Label htmlFor="counseling-student-search">Search for a Student</Label>
@@ -414,9 +414,9 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading students…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No students match this search.</p> : (
+          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Students…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Couldn't load Students.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No Students match this search.</p> : (
             <>
-              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Student candidates">
+              <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Students">
                 {studentItems.map((student) => (
                   <li key={student.id}>
                     <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) clearTimes(); setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>

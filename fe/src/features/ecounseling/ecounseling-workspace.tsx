@@ -94,7 +94,7 @@ function SessionHeader({
       help={<ECounselingHelp />}
       back={(
         <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
-          Back to appointment
+          Back to Appointment
         </GuardedPortalLink>
       )}
     >
@@ -163,7 +163,7 @@ function WorkspaceSkeleton() {
 }
 
 function WorkspaceLoadError({ error, retry }: { error: unknown; retry: () => void }) {
-  return <section className="max-w-2xl"><PageHeader title="E-Counseling unavailable" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to appointments</Link></>}>{ecounselingErrorMessage(error, "This E-Counseling session is unavailable. Try again.")}</Notice></section>;
+  return <section className="max-w-2xl"><PageHeader title="E-Counseling" /><Notice role="alert" action={<><Button variant="secondary" onClick={retry}>Retry</Button><Link className="inline-flex min-h-10 items-center px-2 text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/portal/appointments/my">Return to Appointments</Link></>}>{ecounselingErrorMessage(error, "Couldn't load this E-Counseling session. Try again.")}</Notice></section>;
 }
 
 const JOIN_BOUNDARY_REFRESH_BUFFER_MS = 500;
@@ -228,7 +228,7 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
   const { user } = usePortalSession();
   const access = getECounselingAccess(user);
   if (!access.hasWorkspace) {
-    return <WorkspaceUnavailable title="E-Counseling unavailable">This session is unavailable.</WorkspaceUnavailable>;
+    return <WorkspaceUnavailable title="E-Counseling">You don&apos;t have access to this session.</WorkspaceUnavailable>;
   }
   return access.isStudent
     ? <StudentWorkspace appointmentId={appointmentId} access={access} />
@@ -465,7 +465,7 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
               return <Link key={action} className={buttonVariants({ variant: view.state === "UNCERTAIN" ? "quiet" : "secondary" })} href="/portal/counseling#encounters">View encounters</Link>;
             }
             if (action === "view-appointment") {
-              return <Link key={action} className={buttonVariants({ variant: "secondary" })} href={`/portal/appointments/${appointmentId}`}>View appointment</Link>;
+              return <Link key={action} className={buttonVariants({ variant: "secondary" })} href={`/portal/appointments/${appointmentId}`}>View Appointment</Link>;
             }
             if (action === "finish") {
               return <Button key={action} onClick={openFinish}>Finish counseling</Button>;
@@ -512,7 +512,7 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   const data = safeQueryData(context)?.data;
   if (!available) {
     return (
-      <DisclosureSection title="Student information" status="Unavailable right now">
+      <DisclosureSection title="Student information" status="Check Student information">
         <p className="px-1 text-sm text-muted">Student information isn’t available for this session right now.</p>
       </DisclosureSection>
     );
@@ -521,9 +521,9 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   return (
     <DisclosureSection title="Student information" status={status} defaultOpen={defaultOpen}>
       {context.isPending ? (
-        <div aria-busy="true"><span className="sr-only">Loading student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
+        <div aria-busy="true"><span className="sr-only">Loading Student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
       ) : !data ? (
-        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Student information couldn’t be loaded. Try again.</Notice>
+        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t load Student information. Try again.</Notice>
       ) : (
         <>
           {canShowLastKnownData(context) ? <RefreshFailureNotice onRetry={() => void context.refetch()} retrying={context.isFetching} /> : null}

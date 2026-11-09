@@ -94,9 +94,9 @@ async function joinCall(page, waitingFor = STUDENT) {
     await shown(stage(page).getByText("Connected", { exact: true }));
 
     // Top overlay status pill
-    const notice = stage(page).getByRole("status").filter({ hasText: "Appointment ending soon" });
+    const notice = stage(page).getByRole("status").filter({ hasText: "10 minutes left" });
     await shown(notice);
-    assert.match(await notice.innerText(), /scheduled to end in 10 minutes/);
+    assert.match(await notice.innerText(), /Start wrapping up and agree on next steps\./);
     await screenshot(page, "timing-10min-warning-student");
 
     // Non-blocking invariant: Daily not disconnected, stage remains active
@@ -112,9 +112,9 @@ async function joinCall(page, waitingFor = STUDENT) {
     await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
     await shown(stage(page).getByText("Connected", { exact: true }));
 
-    const notice = stage(page).getByRole("status").filter({ hasText: "5 minutes remaining" });
+    const notice = stage(page).getByRole("status").filter({ hasText: "5 minutes left" });
     await shown(notice);
-    assert.match(await notice.innerText(), /scheduled appointment ends in 5 minutes/);
+    assert.match(await notice.innerText(), /Agree on next steps before the Appointment ends\./);
     await screenshot(page, "timing-5min-reminder-counselor");
 
     // Governed controls remain accessible
@@ -131,9 +131,9 @@ async function joinCall(page, waitingFor = STUDENT) {
     await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
     await shown(stage(page).getByText("Connected", { exact: true }));
 
-    const notice = stage(page).getByRole("status").filter({ hasText: "Scheduled time reached" });
+    const notice = stage(page).getByRole("status").filter({ hasText: "Scheduled time ended" });
     await shown(notice);
-    assert.match(await notice.innerText(), /scheduled appointment time has ended/);
+    assert.match(await notice.innerText(), /If you're still talking, agree on next steps\./);
     await screenshot(page, "timing-scheduled-end-stage");
 
     // Active call not interrupted
@@ -152,7 +152,7 @@ async function joinCall(page, waitingFor = STUDENT) {
 
     const notice = stage(page).getByRole("status").filter({ hasText: "Past scheduled end" });
     await shown(notice);
-    assert.match(await notice.innerText(), /scheduled appointment time has passed/);
+    assert.match(await notice.innerText(), /Wrap up your discussion and agree on next steps\./);
     await screenshot(page, "timing-overtime-stage");
   });
 }
@@ -172,9 +172,9 @@ async function joinCall(page, waitingFor = STUDENT) {
     await shown(dock(page));
 
     // Expanded dock shows timing notice box
-    const fullNotice = dock(page).getByRole("status").filter({ hasText: "Appointment ending soon" });
+    const fullNotice = dock(page).getByRole("status").filter({ hasText: "10 minutes left" });
     await shown(fullNotice);
-    assert.match(await fullNotice.innerText(), /Your appointment is scheduled to end in 10 minutes/);
+    assert.match(await fullNotice.innerText(), /Start wrapping up and agree on next steps\./);
     await screenshot(page, "timing-expanded-dock");
 
     // Collapse dock: folds into single row with compact label
@@ -217,9 +217,9 @@ async function joinCall(page, waitingFor = STUDENT) {
     await shown(stage(page).getByText("Connected", { exact: true }));
 
     // The single portal-wide polite announcement container for timing
-    const liveRegion = page.locator('p[aria-live="polite"].sr-only').filter({ hasText: /Appointment ending soon/ });
+    const liveRegion = page.locator('p[aria-live="polite"].sr-only').filter({ hasText: /10 minutes left/ });
     await shown(liveRegion);
-    assert.match(await liveRegion.innerText(), /Appointment ending soon.*scheduled to end in 10 minutes/);
+    assert.match(await liveRegion.innerText(), /10 minutes left\. Start wrapping up and agree on next steps\./);
   });
 }
 

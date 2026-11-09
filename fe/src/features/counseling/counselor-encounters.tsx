@@ -105,7 +105,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
             <PageAction
               icon={recordOpen ? X : NotebookPen}
               label={recordOpen ? "Close" : "Record"}
-              labelDetail={recordOpen ? "recording" : "counseling encounter"}
+              labelDetail={recordOpen ? "recording" : "Counseling Encounter"}
               variant={recordOpen ? "secondary" : "primary"}
               aria-expanded={recordOpen}
               onClick={() => setRecordOpen((open) => !open)}
@@ -121,13 +121,13 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
       <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className={recordOpen ? "mt-5" : undefined}>
           {/* The collection tools step aside while an encounter is being recorded. */}
           {recordOpen ? null : (
-          <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="Counseling encounters">
+          <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="Counseling Encounters">
           {/* Applying filters keeps the reader's chosen order. */}
           {requestedOrdering ? <input type="hidden" name="ordering" value={requestedOrdering} /> : null}
           {reviewPage > 1 ? <input type="hidden" name="review_page" value={reviewPage} /> : null}
           <FloatingListTools
             submits
-            label="Counseling encounter filters"
+            label="Counseling Encounter filters"
             filterCount={[entryMode, deliveryMode, fromDate, toDate].filter(Boolean).length}
             clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(clearedHref, { scroll: false })}>Clear filters</Button> : undefined}
             filters={<>
@@ -144,7 +144,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
 
           <Panel as="div">
           <PanelHeader
-            title="My counseling encounters"
+            title="My Counseling Encounters"
             titleId="my-counseling-encounters-heading"
             actions={
               <SortField
@@ -163,13 +163,13 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
             }) : null}
           />
           {encounters.isPending ? (
-            <CounselingListSkeleton label="Loading your counseling encounters…" framed={false} />
+            <CounselingListSkeleton label="Loading your Counseling Encounters…" framed={false} />
           ) : encounters.isError ? (
             <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void encounters.refetch()}>Retry</Button>}>
-              {counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")}
+              {counselingErrorMessage(encounters.error, "Couldn't load my Counseling Encounters.")}
             </PanelMessage>
           ) : items.length === 0 ? (
-            <PanelMessage>{hasFilters ? "No counseling encounters match the current filters. Clear or adjust them to broaden the results." : "No counseling encounters are assigned to you yet."}</PanelMessage>
+            <PanelMessage>{hasFilters ? "No Counseling Encounters match the current filters. Clear or adjust them to broaden the results." : "No Counseling Encounters are assigned to you yet."}</PanelMessage>
           ) : (
               <div className={dataTable.scroll}>
                 <table className={`${dataTable.table} min-w-[850px]`}>

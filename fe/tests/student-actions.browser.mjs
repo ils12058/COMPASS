@@ -256,7 +256,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
       await page.getByRole("link", { name: "Review consent", exact: true }).click();
       await page.getByRole("button", { name: /^Decline / }).first().click();
       await page.getByRole("alertdialog").getByRole("button", { name: "Decline", exact: true }).click();
-      await shown(page.getByText("Your choice has been saved. Counseling remains available.", { exact: true }));
+      await shown(page.getByText("Choice saved. Counseling remains available.", { exact: true }));
       await page.getByRole("navigation", { name: "Portal navigation" }).getByRole("link", { name: "My actions", exact: true }).click();
       await shown(page.getByText(remaining ? "A consent decision requires your review." : "You're all caught up.", { exact: true }));
     }

@@ -294,7 +294,7 @@ await check("P2A Counselor Routine Interview distinguishes context from Student 
 await check("P2A Student Routine Interview keeps Intake work in its existing form flow", `/portal/routine-interviews/${routineId}`, routineOptions("STUDENT"), async (page) => {
   await shown(page.getByRole("heading", { name: "Routine Interview", exact: true }));
   await shown(page.getByRole("heading", { name: "Student Intake", exact: true }));
-  await shown(page.getByRole("button", { name: "Save Progress", exact: true }));
+  await shown(page.getByRole("button", { name: "Save progress", exact: true }));
   await hidden(page.getByRole("heading", { name: "Counselor Evaluation", exact: true }));
   await hidden(page.getByRole("link", { name: "Open Counseling workspace", exact: true }));
   await hidden(page.getByRole("group", { name: "Routine Interview page actions", exact: true }));

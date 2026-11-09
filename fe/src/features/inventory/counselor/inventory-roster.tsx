@@ -115,7 +115,7 @@ function RosterFilters({
               <option value="">Current Academic Year</option>
               {applied.academicYearId && !appliedYearKnown ? (
                 <option value={applied.academicYearId}>
-                  {yearsFailed ? "Selected Academic Year" : "Loading academic year…"}
+                  {yearsFailed ? "Selected Academic Year" : "Loading Academic Year…"}
                 </option>
               ) : null}
               {years.map((year) => (
@@ -294,7 +294,7 @@ export function CounselorInventoryRoster() {
         notes={academicYears.isError && canFilterYear || missingYearUnresolved || suppressMissing ? (
           <>
             {academicYears.isError && canFilterYear ? (
-              <p role="status" className="text-sm text-warning">Academic Year choices could not be loaded. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
+              <p role="status" className="text-sm text-warning">Couldn&apos;t load Academic Year choices. The roster still uses the selected Academic Year when one is present; otherwise, it uses the current Academic Year.</p>
             ) : null}
             {missingYearUnresolved ? (
               <p role="status" className="text-sm text-warning">The Missing filter is paused until this Academic Year can be confirmed. Missing status applies only to the current Academic Year.</p>
@@ -325,23 +325,23 @@ export function CounselorInventoryRoster() {
               : null}
         />
         {roster.isPending ? (
-          <RowsSkeleton label="Loading scoped Student Individual Inventory roster…" rows={2} />
+          <RowsSkeleton label="Loading Individual Inventories…" rows={2} />
         ) : roster.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void roster.refetch()}>Try again</Button>}>
-            {inventoryErrorMessage(roster.error, "The scoped Student Inventory roster could not be loaded.")}
+            {inventoryErrorMessage(roster.error, "Couldn't load Individual Inventories. Try again.")}
           </PanelMessage>
         ) : response && response.items.length === 0 ? (
           <PanelMessage>
             {effectiveStatus === InventoryStatusValue.MISSING
               ? "No Students are currently missing an Inventory under these filters."
               : hasFilters
-                ? "No students match these filters."
-                : "No students are available."}
+                ? "No Students match these filters."
+                : "No Students are available."}
           </PanelMessage>
         ) : response ? (
           <div className={dataTable.scroll}>
             <table className={`${dataTable.table} min-w-[62rem]`}>
-              <caption className="sr-only">Counselor-scoped annual Student Individual Inventory roster</caption>
+              <caption className="sr-only">Individual Inventories for this Academic Year</caption>
               <thead className={dataTable.head}>
                 <tr>
                   <SortableColumnHeader

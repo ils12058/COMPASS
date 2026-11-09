@@ -56,8 +56,8 @@ test("scenario 2: exactly 10 minutes before scheduled end enters APPROACHING_END
 
   const notice = getSessionTimingNotice("APPROACHING_END");
   assert.ok(notice);
-  assert.equal(notice.title, "Appointment ending soon");
-  assert.match(notice.message, /scheduled to end in 10 minutes/);
+  assert.equal(notice.title, "10 minutes left");
+  assert.match(notice.message, /Start wrapping up and agree on next steps\./);
   assert.equal(notice.compactLabel, "10 min left");
 });
 
@@ -83,8 +83,8 @@ test("scenario 4: exactly 5 minutes before scheduled end enters FINAL_REMINDER",
 
   const notice = getSessionTimingNotice("FINAL_REMINDER");
   assert.ok(notice);
-  assert.equal(notice.title, "5 minutes remaining");
-  assert.match(notice.message, /scheduled appointment ends in 5 minutes/);
+  assert.equal(notice.title, "5 minutes left");
+  assert.match(notice.message, /Agree on next steps before the Appointment ends\./);
   assert.equal(notice.compactLabel, "5 min left");
 });
 
@@ -111,8 +111,8 @@ test("scenario 6: at scheduled end (during scheduled end minute window) is SCHED
 
   const notice = getSessionTimingNotice("SCHEDULED_END_REACHED");
   assert.ok(notice);
-  assert.equal(notice.title, "Scheduled time reached");
-  assert.match(notice.message, /scheduled appointment time has ended/);
+  assert.equal(notice.title, "Scheduled time ended");
+  assert.match(notice.message, /If you're still talking, agree on next steps\./);
   assert.equal(notice.compactLabel, "Past scheduled end");
 });
 
@@ -131,7 +131,7 @@ test("scenario 7: after scheduled end while connected enters OVERTIME", () => {
   const notice = getSessionTimingNotice("OVERTIME");
   assert.ok(notice);
   assert.equal(notice.title, "Past scheduled end");
-  assert.match(notice.message, /scheduled appointment time has passed/);
+  assert.match(notice.message, /Wrap up your discussion and agree on next steps\./);
   assert.equal(notice.compactLabel, "Past scheduled end");
 });
 

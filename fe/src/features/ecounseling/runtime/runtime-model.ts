@@ -150,8 +150,8 @@ export function activeCaptureKinds(media: MediaWorkspaceState | undefined): Arra
 
 export function captureCessationWarning(kinds: ReadonlyArray<"recording">, action: "leave" | "sign-out" | "access-loss"): string | null {
   if (!kinds.length) return null;
-  const consequence = action === "leave" ? "Leaving the call may not stop" : action === "sign-out" ? "Signing out may not stop" : "Ending your local call may not stop";
-  return `Recording has not been confirmed as stopped. ${consequence} recording. Please confirm its status.`;
+  const consequence = action === "leave" ? "Stop it before you leave the call." : action === "sign-out" ? "Stop it before you sign out." : "Your call ending may not stop it; contact the Guidance Office.";
+  return `The recording may still be running. ${consequence}`;
 }
 
 // A decision the Student still has to make, from the COMPASS session state. The dock only points to
@@ -168,5 +168,5 @@ export function consentEndedNotice(media: MediaWorkspaceState | undefined): stri
   const ended = (status: ECounselingConsentStatus) => status === ECounselingConsentStatus.WITHDRAWN || status === ECounselingConsentStatus.DENIED;
   const status = media.recording.capture_status;
   const stopping = status === ECounselingCaptureStatus.STOP_REQUESTED || status === ECounselingCaptureStatus.ACTIVE;
-  return stopping && ended(media.recording.consent_status) ? "The student withdrew recording permission." : null;
+  return stopping && ended(media.recording.consent_status) ? "The Student withdrew recording permission." : null;
 }

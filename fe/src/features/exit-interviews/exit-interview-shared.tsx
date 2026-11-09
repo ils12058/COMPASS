@@ -43,21 +43,21 @@ export function exitInterviewErrorMessage(
 
   switch (readApiErrorCode(error.body)) {
     case "exit_interview_not_found":
-      return "This Exit Interview could not be found or is no longer available.";
+      return "You don't have access to this Exit Interview.";
     case "exit_interview_inventory_required":
       return "A submitted Individual Inventory for the current Academic Year is required before starting an Exit Interview.";
     case "current_student_required":
-      return "Only current students can start, edit, or submit an Exit Interview.";
+      return "Only current Students can start, edit, or submit an Exit Interview.";
     case "current_academic_year_not_configured":
-      return "The current academic year has not been set up. Contact the institutional administrator.";
+      return "The current Academic Year has not been set up. Contact the Guidance Office.";
     case "exit_interview_not_submitted":
-      return "This Exit Interview is currently a draft and is not available for review until the Student submits it.";
+      return "You can review this Exit Interview after the Student submits it.";
     case "exit_interview_opportunity_required":
-      return "The Guidance and Counseling Office needs to open an Exit Interview for you first.";
+      return "The Guidance Office needs to open an Exit Interview for you first.";
     case "exit_interview_opportunity_not_open":
-      return "Your Exit Interview access is no longer open. Contact the Guidance and Counseling Office.";
+      return "Your Exit Interview access is no longer open. Contact the Guidance Office.";
     case "exit_interview_opportunity_conflict":
-      return "This Exit Interview access action can't be completed with the current details. Review the access record or contact the Guidance and Counseling Office.";
+      return "This Exit Interview access action can't be completed with the current details. Review the access record or contact the Guidance Office.";
     case "exit_interview_conflict":
       return "The Exit Interview changed before this action completed. Refresh the record and review its current status.";
     case "permission_denied":
@@ -156,8 +156,8 @@ export function ExitInterviewField({
 }
 
 export function ExitInterviewUnavailable({
-  title = "Exit Interview unavailable",
-  message = "This Exit Interview is unavailable.",
+  title = "Exit Interview",
+  message = "You don't have access to this Exit Interview.",
 }: {
   title?: string;
   message?: string;

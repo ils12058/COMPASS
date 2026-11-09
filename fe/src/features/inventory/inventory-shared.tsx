@@ -102,11 +102,11 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
 
   switch (code) {
     case "current_academic_year_not_configured":
-      return "Your Individual Inventory cannot be started or submitted until the current academic year is set up. Contact the Guidance and Counseling Office.";
+      return "Your Individual Inventory cannot be started or submitted until the current Academic Year is set up. Contact the Guidance Office.";
     case "inventory_form_revision_not_configured":
-      return "The current Individual Inventory form is unavailable. Contact the Guidance and Counseling Office.";
+      return "The current Individual Inventory form can't be used. Contact the Guidance Office.";
     case "current_student_required":
-      return "Only current students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
+      return "Only current Students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
     case "inventory_conflict":
       return "This action cannot be completed with the current inventory details. Review your answers and inventory status before trying again.";
     case "inventory_invalid":
@@ -114,15 +114,15 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
     case "psgc_reference_unavailable":
       return "We can't check your location right now. Your draft is saved; try submitting again later.";
     case "inventory_not_submitted":
-      return "This Individual Inventory is currently a draft and is not available for Counselor review.";
+      return "You can review this Individual Inventory after the Student submits it.";
     case "inventory_document_unavailable":
-      return "This official Individual Inventory PDF is temporarily unavailable. Please try again later.";
+      return "Couldn't prepare the Individual Inventory PDF right now. Try again later.";
     case "release_audit_unavailable":
-      return "The PDF cannot be released while its required privacy audit is unavailable. Please try again later.";
+      return "Couldn't prepare the PDF right now. Try again later.";
     case "inventory_not_found":
-      return "This Individual Inventory could not be found or is not available to you.";
+      return "You don't have access to this Individual Inventory.";
     case "permission_denied":
-      return "You cannot view or change this Individual Inventory.";
+      return "You don't have access to view or change this Individual Inventory.";
     default:
       return fallback;
   }
@@ -131,7 +131,7 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
 export function formatInventoryDate(value: string | null | undefined): string {
   if (!value) return "Not submitted";
   const formatted = formatInstitutionalDateTime(value);
-  return formatted === value ? "Date unavailable" : formatted;
+  return formatted === value ? "Couldn't read date" : formatted;
 }
 
 export function formatInventoryDateOnly(value: string | null | undefined): string {

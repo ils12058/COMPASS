@@ -196,7 +196,7 @@ async function openRoutineFromSession(page) {
     await shown(call.getByText("Recording", { exact: true }));
     await call.getByRole("button", { name: "Leave session", exact: true }).click();
     const warning = page.getByRole("alertdialog", { name: "Leave this session?", exact: true });
-    assert.match(await warning.innerText(), /Recording has not been confirmed as stopped\.[\s\S]*Leaving the call may not stop recording/);
+    assert.match(await warning.innerText(), /The recording may still be running\. Stop it before you leave the call\./);
     await warning.getByRole("button", { name: "Leave session", exact: true }).click();
     await hidden(call);
     assert.equal(await fakeCount(page, "destroy"), 1);
@@ -227,7 +227,7 @@ async function openRoutineFromSession(page) {
     // The Intake form stays usable, and its save button is not covered by the dock.
     const answer = page.getByLabel(/How are you\? How are you coping with the challenges in college\?/);
     await answer.fill("Synthetic intake answer.");
-    await page.getByRole("button", { name: "Save Progress", exact: true }).tap();
+    await page.getByRole("button", { name: "Save progress", exact: true }).tap();
     await page.waitForFunction(() => true);
     for (let attempt = 0; attempt < 40 && !session.state.intakeSaves.length; attempt++) await page.waitForTimeout(50);
     assert.equal(session.state.intakeSaves.length, 1);
@@ -308,7 +308,7 @@ async function openRoutineFromSession(page) {
     await page.getByRole("button", { name: /Account menu|Example User/ }).first().click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     const confirm = page.getByRole("alertdialog", { name: "Sign out and end this call?", exact: true });
-    assert.match(await confirm.innerText(), /Signing out ends your E-Counseling call\.[\s\S]*Recording has not been confirmed as stopped\.[\s\S]*Signing out may not stop recording/);
+    assert.match(await confirm.innerText(), /Signing out ends your E-Counseling call\.[\s\S]*The recording may still be running\. Stop it before you sign out\./);
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await shown(dock(page));
     assert.equal(await fakeCount(page, "destroy"), 0, "Cancelling keeps the call");

@@ -172,7 +172,7 @@ export function PSGCLocationSelector({
         <>
           {hasLookupFailure ? (
             <InventoryNotice tone="warning" role="status">
-              Official location choices are temporarily unavailable.
+              Couldn&apos;t load location choices. Try again.
               {savedSnapshot ? (
                 <span className="mt-1 block">Saved location: {savedSnapshot}</span>
               ) : null}
@@ -284,13 +284,13 @@ export function PSGCLocationSelector({
           </div>
           <p aria-live="polite" className="sr-only">
             {regions.isError
-              ? "Region choices could not be loaded. Saved location is preserved."
+              ? "Couldn't load region choices. Saved location is preserved."
               : provinces.isError
-                ? "Province choices could not be loaded. Saved location is preserved."
+                ? "Couldn't load province choices. Saved location is preserved."
                 : cities.isError
-                  ? "City and municipality choices could not be loaded. Saved location is preserved."
+                  ? "Couldn't load city and municipality choices. Saved location is preserved."
                   : barangays.isError
-                    ? "Barangay choices could not be loaded. Saved location is preserved."
+                    ? "Couldn't load barangay choices. Saved location is preserved."
                     : ""}
           </p>
         </>

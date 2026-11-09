@@ -62,7 +62,7 @@ export function ReviewSection({
             </dd>
             {selectedProgram?.year_level_policy_status === "PENDING_POLICY" ? (
               <p className="mt-1 text-xs leading-5 text-muted">
-                The Year Level policy for this Program is pending institutional confirmation.
+                Year Level limits for this Program haven&apos;t been confirmed.
               </p>
             ) : null}
           </div>
@@ -78,7 +78,7 @@ export function ReviewSection({
           </p>
         ) : null}
         <p className="mt-4 text-sm leading-6 text-muted">
-          You can’t edit your answers after submitting. Ask a counselor if you need to make a correction.
+          You can’t edit your answers after submitting. Ask a Counselor if you need to make a correction.
         </p>
       </FieldGroup>
 

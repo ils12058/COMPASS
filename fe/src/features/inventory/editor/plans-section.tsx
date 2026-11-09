@@ -105,7 +105,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
 
       <FieldGroup legend="Current concerns and fears">
         <InventoryNotice tone="neutral">
-          These are sensitive counseling-context responses. Share what you would like the Guidance and Counseling Office to understand.
+          These answers are confidential. Share what you would like the Guidance Office to understand.
         </InventoryNotice>
         <div className="mt-4 grid gap-4">
           <TextAreaField

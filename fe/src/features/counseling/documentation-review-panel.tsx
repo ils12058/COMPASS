@@ -51,7 +51,7 @@ export function DocumentationReviewPanel({ access }: { access: CounselingAccess 
       <Panel aria-labelledby="needs-documentation-heading" className="mb-5">
         <PanelHeader title="Needs documentation" titleId="needs-documentation-heading" />
         <CounselingListSkeleton
-          label="Loading appointments that need documentation…"
+          label="Loading Appointments that need documentation…"
           framed={false}
         />
       </Panel>
@@ -67,7 +67,7 @@ export function DocumentationReviewPanel({ access }: { access: CounselingAccess 
           tone="danger"
           action={<Button variant="secondary" onClick={() => void review.refetch()}>Retry</Button>}
         >
-          {counselingErrorMessage(review.error, "Needs documentation could not be loaded.")}
+          {counselingErrorMessage(review.error, "Couldn't load Appointments that need documentation. Try again.")}
         </PanelMessage>
       </Panel>
     );
@@ -82,7 +82,7 @@ export function DocumentationReviewPanel({ access }: { access: CounselingAccess 
       <Panel aria-labelledby="needs-documentation-heading" className="mb-5">
         <PanelHeader title="Needs documentation" titleId="needs-documentation-heading" />
         <PanelMessage>
-          No appointments on this page need documentation.{" "}
+          No Appointments on this page need documentation.{" "}
           <Link
             className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             href={reviewHref(pathname, new URLSearchParams(searchParams.toString()), 1)}
@@ -99,18 +99,18 @@ export function DocumentationReviewPanel({ access }: { access: CounselingAccess 
       <PanelHeader
         title="Needs documentation"
         titleId="needs-documentation-heading"
-        description="Appointments of yours that may need a record or reconciliation. This list is derived from current records and doesn’t confirm that Counseling took place."
+        description="These Appointments may still need a Counseling Encounter record. Being listed doesn't mean Counseling took place."
         context={describeResultPage({
           count: result.items.length,
           page: result.page,
           hasNext: result.has_next,
-          noun: { one: "appointment", other: "appointments" },
+          noun: { one: "Appointment", other: "Appointments" },
         })}
       />
       {/* A failed refresh of this projection keeps the last rows and says so; it never retries. */}
       {review.isError ? (
         <RefreshFailureNotice
-          message="The latest Needs documentation results could not be loaded. Showing the last confirmed results."
+          message="Couldn't load the latest Needs documentation results. Showing the last confirmed results."
           onRetry={() => void review.refetch()}
           retrying={review.isFetching}
         />
@@ -145,7 +145,7 @@ export function DocumentationReviewPanel({ access }: { access: CounselingAccess 
                     className={buttonVariants({ variant: "secondary" })}
                     href={appointmentDetailHref(item.appointment_id)}
                   >
-                    Review appointment
+                    Review Appointment
                   </Link>
                 ) : null}
                 {item.encounter_id ? (

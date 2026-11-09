@@ -269,7 +269,7 @@ export function getInventorySubmissionIssues(
   // Page 1 — personal data.
   requireText("personal", "inventory-full-name", payload.full_name, "Add your full name.");
   requireText("personal", "inventory-nickname", payload.nickname, "Add your nickname.");
-  requireText("personal", "inventory-student-number", payload.student_number, "Add your student number.");
+  requireText("personal", "inventory-student-number", payload.student_number, "Add your Student number.");
   requireText("personal", "inventory-date-of-birth", payload.date_of_birth, "Enter a date of birth.");
   requireText("personal", "inventory-place-of-birth", payload.place_of_birth, "Add your place of birth.");
   requireText("personal", "inventory-nationality", payload.nationality, "Add your nationality.");
@@ -809,7 +809,7 @@ export function getInventorySubmissionIssues(
       "plans",
       "inventory-prior-counselor",
       payload.prior_counselor_name,
-      "Add your previous counselor's name.",
+      "Add your previous Counselor's name.",
     );
     requireText(
       "plans",

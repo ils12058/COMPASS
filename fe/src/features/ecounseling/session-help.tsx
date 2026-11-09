@@ -6,7 +6,7 @@ import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 export const ecounselingHelpSections: readonly HelpSection[] = [
   {
     heading: "Recording permission",
-    content: "Recording is optional. If the student agrees, the Counselor may start an audio/video recording of this session. The student may withdraw permission during the session, and COMPASS then asks the recording to stop. Declining or withdrawing doesn’t affect access to Counseling.",
+    content: "Recording is optional. If the Student agrees, the Counselor may start an audio/video recording of this session. The Student may withdraw permission during the session, and COMPASS then asks the recording to stop. Declining or withdrawing doesn’t affect access to Counseling.",
   },
   {
     heading: "Recording",

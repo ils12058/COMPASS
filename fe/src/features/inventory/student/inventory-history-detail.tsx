@@ -19,8 +19,8 @@ export function InventoryHistoryDetail({ inventoryId }: { inventoryId: string })
   const access = getInventoryAccess(user);
   if (!access.canViewSelf) {
     return (
-      <WorkspaceUnavailable title="Individual Inventory unavailable">
-        This historical record is available only to its Student through the self-service Inventory workspace.
+      <WorkspaceUnavailable title="Individual Inventory">
+        You don&apos;t have access to this Individual Inventory history.
       </WorkspaceUnavailable>
     );
   }
@@ -47,7 +47,7 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
     return (
       <section className="space-y-5">
         <InventoryHeading title="Annual Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to annual history</Link>} />
-        <InventoryQueryError error={record.error} fallback="This annual Individual Inventory could not be found or is not available to you." />
+        Couldn&apos;t load this Individual Inventory. Try again.<InventoryQueryError error={record.error} fallback="Couldn't load this Individual Inventory. Try again." />
       </section>
     );
   }

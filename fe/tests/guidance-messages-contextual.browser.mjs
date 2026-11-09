@@ -289,7 +289,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
     await trigger(page).click();
     await shown(history(panel(page)).getByText("Thank you po."));
     await composer(panel(page)).fill("Written before the context ended");
-    await page.getByRole("heading", { name: "Counseling information unavailable" }).waitFor({ timeout: 40_000 });
+    await page.getByRole("heading", { name: "Check Counseling access" }).waitFor({ timeout: 40_000 });
     await shown(panel(page));
     assert.equal(await composer(panel(page)).inputValue(), "Written before the context ended");
     await shown(history(panel(page)).getByText("Thank you po."));

@@ -210,7 +210,7 @@ for (const width of [320, 1440]) {
     const submittedRecord = { id: 'exit-submitted', student, student_name: 'Maria Santos', academic_year: year, status: 'SUBMITTED', first_submitted_at: '2026-10-01T06:00:00Z', last_submitted_at: '2026-10-01T06:00:00Z', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T06:00:00Z' };
     const submittedStatus = { academic_year: year, opportunity: { id: 'opportunity', academic_year: year, source: 'MANUAL', status: 'COMPLETED', opened_at: '2026-10-01T00:00:00Z', completed_at: '2026-10-01T06:00:00Z', revoked_at: null }, current_record: submittedRecord, has_records: true, inventory_submitted: true, can_start: false, can_edit_current: false, graduation_good_moral_blocked: false };
     await check(`exit-submitted-reviewers-${width}`, '/portal/exit-interviews', { viewport, overrides: { '/api/v1/auth/session': session(exitStudent), '/api/v1/exit-interviews/me/status': submittedStatus, '/api/v1/exit-interviews/me': { items: [submittedRecord] } } }, async (page) => {
-        await shown(page.getByText('Your submitted answers are available only to authorized Guidance and Counseling Office reviewers.', { exact: true }));
+        await shown(page.getByText('Only Guidance Office reviewers with access can read your submitted answers.', { exact: true }));
         assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
         await safe(page);
     });

@@ -153,7 +153,7 @@ export function useCounselorMedia({
       await request.mutateAsync({ appointmentId, data: { scopes } });
       setNotice("Request sent to the Student.");
     } catch (caught) {
-      setError(ecounselingErrorMessage(caught, "The request couldn’t be sent. The session has been refreshed."));
+      setError(ecounselingErrorMessage(caught, "Couldn't send the request. The session has been refreshed."));
     }
     await refreshCanonicalState();
   }
@@ -173,7 +173,7 @@ export function useCounselorMedia({
       await startRecording.mutateAsync({ appointmentId });
     } catch (caught) {
       // Closed rather than retried in place: the refreshed controls show what actually happened.
-      setError(ecounselingErrorMessage(caught, "Recording couldn’t be started. The session has been refreshed."));
+      setError(ecounselingErrorMessage(caught, "Couldn't start recording. The session has been refreshed."));
     }
     setPendingStart(null);
     await refreshCanonicalState();
@@ -333,7 +333,7 @@ function PermissionItem({ permission, busy, onRequest }: { permission: Permissio
 // action. Request and decision times are under Details.
 export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
   if (!media.access.canManageMediaAssigned) {
-    return <p className="px-3 py-2.5 text-sm text-muted sm:px-4">Media controls are unavailable to this account.</p>;
+    return <p className="px-3 py-2.5 text-sm text-muted sm:px-4">You don&apos;t have access to recording controls.</p>;
   }
   const { consentQuery } = media;
   const problems = (["recording"] as const).filter((kind) => captureSafetyState(media.status[kind]) === "uncertain");
@@ -345,12 +345,12 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
         <div aria-busy="true"><span className="sr-only">Loading recording permission…</span><Skeleton className="h-6 w-2/3" /></div>
       ) : consentQuery.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-danger">
-          <span>Recording permission couldn’t be loaded. Recording can’t start until it loads.</span>
+          <span>Couldn&apos;t load recording permission. Recording can&apos;t start until it loads.</span>
           <Button variant="secondary" className="min-h-9 px-3 py-1" onClick={() => void consentQuery.refetch()}>Retry</Button>
         </div>
       ) : null}
       {!media.sessionStateCurrent ? (
-        <p role="alert" className="text-sm font-medium text-danger">Session status couldn’t be refreshed. Starting recording is paused until it’s back.</p>
+        <p role="alert" className="text-sm font-medium text-danger">Couldn&apos;t refresh the session status. Recording can&apos;t start until it refreshes.</p>
       ) : null}
       {problems.map((kind) => (
         <p key={kind} role="alert" className="text-sm font-semibold text-danger">Recording · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>

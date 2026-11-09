@@ -76,7 +76,7 @@ export function RecordEncounterPage({
     message: "Discard the encounter times you entered?",
   });
 
-  if (!canRecord) return <CounselingUnavailable title="Recording unavailable">This account cannot record Counseling Encounters here.</CounselingUnavailable>;
+  if (!canRecord) return <CounselingUnavailable title="Record Counseling Encounter">You don&apos;t have access to record Counseling Encounters here.</CounselingUnavailable>;
 
   const heading = (
     <CounselingPageHeading

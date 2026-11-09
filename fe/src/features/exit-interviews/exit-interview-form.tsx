@@ -413,22 +413,22 @@ export function ExitInterviewForm({
           {isDirty ? <p className="text-sm text-muted">Save your draft before submitting.</p> : null}
           {saveError ? (
             <div className="mt-4 max-w-2xl">
-              <PanelMessage role="alert" tone="danger" className="px-0 sm:px-0">{exitInterviewErrorMessage(saveError, "The draft could not be saved. Your entries are still on this page.")}</PanelMessage>
+              <PanelMessage role="alert" tone="danger" className="px-0 sm:px-0">{exitInterviewErrorMessage(saveError, "Couldn't save the draft. Your entries are still on this page.")}</PanelMessage>
             </div>
           ) : null}
           {submitError && !confirmSubmit ? (
             <div className="mt-4 max-w-2xl" role="alert">
               <p className="text-sm leading-6 text-danger">
                 {submissionUncertain
-                  ? "We could not confirm whether submission completed. Refresh the Exit Interview before trying again."
-                  : exitInterviewErrorMessage(submitError, "The Exit Interview could not be submitted. Your saved draft remains available.")}
+                  ? "Couldn't confirm whether submission completed. Refresh the Exit Interview before trying again."
+                  : exitInterviewErrorMessage(submitError, "Couldn't submit the Exit Interview. Your saved draft remains available.")}
               </p>
               {submissionUncertain ? (
                 <div className="mt-3">
                   <Button type="button" variant="secondary" onClick={() => void refreshCanonicalRecord()}>
                     Refresh Exit Interview
                   </Button>
-                  {refreshError ? <p className="mt-2 text-sm text-danger">The Exit Interview could not be refreshed. Retry before submitting again.</p> : null}
+                  {refreshError ? <p className="mt-2 text-sm text-danger">Couldn&apos;t refresh the Exit Interview. Retry before submitting again.</p> : null}
                 </div>
               ) : null}
             </div>
@@ -456,12 +456,12 @@ export function ExitInterviewForm({
         pendingLabel="Submitting…"
         pending={submit.isPending}
         confirmDisabled={submissionUncertain}
-        error={submitError ? exitInterviewErrorMessage(submitError, "The Exit Interview could not be submitted.") : null}
+        error={submitError ? exitInterviewErrorMessage(submitError, "Couldn't submit the Exit Interview.") : null}
         onOpenChange={setConfirmSubmit}
         onConfirm={() => void submitDraft()}
       >
         <p>
-          Your response will be available only to authorized Guidance and Counseling Office reviewers. You will not be able to edit it after submission unless it is reopened for correction.
+          Only Guidance Office reviewers with access can read your submitted answers. You can&apos;t change them unless your Exit Interview is reopened for correction.
         </p>
       </ConsequentialActionDialog>
     </section>

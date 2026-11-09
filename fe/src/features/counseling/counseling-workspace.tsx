@@ -162,11 +162,11 @@ export function CounselingWorkspace({
     clearContextReads();
   };
 
-  if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
+  if (!allowed) return <CounselingUnavailable title="Counseling" />;
 
   let content: ReactNode;
   if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
-    content = <Notice role="alert" className="max-w-3xl px-5 py-6 sm:px-6" title={<h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1>} action={<Button variant="secondary" onClick={() => void reauthorize()}>Check again</Button>}>We cannot show this information until your access is checked again.</Notice>;
+    content = <Notice role="alert" className="max-w-3xl px-5 py-6 sm:px-6" title={<h1 className="font-heading text-2xl font-semibold text-ink">Check Counseling access</h1>} action={<Button variant="secondary" onClick={() => void reauthorize()}>Check again</Button>}>Check your access again to view this information.</Notice>;
   } else if (overview.isPending) {
     content = <CounselingWorkspaceSkeleton />;
   } else if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
@@ -183,7 +183,7 @@ export function CounselingWorkspace({
           </>
         }
       >
-        <p>{expired ? "This counseling view is no longer available." : counselingErrorMessage(overview.error, "Counseling information is not currently available.")}</p>
+        <p>{expired ? "This counseling view is no longer available." : counselingErrorMessage(overview.error, "Couldn't load Counseling information. Try again.")}</p>
         {expired ? <p className="mt-2">Return to your encounters to continue.</p> : null}
       </Notice>
     );
@@ -329,7 +329,7 @@ function CounselingWorkspaceContent({
               !overview.matching_encounter ? (
               // The Appointment's own Encounter fact comes from the Appointment read, so this still
               // shows when the context window no longer projects the record.
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My counseling encounters.</p><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My Counseling Encounters.</p><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
             ) : canRecord && finishOffered ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => { setFinishNotice(null); setFinishOpen(true); }}>Finish counseling</Button><p className="mt-3 text-sm text-muted">{appointment?.status === AppointmentStatus.COMPLETED ? "Records the Encounter for this completed Appointment." : "Records the Encounter and completes this Appointment."}</p></div>
             ) : canRecord && preset ? (
@@ -478,7 +478,7 @@ function ContextOverview({ overview, showInteractionFacts }: { overview: Counsel
 
 function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<CounselorRoutineDetailResponse>; canManage: boolean }) {
   if (routine.isPending) return <div aria-busy="true"><span className="sr-only">Loading assigned Routine Interview…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-56 w-full" /></div>;
-  if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "The Routine Interview could not be loaded for this account.")} onRetry={() => void routine.refetch()} />;
+  if ((routine.isError && !canShowLastKnownData(routine)) || !routine.data?.data) return <CounselingQueryError message={counselingErrorMessage(routine.error, "Couldn't load the Routine Interview.")} onRetry={() => void routine.refetch()} />;
   const detail = routine.data.data;
   return (
     <div className="space-y-5">
@@ -486,23 +486,23 @@ function RoutineContext({ routine, canManage }: { routine: QueryResultWithData<C
         <PanelHeader
           title={<>Student Intake · {routineIntakeStatusLabel(detail.intake_status)}</>}
           level={3}
-          description={detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for counselors." : "Student responses remain private until submission."}
+          description={detail.intake_status === "SUBMITTED" ? "Submitted responses are read-only for Counselors." : "Student responses remain private until submission."}
         />
         {detail.intake_status === "SUBMITTED" && detail.intake ? <div className="px-4 py-4 sm:px-5"><RoutineStudentIntakeReadOnly intake={detail.intake} /></div> : <PanelMessage role="status">Student Intake is still a draft. The Student’s answers become available after they submit their Intake.</PanelMessage>}
       </Panel>
-      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Edited on the Routine Interview." /><div className="px-4 py-4 sm:px-5"><p className="text-sm text-muted">The evaluation is written, saved and finalized on its Routine Interview. This workspace only shows it.</p><GuardedPortalLink href={`/portal/routine-interviews/${encodeURIComponent(detail.id)}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>Open Routine Interview</GuardedPortalLink></div></Panel> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
+      {detail.intake_status !== "SUBMITTED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} /><PanelMessage>Counselor evaluation becomes available after the Student submits the intake.</PanelMessage></Panel> : detail.evaluation_status === "FINALIZED" ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description={`Finalized ${detail.evaluation_finalized_at ? formatCounselingDateTime(detail.evaluation_finalized_at) : ""} · Read-only`} /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel> : canManage ? <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Edited on the Routine Interview." /><div className="px-4 py-4 sm:px-5"><p className="text-sm text-muted">The evaluation is written, saved and finalized on its Routine Interview. This workspace only shows it.</p><GuardedPortalLink href={`/portal/routine-interviews/${encodeURIComponent(detail.id)}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>Open Routine Interview</GuardedPortalLink></div></Panel> : <Panel as="div"><PanelHeader title="Counselor Evaluation" level={3} description="Draft evaluation · Read-only for this account." /><div className="px-4 py-4 sm:px-5"><RoutineCounselorEvaluationReadOnly evaluation={detail.evaluation} /></div></Panel>}
     </div>
   );
 }
 
 function InventoryContext({ query, overview }: { query: QueryResultWithData<CounselingContextInventoryResponse>; overview: CounselingContextOverviewResponse }) {
   if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual Individual Inventory…</span><Skeleton className="h-10 w-1/2" /><Skeleton className="mt-4 h-80 w-full" /></div>;
-  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual Individual Inventory could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Couldn't load the Individual Inventory. Try again.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
     const unavailable: Record<string, string> = {
-      [CounselingContextInventoryStatus.MISSING]: "No current submitted Individual Inventory is available for this student.",
-      [CounselingContextInventoryStatus.DRAFT]: "The current Individual Inventory is still a draft and is not available for counselor review.",
+      [CounselingContextInventoryStatus.MISSING]: "No current submitted Individual Inventory is available for this Student.",
+      [CounselingContextInventoryStatus.DRAFT]: "The current Individual Inventory is still a draft and is not available for Counselor review.",
       [CounselingContextInventoryStatus.SUBMITTED]: "A submitted Individual Inventory is not available here.",
     };
     return <Notice role="status">{unavailable[result?.inventory_source_status ?? CounselingContextInventoryStatus.MISSING]}</Notice>;
@@ -512,24 +512,24 @@ function InventoryContext({ query, overview }: { query: QueryResultWithData<Coun
 }
 
 function SupportContext({ query }: { query: QueryResultWithData<CounselingContextSupportResponse> }) {
-  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading contextual support indicators…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>;
-  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Contextual support indicators could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading support details…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Couldn't load support details. Try again.")} onRetry={() => void query.refetch()} />;
   const result = query.data?.data;
   if (!result?.available) {
     const message = result?.inventory_source_status === CounselingContextInventoryStatus.DRAFT
-      ? "Support indicators are unavailable because the current Individual Inventory is still a draft."
+      ? "Support details appear after the Student submits this year's Individual Inventory."
       : result?.inventory_source_status === CounselingContextInventoryStatus.SUBMITTED
-        ? "Support indicators are unavailable here."
-        : "Support indicators are unavailable because no current submitted Individual Inventory is available.";
+        ? "You don't have access to support details here."
+        : "Support details appear after the Student submits this year's Individual Inventory.";
     return <Notice role="status">{message}</Notice>;
   }
   return <Panel as="div">{result.indicators.length ? <ul className="divide-y divide-border">{result.indicators.map((indicator) => <li key={indicator.code} className="px-4 py-3 text-sm text-ink sm:px-5">{indicator.label}</li>)}</ul> : <PanelMessage>No support indicators are recorded.</PanelMessage>}</Panel>;
 }
 
 function HistoryContext({ query }: { query: QueryResultWithData<CounselingContextHistoryResponse> }) {
-  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading minimized Counseling history…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
-  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Counseling context history could not be loaded.")} onRetry={() => void query.refetch()} />;
+  if (query.isPending) return <div aria-busy="true"><span className="sr-only">Loading Counseling history…</span><Skeleton className="h-14 w-full" /><Skeleton className="mt-2 h-14 w-full" /></div>;
+  if (query.isError && !canShowLastKnownData(query)) return <CounselingQueryError message={counselingErrorMessage(query.error, "Couldn't load Counseling history. Try again.")} onRetry={() => void query.refetch()} />;
   const items = query.data?.data.items ?? [];
-  if (!items.length) return <Panel as="div"><PanelMessage>No contextual history is available.</PanelMessage></Panel>;
-  return <Panel as="div"><ol className="divide-y divide-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol></Panel>;
+  if (!items.length) return <Panel as="div"><PanelMessage>No Counseling history is available here.</PanelMessage></Panel>;
+  return <Panel as="div"><ol className="divide-y divide-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Counselor: {item.provider.display_name}</p> : null}</li>)}</ol></Panel>;
 }

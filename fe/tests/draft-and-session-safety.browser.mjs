@@ -315,7 +315,7 @@ function serviceWorld() {
     await fullName.fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
-    const notice = page.getByText(/^The latest Individual Inventory could not be refreshed\./);
+    const notice = page.getByText(/^Couldn't refresh the latest Individual Inventory\./);
     await shown(notice);
     assert.equal(await fullName.inputValue(), MARKER, "The unsaved answer is kept");
     state.read = 200;
@@ -350,7 +350,7 @@ function exitInterviewOverrides(state) {
     await studentName.fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
-    const notice = page.getByText(/^The latest Exit Interview status could not be confirmed\./);
+    const notice = page.getByText(/^Couldn't confirm the latest Exit Interview status\./);
     await shown(notice);
     assert.equal(await studentName.inputValue(), MARKER, "The unsaved answer is kept");
     assert.equal(await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(), true, "Saving waits for a confirmed status");
@@ -368,7 +368,7 @@ function exitInterviewOverrides(state) {
     await page.getByLabel("Student name", { exact: true }).fill(MARKER);
     state.read = 404;
     await refreshStaleQueries(page);
-    await shown(page.getByRole("heading", { name: "Exit Interview not found" }));
+    await shown(page.getByRole("heading", { name: "Exit Interview" }));
     assert.equal(await page.getByLabel("Student name", { exact: true }).count(), 0, "The editor is removed with the record");
   });
 }

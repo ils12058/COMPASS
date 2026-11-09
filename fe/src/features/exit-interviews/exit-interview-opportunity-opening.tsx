@@ -62,7 +62,7 @@ export function ExitInterviewOpportunityOpening({ onDone, onOpened }: { onDone: 
       setCompleted(true);
       onOpened();
     } catch (caught) {
-      setError(exitInterviewErrorMessage(caught, "Exit Interview access could not be opened. Review the Student and Academic Year, then try again."));
+      setError(exitInterviewErrorMessage(caught, "Couldn't open Exit Interview access. Review the Student and Academic Year, then try again."));
       void opportunities.refetch();
     }
   }
@@ -70,7 +70,7 @@ export function ExitInterviewOpportunityOpening({ onDone, onOpened }: { onDone: 
   return <>
     <Panel>
       <PanelSection title="Open Exit Interview access" titleId="exit-opportunity-opening">
-        <EligibleStudentPicker search={search} onSearchChange={setSearch} onSearch={() => { setQuery(search.trim()); setPage(1); }} items={students.data?.data.items ?? []} selectedStudent={student} selectedId={student?.id ?? null} onSelect={setStudent} page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} isLoading={students.isPending} isError={students.isError} errorMessage={exitInterviewErrorMessage(students.error, "Students could not be loaded.")} onRetry={() => void students.refetch()} onPageChange={setPage} />
+        <EligibleStudentPicker search={search} onSearchChange={setSearch} onSearch={() => { setQuery(search.trim()); setPage(1); }} items={students.data?.data.items ?? []} selectedStudent={student} selectedId={student?.id ?? null} onSelect={setStudent} page={students.data?.data.page ?? page} hasNext={students.data?.data.has_next ?? false} isLoading={students.isPending} isError={students.isError} errorMessage={exitInterviewErrorMessage(students.error, "Couldn't load Students.")} onRetry={() => void students.refetch()} onPageChange={setPage} />
       </PanelSection>
       <form onSubmit={reviewOpening}>
         <PanelSection title="Opening details" titleId="exit-opportunity-opening-details">
@@ -78,23 +78,23 @@ export function ExitInterviewOpportunityOpening({ onDone, onOpened }: { onDone: 
             <div><Label htmlFor="exit-opportunity-year">Academic Year</Label><Select id="exit-opportunity-year" value={yearId} onChange={(event) => setYearId(event.target.value)} disabled={!canReadYears || years.isPending} className="mt-2">
               <option value="">{yearId ? "Current Academic Year" : year ? `${year.label} · Current` : "Current Academic Year"}</option>
               {(years.data?.data.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.label}{item.is_current ? " · Current" : ""}</option>)}
-            </Select>{years.isError ? <p role="alert" className="mt-2 text-sm text-danger">Academic Years could not be loaded. <Button variant="quiet" onClick={() => void years.refetch()}>Retry</Button></p> : null}</div>
+            </Select>{years.isError ? <p role="alert" className="mt-2 text-sm text-danger">Couldn&apos;t load Academic Years. <Button variant="quiet" onClick={() => void years.refetch()}>Retry</Button></p> : null}</div>
             <div><Label htmlFor="exit-opportunity-source">Reason</Label><Select id="exit-opportunity-source" value={effectiveSource} disabled={Boolean(existing)} onChange={(event) => { const value = event.target.value; if (value === "GRADUATION" || value === "MANUAL") setSource(value); }} className="mt-2">
               <option value={ExitInterviewOpportunitySourceValue.GRADUATION}>Graduation</option><option value={ExitInterviewOpportunitySourceValue.MANUAL}>Manual</option>
-            </Select><p className="mt-2 text-sm text-muted">{effectiveSource === "GRADUATION" ? "The Student must submit the Exit Interview before requesting their graduation Good Moral certificate." : "Opens the Exit Interview without adding a graduation Good Moral prerequisite."}</p></div>
+            </Select><p className="mt-2 text-sm text-muted">{effectiveSource === "GRADUATION" ? "The Student must submit the Exit Interview before requesting their Good Moral Certificate for UCN Bachelor's graduates (F6)." : "Opens the Exit Interview without adding a Good Moral Certificate prerequisite."}</p></div>
           </div>
-          <div className="mt-5"><Label htmlFor="exit-opportunity-note">Operational note <span className="font-normal text-muted">(optional)</span></Label><Textarea id="exit-opportunity-note" maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} className="mt-2" /></div>
-          {student ? <div className="mt-4 text-sm text-muted">{opportunities.isPending ? "Checking existing access…" : opportunities.isError ? <p role="alert">Existing access could not be confirmed. <Button variant="quiet" onClick={() => void opportunities.refetch()}>Retry</Button></p> : existing ? <p>Existing access: {existing.source === "GRADUATION" ? "Graduation" : "Manual"} · {existing.status === "OPEN" ? "Open" : existing.status === "COMPLETED" ? "Completed" : "Revoked"}. {existing.status === "REVOKED" ? "Reopening keeps the same reason." : "Use the existing workflow."}</p> : "No Exit Interview access for this Student and Academic Year."}</div> : null}
+          <div className="mt-5"><Label htmlFor="exit-opportunity-note">Note <span className="font-normal text-muted">(optional)</span></Label><Textarea id="exit-opportunity-note" maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} className="mt-2" /></div>
+          {student ? <div className="mt-4 text-sm text-muted">{opportunities.isPending ? "Checking existing access…" : opportunities.isError ? <p role="alert">Couldn&apos;t confirm existing access. <Button variant="quiet" onClick={() => void opportunities.refetch()}>Retry</Button></p> : existing ? <p>Existing access: {existing.source === "GRADUATION" ? "Graduation" : "Manual"} · {existing.status === "OPEN" ? "Open" : existing.status === "COMPLETED" ? "Completed" : "Revoked"}. {existing.status === "REVOKED" ? "Reopening keeps the same reason." : "Use the existing workflow."}</p> : "No Exit Interview access for this Student and Academic Year."}</div> : null}
         </PanelSection>
         <PanelFooter><Button type="submit" disabled={!ready || opening.isPending}>Review opening</Button><Button type="button" variant="secondary" disabled={opening.isPending} onClick={() => { if (dirty) setDiscardOpen(true); else onDone(); }}>Cancel</Button></PanelFooter>
       </form>
     </Panel>
     <ConsequentialActionDialog open={discardOpen} title="Discard this opening?" confirmLabel="Discard opening" pendingLabel="Discarding…" pending={false} error={null} variant="danger" onConfirm={() => { discarded.current = true; onDone(); }} onOpenChange={setDiscardOpen} onCloseAutoFocus={(event) => { if (discarded.current) { event.preventDefault(); focusHeading("exit-opportunities-heading"); } }}>
-      <p>The selected Student, reason, and operational note will be discarded. No access has been opened.</p>
+      <p>Your selected Student, reason and note will be discarded. No access has been opened.</p>
     </ConsequentialActionDialog>
     <ConsequentialActionDialog open={review !== null} title={`Open Exit Interview access for ${student?.display_name ?? "this Student"}?`} confirmLabel="Open access" pendingLabel="Opening…" pending={opening.isPending} error={error} completed={completed ? { title: "Exit Interview access opened", children: "The Student can complete their Exit Interview after submitting their current Individual Inventory." } : null} onConfirm={() => void confirm()} onCloseAutoFocus={(event) => { if (completed) { event.preventDefault(); focusHeading("exit-opportunities-heading"); } }} onOpenChange={(open) => { if (!open) { setReview(null); if (completed) onDone(); } }}>
       <p>{year?.label ?? "Current Academic Year"} · {review?.source === "GRADUATION" ? "Graduation" : "Manual"}</p>
-      <p>{review?.source === "GRADUATION" ? "A submitted Exit Interview will be required before the Student can request their graduation Good Moral certificate for this Academic Year." : "This opens Exit Interview access without adding a graduation Good Moral prerequisite."}</p>
+      <p>{review?.source === "GRADUATION" ? "A submitted Exit Interview will be required before the Student can request their Good Moral Certificate for UCN Bachelor's graduates (F6) for this Academic Year." : "This opens Exit Interview access without adding a Good Moral Certificate prerequisite."}</p>
     </ConsequentialActionDialog>
   </>;
 }

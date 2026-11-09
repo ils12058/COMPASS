@@ -43,8 +43,8 @@ export function InventoryRecordDetail({ inventoryId }: { inventoryId: string }) 
   const access = getInventoryAccess(user);
   if (!access.canViewRoster) {
     return (
-      <WorkspaceUnavailable title="Individual Inventory unavailable">
-        You cannot review this submitted Individual Inventory with this account.
+      <WorkspaceUnavailable title="Individual Inventory">
+        You don&apos;t have access to review submitted Individual Inventories.
       </WorkspaceUnavailable>
     );
   }
@@ -77,7 +77,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         <InventoryHeading title="Submitted Individual Inventory" />
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-64" />
-        <p className="sr-only">Loading authorized submitted Individual Inventory…</p>
+        <p className="sr-only">Loading submitted Individual Inventory…</p>
       </section>
     );
   }
@@ -86,7 +86,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     return (
       <section className="space-y-5">
         <InventoryHeading title="Submitted Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to roster</Link>} />
-        <InventoryQueryError error={record.error} fallback="This Individual Inventory is unavailable." />
+        Couldn&apos;t load this Individual Inventory. Try again.<InventoryQueryError error={record.error} fallback="Couldn't load this Individual Inventory. Try again." />
       </section>
     );
   }
@@ -120,8 +120,8 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     } catch (error) {
       const code = error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
       setReopenError(code === "inventory_invalid"
-        ? "This correction request could not be saved. Check the instructions and the answers to review, then try again."
-        : inventoryErrorMessage(error, "This Individual Inventory could not be reopened."));
+        ? "Couldn't save this correction request. Check the instructions and the answers to review, then try again."
+        : inventoryErrorMessage(error, "Couldn't reopen this Individual Inventory."));
     }
   }
 
@@ -129,8 +129,8 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     return (
       <section className="space-y-5">
         <InventoryHeading title="Submitted Individual Inventory" />
-        <InventoryNotice title="Draft content is not available for Counselor review" tone="warning">
-          This Individual Inventory is currently a draft and is not available for Counselor review.
+        <InventoryNotice title="Waiting for submission" tone="warning">
+          You can review this Individual Inventory after the Student submits it.
         </InventoryNotice>
         <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Return to roster
@@ -141,7 +141,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
 
   if (reopenCompleted) {
     return (
-      <InventoryNotice title="Inventory reopened" tone="success">
+      <InventoryNotice title="Individual Inventory reopened" tone="success">
         The Student can now review the correction instructions and update the Individual Inventory.
       </InventoryNotice>
     );
@@ -165,7 +165,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => setHistoryOpen((open) => !open)}>
-          {historyOpen ? "Hide annual history" : "View annual Inventory history"}
+          {historyOpen ? "Hide Individual Inventory history" : "View Individual Inventory history"}
         </Button>
         {canReopen ? (
           <Button variant="secondary" onClick={() => {
@@ -247,17 +247,17 @@ function CounselorStudentInventoryHistory({
   const history = useInventoryListStudentHistory(studentId, { query: { retry: false } });
 
   if (history.isPending) {
-    return <p role="status" className="text-sm text-muted">Loading Inventory history…</p>;
+    return <p role="status" className="text-sm text-muted">Loading Individual Inventory history…</p>;
   }
   if (history.isError) {
-    return <InventoryQueryError error={history.error} fallback="Annual Student Inventory history could not be loaded." onRetry={() => void history.refetch()} />;
+    return <InventoryQueryError error={history.error} fallback="Couldn't load Individual Inventory history. Try again." onRetry={() => void history.refetch()} />;
   }
   const items = history.data.data.items;
   if (!items.length) return <Panel><PanelMessage>No earlier Individual Inventory records.</PanelMessage></Panel>;
 
   return (
     <Panel aria-labelledby="counselor-inventory-history-heading">
-      <PanelHeader title="Annual Student Inventory history" titleId="counselor-inventory-history-heading" />
+      <PanelHeader title="Individual Inventory history" titleId="counselor-inventory-history-heading" />
       <ul className="divide-y divide-border">
         {items.map((item) => {
           const link = item.status === InventoryStatusValue.SUBMITTED;

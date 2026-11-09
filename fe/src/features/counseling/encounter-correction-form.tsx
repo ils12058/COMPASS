@@ -144,7 +144,7 @@ export function EncounterCorrectionForm({
 
       <div className="mt-5 max-w-3xl">
         <Label htmlFor="correction-appointment">Appointment link</Label>
-        {candidates.isPending ? <LoadingRegion label="Loading historical Appointment candidates…" className="mt-2"><Skeleton className="h-10 w-full" /></LoadingRegion> : candidates.isError ? <p role="alert" className="mt-2 text-sm text-danger">{counselingErrorMessage(candidates.error, "Historical Appointment candidates could not be loaded. Other factual details may still be corrected.")}</p> : null}
+        {candidates.isPending ? <LoadingRegion label="Loading historical Appointment candidates…" className="mt-2"><Skeleton className="h-10 w-full" /></LoadingRegion> : candidates.isError ? <p role="alert" className="mt-2 text-sm text-danger">{counselingErrorMessage(candidates.error, "Couldn't load historical Appointment candidates. Other factual details may still be corrected.")}</p> : null}
         <Select
           id="correction-appointment"
           value={appointmentId}
@@ -169,7 +169,7 @@ export function EncounterCorrectionForm({
           {currentAppointmentAvailable ? <option value={encounter.appointment?.id}>{encounter.appointment?.reference_code} · current link</option> : null}
           {items.map((item) => <option key={item.id} value={item.id}>{item.reference_code} · {formatCounselingDateTime(item.starts_at)} · {counselingDeliveryModeLabel(item.delivery_mode)} · {appointmentStatusLabel(item.status)}</option>)}
         </Select>
-        {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No appointment candidates are available for this encounter.</p> : null}
+        {!candidates.isPending && !candidates.isError && items.length === 0 && !encounter.appointment ? <p className="mt-2 text-sm text-muted">No Appointment candidates are available for this encounter.</p> : null}
         {!candidates.isPending && !candidates.isError ? <CanonicalPagination className="border-t-0 pb-0" label="Appointment candidate pages" page={candidates.data?.data.page ?? page} hasNext={candidates.data?.data.has_next ?? false} onPageChange={setPage} /> : null}
         {missingAppointment ? (
           <p id="correction-appointment-error" className="mt-2 text-sm text-danger">Select an Appointment, or choose a direct origin.</p>

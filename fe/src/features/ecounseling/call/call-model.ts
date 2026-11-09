@@ -262,14 +262,14 @@ export function cameraProblem(event: Pick<DailyEventObjectCameraError, "error" |
       return { camera: true, microphone: true, source: "camera-error", message: "Your camera and microphone are being used by another application." };
     case "constraints": {
       const { camera, microphone } = affects(error.failedMedia);
-      return { camera, microphone, source: "camera-error", message: `Your ${mediaNames(camera, microphone)} couldn't be started with its current settings. Choose another device.` };
+      return { camera, microphone, source: "camera-error", message: `Couldn't start your ${mediaNames(camera, microphone)} with its current settings. Choose another device.` };
     }
     case "undefined-mediadevices":
       return { camera: true, microphone: true, source: "camera-error", message: "This browser can't use a camera or microphone on this page." };
     default: {
       const { camera, microphone } = affects(undefined);
       const both = camera || microphone ? { camera, microphone } : { camera: true, microphone: true };
-      return { ...both, source: "camera-error", message: `Your ${mediaNames(both.camera, both.microphone)} couldn't be started.` };
+      return { ...both, source: "camera-error", message: `Couldn't start your ${mediaNames(both.camera, both.microphone)}.` };
     }
   }
 }

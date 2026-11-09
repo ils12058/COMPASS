@@ -138,11 +138,11 @@ export function StudentConsentPanel({
     if (action.withdraw) {
       const canonical = canonicalRows.find((row) => row.id === action.consentId);
       if (canonical?.withdrawn_at && !canonical.effective) setNotice("Permission withdrawn.");
-      else setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Your withdrawal couldn’t be confirmed. The session has been refreshed.") });
+      else setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Couldn't confirm whether permission was withdrawn. The session has been refreshed.") });
     } else if (mutationError) {
-      setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Your choice couldn’t be saved. The session has been refreshed.") });
+      setError({ scope: action.scope, message: ecounselingErrorMessage(mutationError, "Couldn't save your choice. The session has been refreshed.") });
     } else {
-      setNotice(action.decision === ConsentDecisionRequestDecision.APPROVED ? "Your choice has been saved." : "Your choice has been saved. Counseling remains available.");
+      setNotice(action.decision === ConsentDecisionRequestDecision.APPROVED ? "Choice saved." : "Choice saved. Counseling remains available.");
     }
     setAction(null);
   }
@@ -160,7 +160,7 @@ export function StudentConsentPanel({
         consents.isPending ? (
           <div aria-busy="true" className="px-4 py-4 sm:px-5"><span className="sr-only">Loading your media permissions…</span><Skeleton className="h-12 w-full" /><Skeleton className="mt-3 h-12 w-full" /></div>
         ) : consents.isError ? (
-          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consents.refetch()}>Retry</Button>}>Your media permissions couldn’t be loaded.</PanelMessage>
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void consents.refetch()}>Retry</Button>}>Couldn&apos;t load your recording permission. Try again.</PanelMessage>
         ) : (
           <ul className="divide-y divide-border">
             {scopeRows.map(({ scope, row }) => {
@@ -218,7 +218,7 @@ export function StudentConsentPanel({
             })}
           </ul>
         )
-      ) : <PanelMessage>Media permission decisions are unavailable to this account.</PanelMessage>}
+      ) : <PanelMessage>You don&apos;t have access to recording permission decisions.</PanelMessage>}
       {(error && !rows.some((row) => row.scope === error.scope)) || notice ? (
         <div className="border-t border-brand-line px-4 py-3 sm:px-5">
           {error && !rows.some((row) => row.scope === error.scope) ? <p role="alert" className="text-sm text-danger">{error.message}</p> : null}

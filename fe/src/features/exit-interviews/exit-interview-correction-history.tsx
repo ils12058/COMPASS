@@ -82,7 +82,7 @@ export function ExitInterviewCorrectionHistory({
             title={<h2 id="exit-interview-correction-heading" className="font-semibold text-ink">Correction requested</h2>}
           >
             <p className="text-muted">
-              {correctionReviewerName(latest) ?? "An authorized reviewer"} reopened this Exit Interview for correction.
+              {correctionReviewerName(latest) ?? "A reviewer"} reopened this Exit Interview for correction.
             </p>
             <p className="mt-2 whitespace-pre-wrap text-ink">
               <span className="font-semibold">Reason:</span> {latest.reason}
@@ -104,7 +104,7 @@ export function ExitInterviewCorrectionHistory({
                 <p className="whitespace-pre-wrap text-sm leading-6 text-ink">{event.reason}</p>
                 <AnswersToReview event={event} />
                 <p className="mt-1 text-xs text-muted">
-                  {correctionReviewerName(event) ?? "Authorized reviewer"} · {formatExitInterviewDateTime(event.reopened_at)}
+                  {correctionReviewerName(event) ?? "Reviewer"} · {formatExitInterviewDateTime(event.reopened_at)}
                 </p>
               </li>
             ))}

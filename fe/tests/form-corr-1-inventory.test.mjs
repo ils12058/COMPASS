@@ -135,7 +135,7 @@ test("every code has a plain label and a real editor section, and never a stored
     ["background.siblings", "organizations.inside_school", "organizations.outside_school"],
   );
   assert.equal(inventoryCorrectionTargetLabel("personal.contact_number"), "Contact number — Personal & contact");
-  assert.equal(inventoryCorrectionTargetLabel("family.father.occupation"), "Father's occupation — Family & student support");
+  assert.equal(inventoryCorrectionTargetLabel("family.father.occupation"), "Father's occupation — Family & Student support");
   assert.equal(inventoryCorrectionTargetLabel("section.education"), "Whole section — Educational background");
 });
 
@@ -293,7 +293,7 @@ test("Students see plain labels: actionable in the editor, plain text everywhere
     targets: ["personal.contact_number", "family.father.occupation", "education.history.senior_high", "section.plans", "personal.not_released"],
   };
   const plain = render(h(InventoryCorrectionNotice, { correction }));
-  for (const label of ["Contact number — Personal &amp; contact", "Father&#x27;s occupation — Family &amp; student support", "Educational history: Senior high — Educational background", "Whole section — Plans &amp; counseling context"]) {
+  for (const label of ["Contact number — Personal &amp; contact", "Father&#x27;s occupation — Family &amp; Student support", "Educational history: Senior high — Educational background", "Whole section — Plans &amp; counseling context"]) {
     assert.ok(plain.includes(label), `shows ${label}`);
   }
   assert.match(plain, /Answers to review/);
@@ -383,9 +383,9 @@ test("the chooser offers every catalog code, grouped by section, with nothing se
 test("the chooser lists the selection with Remove buttons and stops at 30", () => {
   const some = render(h(InventoryCorrectionTargetChooser, { value: ["section.family", "personal.contact_number"], onChange() {} }));
   assert.match(some, /aria-label="Remove Contact number — Personal &amp; contact"/);
-  assert.match(some, /aria-label="Remove Whole section — Family &amp; student support"/);
+  assert.match(some, /aria-label="Remove Whole section — Family &amp; Student support"/);
   assert.match(some, /Clear selection/);
-  assert.match(some, /Family &amp; student support<span[^>]*>1 selected<\/span>/);
+  assert.match(some, /Family &amp; Student support<span[^>]*>1 selected<\/span>/);
   assert.equal([...some.matchAll(/checked=""/g)].length, 2);
 
   const thirty = inventoryCorrectionTargetOrder.slice(0, 30);

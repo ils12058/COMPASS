@@ -154,7 +154,7 @@ export class ECounselingResourceAccess {
   }
 
   private unavailableError(id: string) {
-    return new CompassApiError({ status: 403, body: { error: { code: "ecounseling_not_found", message: "This E-Counseling session is unavailable." } }, headers: {}, method: "GET", url: getECounselingGetAssignedWorkspaceQueryKey(id)[0] });
+    return new CompassApiError({ status: 403, body: { error: { code: "ecounseling_not_found", message: "You don't have access to this E-Counseling session." } }, headers: {}, method: "GET", url: getECounselingGetAssignedWorkspaceQueryKey(id)[0] });
   }
 
   // Local cleanup must retain only this non-sensitive warning, not the denied workspace/media.

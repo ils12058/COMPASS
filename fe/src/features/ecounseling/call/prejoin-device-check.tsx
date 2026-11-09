@@ -28,7 +28,7 @@ function resolveAudioContext(): AudioContextConstructor | null {
 // device routing (`setSinkId`), it routes through an audio element bound to the selected speaker.
 async function startLocalTestTone(speakerId: string | null, signal: AbortSignal, onEnded: () => void): Promise<ActiveTone> {
   const Context = resolveAudioContext();
-  if (!Context) throw new Error("Audio output is unavailable.");
+  if (!Context) throw new Error("Couldn't play sound in this browser.");
 
   const context = new Context();
   let stopped = false;
@@ -194,7 +194,7 @@ export function PreJoinDeviceDiagnostics({ call }: { call: CallControls }) {
     : !call.microphoneOn
       ? "Microphone is off"
       : micUnavailable
-        ? "Microphone unavailable"
+        ? "Couldn't start the microphone"
         : micPercent >= 5
           ? "Microphone is picking up sound"
           : "Speak to test your microphone";
@@ -275,7 +275,7 @@ function deviceReadiness(kind: "microphone" | "camera", call: CallControls): Rea
   const on = isMicrophone ? call.microphoneOn : call.cameraOn;
   if (!on) return { label: isMicrophone ? "Microphone off" : "Camera off", Icon: isMicrophone ? MicOff : VideoOff, tone: "text-muted" };
   const unavailable = Boolean(isMicrophone ? call.mediaProblem?.microphone : call.mediaProblem?.camera);
-  if (unavailable) return { label: isMicrophone ? "Microphone unavailable" : "Camera unavailable", Icon: AlertTriangle, tone: "text-danger" };
+  if (unavailable) return { label: isMicrophone ? "Couldn't start the microphone" : "Couldn't start the camera", Icon: AlertTriangle, tone: "text-danger" };
   const devices = isMicrophone ? call.devices.microphones : call.devices.cameras;
   if (!devices.length) return { label: "Checking devices", Icon: LoaderCircle, tone: "text-muted" };
   return { label: isMicrophone ? "Microphone ready" : "Camera ready", Icon: Check, tone: "text-success" };

@@ -431,7 +431,7 @@ test("Program-based Year Level choices distinguish supported and recorded ranges
     [],
     { activePrograms: [pendingPostgraduate] },
   );
-  assert.match(pendingEducation, /Year Level policy for this Program has not been confirmed/);
+  assert.match(pendingEducation, /Year Level limits for this Program haven&#x27;t been confirmed/);
   assert.match(pendingEducation, /<option value="10" selected="">10th Year<\/option>/);
 
   const invalidBachelorIssues = getInventorySubmissionIssues(

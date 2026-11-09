@@ -170,7 +170,7 @@ if (phase !== "before") {
         assert.equal(await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(), true);
         await shown(page.getByRole("status").filter({ hasText: "Submission status unconfirmed" }));
         state.failRefresh = true; await refresh.click();
-        await shown(page.getByText("The Exit Interview could not be refreshed. Retry before submitting again.", { exact: true }));
+        await shown(page.getByText("Couldn't refresh the Exit Interview. Retry before submitting again.", { exact: true }));
         assert.equal(state.submissions, 1);
         assert.equal(await submit.isDisabled(), true);
         state.failRefresh = false; await refresh.click();

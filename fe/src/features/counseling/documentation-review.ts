@@ -29,7 +29,7 @@ export const documentationReviewReasonCopy: Record<
 };
 
 const plainCompleteDescription =
-  "This appointment will be marked completed and will no longer be scheduled.";
+  "This Appointment will be marked completed and will no longer be scheduled.";
 
 const reconciliationCompleteDescription =
   "This Appointment will be marked completed. The Counseling Encounter already recorded for it will be kept; no second Encounter will be created.";

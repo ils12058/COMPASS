@@ -178,7 +178,7 @@ async function expand(page, dialog, title) {
     await dialog.getByRole("button", { name: "Review reopening" }).click();
     const confirm = page.getByRole("alertdialog");
     await confirm.getByRole("button", { name: "Reopen for correction", exact: true }).click();
-    await shown(confirm.getByText("This correction request could not be saved. Check the reason and the answers to review, then try again.", { exact: true }));
+    await shown(confirm.getByText("Couldn't save this correction request. Check the reason and the answers to review, then try again.", { exact: true }));
     assert.equal(attempts, 1);
     // Back to the first step: nothing was lost.
     await confirm.getByRole("button", { name: "Cancel" }).click();

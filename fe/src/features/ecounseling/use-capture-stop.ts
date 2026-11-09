@@ -30,7 +30,7 @@ export function useCaptureStop(appointmentId: string | null, onSettled: () => Pr
         onSettled,
         (caught) => {
           setFailed((current) => ({ ...current, [kind]: true }));
-          setError(ecounselingErrorMessage(caught, "Recording couldn’t be stopped. Try again."));
+          setError(ecounselingErrorMessage(caught, "Couldn't confirm that recording stopped. Try again."));
         },
       );
     } finally {

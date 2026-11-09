@@ -248,8 +248,8 @@ test("camera and microphone errors use product copy, never provider messages or 
     [{ type: "permissions", blockedBy: "browser", blockedMedia: ["video"], msg: "raw provider" }, /^Camera access is blocked in your browser/],
     [{ type: "not-found", missingMedia: ["audio"], msg: "raw provider" }, /^No microphone was found\.$/],
     [{ type: "cam-in-use", msg: "NotReadableError" }, /^Your camera is being used by another application\.$/],
-    [{ type: "constraints", reason: "invalid", failedMedia: ["video"], msg: "DailyCamConstraintsError" }, /^Your camera couldn't be started with its current settings/],
-    [{ type: "unknown", msg: "raw provider" }, /couldn't be started\.$/],
+    [{ type: "constraints", reason: "invalid", failedMedia: ["video"], msg: "DailyCamConstraintsError" }, /^Couldn't start your camera with its current settings/],
+    [{ type: "unknown", msg: "raw provider" }, /^Couldn't start your camera\.$/],
   ];
   for (const [error, expected] of cases) {
     const problem = cameraProblem({ error, errorMsg: { errorMsg: "NotReadableError: raw provider", audioOk: true, videoOk: false } });

@@ -32,8 +32,8 @@ export function CurrentInventoryPage() {
   const access = getInventoryAccess(user);
   if (!access.canViewSelf) {
     return (
-      <WorkspaceUnavailable title="Individual Inventory unavailable">
-        This current-record view is available only to Students with access to their own Individual Inventory.
+      <WorkspaceUnavailable title="Individual Inventory">
+        You don&apos;t have access to your current Individual Inventory.
       </WorkspaceUnavailable>
     );
   }
@@ -65,7 +65,7 @@ function StudentCurrentInventory() {
         queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() }),
       ]);
     } catch (error) {
-      setStartError(inventoryErrorMessage(error, "A new Individual Inventory could not be started."));
+      setStartError(inventoryErrorMessage(error, "Couldn't start a new Individual Inventory."));
       await queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
     }
   }
@@ -87,7 +87,7 @@ function StudentCurrentInventory() {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
-        <InventoryQueryError error={status.error} fallback="Current Individual Inventory status could not be loaded." onRetry={() => void status.refetch()} />
+        <InventoryQueryError error={status.error} fallback="Couldn't load current Individual Inventory status." onRetry={() => void status.refetch()} />
       </section>
     );
   }
@@ -99,8 +99,8 @@ function StudentCurrentInventory() {
         {status.isError ? <RefreshFailureNotice retrying={status.isFetching} onRetry={() => void status.refetch()} /> : null}
         <InventoryNotice title="No Individual Inventory for this Academic Year yet" tone="neutral">
           {access.canManageSelf
-            ? "Start your Individual Inventory when you are ready. It will use the official form for this academic year."
-            : "No Individual Inventory has been started for this academic year."}
+            ? "Start your Individual Inventory when you are ready. It will use the official form for this Academic Year."
+            : "No Individual Inventory has been started for this Academic Year."}
         </InventoryNotice>
         <div className="flex flex-wrap gap-3">
           <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -113,8 +113,8 @@ function StudentCurrentInventory() {
           ) : (
             <p className="self-center text-sm text-muted">
               {access.isCurrentStudent
-                ? "Starting a current-year Individual Inventory is not available for this account."
-                : "Only current students can start this year’s Individual Inventory."}
+                ? "You don't have access to start this year's Individual Inventory."
+                : "Only current Students can start this year’s Individual Inventory."}
             </p>
           )}
         </div>
@@ -139,7 +139,7 @@ function StudentCurrentInventory() {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
-        <InventoryQueryError error={record.error} fallback="Current Individual Inventory could not be loaded." onRetry={() => void record.refetch()} />
+        <InventoryQueryError error={record.error} fallback="Couldn't load current Individual Inventory." onRetry={() => void record.refetch()} />
       </section>
     );
   }
@@ -147,7 +147,7 @@ function StudentCurrentInventory() {
   const inventory = recordData.data;
   const refreshFailure = status.isError || record.isError ? (
     <RefreshFailureNotice
-      message="The latest Individual Inventory could not be refreshed. Showing the last confirmed record; your unsaved answers are kept."
+      message="Couldn't refresh the latest Individual Inventory. Showing the last confirmed record; your unsaved answers are kept."
       retrying={status.isFetching || record.isFetching}
       onRetry={() => {
         if (status.isError) void status.refetch();
@@ -177,8 +177,8 @@ function StudentCurrentInventory() {
         <div className="mt-5">
           <InventoryNotice title="Read-only annual record" tone="warning">
             {access.isCurrentStudent
-              ? "You can still read this draft, but editing and submission are unavailable for this account."
-              : "You can still read this draft, but you can no longer change or submit it because you are no longer a current student."}
+              ? "You can read this draft, but you don't have access to change or submit it."
+              : "You can still read this draft, but you can no longer change or submit it because you are no longer a current Student."}
           </InventoryNotice>
         </div>
       ) : null}

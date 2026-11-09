@@ -121,7 +121,7 @@ test("each review reason says what is missing without assuming attendance", () =
   );
   assert.equal(
     completeConfirmationDescription({ reconciliation: false }),
-    "This appointment will be marked completed and will no longer be scheduled.",
+    "This Appointment will be marked completed and will no longer be scheduled.",
   );
   assert.equal(
     completeConfirmationDescription({ reconciliation: true }),
@@ -157,9 +157,9 @@ test("the panel lists every reason and offers only review links", () => {
   assert.match(html, />Needs documentation</);
   assert.match(
     html,
-    /Appointments of yours that may need a record or reconciliation\. This list is derived from current records and doesn’t confirm that Counseling took place\./,
+    /These Appointments may still need a Counseling Encounter record\. Being listed doesn&#x27;t mean Counseling took place\./,
   );
-  assert.match(html, /3 appointments/);
+  assert.match(html, /3 Appointments/);
   for (const reason of ["MISSING_ENCOUNTER", "UNCOMPLETED_APPOINTMENT", "LINKED_CONFLICT"]) {
     const copy = documentationReviewReasonCopy[reason];
     assert.match(html, new RegExp(`>${copy.label}</`));
@@ -174,7 +174,7 @@ test("the panel lists every reason and offers only review links", () => {
 
   // Nothing here writes: authoring and completion stay on the surfaces that own them.
   assert.doesNotMatch(html, /Finish counseling|Record encounter|Follow-up|Follow Up/);
-  assert.equal((html.match(/Review appointment/g) ?? []).length, 3);
+  assert.equal((html.match(/Review Appointment/g) ?? []).length, 3);
   assert.equal((html.match(/View encounter/g) ?? []).length, 1);
 });
 
@@ -184,7 +184,7 @@ test("a Counselor without Appointment management is given no way to act", () => 
     capabilities: counselor().capabilities.filter((code) => code !== "appointments.manage"),
   };
   const html = renderPanel({ user: viewer, seed: (client, key) => seeded(client, key, threeRows) });
-  assert.doesNotMatch(html, /Review appointment/);
+  assert.doesNotMatch(html, /Review Appointment/);
   assert.doesNotMatch(html, /\/portal\/appointments\//);
   assert.match(html, /APT-REVIEW-a-missing/);
   assert.match(html, /View encounter/);
@@ -197,7 +197,7 @@ test("an empty worklist is silent, and a stale page explains itself", () => {
     search: "review_page=2",
     seed: (client, key) => seeded(client, key, [], { page: 2 }),
   });
-  assert.match(stranded, /No appointments on this page need documentation\./);
+  assert.match(stranded, /No Appointments on this page need documentation\./);
   assert.match(stranded, /href="\/portal\/counseling"/);
   assert.match(stranded, /Back to the first page/);
 });
@@ -211,7 +211,7 @@ test("the worklist reports a failure instead of pretending to be empty", () => {
       error: failure(500, "internal_error"),
     }),
   });
-  assert.match(failed, /Needs documentation could not be loaded\./);
+  assert.match(failed, /Couldn&#x27;t load Appointments that need documentation\. Try again\./);
   assert.match(failed, /Retry/);
 
   const stale = renderPanel({
@@ -224,7 +224,7 @@ test("the worklist reports a failure instead of pretending to be empty", () => {
     }),
   });
   assert.match(stale, /Completed without an Encounter/);
-  assert.match(stale, /Latest information could not be refreshed|could not be loaded/);
+  assert.match(stale, /Latest information could not be refreshed|Couldn&#x27;t load/);
 });
 
 test("the panel pages its own list without disturbing the encounters", () => {
@@ -233,7 +233,7 @@ test("the panel pages its own list without disturbing the encounters", () => {
     seed: (client, key) => seeded(client, key, threeRows, { page: 2, hasNext: true }),
   });
   assert.match(html, /aria-label="Needs documentation pages"/);
-  assert.match(html, /Page 2 · 3 appointments on this page/);
+  assert.match(html, /Page 2 · 3 Appointments on this page/);
   assert.match(html, /aria-label="Previous"/);
   assert.match(html, /aria-label="Next"/);
   // The pager is buttons over a query parameter the panel owns; the row links stay plain hrefs.

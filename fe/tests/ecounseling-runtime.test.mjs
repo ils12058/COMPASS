@@ -62,7 +62,7 @@ test("the Student's cue and the Counselor's notices come from COMPASS session st
   assert.equal(pendingConsentCue(pending), "Recording permission requested");
   assert.equal(pendingConsentCue(media()), null);
   const withdrawn = media("STOP_REQUESTED"); withdrawn.recording.consent_status = "WITHDRAWN";
-  assert.equal(consentEndedNotice(withdrawn), "The student withdrew recording permission.");
+  assert.equal(consentEndedNotice(withdrawn), "The Student withdrew recording permission.");
   assert.equal(consentEndedNotice(media("READY")), null);
   assert.deepEqual(activeCaptureKinds(media("ACTIVE")), ["recording"]);
   assert.deepEqual(activeCaptureKinds(media("START_REQUESTED")), ["recording"]);

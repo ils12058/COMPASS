@@ -50,7 +50,7 @@ export function StudentSessionSummaries({ access }: { access: CounselingAccess }
     <div>
       <CounselingPageHeading title="Student Session Summaries" description="View summaries that your Counselor has published for you." />
       <Panel aria-label="Published Student Session Summaries">
-      {summaries.isPending ? <RowsSkeleton label="Loading shared Student Session Summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Published Student Session Summaries could not be loaded.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No Student Session Summaries have been published for you yet.</PanelMessage> : (
+      {summaries.isPending ? <RowsSkeleton label="Loading shared Student Session Summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Couldn't load published Student Session Summaries.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No Student Session Summaries have been published for you yet.</PanelMessage> : (
         <>
           <ul className="divide-y divide-border" aria-label="Published Student Session Summaries">
             {items.map((summary) => (
@@ -83,9 +83,9 @@ export function StudentSessionSummaryDetail({ summaryId }: { summaryId: string }
   const access = getCounselingAccess(user);
   const query = useCounselingGetMyStudentSessionSummary(summaryId, { query: { enabled: access.canViewOwnStudentSessionSummaries, retry: false } });
   const summary = query.data?.data;
-  if (!access.canViewOwnStudentSessionSummaries) return <CounselingUnavailable title="Student Session Summary unavailable">This student session summary is unavailable.</CounselingUnavailable>;
+  if (!access.canViewOwnStudentSessionSummaries) return <CounselingUnavailable title="Student Session Summary">You don&apos;t have access to Student Session Summaries.</CounselingUnavailable>;
   if (query.isPending) return <StudentSessionSummaryDetailSkeleton />;
-  if (query.isError || !summary) return <div><CounselingPageHeading title="Student Session Summary" back={summariesBackLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "This student session summary is unavailable.")} onRetry={() => void query.refetch()} /></div>;
+  if (query.isError || !summary) return <div><CounselingPageHeading title="Student Session Summary" back={summariesBackLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "Couldn't load this Student Session Summary. Try again.")} onRetry={() => void query.refetch()} /></div>;
 
   return (
     <article className="max-w-4xl">

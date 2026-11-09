@@ -7,7 +7,7 @@ export const featureCases = [
   ['messages','/portal/messages','No messages yet.','guidance-messages-3d'],
   ['inventory','/portal/inventory','Start Individual Inventory','individual-inventory-3d'],
   ['good-moral','/portal/good-moral/request','Request Good Moral Certificate','good-moral-3d'],
-  ['exit','/portal/exit-interviews','The Guidance and Counseling Office has opened an Exit Interview for you.','exit-interview-3d'],
+  ['exit','/portal/exit-interviews','The Guidance Office has opened an Exit Interview for you.','exit-interview-3d'],
   ['tracer','/portal/graduate-tracer','Start Graduate Tracer Survey','graduate-tracer-3d'],
 ];
 export function featureWorld(name, mode='intro') {

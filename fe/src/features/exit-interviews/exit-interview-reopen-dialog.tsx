@@ -95,10 +95,10 @@ export function ExitInterviewReopenAction({
       const code = caught instanceof CompassApiError ? readApiErrorCode(caught.body) : undefined;
       setReviewError(
         code === "invalid_exit_interview_request"
-          ? "This correction request could not be saved. Check the reason and the answers to review, then try again."
+          ? "Couldn't save this correction request. Check the reason and the answers to review, then try again."
           : exitInterviewErrorMessage(
             caught,
-            "The Exit Interview could not be reopened. Review the reason and try again.",
+            "Couldn't reopen the Exit Interview. Review the reason and try again.",
           ),
       );
     }

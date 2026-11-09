@@ -28,7 +28,7 @@ export function InventoryPdfDownload({
         : await inventoryDownloadRecordPdf(inventoryId);
       downloadBinaryResponse(response, institutionalPdfFallbackFilename("individualInventory", inventoryId));
     } catch (caught) {
-      setError(inventoryErrorMessage(caught, "The official Individual Inventory PDF could not be released right now. Try again later."));
+      setError(inventoryErrorMessage(caught, "Couldn't prepare the Individual Inventory PDF right now. Try again later."));
     } finally {
       setPending(false);
     }

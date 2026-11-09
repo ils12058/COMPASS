@@ -86,7 +86,7 @@ export function ActualTimeFields({
       <legend className="text-sm font-semibold text-ink">Actual counseling interaction</legend>
       <p id={helpId} className="mt-1 text-sm text-muted">
         Enter when the counseling conversation actually started and ended, in {INSTITUTION_TIME_ZONE_LABEL}.
-        {scheduled ? " These times may differ from the scheduled appointment." : null}
+        {scheduled ? " These times may differ from the scheduled Appointment." : null}
       </p>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         {field("start", "Actual start", startedAt)}

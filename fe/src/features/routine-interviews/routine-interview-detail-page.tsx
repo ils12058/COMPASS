@@ -74,7 +74,7 @@ export function RoutineInterviewDetailPage({
   if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
   }
-  return <RoutineUnavailable message="This Routine Interview is unavailable." />;
+  return <RoutineUnavailable message="You don't have access to this Routine Interview." />;
 }
 
 function StudentRoutineDetail({
@@ -100,7 +100,7 @@ function StudentRoutineDetail({
     return (
       <div>
         <RoutinePageHeading title="Routine Interview" back={<RoutineBackLink />} />
-        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
+        <RoutineQueryError message={routineErrorMessage(query.error, "Couldn't load this Routine Interview.")} onRetry={() => void query.refetch()} />
       </div>
     );
   }
@@ -174,7 +174,7 @@ function CounselorRoutineDetail({
     return (
       <div>
         <RoutinePageHeading title="Routine Interview" back={<RoutineBackLink />} />
-        <RoutineQueryError message={routineErrorMessage(query.error, "This Routine Interview could not be loaded for this account.")} onRetry={() => void query.refetch()} />
+        <RoutineQueryError message={routineErrorMessage(query.error, "Couldn't load this Routine Interview.")} onRetry={() => void query.refetch()} />
       </div>
     );
   }

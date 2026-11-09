@@ -75,7 +75,7 @@ async function expandSection(dialog, label) {
     assert.equal(await dialog.getByRole("checkbox", { checked: true }).count(), 0, "Nothing is selected by default");
     await shown(dialog.getByText("None. The Student will see only your instructions.", { exact: true }));
 
-    await expandSection(dialog, "Family & student support");
+    await expandSection(dialog, "Family & Student support");
     assert.equal(await dialog.locator("details[open]").count(), 1);
     await dialog.getByRole("group", { name: "Father" }).getByRole("checkbox", { name: "Father's occupation" }).check();
     await dialog.getByRole("group", { name: "Father" }).getByRole("checkbox", { name: "Father's email address" }).check();
@@ -86,18 +86,18 @@ async function expandSection(dialog, label) {
     await dialog.getByRole("checkbox", { name: "Contact number" }).check();
     await dialog.getByRole("checkbox", { name: /^Whole section/ }).check();
     await shown(dialog.getByText("4 of 30 selected", { exact: true }));
-    await shown(dialog.locator("summary").filter({ hasText: "Family & student support" }).getByText("2 selected", { exact: true }));
+    await shown(dialog.locator("summary").filter({ hasText: "Family & Student support" }).getByText("2 selected", { exact: true }));
 
     const selected = dialog.getByRole("list", { name: "Selected for review" });
     assert.deepEqual(await selected.getByRole("listitem").locator("span").allTextContents(), [
       "Whole section — Personal & contact",
       "Contact number — Personal & contact",
-      "Father's occupation — Family & student support",
-      "Father's email address — Family & student support",
+      "Father's occupation — Family & Student support",
+      "Father's email address — Family & Student support",
     ], "The selection is listed in form order before confirming");
 
     // Remove one; focus moves to the next Remove button.
-    await dialog.getByRole("button", { name: "Remove Father's occupation — Family & student support" }).click();
+    await dialog.getByRole("button", { name: "Remove Father's occupation — Family & Student support" }).click();
     assert.match(await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? ""), /^Remove Father's email address/);
     await shown(dialog.getByText("3 of 30 selected", { exact: true }));
 
@@ -134,7 +134,7 @@ async function expandSection(dialog, label) {
   const fixture = reviewerFixture();
   await check("reviewer-selection-stops-at-thirty", `/portal/inventory/records/${recordId}`, { overrides: fixture.overrides }, async (page) => {
     const dialog = await openReopenDialog(page);
-    await expandSection(dialog, "Family & student support");
+    await expandSection(dialog, "Family & Student support");
     const boxes = dialog.locator("details[open] input[type=checkbox]");
     for (let index = 0; index < 30; index += 1) await boxes.nth(index).check();
     await shown(dialog.getByText("30 of 30 selected. Remove one to choose another.", { exact: true }));
@@ -178,7 +178,7 @@ async function expandSection(dialog, label) {
       clearTimeout(timeout);
     }
     release();
-    await shown(dialog.getByText("This Individual Inventory could not be reopened.", { exact: true }));
+    await shown(dialog.getByText("Couldn't reopen this Individual Inventory.", { exact: true }));
     assert.equal(await dialog.getByRole("checkbox", { name: "Height" }).isChecked(), true, "The selection survives a failed request");
     assert.equal(await dialog.getByRole("checkbox", { name: "Height" }).isDisabled(), false);
     assert.deepEqual(fixture.requests.at(-1).targets, ["health.height"]);
@@ -199,7 +199,7 @@ async function expandSection(dialog, label) {
   const fixture = reviewerFixture();
   await check("reviewer-dialog-fits-a-phone", `/portal/inventory/records/${recordId}`, { mobile: true, overrides: fixture.overrides }, async (page) => {
     const dialog = await openReopenDialog(page);
-    await expandSection(dialog, "Family & student support");
+    await expandSection(dialog, "Family & Student support");
     await dialog.getByRole("checkbox", { name: "Mother's annual income from previous year" }).check();
     const box = await dialog.boundingBox();
     const viewport = page.viewportSize();
@@ -282,9 +282,9 @@ const heading = (page) => page.locator("#inventory-editor-heading");
 // [button label, editor section, element that should have focus, hint text that should describe it]
 const navigationCases = [
   ["Contact number — Personal & contact", "Personal & contact", "inventory-contact-number", "You were asked to review this answer."],
-  ["Father's email address — Family & student support", "Family & student support", "inventory-family-father-email", "You were asked to review this answer."],
-  ["Spouse's name — Family & student support", "Family & student support", "inventory-spouse-add", "You were asked to review Spouse information. It appears after you choose Add optional Spouse details."],
-  ["Additional parent circumstances — Family & student support", "Family & student support", null, "You were asked to review this answer."],
+  ["Father's email address — Family & Student support", "Family & Student support", "inventory-family-father-email", "You were asked to review this answer."],
+  ["Spouse's name — Family & Student support", "Family & Student support", "inventory-spouse-add", "You were asked to review Spouse information. It appears after you choose Add optional Spouse details."],
+  ["Additional parent circumstances — Family & Student support", "Family & Student support", null, "You were asked to review this answer."],
   ["Siblings — Siblings & background", "Siblings & background", "inventory-sibling-0-name", "You were asked to review this list."],
   ["Landlord or landlady name — Living conditions & health", "Living conditions & health", "inventory-living-arrangement", "You were asked to review boarding-house details. They appear when you choose Boarding house."],
   ["Educational history: Senior high — Educational background", "Educational background", "inventory-education-senior_high-school", "You were asked to review these answers."],
@@ -342,7 +342,7 @@ async function followEveryTarget(page, { mobile = false } = {}) {
     for (const code of allTargets) assert.ok(!(await page.locator("main").textContent()).includes(code), `${code} is never shown`);
     await followEveryTarget(page);
     // The father's additional details opened for the named answer; the mother's stayed closed.
-    await answerButton(page, "Father's email address — Family & student support").click();
+    await answerButton(page, "Father's email address — Family & Student support").click();
     assert.equal(await page.locator("#inventory-family-father-details").evaluate((node) => node.open), true);
     assert.equal(await page.locator("#inventory-family-mother-details").evaluate((node) => node.open), false);
     await screenshot(page, "student-family-details-target");
@@ -438,7 +438,7 @@ async function followEveryTarget(page, { mobile = false } = {}) {
     },
   }, async (page) => {
     const notice = page.getByRole("status").filter({ hasText: "Correction requested" });
-    await shown(notice.getByText("Guardian name — Family & student support", { exact: true }));
+    await shown(notice.getByText("Guardian name — Family & Student support", { exact: true }));
     assert.equal(await notice.getByRole("button").count(), 0);
     assert.equal(await page.getByRole("textbox").count(), 0, "The record stays read-only");
   });

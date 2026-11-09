@@ -53,7 +53,7 @@ test("no admission means no start action on the direct page", () => {
 });
 test("an open graduation opportunity explains the office workflow and offers Start", () => {
   const html = home({ ...empty, opportunity, can_start: true, graduation_good_moral_blocked: true });
-  assert.match(html, /Guidance and Counseling Office has opened/); assert.match(html, /graduation Good Moral/); assert.match(html, />Start<span class="sr-only"> Exit Interview/);
+  assert.match(html, /Guidance Office has opened/); assert.match(html, /Good Moral Certificate for UCN Bachelor&#x27;s graduates/); assert.match(html, />Start<span class="sr-only"> Exit Interview/);
 });
 test("missing Inventory offers its prerequisite link and no Start", () => {
   const html = home({ ...empty, opportunity, inventory_submitted: false }); assert.match(html, /href="\/portal\/inventory"/); assert.doesNotMatch(html, />Start</);
@@ -117,21 +117,21 @@ test("an unexpectedly incomplete reopening actor falls back to a generic reviewe
   for (const reopened_by of [undefined, null, { id: "reviewer" }, { id: "reviewer", display_name: "  " }]) {
     const event = { ...reopen("partial", "", "Synthetic reason.", "2026-10-06T03:00:00Z"), reopened_by };
     const html = renderToStaticMarkup(h(ExitInterviewCorrectionHistory, { events: [reopen("earlier", "Carlo Counselor", "Earlier.", "2026-10-05T03:00:00Z"), event], emphasizeLatest: true }));
-    assert.match(html, /An authorized reviewer reopened this Exit Interview for correction\./);
-    assert.match(html, /Authorized reviewer · /);
+    assert.match(html, /A reviewer reopened this Exit Interview for correction\./);
+    assert.match(html, /Reviewer · /);
     assert.match(html, /Synthetic reason\./);
   }
 });
 test("Student and reviewer Exit Interview copy names authorized reviewers without implying Head-only review", () => {
   const submitted = home({ ...empty, opportunity: { ...opportunity, status: "COMPLETED" }, current_record: record, has_records: true });
-  assert.match(submitted, /available only to authorized Guidance and Counseling Office reviewers/);
+  assert.match(submitted, /Only Guidance Office reviewers with access can read your submitted answers/);
   const notSubmitted = exitInterviewErrorMessage(new CompassApiError({ status: 409, body: { error: { code: "exit_interview_not_submitted", message: "PRIVATE" } }, headers: {}, method: "GET", url: "/api/v1/exit-interviews/x" }), "fallback");
-  assert.equal(notSubmitted, "This Exit Interview is currently a draft and is not available for review until the Student submits it.");
+  assert.equal(notSubmitted, "You can review this Exit Interview after the Student submits it.");
   const directory = new URL("../src/features/exit-interviews/", import.meta.url);
   for (const file of readdirSync(directory)) assert.doesNotMatch(readFileSync(new URL(file, directory), "utf8"), /Head Guidance|HeadExitInterview/, file);
   const form = readFileSync(new URL("exit-interview-form.tsx", directory), "utf8");
   // Submission remains final except through the controlled reopen process.
-  assert.match(form, /available only to authorized Guidance and Counseling Office reviewers\. You will not be able to edit it after submission unless it is reopened for correction\./);
+  assert.match(form, /Only Guidance Office reviewers with access can read your submitted answers\. You can&apos;t change them unless your Exit Interview is reopened for correction\./);
 });
 
 

@@ -154,7 +154,7 @@ if (phase === "after") {
       const text = "Synthetic failed-save text.";
       await page.getByLabel("Other adjustment", { exact: true }).fill(text);
       await page.getByRole("button", { name: saveButtonName, exact: true }).click();
-      await shown(page.getByRole("alert").filter({ hasText: "The Counselor Evaluation could not be saved." }));
+      await shown(page.getByRole("alert").filter({ hasText: "Couldn't save the Counselor Evaluation." }));
       await shown(page.getByRole("status").filter({ hasText: "Unsaved changes" }));
       assert.equal(await page.getByLabel("Other adjustment", { exact: true }).inputValue(), text);
       assert.equal(await page.getByRole("button", { name: "Finalize Counselor Evaluation", exact: true }).isDisabled(), true);
@@ -237,7 +237,7 @@ if (phase === "after") {
   {
     const state = counselorEvaluationFixture({ candidates: [] });
     await check("after-no-eligible-encounter-blocks-finalization", routineEvaluationPath, { handler: state.handler }, async (page) => {
-      await shown(page.getByText("No eligible completed Encounter is available yet.", { exact: true }));
+      await shown(page.getByText("No matching completed Counseling Encounter is available yet.", { exact: true }));
       await screenshot(page, "after-no-eligible-encounter");
       assert.equal(await page.getByRole("button", { name: "Finalize Counselor Evaluation", exact: true }).isDisabled(), true);
       assert.equal(state.finalizations.length, 0);
@@ -281,7 +281,7 @@ if (phase === "after") {
       candidates: Array.from({ length: 21 }, (_, index) => syntheticEncounter(String(index + 1).padStart(3, "0"))),
     });
     await check("after-candidate-retry-and-pagination", routineEvaluationPath, { handler: state.handler, device: "phone" }, async (page) => {
-      const candidateError = page.getByRole("alert").filter({ hasText: "Completed Counseling interactions could not be loaded." });
+      const candidateError = page.getByRole("alert").filter({ hasText: "Couldn't load completed Counseling interactions." });
       await shown(candidateError);
       await candidateError.getByRole("button", { name: "Retry", exact: true }).click();
       const group = page.getByRole("group", { name: "Select the completed Encounter for this interaction" });

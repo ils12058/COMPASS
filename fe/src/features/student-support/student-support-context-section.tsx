@@ -12,12 +12,12 @@ function ContextUnavailable({ error, onRetry }: { error: unknown; onRetry: () =>
   const denied = error instanceof CompassApiError && (error.status === 401 || error.status === 403);
   const message =
     code === "student_support_not_found"
-      ? "Support information for this student is unavailable to you."
+      ? "You don't have access to this Student's support details."
       : code === "current_academic_year_not_configured"
-        ? "Support information is unavailable until the current academic year is set up."
+        ? "Support details appear after the current Academic Year is set up."
         : denied
-          ? "Student support information is unavailable to this account."
-          : "Student support information could not be loaded.";
+          ? "You don't have access to Student support details."
+          : "Couldn't load Student support details. Try again.";
   const canRetry = !denied && code !== "student_support_not_found" && code !== "current_academic_year_not_configured";
   return (
     <div role="alert" className="mt-3">
@@ -45,7 +45,7 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
         <div aria-busy="true" className="mt-4 space-y-2">
           <Skeleton className="h-4 w-56" />
           <Skeleton className="h-10 w-full max-w-md" />
-          <p className="sr-only">Loading student support information…</p>
+          <p className="sr-only">Loading Student support information…</p>
         </div>
       ) : context.isError ? (
         <ContextUnavailable error={context.error} onRetry={() => void context.refetch()} />
@@ -56,11 +56,11 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
           </p>
           {context.data.data.inventory_status === InventoryStatusValue.MISSING ? (
             <p className="mt-3 text-sm leading-6 text-ink">
-              The student has not started this year’s Individual Inventory, so no support information is available.
+              Support details appear after the Student submits this year&apos;s Individual Inventory.
             </p>
           ) : context.data.data.inventory_status === InventoryStatusValue.DRAFT || !context.data.data.available ? (
             <p className="mt-3 text-sm leading-6 text-ink">
-              This year’s Individual Inventory has not been submitted, so no support information is available.
+              Support details appear after the Student submits this year&apos;s Individual Inventory.
             </p>
           ) : context.data.data.indicators.length > 0 ? (
             <ul className="mt-3 max-w-md divide-y divide-border rounded-sm border border-border">

@@ -299,7 +299,7 @@ for (const mode of ["disabled", "outage"]) {
   const w = world({ recording: "ACTIVE" });
   await check("403 canonical read conceals protected workspace and ends the existing call", PATH, w.options("COUNSELOR"), async (page) => {
     await join(page); w.state.denied = true; w.send();
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     assert.equal(await page.getByText("Media Test Student", { exact: true }).count(), 0);
     assert.equal(await page.getByRole("button", { name: "Stop recording", exact: true }).count(), 0);
     await hidden(stage(page));

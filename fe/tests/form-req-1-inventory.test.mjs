@@ -273,7 +273,7 @@ test("a deceased or unknown parent's details are not required", () => {
 
 test("previous counseling details are required only when the Student had counseling", () => {
   assert.deepEqual(targetsIn(completeDraft({ prior_counseling_experience: true }), "plans"), [
-    ["inventory-prior-counselor", "Add your previous counselor's name."],
+    ["inventory-prior-counselor", "Add your previous Counselor's name."],
     ["inventory-prior-counseling-when", "Add when you had previous counseling."],
     ["inventory-prior-counseling-where", "Add where you had previous counseling."],
   ]);

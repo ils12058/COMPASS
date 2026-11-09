@@ -151,7 +151,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
       }
       setError(routineErrorMessage(
         caught,
-        "The create response could not be confirmed. Retry with the same Student and visit details to safely check the result.",
+        "Couldn't confirm whether the Routine Interview was created. Retry with the same Student and visit details to check the result.",
       ));
     } finally {
       setPending(false);
@@ -162,7 +162,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
     <DialogContent className="max-w-2xl" dismissible={!pending}>
       <DialogTitle>Start Routine Interview</DialogTitle>
       <DialogDescription>
-        Start a Routine Interview for an eligible student. They will complete their intake separately.
+        Start a Routine Interview for a Student you can select. They will complete their Intake separately.
       </DialogDescription>
 
       {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
@@ -173,7 +173,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
         </div>
       ) : options.isError ? (
         <div role="alert" className="mt-5">
-          <p className="text-sm text-danger">{routineErrorMessage(options.error, "Routine Interview options could not be loaded.")}</p>
+          <p className="text-sm text-danger">{routineErrorMessage(options.error, "Couldn't load Routine Interview options.")}</p>
           <Button className="mt-3" variant="secondary" onClick={() => void options.refetch()}>Retry</Button>
         </div>
       ) : deliveryModes.length === 0 ? (
@@ -207,13 +207,13 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
             <fieldset className="min-w-0">
             <legend className="mb-2 text-sm font-medium text-ink">Students</legend>
             {candidates.isPending ? (
-              <LoadingRegion label="Loading students…" className="space-y-2">
+              <LoadingRegion label="Loading Students…" className="space-y-2">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </LoadingRegion>
             ) : candidates.isError ? (
               <div role="alert">
-                <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Student candidates could not be loaded.")}</p>
+                <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Couldn't load Student candidates.")}</p>
                 <Button type="button" className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
               </div>
             ) : pageData?.items.length ? (

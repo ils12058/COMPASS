@@ -260,7 +260,7 @@ if (phase === "before") {
       await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
       assert.deepEqual(state.writes.at(-1).concerns, ["OTHER"]);
       await getSubmitButton(page).click();
-      const issueButton = page.getByRole("button", { name: "Please specify the other concern before submitting.", exact: true });
+      const issueButton = page.getByRole("button", { name: "Describe your other concern before submitting.", exact: true });
       await shown(issueButton);
       assert.equal(await specification.getAttribute("aria-invalid"), "true");
       assert.equal(await specification.getAttribute("aria-describedby"), "routine-other-concern-error");
@@ -488,7 +488,7 @@ if (phase === "before") {
     await check("Counselor cannot see Student draft Intake content", routineIntakePath, { role: "COUNSELOR", handler: state.handler }, async (page) => {
       await shown(page.getByText("Student Intake is still a draft."));
       assert.equal(await page.getByText("Synthetic response for review.", { exact: true }).count(), 0);
-      assert.equal(await page.getByRole("button", { name: "Save Progress", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Save progress", exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Submit Intake", exact: true }).count(), 0);
     });
   }
@@ -502,16 +502,16 @@ if (phase === "before") {
       await shown(page.getByText("You can view your draft, but your current Student status does not allow Intake changes."));
       await shown(page.getByText("Synthetic historical draft.", { exact: true }));
       assert.equal(await page.locator("form").count(), 0);
-      assert.equal(await page.getByRole("button", { name: "Save Progress", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Save progress", exact: true }).count(), 0);
     });
   }
 
   {
     const state = routineIntakeFixture({ account: syntheticStudent({ canView: false, canManage: false }) });
     await check("Student without Routine Interview view capability sees unavailable state", routineIntakePath, studentOptions(state, "desktop"), async (page) => {
-      await shown(page.getByText("This Routine Interview is unavailable.", { exact: true }));
+      await shown(page.getByText("You don't have access to this Routine Interview.", { exact: true }));
       assert.equal(state.reads, 0, "the unavailable route does not request the detail");
-      assert.equal(await page.getByRole("button", { name: "Save Progress", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Save progress", exact: true }).count(), 0);
     });
   }
 }

@@ -36,9 +36,9 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
   const query = useCounselingGetEncounter(encounterId, { query: { enabled: access.isCounselor && access.canViewAssigned, retry: false } });
   const encounter = query.data?.data;
 
-  if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
+  if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Counseling Encounter" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "You don't have access to this Counseling Encounter.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>

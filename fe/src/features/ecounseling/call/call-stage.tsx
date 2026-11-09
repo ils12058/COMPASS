@@ -26,7 +26,7 @@ export function joinAvailabilityMessage(readiness: ProviderReadiness): string | 
   }
   if (readiness.join_state === ECounselingJoinState.CLOSED) return "This session can no longer be joined.";
   if (readiness.join_state === ECounselingJoinState.PROVIDER_DISABLED) {
-    return "Video sessions are not available right now. Your Counseling appointment is still available.";
+    return "Video sessions are not available right now. Your Counseling Appointment is still available.";
   }
   return null;
 }
@@ -288,7 +288,7 @@ export function CallStage({
             <p className="text-sm font-semibold">Checking devices…</p>
           </div>
         ) : (
-          <CameraOff name={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} status={call.mediaProblem?.camera ? "Camera unavailable" : "Camera off"} />
+          <CameraOff name={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} status={call.mediaProblem?.camera ? "Couldn't start the camera" : "Camera off"} />
         )
       );
     }
@@ -299,7 +299,7 @@ export function CallStage({
   } else if (open) {
     main = canJoin
       ? <StageMessage detail={deviceCheckSummary} action={stageActions("Join session")}>Ready to join</StageMessage>
-      : <StageMessage>Joining this session is unavailable to this account.</StageMessage>;
+      : <StageMessage>You don&apos;t have access to join this session.</StageMessage>;
   } else {
     main = <StageMessage detail={deviceCheckSummary} action={checkDevicesButton}>{availability}</StageMessage>;
   }

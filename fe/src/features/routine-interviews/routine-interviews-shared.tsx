@@ -122,13 +122,13 @@ export function routineErrorCode(error: unknown): string | undefined {
 const routineErrors: Record<string, string> = {
   permission_denied: "You can't perform this Routine Interview action.",
   current_academic_year_not_configured:
-    "A new Routine Interview cannot be started until the current academic year is set up. Contact the Guidance Office administrator.",
+    "A new Routine Interview cannot be started until the current Academic Year is set up. Contact the Guidance Office.",
   current_student_required:
-    "Only current students can start or update a Routine Interview.",
+    "Only current Students can start or update a Routine Interview.",
   routine_interview_not_found:
-    "This Routine Interview is unavailable.",
+    "You don't have access to this Routine Interview.",
   routine_interview_not_permitted:
-    "This Routine Interview is unavailable.",
+    "You don't have access to this Routine Interview.",
   routine_interview_appointment_invalid:
     "This Appointment no longer has a Routine Interview to complete, for example because it was cancelled.",
   routine_interview_closed_by_appointment:
@@ -146,9 +146,9 @@ const routineErrors: Record<string, string> = {
   routine_interview_encounter_conflict:
     "A different Counseling Encounter is already linked to this Routine Interview. The latest details are now shown.",
   routine_interview_form_revision_unsupported:
-    "The current Routine Interview form can't be used to start a new interview. Contact the Guidance Office administrator.",
+    "The current Routine Interview form can't be used to start a new interview. Contact the Guidance Office.",
   idempotency_key_conflict:
-    "This attempt no longer matches the original student, visit type, and delivery mode. Review the choices and submit again.",
+    "This attempt no longer matches the original Student, visit type, and delivery mode. Review the choices and submit again.",
   routine_interview_invalid:
     "Some Routine Interview details need attention. Review them and try again.",
 };
@@ -321,7 +321,7 @@ export function RoutineContextSummary({
 }
 
 export function RoutineQueryError({
-  title = "Routine Interview could not be loaded.",
+  title = "Routine Interview",
   message,
   onRetry,
   children,
@@ -368,7 +368,7 @@ export function RoutineUnavailable({
   message?: string;
 }) {
   return (
-    <WorkspaceUnavailable title="Routine Interviews unavailable">
+    <WorkspaceUnavailable title="Routine Interviews">
       {message}
     </WorkspaceUnavailable>
   );

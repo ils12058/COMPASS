@@ -271,7 +271,7 @@ if (phase !== "before") {
       assert.equal(await page.getByRole("button", { name: "Continue", exact: true }).isDisabled(), true);
       release();
       await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
-      assert.equal(await page.locator("#inventory-editor-heading").textContent(), "Family & student support");
+      assert.equal(await page.locator("#inventory-editor-heading").textContent(), "Family & Student support");
       assert.equal(state.writes.length, 2);
       assert.equal(state.writes.at(-1).contact_number, "0918 111 2222");
       assert.equal(state.submissions, 0);
@@ -302,7 +302,7 @@ if (phase !== "before") {
       await submit.click();
       const dialog = page.getByRole("alertdialog");
       await shown(dialog);
-      await shown(dialog.getByText(/After submission, this Inventory becomes read-only/));
+      await shown(dialog.getByText(/After submission, you can't change your Individual Inventory/));
       await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
       assert.equal(state.submissions, 0);
       await submit.click();

@@ -78,35 +78,35 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
           <LoadingRegion label="Loading Exit Interview access…" className="space-y-3 px-4 py-4 sm:px-5"><Skeleton className="h-8 w-48" /><Skeleton className="h-16 w-full" /></LoadingRegion>
         ) : current.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void checkStatus()}>Retry</Button>}>
-            {exitInterviewErrorMessage(current.error, "Your latest Exit Interview access could not be confirmed.")}
+            {exitInterviewErrorMessage(current.error, "Couldn't confirm your latest Exit Interview access.")}
           </PanelMessage>
         ) : record ? (
           <div className="px-4 py-4 sm:px-5">
             <ExitInterviewStatus status={record.status} />
-            <p className="mt-2 text-sm text-muted">{record.status === "SUBMITTED" ? "Your submitted answers are available only to authorized Guidance and Counseling Office reviewers." : state?.can_edit_current ? "Your answers stay private until you submit." : "You can view this draft. Contact the Guidance and Counseling Office if you need to continue it."}</p>
+            <p className="mt-2 text-sm text-muted">{record.status === "SUBMITTED" ? "Only Guidance Office reviewers with access can read your submitted answers." : state?.can_edit_current ? "Your answers stay private until you submit." : "You can view this draft. Contact the Guidance Office if you need to continue it."}</p>
             <Link href={`/portal/exit-interviews/${record.id}`} className={buttonVariants({ variant: state?.can_edit_current ? "primary" : "secondary", className: "mt-4" })}>
               {state?.can_edit_current ? "Continue Exit Interview" : record.status === "SUBMITTED" ? "View submitted Exit Interview" : "View draft Exit Interview"}
             </Link>
           </div>
         ) : state?.opportunity?.status === "OPEN" && access.canManageSelf ? (
           <IllustratedEmptyState src={canStart && !startError && !start.isPending ? "/illustrations/exit-interview-3d.png" : undefined} action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
-            The Guidance and Counseling Office has opened an Exit Interview for you.
-            {state.opportunity.source === "GRADUATION" ? " Submit it before requesting your graduation Good Moral certificate." : null}
+            The Guidance Office has opened an Exit Interview for you.
+            {state.opportunity.source === "GRADUATION" ? " Submit it before requesting your Good Moral Certificate for UCN Bachelor's graduates." : null}
             {!state.inventory_submitted ? " Submit your current Individual Inventory before starting." : null}
           </IllustratedEmptyState>
         ) : (
-          <PanelMessage>{state?.opportunity?.status === "REVOKED" ? "The Guidance and Counseling Office has withdrawn your Exit Interview access." : state?.opportunity?.status === "COMPLETED" ? "Your Exit Interview workflow is completed." : "The Guidance and Counseling Office has not opened an Exit Interview for you."}</PanelMessage>
+          <PanelMessage>{state?.opportunity?.status === "REVOKED" ? "The Guidance Office has withdrawn your Exit Interview access." : state?.opportunity?.status === "COMPLETED" ? "Your Exit Interview workflow is completed." : "The Guidance Office has not opened an Exit Interview for you."}</PanelMessage>
         )}
       </Panel>
       {startError ? <Notice role="alert" tone="danger" action={needsStatusCheck ? <Button variant="secondary" disabled={current.isFetching} onClick={() => void checkStatus()}>Check current status</Button> : undefined}>
-        {needsStatusCheck ? "We could not confirm whether your Exit Interview started. Check its current status before trying again." : exitInterviewErrorMessage(startError, "The Exit Interview could not be started.")}
+        {needsStatusCheck ? "Couldn't confirm whether your Exit Interview started. Check its current status before trying again." : exitInterviewErrorMessage(startError, "Couldn't start the Exit Interview.")}
       </Notice> : null}
       <Panel aria-labelledby="exit-interview-history-heading">
         <PanelHeader title="Exit Interview history" titleId="exit-interview-history-heading" />
         {history.isPending ? <LoadingRegion label="Loading Exit Interview history…" className="px-4 py-4 sm:px-5"><Skeleton className="h-16 w-full" /></LoadingRegion> : history.isError && (!history.data || hideHistory) ? (
-          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void history.refetch()}>Retry</Button>}>{exitInterviewErrorMessage(history.error, "Exit Interview history could not be loaded.")}</PanelMessage>
+          <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void history.refetch()}>Retry</Button>}>{exitInterviewErrorMessage(history.error, "Couldn't load Exit Interview history.")}</PanelMessage>
         ) : <>
-          {history.isError ? <ExitInterviewError error={history.error} fallback="History could not be refreshed. Showing the last confirmed records." onRetry={() => void history.refetch()} /> : null}
+          {history.isError ? <ExitInterviewError error={history.error} fallback="Couldn't refresh history. Showing the last confirmed records." onRetry={() => void history.refetch()} /> : null}
           {historicalItems.length === 0 ? <PanelMessage>No other Exit Interview records.</PanelMessage> : <ul className="divide-y divide-border">
             {historicalItems.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
               <div><Link href={`/portal/exit-interviews/${item.id}`} className="text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.academic_year.label}</Link><p className="mt-1 text-xs text-muted">Updated {formatExitInterviewDateTime(item.updated_at)}</p></div>

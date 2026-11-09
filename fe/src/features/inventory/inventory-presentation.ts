@@ -25,7 +25,7 @@ import {
 
 export const inventorySections = [
   { id: "personal", label: "Personal & contact" },
-  { id: "family", label: "Family & student support" },
+  { id: "family", label: "Family & Student support" },
   { id: "background", label: "Siblings & background" },
   { id: "health", label: "Living conditions & health" },
   { id: "education", label: "Educational background" },

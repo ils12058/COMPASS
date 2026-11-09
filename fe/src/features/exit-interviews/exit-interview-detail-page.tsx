@@ -50,7 +50,7 @@ function StudentExitInterviewDetail({
       return (
         <div className="space-y-5">
           <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interviews</Link>
-          <ExitInterviewUnavailable title="Exit Interview unavailable" message="This Exit Interview is unavailable." />
+          <ExitInterviewUnavailable title="Exit Interview" message="You don't have access to this Exit Interview." />
         </div>
       );
     }
@@ -58,11 +58,11 @@ function StudentExitInterviewDetail({
       <section className="max-w-3xl space-y-5">
         <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interviews</Link>
         {code === "exit_interview_not_found" ? (
-          <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview not found</h1>}>
-            This Exit Interview could not be found.
+          <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview</h1>}>
+            You don&apos;t have access to this Exit Interview.
           </Notice>
         ) : (
-          <ExitInterviewError error={detail.error} fallback="The Exit Interview could not be loaded." onRetry={() => void detail.refetch()} />
+          <ExitInterviewError error={detail.error} fallback="Couldn't load the Exit Interview." onRetry={() => void detail.refetch()} />
         )}
       </section>
     );
@@ -91,7 +91,7 @@ function StudentExitInterviewDetail({
         writesUnavailable={refreshFailed}
         refreshNotice={refreshFailed ? (
           <RefreshFailureNotice
-            message="The latest Exit Interview status could not be confirmed. Your unsaved answers are kept here, and you can save or submit once it refreshes."
+            message="Couldn't confirm the latest Exit Interview status. Your unsaved answers are kept here, and you can save or submit once it refreshes."
             retrying={detail.isFetching}
             onRetry={() => void detail.refetch()}
           />
@@ -106,7 +106,7 @@ function StudentExitInterviewDetail({
         <div className="max-w-3xl">
           <ExitInterviewError
             error={detail.error}
-            fallback="The latest Exit Interview status could not be confirmed. Showing the last confirmed, read-only response."
+            fallback="Couldn't confirm the latest Exit Interview status. Showing the last confirmed, read-only response."
             onRetry={() => void detail.refetch()}
           />
         </div>
@@ -114,7 +114,7 @@ function StudentExitInterviewDetail({
     <section className="space-y-4">
       {record.status === "DRAFT" && detail.isError ? (
         <Notice role="status" tone="warning">
-          <span className="text-ink">The latest status could not be confirmed. This last-confirmed draft is read-only until it can be refreshed.</span>
+          <span className="text-ink">Couldn&apos;t confirm the latest status. This last-confirmed draft is read-only until it can be refreshed.</span>
         </Notice>
       ) : record.status === "DRAFT" && !isCurrentStudent ? (
         <Notice role="status" tone="warning">
@@ -160,8 +160,8 @@ function ReviewerExitInterviewDetail({
       return (
         <section className="max-w-3xl space-y-5">
           <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
-          <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
-            This Exit Interview is currently a draft and is not available for review until the Student submits it.
+          <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Waiting for submission</h1>}>
+            You can review this Exit Interview after the Student submits it.
           </Notice>
         </section>
       );
@@ -170,14 +170,14 @@ function ReviewerExitInterviewDetail({
       return (
         <section className="space-y-5">
           <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
-          <ExitInterviewUnavailable title="Exit Interview unavailable" message="You cannot review this Exit Interview with this account." />
+          <ExitInterviewUnavailable title="Exit Interview" message="You don't have access to review this Exit Interview." />
         </section>
       );
     }
     return (
       <section className="max-w-3xl space-y-5">
         <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
-        <ExitInterviewError error={detail.error} fallback="The submitted Exit Interview could not be loaded." onRetry={() => void detail.refetch()} />
+        <ExitInterviewError error={detail.error} fallback="Couldn't load the submitted Exit Interview." onRetry={() => void detail.refetch()} />
       </section>
     );
   }
@@ -189,13 +189,13 @@ function ReviewerExitInterviewDetail({
         {detail.isError ? (
           <ExitInterviewError
             error={detail.error}
-            fallback="The latest Exit Interview status could not be confirmed. This last-confirmed draft remains hidden from review."
+            fallback="Couldn't confirm the latest Exit Interview status. This last-confirmed draft remains hidden from review."
             onRetry={() => void detail.refetch()}
           />
         ) : null}
         <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
-        <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
-          This Exit Interview is currently a draft and is not available for review until the Student submits it.
+        <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Waiting for submission</h1>}>
+          You can review this Exit Interview after the Student submits it.
         </Notice>
       </section>
     );
@@ -206,7 +206,7 @@ function ReviewerExitInterviewDetail({
         <div className="max-w-3xl">
           <ExitInterviewError
             error={detail.error}
-            fallback="The latest Exit Interview status could not be confirmed. Showing the last confirmed, read-only response."
+            fallback="Couldn't confirm the latest Exit Interview status. Showing the last confirmed, read-only response."
             onRetry={() => void detail.refetch()}
           />
         </div>
@@ -234,7 +234,7 @@ export function ExitInterviewDetailPage({
 
   if (access.isStudent) {
     if (!access.canViewSelf) {
-      return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Your Exit Interview records are unavailable to this account." />;
+      return <ExitInterviewUnavailable title="Exit Interview" message="You don't have access to your Exit Interviews." />;
     }
     return (
       <StudentExitInterviewDetail
@@ -249,5 +249,5 @@ export function ExitInterviewDetailPage({
     return <ReviewerExitInterviewDetail exitInterviewId={exitInterviewId} canReopen={access.canReopen} />;
   }
 
-  return <ExitInterviewUnavailable title="Exit Interview unavailable" message="You don’t have access to review Exit Interviews." />;
+  return <ExitInterviewUnavailable title="Exit Interview" message="You don’t have access to review Exit Interviews." />;
 }

@@ -59,11 +59,11 @@ for (const anchor of ["APPOINTMENT", "WALK_IN", "CALLED_IN", "REFERRED"]) {
       assert.equal(await tabs.getByRole("tab", { name: /summar/i }).count(), 0);
       if (anchor !== "APPOINTMENT") await shown(tabs.getByRole("tab", { name: "Routine Interview", exact: true }));
       await tabs.getByRole("tab", { name: "Inventory", exact: true }).click();
-      await shown(page.getByText("No current submitted Individual Inventory is available for this student.", { exact: true }));
+      await shown(page.getByText("No current submitted Individual Inventory is available for this Student.", { exact: true }));
       await tabs.getByRole("tab", { name: "Support", exact: true }).click();
       await shown(page.getByText("Synthetic protected support indicator", { exact: true }));
       await tabs.getByRole("tab", { name: "History", exact: true }).click();
-      await shown(page.getByText("No contextual history is available.", { exact: true }));
+      await shown(page.getByText("No Counseling history is available here.", { exact: true }));
       await tabs.getByRole("tab", { name: "History", exact: true }).press("Home");
       assert.equal(await tabs.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected"), "true");
       await settleFetches(page);
@@ -88,7 +88,7 @@ for (const device of ["desktop", "phone"]) {
     }
     fixture.state.denied = true;
     await tabs.getByRole("tab", { name: "History", exact: true }).click();
-    await shown(page.getByRole("heading", { name: "Counseling information unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "Check Counseling access", exact: true }));
     await hidden(sensitive);
     assert.equal(await page.getByRole("tablist", { name: "Counseling context sections" }).count(), 0);
     assert.ok(!(await page.locator("body").innerText()).includes(privateBody));

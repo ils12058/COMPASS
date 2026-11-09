@@ -981,7 +981,7 @@ await check("prejoin-navigation-cancels-pending-permission", ePath, {
 }, async (page) => {
   await stage(page).getByRole("button", { name: "Check devices", exact: true }).click();
   await shown(stage(page).getByText("Checking devices…", { exact: true }));
-  await page.getByRole("link", { name: "Back to appointment", exact: true }).click();
+  await page.getByRole("link", { name: "Back to Appointment", exact: true }).click();
   await page.waitForFunction(() => window.location.pathname.startsWith("/portal/appointments/"));
   await fake(page, "releasePreview");
   await page.waitForFunction(() => window.__COMPASS_FAKE_DAILY__.instances[0]?.isDestroyed() === true);

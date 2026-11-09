@@ -257,7 +257,7 @@ for (const mode of ["disabled", "outage"]) {
   await check("lost workspace access conceals protected consent state", PATH, w.options("COUNSELOR"), async (page) => {
     await shown(permission(page, "Media permission · Approved"));
     w.state.denied = true; w.send();
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     assert.equal(await page.getByText("Consent Test Student", { exact: true }).count(), 0);
     assert.equal(await page.getByRole("list", { name: "Media permission", exact: true }).count(), 0);
   });

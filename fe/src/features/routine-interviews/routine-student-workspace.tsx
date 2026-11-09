@@ -99,7 +99,7 @@ export function StudentRoutineWorkspace({
               tone="danger"
               action={<Button variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>}
             >
-              Your Counseling Appointments could not be checked.{" "}
+              Couldn&apos;t check your Counseling Appointments.{" "}
               {routineErrorMessage(candidates.error, "Try again in a moment.")}
             </PanelMessage>
           ) : appointmentItems.length === 0 ? (
@@ -130,7 +130,7 @@ export function StudentRoutineWorkspace({
           )}
           {openError ? (
             <div role="alert" className="border-t border-border px-4 py-3 text-sm text-danger sm:px-5">
-              <p>{routineErrorMessage(openError, "The Routine Interview could not be opened. Your Counseling Appointments have been checked again; try again.")}</p>
+              <p>{routineErrorMessage(openError, "Couldn't open the Routine Interview. Your Counseling Appointments have been checked again; try again.")}</p>
             </div>
           ) : null}
         </Panel>
@@ -143,7 +143,7 @@ export function StudentRoutineWorkspace({
             <RowsSkeleton label="Loading your Routine Interviews…" rows={2} />
           ) : routines.isError ? (
             <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void routines.refetch()}>Retry</Button>}>
-              Routine Interviews could not be loaded. {routineErrorMessage(routines.error, "Try again in a moment.")}
+              Couldn&apos;t load Routine Interviews. {routineErrorMessage(routines.error, "Try again in a moment.")}
             </PanelMessage>
           ) : routineItems.length === 0 ? (
             <PanelMessage>

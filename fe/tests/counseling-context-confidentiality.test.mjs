@@ -95,7 +95,7 @@ for (const status of [401, 403, 404]) {
       const key = counselingApi.getCounselingContextGetOverviewQueryKey("APPOINTMENT", appointmentId);
       client.getQueryCache().find({ queryKey: key, exact: true }).setState({ status: "error", error: new CompassApiError({ status, body: { error: { code: status === 404 ? "counseling_context_not_found" : "permission_denied", message: "Unavailable" } }, headers: {}, method: "GET", url: key[0] }) });
     });
-    assert.match(html, /Counseling information unavailable/);
+    assert.match(html, /Check Counseling access/);
     assert.doesNotMatch(html, /Synthetic CONT-1A Student|Student Session Summaries|Previous published summaries|View encounter/);
     assert.ok(!html.includes(privateBody));
   });

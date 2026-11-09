@@ -52,4 +52,4 @@ export function finishCounselingNotice(
 }
 
 export const unconfirmedFinishMessage =
-  "We couldn’t confirm whether counseling was finished.";
+  "Couldn't confirm whether counseling was finished.";

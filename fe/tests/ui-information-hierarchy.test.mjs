@@ -126,7 +126,7 @@ test("starting capture fails closed when the latest session state couldn’t be 
     client.setQueryData(getECounselingListAssignedConsentsQueryKey(appointmentId), { data: { items: consents("APPROVED") }, status: 200, headers: {} });
   });
   assert.match(stale, /<button[^>]*aria-label="Start recording"[^>]*disabled=""/);
-  assert.match(stale, /Session status couldn’t be refreshed/);
+  assert.match(stale, /Couldn&#x27;t refresh the session status/);
   const active = render(h(CounselorMediaProbe, { appointmentId, access: { canManageMediaAssigned: true }, workspace: workspace("ACTIVE"), inCall: true, sessionStateCurrent: false }), (client) => {
     client.setQueryData(getECounselingListAssignedConsentsQueryKey(appointmentId), { data: { items: consents("APPROVED") }, status: 200, headers: {} });
   });

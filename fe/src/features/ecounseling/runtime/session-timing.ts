@@ -25,28 +25,28 @@ export type ActiveECounselingTiming = {
 // Recommended user-facing copy (EC-1 Option A, pending GCO wording review)
 export const TIMING_COPY = {
   APPROACHING_END: {
-    title: "Appointment ending soon",
-    message: "Your appointment is scheduled to end in 10 minutes. Please prepare to wrap up and coordinate any next steps.",
+    title: "10 minutes left",
+    message: "Start wrapping up and agree on next steps.",
     compactLabel: "10 min left",
-    announcement: "Appointment ending soon. Your appointment is scheduled to end in 10 minutes. Please prepare to wrap up and coordinate any next steps.",
+    announcement: "10 minutes left. Start wrapping up and agree on next steps.",
   },
   FINAL_REMINDER: {
-    title: "5 minutes remaining",
-    message: "Your scheduled appointment ends in 5 minutes.",
+    title: "5 minutes left",
+    message: "Agree on next steps before the Appointment ends.",
     compactLabel: "5 min left",
-    announcement: "5 minutes remaining. Your scheduled appointment ends in 5 minutes.",
+    announcement: "5 minutes left. Agree on next steps before the Appointment ends.",
   },
   SCHEDULED_END_REACHED: {
-    title: "Scheduled time reached",
-    message: "The scheduled appointment time has ended. If your discussion is still ongoing, please coordinate the next steps.",
+    title: "Scheduled time ended",
+    message: "If you're still talking, agree on next steps.",
     compactLabel: "Past scheduled end",
-    announcement: "Scheduled time reached. The scheduled appointment time has ended. If your discussion is still ongoing, please coordinate the next steps.",
+    announcement: "The scheduled Appointment time has ended. If you're still talking, agree on next steps.",
   },
   OVERTIME: {
     title: "Past scheduled end",
-    message: "The scheduled appointment time has passed.",
+    message: "Wrap up your discussion and agree on next steps.",
     compactLabel: "Past scheduled end",
-    announcement: "Past scheduled end. The scheduled appointment time has passed.",
+    announcement: "The scheduled Appointment time has passed. Wrap up your discussion and agree on next steps.",
   },
 } as const;
 

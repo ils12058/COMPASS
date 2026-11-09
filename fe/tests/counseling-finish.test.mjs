@@ -115,7 +115,7 @@ test("each Finish outcome says what actually happened", () => {
     finishCounselingNotice({ already_finished: false, encounter_result: "CREATED" }, { wasCompleted: false }),
     "Counseling finished and the Encounter recorded.",
   );
-  assert.equal(unconfirmedFinishMessage, "We couldn’t confirm whether counseling was finished.");
+  assert.equal(unconfirmedFinishMessage, "Couldn't confirm whether counseling was finished.");
 });
 
 test("Finish conflicts explain themselves instead of repeating the server message", () => {
@@ -127,9 +127,9 @@ test("Finish conflicts explain themselves instead of repeating the server messag
     url: `/api/v1/counseling/appointments/${DETAIL_ID}/finish`,
   });
   assert.equal(counselingErrorMessage(error("counseling_appointment_closed"), "fallback"), "This Appointment was cancelled or marked no-show, so it cannot be finished.");
-  assert.equal(counselingErrorMessage(error("counseling_finish_conflict"), "fallback"), "This Counseling session is already recorded with different details. Review it in My counseling encounters.");
+  assert.equal(counselingErrorMessage(error("counseling_finish_conflict"), "fallback"), "This Counseling session is already recorded with different details. Review it in My Counseling Encounters.");
   assert.equal(counselingErrorMessage(error("appointment_lifecycle_conflict"), "fallback"), "This Appointment changed before it could be finished. Review the latest details.");
-  assert.equal(counselingErrorMessage(error("ecounseling_access_open"), "fallback"), "Wait until the online counseling access or rejoin period has ended before finishing this Appointment.");
+  assert.equal(counselingErrorMessage(error("ecounseling_access_open"), "fallback"), "Finish this Appointment after the E-Counseling join and rejoin periods end.");
   assert.equal(counselingErrorMessage(error("unknown_code"), "fallback"), "fallback");
 });
 
@@ -176,7 +176,7 @@ test("the Counseling Workspace offers Finish instead of Record in an Appointment
 
 test("a recorded Encounter ends the Appointment context's authoring actions", () => {
   const html = workspacePage(detail({ counseling_encounter_recorded: true }));
-  assert.match(html, /A Counseling Encounter is recorded for this Appointment\. Review it in My counseling encounters\./);
+  assert.match(html, /A Counseling Encounter is recorded for this Appointment\. Review it in My Counseling Encounters\./);
   assert.doesNotMatch(html, /Finish counseling|Record encounter/);
   assert.match(html, /href="\/portal\/counseling#encounters"/);
 });

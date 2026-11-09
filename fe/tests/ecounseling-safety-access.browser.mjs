@@ -113,8 +113,8 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const kind of ["recording", "t
     await stage(page).getByRole("button", { name: "Leave session", exact: true }).click();
     const dialog = leaveDialog(page); await shown(dialog);
     const text = await dialog.innerText();
-    assert.match(text.toLowerCase(), new RegExp(`${kind} has not been confirmed as stopped`));
-    assert.match(text, /Leaving the call may not stop/);
+    assert.match(text.toLowerCase(), new RegExp(`the ${kind} may still be running`));
+    assert.match(text, /Stop it before you leave the call/);
     assert.doesNotMatch(text, /START_REQUESTED|STOP_REQUESTED|HTTP|webhook|provider|still active/);
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click(); await hidden(dialog);
     assert.equal(await count(page, "destroy"), 0, "Cancel preserves the call");
@@ -171,7 +171,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const failure of [503, "timeou
     await stage(page).getByRole("button", { name: "Microphone", exact: true }).click();
     assert.equal(await stage(page).getByRole("button", { name: "Microphone", exact: true }).getAttribute("aria-pressed"), "false");
     await stage(page).getByRole("button", { name: "Leave session", exact: true }).click(); await shown(leaveDialog(page));
-    assert.match(await leaveDialog(page).innerText(), /Recording has not been confirmed as stopped/);
+    assert.match(await leaveDialog(page).innerText(), /The recording may still be running/);
     await leaveDialog(page).getByRole("button", { name: "Cancel", exact: true }).click();
     w.state.workspaceStatus = 200; await page.getByRole("button", { name: "Retry", exact: true }).first().click();
     await hidden(page.getByText("Latest information could not be refreshed. Showing the last confirmed result.", { exact: true }));
@@ -186,7 +186,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     await page.getByRole("button", { name: /^Messages/ }).click();
     await shown(page.getByText(privateMessage, { exact: true }));
     w.state.workspaceStatus = 403; await refresh(page);
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     await eventually(async () => await count(page, "destroy") === 1, "403 destroys the local Daily object");
     for (const name of ["Protected Student Fixture", "Protected Counselor Fixture", "Protected Context Fixture", privateMessage]) assert.equal(await page.getByText(name, { exact: true }).count(), 0, name);
     assert.equal(await page.getByRole("button", { name: /Join session|Start recording|Record encounter|Send/ }).count(), 0);
@@ -199,7 +199,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     await assertNoProviderCommands(page, requests);
     await screenshot(page, `${role.toLowerCase()}-resource-unavailable`);
     w.state.workspaceStatus = 503; await page.getByRole("button", { name: "Retry", exact: true }).first().click();
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     assert.equal(await page.getByText(privateMessage, { exact: true }).count(), 0, "A transient retry cannot resurrect content");
     w.state.workspaceStatus = 200; await page.getByRole("button", { name: "Retry", exact: true }).first().click();
     await shown(page.getByRole("heading", { name: role === "STUDENT" ? "Protected Counselor Fixture" : "Protected Student Fixture", exact: true }));
@@ -219,10 +219,10 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     assert.equal(await page.getByText("Protected Routine Fixture", { exact: true }).count(), 0);
     assert.equal(await dock(page).count(), 0);
     assert.equal(await page.getByLabel("Recommendations", { exact: true }).count(), 0);
-    await shown(page.getByText(/Recording has not been confirmed as stopped/));
+    await shown(page.getByText(/The recording may still be running/));
     await assertNoProviderCommands(page, requests);
     await page.getByRole("region", { name: "E-Counseling call ended" }).getByRole("link", { name: "Return to session", exact: true }).click();
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     assert.equal(w.state.joins, 1);
   });
 }
@@ -232,7 +232,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
   await check("delayed-Student-information-cannot-resurrect-denied-workspace", ePath, w.options, async (page) => {
     await join(page); await eventually(() => w.state.heldContext.length > 0, "Context request is pending");
     w.state.workspaceStatus = 403; await refresh(page);
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     for (const release of w.state.heldContext.splice(0)) await release();
     await page.waitForTimeout(200);
     assert.equal(await page.getByText("Protected Context Fixture", { exact: true }).count(), 0);
@@ -249,7 +249,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     w.state.workspaceStatus = 403;
     // The runtime's existing poll reads the canonical workspace while the credential is pending.
     await eventually(() => requests.filter((request) => request.pathname === `/api/v1/e-counseling/appointments/${appointmentId}`).length > 1, "Runtime rereads the canonical workspace");
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     for (const release of w.state.heldCredentials.splice(0)) await release();
     await page.waitForTimeout(200);
     assert.equal(await count(page, "createCallObject"), 0); assert.equal(await count(page, "join"), 0);
@@ -292,7 +292,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     if (await reloadedDisclosure.getAttribute("aria-expanded") === "false") await reloadedDisclosure.click();
     await eventually(async () => {
       const text = await page.locator("body").innerText();
-      return text.includes("Student information couldn’t be loaded. Try again.") && !text.includes("Protected Context Fixture");
+      return text.includes("Couldn't load Student information. Try again.") && !text.includes("Protected Context Fixture");
     }, "A 403 hides cached Student information without ending the independent call");
     assert.equal(await count(page, "destroy"), 0, "Context denial alone does not revoke the independently authorized call");
   });
@@ -305,7 +305,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     const files = page.getByRole("button", { name: /^Session files/ });
     if (await files.getAttribute("aria-expanded") === "false") await files.click();
     await page.getByRole("button", { name: "Download recording", exact: true }).click();
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     await eventually(async () => await count(page, "destroy") === 1, "File access denial closes the local call");
     assert.equal(await page.getByRole("button", { name: "Download recording", exact: true }).count(), 0);
   });
@@ -337,7 +337,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     await page.getByRole("button", { name: "Download recording", exact: true }).click();
     await eventually(() => w.state.heldLinks.length > 0, "File-link request is pending");
     w.state.workspaceStatus = 403; await refresh(page);
-    await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
+    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
     for (const release of w.state.heldLinks.splice(0)) await release();
     await page.waitForTimeout(200);
     assert.equal(openedLinks, 0); assert.equal(context.pages().length, 1, "No new protected file surface");

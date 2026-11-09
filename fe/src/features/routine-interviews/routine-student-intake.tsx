@@ -134,7 +134,7 @@ function getRoutineIntakeIssues(
   ) {
     issues.push({
       id: "other-specification",
-      message: "Please specify the other concern before submitting.",
+      message: "Describe your other concern before submitting.",
       targetId: "routine-other-concern-specification",
     });
   }
@@ -420,7 +420,7 @@ export function RoutineStudentIntakeEditor({
       setSaveError(
         routineErrorMessage(
           error,
-          "Your Routine Interview progress could not be saved.",
+          "Couldn't save your Routine Interview progress.",
         ),
       );
       return false;
@@ -460,7 +460,7 @@ export function RoutineStudentIntakeEditor({
       );
       setConfirmSubmit(false);
       setSubmissionUncertain(false);
-      setNotice("Intake submitted. Your responses are now read-only.");
+      setNotice("Intake submitted. You can no longer change your answers.");
       void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       await Promise.all([
         queryClient.invalidateQueries({
@@ -488,7 +488,7 @@ export function RoutineStudentIntakeEditor({
           const canonicalResponse = await routineInterviewsGetMine(routineInterviewId, { cache: "no-store" });
           const canonicalDetail = canonicalResponse.data;
           if (canonicalDetail.id !== routineInterviewId) {
-            throw new Error("The canonical Routine Interview did not match this page.");
+            throw new Error("This page is out of date. Reload it to see your Routine Interview.");
           }
           queryClient.setQueryData(
             getRoutineInterviewsGetMineQueryKey(routineInterviewId),
@@ -497,7 +497,7 @@ export function RoutineStudentIntakeEditor({
           if (canonicalDetail.intake_status === "SUBMITTED") {
             setSubmissionUncertain(false);
             setSubmitError(null);
-            setStatusMessage("Your Intake was submitted successfully. Your responses are now read-only.");
+            setStatusMessage("Intake submitted. You can no longer change your answers.");
             void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId) }),
@@ -515,7 +515,7 @@ export function RoutineStudentIntakeEditor({
               // The backend's submitted conflict and the canonical draft disagree. Preserve the
               // answers and block another POST until a later canonical read resolves the conflict.
               setSubmissionUncertain(true);
-              setStatusMessage("The submission result still needs confirmation. The latest status says draft, but the server reported it was already submitted. Check status again before continuing.");
+              setStatusMessage("The submission result is uncertain: your latest status says draft, but submission was also reported as complete. Check status again before continuing.");
             } else {
               setSubmissionUncertain(false);
               setSubmitError(null);
@@ -527,7 +527,7 @@ export function RoutineStudentIntakeEditor({
           }
         } catch {
           setSubmissionUncertain(true);
-          setStatusMessage("We couldn't confirm your Intake status. Your answers are still on this page. Check status again before submitting.");
+          setStatusMessage("Couldn't confirm your Intake status; your answers are still on this page. Check status again before submitting.");
         } finally {
           setCheckingStatus(false);
         }
@@ -535,7 +535,7 @@ export function RoutineStudentIntakeEditor({
         setSubmitError(
           routineErrorMessage(
             error,
-            "Your Intake could not be submitted. Review the message and try again.",
+            "Couldn't submit your Intake. Review the message and try again.",
           ),
         );
       }
@@ -554,7 +554,7 @@ export function RoutineStudentIntakeEditor({
       const canonicalResponse = await routineInterviewsGetMine(routineInterviewId, { cache: "no-store" });
       const canonicalDetail = canonicalResponse.data;
       if (canonicalDetail.id !== routineInterviewId) {
-        throw new Error("The canonical Routine Interview did not match this page.");
+        throw new Error("This page is out of date. Reload it to see your Routine Interview.");
       }
       queryClient.setQueryData(
         getRoutineInterviewsGetMineQueryKey(routineInterviewId),
@@ -562,7 +562,7 @@ export function RoutineStudentIntakeEditor({
       );
       if (canonicalDetail.intake_status === "SUBMITTED") {
         setSubmissionUncertain(false);
-        setStatusMessage("Your Intake was submitted successfully. Your responses are now read-only.");
+        setStatusMessage("Intake submitted. You can no longer change your answers.");
         void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId) }),
@@ -572,7 +572,7 @@ export function RoutineStudentIntakeEditor({
         setSubmissionUncertain(false);
         setStatusMessage("Your Intake is still a draft, but this Routine Interview is no longer active and cannot be submitted.");
       } else if (mustConfirmSubmitted) {
-        setStatusMessage("The submission result still needs confirmation. The latest status says draft, but the server reported it was already submitted. Check status again before continuing.");
+        setStatusMessage("The submission result is uncertain: your latest status says draft, but submission was also reported as complete. Check status again before continuing.");
       } else {
         const canonicalIntake = normalizeRoutineIntake(canonicalDetail.intake);
         const localMatchesCanonical = JSON.stringify(canonicalIntake) === JSON.stringify(saved);
@@ -584,7 +584,7 @@ export function RoutineStudentIntakeEditor({
         void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() });
       }
     } catch {
-      setStatusMessage("We couldn't confirm your Intake status. Your answers are still on this page. Check status again before submitting.");
+      setStatusMessage("Couldn't confirm your Intake status; your answers are still on this page. Check status again before submitting.");
     } finally {
       setCheckingStatus(false);
       operationRef.current = false;
@@ -812,7 +812,7 @@ export function RoutineStudentIntakeEditor({
                     id="routine-other-concern-error"
                     className="mt-2 text-sm leading-6 text-danger"
                   >
-                    Please specify the other concern before submitting.
+                    Describe your other concern before submitting.
                   </p>
                 ) : null}
               </div>
@@ -892,10 +892,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
         >
           <p className="max-w-3xl text-sm leading-6 text-muted">
-            Your answers remain a private draft until you submit. Save Progress
-            keeps the draft editable. After submission, responses become
-            read-only and are available to your assigned Counselor under the
-            existing access rules.
+            Save progress keeps your answers private and editable. After you submit, you can&apos;t change your answers and your assigned Counselor can read them.
           </p>
           {validationIssues.length ? (
             <div
@@ -933,7 +930,7 @@ export function RoutineStudentIntakeEditor({
               className="w-full sm:w-auto"
               disabled={pending || submissionUncertain || !dirty}
             >
-              {save.isPending ? "Saving…" : "Save Progress"}
+              {save.isPending ? "Saving…" : "Save progress"}
             </Button>
             <Button
               type="button"

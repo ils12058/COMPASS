@@ -44,11 +44,11 @@ export function EducationSection({
     : !draft.program_id
       ? " (saved value; Program not selected)"
       : !programDiscoveryAllowed
-        ? " (saved value; Program options unavailable)"
+        ? " (saved value; no access to Program choices)"
         : programLookupPending
           ? " (saved value; Program options loading)"
           : programLookupError
-            ? " (saved value; Program policy unavailable)"
+            ? " (saved value; Year Level limits not confirmed)"
             : " (saved value; Program inactive)";
   const preserveSnapshot =
     Boolean(draft.program_id) &&
@@ -117,8 +117,8 @@ export function EducationSection({
               {preserveSnapshot && draft.program_id ? (
                 <option value={draft.program_id}>
                   {programSnapshot
-                    ? `${programSnapshot.code} · ${programSnapshot.name} (no longer active for new selection)`
-                    : "Previously selected Program (not available for new selection)"}
+                    ? `${programSnapshot.code} · ${programSnapshot.name} (no longer offered)`
+                    : "Previously selected Program (no longer offered)"}
                 </option>
               ) : null}
               {activePrograms.map((program) => (
@@ -174,7 +174,7 @@ export function EducationSection({
             <InventoryReviewHintText hint={yearLevelReview.hint} />
             {activeSelection?.year_level_policy_status === "PENDING_POLICY" ? (
               <p className="mt-1.5 text-xs leading-5 text-muted">
-                Year Level policy for this Program has not been confirmed. The existing recorded range remains available for compatibility; it does not establish an institutional limit.
+                Year Level limits for this Program haven&apos;t been confirmed. The choices shown may differ from the University&apos;s limits.
               </p>
             ) : null}
             {draft.program_id &&
@@ -183,7 +183,7 @@ export function EducationSection({
             !programLookupPending &&
             !programLookupError ? (
               <p className="mt-1.5 text-xs leading-5 text-muted">
-                This saved Program is no longer active for new selection. Choose an active Program to change its Year Level.
+                This saved Program is no longer offered. Choose an active Program to change its Year Level.
               </p>
             ) : null}
             {yearLevelError ? <p id="inventory-year-level-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{yearLevelError}</p> : null}
@@ -198,13 +198,12 @@ export function EducationSection({
         </div>
         {programLookupError ? (
           <InventoryNotice tone="warning" role="status" >
-            Active Program choices are temporarily unavailable. Saved Program data is preserved; you can continue editing and save progress.
+            Couldn&apos;t load Program choices. You can keep editing and save your progress with your saved Program.
           </InventoryNotice>
         ) : null}
         {!programDiscoveryAllowed ? (
           <InventoryNotice tone="warning" role="status">
-            Program choices are unavailable. Your saved program information remains, and you can continue editing.
-          </InventoryNotice>
+            You don&apos;t have access to Program choices. You can keep editing with your saved Program.</InventoryNotice>
         ) : null}
         {preserveSnapshot && programSnapshot ? (
           <p className="mt-3 text-sm text-warning">

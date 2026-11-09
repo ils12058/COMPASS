@@ -37,8 +37,8 @@ for (const kind of ["recording"]) {
       assert.match(captureIndicators(value)[0].label.toLowerCase(), new RegExp(kind));
       for (const action of ["leave", "sign-out", "access-loss"]) {
         const text = captureCessationWarning([kind], action);
-        assert.match(text, /not been confirmed as stopped/);
-        assert.match(text, /may not stop/);
+        assert.match(text, /The recording may still be running/);
+        assert.match(text, /Stop it before you|may not stop it; contact the Guidance Office/);
         assert.doesNotMatch(text, /STOP_REQUESTED|ERROR|HTTP|webhook|provider|still active/);
       }
       assert.equal(sessionRefreshInterval(false, value), 7000, "Uncertainty continues to refresh outside the call");
@@ -53,7 +53,7 @@ test("terminal recording has no warning; an uncertain one says so for recording 
   }
   assert.equal(captureCessationWarning([], "leave"), null);
   assert.match(sessionFileRows(media("STOPPED")).find((row) => row.kind === "RECORDING").outcome.text, /Preparing file/);
-  assert.match(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /^Recording has not been confirmed as stopped/);
+  assert.match(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /^The recording may still be running/);
   assert.doesNotMatch(captureCessationWarning(activeCaptureKinds(media("ERROR")), "leave"), /transcri/i);
 });
 

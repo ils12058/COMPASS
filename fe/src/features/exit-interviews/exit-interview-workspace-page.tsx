@@ -44,5 +44,5 @@ export function ExitInterviewWorkspacePage({
     </>;
   }
 
-  return <ExitInterviewUnavailable title="Exit Interview unavailable" />;
+  return <ExitInterviewUnavailable title="Exit Interview" />;
 }

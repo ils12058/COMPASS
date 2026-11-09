@@ -130,10 +130,10 @@ export function FinishCounselingDialog({
         return;
       }
       if (caught.status === 409) {
-        await onStale(counselingErrorMessage(caught, "The Appointment could not be finished."));
+        await onStale(counselingErrorMessage(caught, "Couldn't finish the Appointment."));
         return;
       }
-      setError(counselingErrorMessage(caught, "The Appointment could not be finished."));
+      setError(counselingErrorMessage(caught, "Couldn't finish the Appointment."));
     } finally {
       setSubmitting(false);
     }

@@ -119,7 +119,7 @@ test("an Appointment-backed Routine Interview never asks for a choice", () => {
 
 test("an unlinked direct Routine Interview points to its workspace and offers recovery only for recorded Encounters", () => {
   const empty = evaluationPanel({ candidates: [], workspaceHref: `/portal/counseling/workspace/routine-interview/${ROUTINE}` });
-  assert.match(empty, /No eligible completed Encounter is available yet/);
+  assert.match(empty, /No matching completed Counseling Encounter is available yet/);
   assert.match(empty, /href="\/portal\/counseling\/workspace\/routine-interview\/routine-1"/);
   assert.doesNotMatch(empty, /name="routine-finalize-encounter"/);
   assert.match(finalizeButton(empty), / disabled=""/);

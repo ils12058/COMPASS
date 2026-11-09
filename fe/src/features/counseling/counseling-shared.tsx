@@ -34,33 +34,33 @@ export function counselingErrorCode(error: unknown): string | undefined {
 
 const counselingErrors: Record<string, string> = {
   permission_denied: "You can't perform this counseling action.",
-  counseling_resource_not_found: "This counseling record is unavailable.",
+  counseling_resource_not_found: "You don't have access to this Counseling record.",
   counseling_invalid_request: "Some counseling details need attention. Review them and try again.",
   counseling_invalid_time: "These actual times weren’t accepted. Check that the end is later than the start and not in the future.",
   counseling_appointment_already_used: "An encounter has already been recorded for this Appointment. Choose another Appointment.",
-  counseling_appointment_invalid: "This Appointment is no longer eligible for this Counseling action. Refresh the candidates and try again.",
+  counseling_appointment_invalid: "You can't use this Appointment for this Counseling action now. Refresh the choices and try again.",
   counseling_appointment_closed: "This Appointment was cancelled or marked no-show, so it cannot be finished.",
-  counseling_finish_conflict: "This Counseling session is already recorded with different details. Review it in My counseling encounters.",
+  counseling_finish_conflict: "This Counseling session is already recorded with different details. Review it in My Counseling Encounters.",
   appointment_lifecycle_conflict: "This Appointment changed before it could be finished. Review the latest details.",
-  ecounseling_access_open: "Wait until the online counseling access or rejoin period has ended before finishing this Appointment.",
+  ecounseling_access_open: "Finish this Appointment after the E-Counseling join and rejoin periods end.",
   counseling_finalized_routine_conflict: "This correction cannot be saved because the encounter is used by a finalized Routine Interview and the new details would no longer match it.",
   counseling_linked_routine_conflict: "This correction cannot be saved because the encounter is linked to a Routine Interview and the new details would no longer match it.",
   counseling_routine_interview_already_linked: "A Counseling Encounter is already linked to this Routine Interview, so another one was not recorded.",
   counseling_routine_interview_mismatch: "This encounter does not match the Routine Interview's Student, visit type, or delivery mode, so it was not recorded.",
   counseling_feedback_chronology_conflict: "This completion time cannot be saved because Feedback for this encounter was already made available before the corrected end time.",
-  counseling_feedback_provenance_conflict: "This correction cannot be saved because the encounter's Feedback record is inconsistent. The record needs administrative review.",
-  counseling_service_not_configured: "Counseling cannot be recorded until the service is set up.",
+  counseling_feedback_provenance_conflict: "Couldn't save this correction because the encounter's Feedback record needs review. Contact the Guidance Office.",
+  counseling_service_not_configured: "Counseling cannot be recorded until the Service is set up.",
   counseling_not_permitted: "You can't perform this counseling action.",
   counseling_context_not_found: "This counseling view is no longer available.",
-  current_academic_year_not_configured: "Counseling cannot be recorded until the current academic year is set up.",
+  current_academic_year_not_configured: "Counseling cannot be recorded until the current Academic Year is set up.",
   student_session_summary_not_found: "No Student Session Summary has been drafted yet.",
-  student_session_summary_already_published: "This student session summary has already been published and can no longer be edited.",
+  student_session_summary_already_published: "This Student Session Summary has already been published and can no longer be edited.",
   student_session_summary_empty: "Add content before publishing this Student Session Summary.",
 };
 
 // A failed connection doesn't prove the save failed, so an unconfirmed result is never shown as
 // either outcome.
-export const unconfirmedEncounterMessage = "We couldn’t confirm whether the encounter was recorded.";
+export const unconfirmedEncounterMessage = "Couldn't confirm whether the encounter was recorded.";
 
 export function counselingErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
@@ -93,7 +93,7 @@ export const contextEncounterStateLabels: Record<ContextEncounterState, string> 
 
 export function expiredContextEncounterMessage(hasEncounter: boolean): string | null {
   return hasEncounter
-    ? "The recorded encounter remains available from My counseling encounters."
+    ? "The recorded encounter remains available from My Counseling Encounters."
     : null;
 }
 
@@ -108,7 +108,7 @@ export function counselingEntryModeLabel(mode: CounselingEntryMode | string): st
     case "WALK_IN": return "Walk-in";
     case "CALLED_IN": return "Called-in";
     case "REFERRED": return "Referred";
-    default: return "Unavailable";
+    default: return "Not available";
   }
 }
 
@@ -116,7 +116,7 @@ export function counselingDeliveryModeLabel(mode: DeliveryMode | string): string
   switch (mode) {
     case "IN_PERSON": return "In person";
     case "ONLINE": return "Online";
-    default: return "Unavailable";
+    default: return "Not available";
   }
 }
 
@@ -137,8 +137,8 @@ export function CounselingPageHeading({
   return <PageHeader title={title} description={description} back={back} actions={action} help={help} />;
 }
 export function CounselingUnavailable({
-  title = "Counseling unavailable",
-  children = "Counseling is unavailable to this account.",
+  title = "Counseling",
+  children = "You don't have access to Counseling.",
 }: {
   title?: string;
   children?: ReactNode;

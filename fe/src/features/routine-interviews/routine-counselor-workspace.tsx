@@ -149,7 +149,7 @@ function RoutineQueueFilters({
             hint={
               yearsFailed ? (
                 <p id="routine-queue-year-error" className="text-xs text-warning">
-                  Academic Year choices could not be loaded.
+                  Couldn&apos;t load Academic Year choices.
                 </p>
               ) : null
             }
@@ -164,7 +164,7 @@ function RoutineQueueFilters({
               <option value="">All Academic Years</option>
               {applied.academicYearId && !appliedYearKnown ? (
                 <option value={applied.academicYearId}>
-                  {yearsPending ? "Loading academic year…" : "Selected Academic Year"}
+                  {yearsPending ? "Loading Academic Year…" : "Selected Academic Year"}
                 </option>
               ) : null}
               {years.map((year) => (
@@ -356,7 +356,7 @@ export function CounselorRoutineWorkspace({
               </Button>
             }
           >
-            Assigned Routine Interviews could not be loaded. {routineErrorMessage(queue.error, "Try again in a moment.")}
+            Couldn&apos;t load assigned Routine Interviews. {routineErrorMessage(queue.error, "Try again in a moment.")}
           </PanelMessage>
         ) : items.length === 0 ? (
           <PanelMessage

@@ -44,7 +44,7 @@ const focusedId = (page) => page.evaluate(() => document.activeElement?.id ?? ""
 {
   const fixture = inventoryFixture();
   await check("reported-income-of-zero-is-caught-at-the-field-before-saving", "/portal/inventory/current", { overrides: fixture.overrides }, async (page) => {
-    await page.getByRole("button", { name: /Family & student support/ }).click();
+    await page.getByRole("button", { name: /Family & Student support/ }).click();
     await page.locator("#inventory-family-father-income-status").selectOption("REPORTED");
     const amount = page.locator("#inventory-family-father-income-amount");
     await amount.fill("0");

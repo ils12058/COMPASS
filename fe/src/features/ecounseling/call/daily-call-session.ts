@@ -243,7 +243,7 @@ export class DailyCallSession {
         camera: true,
         microphone: true,
         source: "camera-error" as const,
-        message: "Your camera and microphone couldn't be started.",
+        message: "Couldn't start your camera and microphone.",
       };
       void this.teardown();
       this.update({

@@ -61,7 +61,7 @@ test("MISMATCH: a linked Encounter that is not this Appointment's record", () =>
   assert.equal(view.status, "Not this Appointment’s record");
   assert.equal(
     view.message,
-    "A Counseling Encounter is linked to this Appointment but is not its Counseling-Appointment record. Review it in My counseling encounters.",
+    "A Counseling Encounter is linked to this Appointment but is not its Counseling-Appointment record. Review it in My Counseling Encounters.",
   );
   assert.deepEqual(actions(view), [], "A mismatch is reviewed, never recorded over");
 });
@@ -81,7 +81,7 @@ test("WINDOW_OPEN: the access period is explained, and nothing is offered", () =
   const view = encounterSectionView(section({ joinState: "OPEN" }));
   assert.equal(view.state, "WINDOW_OPEN");
   assert.equal(view.status, "Not yet recorded");
-  assert.equal(view.message, "The online access period is still open. Finish counseling becomes available here once it ends.");
+  assert.equal(view.message, "You can finish Counseling here after the E-Counseling join and rejoin periods end.");
   assert.deepEqual(view.actions, []);
 });
 
@@ -208,13 +208,13 @@ test("the access-period refusal keeps its shared copy", () => {
     url: `/api/v1/counseling/appointments/${appointmentId}/finish`,
   });
   assert.equal(
-    counselingErrorMessage(error, "The Appointment could not be finished."),
-    "Wait until the online counseling access or rejoin period has ended before finishing this Appointment.",
+    counselingErrorMessage(error, "Couldn't finish the Appointment."),
+    "Finish this Appointment after the E-Counseling join and rejoin periods end.",
   );
   // The same answer the section gives before the request is ever made.
   assert.equal(
     encounterSectionView(section({ joinState: "OPEN" })).message,
-    "The online access period is still open. Finish counseling becomes available here once it ends.",
+    "You can finish Counseling here after the E-Counseling join and rejoin periods end.",
   );
   const conflict = new CompassApiError({
     status: 409,
@@ -224,8 +224,8 @@ test("the access-period refusal keeps its shared copy", () => {
     url: `/api/v1/counseling/appointments/${appointmentId}/finish`,
   });
   assert.equal(
-    counselingErrorMessage(conflict, "The Appointment could not be finished."),
-    "This Counseling session is already recorded with different details. Review it in My counseling encounters.",
+    counselingErrorMessage(conflict, "Couldn't finish the Appointment."),
+    "This Counseling session is already recorded with different details. Review it in My Counseling Encounters.",
   );
 });
 
@@ -326,7 +326,7 @@ test("the rendered session offers Finish, and only the fallback when the read is
   assert.match(finished, /This records the Encounter and completes the Appointment\./);
 
   const open = renderSession({ joinState: "OPEN" });
-  assert.match(open, /The online access period is still open\./);
+  assert.match(open, /You can finish Counseling here after the E-Counseling join and rejoin periods end\./);
   assert.doesNotMatch(open, />Finish counseling<|>Record encounter</);
 
   // An Appointment read that has not confirmed anything keeps the ordinary recording path.

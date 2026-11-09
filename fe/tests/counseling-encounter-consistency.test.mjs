@@ -51,7 +51,7 @@ test("actual times are checked per field with specific messages", () => {
   assert.equal(firstActualTimeIssue(actualTimeIssues("2026-10-13T21:50", "2026-10-13T21:05", NOW)), "end");
 });
 
-test("actual times may differ from the scheduled appointment in any direction", () => {
+test("actual times may differ from the scheduled Appointment in any direction", () => {
   for (const [start, end] of [
     ["2026-10-13T21:00", "2026-10-13T22:00"], // within the scheduled window
     ["2026-10-13T21:20", "2026-10-13T22:00"], // started later than scheduled
@@ -99,9 +99,9 @@ test("the record form shows the Student's ID with blank actual times", () => {
   const html = render(h(RecordEncounterForm, { preset, framed: false, onCancel() {} }));
   assert.match(html, /Synthetic Student A/);
   assert.match(html, /Institutional ID: SYNTH-2026-0203/);
-  assert.doesNotMatch(html, /Scheduled appointment/);
+  assert.doesNotMatch(html, /Scheduled Appointment/);
   assert.match(html, /<legend[^>]*>Actual counseling interaction<\/legend>/);
-  assert.match(html, /actually started and ended, in Philippine Time\. These times may differ from the scheduled appointment\./);
+  assert.match(html, /actually started and ended, in Philippine Time\. These times may differ from the scheduled Appointment\./);
   for (const id of ["counseling-started-at", "counseling-ended-at"]) {
     const input = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`))?.[0] ?? "";
     assert.match(input, /type="datetime-local"/);
@@ -113,7 +113,7 @@ test("the record form shows the Student's ID with blank actual times", () => {
   assert.match(html, /<button[^>]*type="submit"[^>]*>Record encounter<\/button>/);
   assert.match(html, /<button[^>]*>Cancel<\/button>/);
   // The dialog supplies its own title and provenance note.
-  assert.doesNotMatch(html, /Record counseling encounter|You are recorded as the counselor/);
+  assert.doesNotMatch(html, /Record Counseling Encounter|You are recorded as the Counselor/);
   assert.doesNotMatch(html, /undefined|null/);
 });
 
@@ -124,12 +124,12 @@ test("a Student without an Institutional ID is shown honestly", () => {
   assert.doesNotMatch(html, /Institutional ID: (?:undefined|null|<)/);
 });
 
-test("a direct origin has no scheduled appointment to compare against", () => {
+test("a direct origin has no scheduled Appointment to compare against", () => {
   const html = render(h(RecordEncounterForm, {
     preset: { entryMode: "WALK_IN", studentId: "student-d", studentName: "Synthetic Student D", institutionalId: "SYNTH-0001", deliveryMode: "IN_PERSON" },
   }));
-  assert.doesNotMatch(html, /Scheduled appointment|differ from the scheduled appointment/);
-  assert.match(html, /You are recorded as the counselor for this encounter\./);
+  assert.doesNotMatch(html, /Scheduled Appointment|differ from the scheduled Appointment/);
+  assert.match(html, /You are recorded as the Counselor for this encounter\./);
 });
 
 const savedEncounter = {
@@ -175,7 +175,7 @@ test("the correction form opens with the saved times and the shared time contrac
   assert.match(start, /value="2026-01-06T09:00:30"/);
   assert.match(start, /step="1"/);
   assert.match(html, /<legend[^>]*>Actual counseling interaction<\/legend>/);
-  assert.match(html, /in Philippine Time\. These times may differ from the scheduled appointment\./);
+  assert.match(html, /in Philippine Time\. These times may differ from the scheduled Appointment\./);
   assert.match(html, /<button[^>]*type="submit"[^>]*disabled=""[^>]*>Save corrections<\/button>/, "Nothing to save until a fact changes");
   assert.match(html, /<button[^>]*>Cancel<\/button>/);
   assert.match(html, /<form novalidate=""/i);

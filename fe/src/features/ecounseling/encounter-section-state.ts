@@ -81,7 +81,7 @@ export function encounterSectionView({
     return view(
       "MISMATCH",
       "Not this Appointment’s record",
-      "A Counseling Encounter is linked to this Appointment but is not its Counseling-Appointment record. Review it in My counseling encounters.",
+      "A Counseling Encounter is linked to this Appointment but is not its Counseling-Appointment record. Review it in My Counseling Encounters.",
       ["view-encounter"],
     );
   }
@@ -96,7 +96,7 @@ export function encounterSectionView({
     return view(
       "WINDOW_OPEN",
       NOT_RECORDED,
-      "The online access period is still open. Finish counseling becomes available here once it ends.",
+      "You can finish Counseling here after the E-Counseling join and rejoin periods end.",
       [],
     );
   }

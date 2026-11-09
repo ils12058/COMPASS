@@ -63,8 +63,8 @@ export function InventoryHome() {
   }
 
   return (
-    <WorkspaceUnavailable title="Individual Inventory unavailable">
-      This workspace is available to Students for their own annual record and to Counselors for their authorized roster.
+    <WorkspaceUnavailable title="Individual Inventory">
+      You don&apos;t have access to Individual Inventories.
     </WorkspaceUnavailable>
   );
 }
@@ -93,7 +93,7 @@ function StudentInventoryHome() {
       ]);
       router.push("/portal/inventory/current");
     } catch (error) {
-      setStartError(inventoryErrorMessage(error, "A new Individual Inventory could not be started."));
+      setStartError(inventoryErrorMessage(error, "Couldn't start a new Individual Inventory."));
     }
   }
 
@@ -113,7 +113,7 @@ function StudentInventoryHome() {
           </div>
         ) : status.isError ? (
           <div className="px-4 py-4 sm:px-5">
-            <InventoryQueryError error={status.error} fallback="Current Individual Inventory status could not be loaded." onRetry={() => void status.refetch()} />
+            <InventoryQueryError error={status.error} fallback="Couldn't load current Individual Inventory status." onRetry={() => void status.refetch()} />
           </div>
         ) : current ? (
           <div className="px-4 py-4 sm:px-5">
@@ -126,7 +126,7 @@ function StudentInventoryHome() {
               <div className="mt-4 max-w-3xl">
                 {!access.isCurrentStudent ? (
                   <p className="text-sm leading-6 text-muted">
-                    Only current students can start an Individual Inventory for this year. Your earlier records remain available below.
+                    Only current Students can start an Individual Inventory for this year. Your earlier records remain available below.
                   </p>
                 ) : access.canManageSelf ? (
                   <div className="mt-4"><IllustratedIntroduction src={!startError && !ensure.isPending && !history.isPending && !history.isError && records.length === 0 ? "/illustrations/individual-inventory-3d.png" : undefined}>
@@ -137,7 +137,7 @@ function StudentInventoryHome() {
                   </IllustratedIntroduction></div>
                 ) : (
                   <p className="mt-3 text-sm leading-6 text-muted">
-                    Starting a current-year Individual Inventory is not available for this account.
+                    You don&apos;t have access to start this year&apos;s Individual Inventory.
                   </p>
                 )}
               </div>
@@ -189,7 +189,7 @@ function StudentInventoryHome() {
           </div>
         ) : history.isError ? (
           <div className="px-4 py-4 sm:px-5">
-            <InventoryQueryError error={history.error} fallback="Annual Individual Inventory history could not be loaded." onRetry={() => void history.refetch()} />
+            <InventoryQueryError error={history.error} fallback="Couldn't load annual Individual Inventory history." onRetry={() => void history.refetch()} />
           </div>
         ) : records.length === 0 ? (
           <PanelMessage>

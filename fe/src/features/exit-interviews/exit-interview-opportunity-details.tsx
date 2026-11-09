@@ -23,7 +23,7 @@ export function ExitInterviewOpportunityDetails({ opportunityId, onClose, onChan
       setCompleted(true);
       onChanged();
     } catch (caught) {
-      setError(exitInterviewErrorMessage(caught, "Access could not be revoked. Review its latest state before trying again."));
+      setError(exitInterviewErrorMessage(caught, "Couldn't revoke access. Review its latest state before trying again."));
       void detail.refetch();
       onChanged();
     }
@@ -31,7 +31,7 @@ export function ExitInterviewOpportunityDetails({ opportunityId, onClose, onChan
   return <>
     <Dialog open={!review} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent><DialogTitle>Exit Interview access</DialogTitle><DialogDescription>{item && !detail.isError ? `${item.student.display_name} · ${item.academic_year.label}` : "Student Exit Interview access"}</DialogDescription>
-        {detail.isPending ? <p role="status" className="mt-5 text-sm text-muted">Loading access…</p> : detail.isError ? <div role="alert" className="mt-5 text-sm text-danger">{exitInterviewErrorMessage(detail.error, "Access could not be confirmed.")}<Button variant="secondary" onClick={() => void detail.refetch()}>Retry</Button></div> : item ? <>
+        {detail.isPending ? <p role="status" className="mt-5 text-sm text-muted">Loading access…</p> : detail.isError ? <div role="alert" className="mt-5 text-sm text-danger">{exitInterviewErrorMessage(detail.error, "Couldn't confirm access.")}<Button variant="secondary" onClick={() => void detail.refetch()}>Retry</Button></div> : item ? <>
           <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm"><dt className="text-muted">Reason</dt><dd>{item.source === "GRADUATION" ? "Graduation" : "Manual"}</dd><dt className="text-muted">Status</dt><dd>{item.status === "OPEN" ? "Open" : item.status === "COMPLETED" ? "Completed" : "Revoked"}</dd><dt className="text-muted">Workflow</dt><dd>{item.workflow_status === "SUBMITTED" ? "Submitted" : item.workflow_status === "DRAFT" ? "Draft" : "Not started"}</dd>{item.last_submitted_at ? <><dt className="text-muted">Last submitted</dt><dd>{formatExitInterviewDateTime(item.last_submitted_at)}</dd></> : null}<dt className="text-muted">Opened by</dt><dd>{item.opened_by.display_name} · {formatExitInterviewDateTime(item.opened_at)}</dd>{item.completed_at ? <><dt className="text-muted">Completed</dt><dd>{formatExitInterviewDateTime(item.completed_at)}</dd></> : null}{item.revoked_at ? <><dt className="text-muted">Revoked</dt><dd>{item.revoked_by?.display_name} · {formatExitInterviewDateTime(item.revoked_at)}</dd></> : null}</dl>
           {item.note ? <p className="mt-5 whitespace-pre-wrap break-words text-sm text-ink">{item.note}</p> : null}
           {item.status === "OPEN" ? <Button variant="danger" className="mt-6" onClick={() => { setError(null); setReview(true); }}>Revoke access</Button> : null}
@@ -40,7 +40,7 @@ export function ExitInterviewOpportunityDetails({ opportunityId, onClose, onChan
     </Dialog>
     <ConsequentialActionDialog open={review} title={`Revoke Exit Interview access for ${item?.student.display_name ?? "this Student"}?`} confirmLabel="Revoke access" pendingLabel="Revoking…" pending={revoke.isPending} confirmDisabled={detail.isError || item?.status !== "OPEN"} error={error} variant="danger" completed={completed ? { title: "Exit Interview access revoked", children: "Exit Interview access is revoked. Existing responses remain available in history." } : null} onConfirm={() => void confirm()} onOpenChange={(open) => { if (!open) onClose(); }}>
       <p>The Student will no longer be able to start or submit an uncompleted Exit Interview through this access. Existing records will be preserved.</p>
-      {item?.source === "GRADUATION" ? <p>A submitted Exit Interview will still be required for graduation Good Moral. Reopen access if the Student needs to complete it.</p> : null}
+      {item?.source === "GRADUATION" ? <p>A submitted Exit Interview will still be required for the Good Moral Certificate for UCN Bachelor&apos;s graduates (F6). Reopen access if the Student needs to complete it.</p> : null}
     </ConsequentialActionDialog>
   </>;
 }

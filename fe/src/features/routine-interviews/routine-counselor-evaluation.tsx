@@ -232,7 +232,7 @@ export function RoutineCounselorEvaluationWorkspace({
       await queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() });
       setNotice("Evaluation progress saved.");
     } catch (caught) {
-      setSaveError(routineErrorMessage(caught, "The Counselor Evaluation could not be saved."));
+      setSaveError(routineErrorMessage(caught, "Couldn't save the Counselor Evaluation."));
       if (routineErrorCode(caught)) {
         void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) });
         void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() });
@@ -437,7 +437,7 @@ function RoutineEncounterFinalization({
         return;
       }
       if (current.data.evaluation_status !== "DRAFT") {
-        throw new Error("The current Evaluation status is unavailable.");
+        throw new Error("Couldn't confirm the current Evaluation status.");
       }
       onCanonicalEvaluation(current.data.evaluation);
       if (!current.data.counseling_encounter) {
@@ -458,7 +458,7 @@ function RoutineEncounterFinalization({
     } catch {
       setRequiresStatusCheck(true);
       setError(
-        "The current Evaluation status could not be confirmed. Check it before trying to finalize again.",
+        "Couldn't confirm the current Evaluation status. Check it before trying to finalize again.",
       );
     } finally {
       setCheckingCurrentStatus(false);
@@ -489,12 +489,12 @@ function RoutineEncounterFinalization({
         setRequiresStatusCheck(true);
         setError(
           uncertain
-            ? "Finalization could not be confirmed. Checking the current record before another attempt."
+            ? "Couldn't confirm finalization. Checking the current record before another attempt."
             : "The Counseling interaction changed. Checking the latest Evaluation and Encounter details before another attempt.",
         );
         await checkCurrentStatus();
       } else {
-        setError(routineErrorMessage(caught, "The Counselor Evaluation could not be finalized."));
+        setError(routineErrorMessage(caught, "Couldn't finalize the Counselor Evaluation."));
         if (routineErrorCode(caught)) {
           void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) });
         }
@@ -554,7 +554,7 @@ function RoutineEncounterFinalization({
             </Button>
           }
         >
-          {routineErrorMessage(candidates.error, "Completed Counseling interactions could not be loaded.")}
+          {routineErrorMessage(candidates.error, "Couldn't load completed Counseling interactions.")}
         </PanelMessage>
       ) : appointmentBacked ? (
         <p className="mt-4 max-w-3xl text-sm leading-6 text-ink">
@@ -564,7 +564,7 @@ function RoutineEncounterFinalization({
         </p>
       ) : (
         <div className="mt-4 max-w-3xl">
-          <p className="font-medium text-ink">No eligible completed Encounter is available yet.</p>
+          <p className="font-medium text-ink">No matching completed Counseling Encounter is available yet.</p>
           <p className="mt-1 text-sm leading-6 text-muted">
             Record this interaction in its Counseling workspace or wait until a matching Encounter is available.{recordLink ? <> {recordLink}</> : null}
           </p>

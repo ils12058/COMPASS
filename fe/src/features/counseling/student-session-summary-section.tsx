@@ -56,7 +56,7 @@ export function StudentSessionSummarySection({
       setDraft(response.data.content);
       queryClient.setQueryData(getCounselingGetAssignedStudentSessionSummaryQueryKey(encounterId), response);
     } catch (caught) {
-      setSaveError(counselingErrorMessage(caught, "The Student Session Summary draft could not be saved."));
+      setSaveError(counselingErrorMessage(caught, "Couldn't save the Student Session Summary draft."));
       if (counselingErrorCode(caught) === "student_session_summary_already_published") {
         void summaryQuery.refetch();
       }
@@ -73,7 +73,7 @@ export function StudentSessionSummarySection({
       queryClient.setQueryData(getCounselingGetAssignedStudentSessionSummaryQueryKey(encounterId), response);
       onPublished?.();
     } catch (caught) {
-      setPublishError(counselingErrorMessage(caught, "The Student Session Summary could not be published."));
+      setPublishError(counselingErrorMessage(caught, "Couldn't publish the Student Session Summary."));
       if (counselingErrorCode(caught) === "student_session_summary_already_published") {
         void summaryQuery.refetch();
       }
@@ -84,7 +84,7 @@ export function StudentSessionSummarySection({
     <Panel aria-labelledby="student-session-summary-heading">
       <PanelHeader title="Student Session Summary" titleId="student-session-summary-heading" />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
-      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading student session summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Student Session Summary could not be loaded.")}</p> : summary?.published_at ? (
+      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading Student Session Summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Couldn't load Student Session Summary.")}</p> : summary?.published_at ? (
         <div className="mt-4">
           <p className="text-sm font-semibold text-success">Published to Student · {formatCounselingDateTime(summary.published_at)}</p>
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
@@ -124,7 +124,7 @@ export function StudentSessionSummarySection({
         <p className="mt-3 text-sm text-muted">No Student Session Summary has been drafted yet.</p>
       ) : (
         <div className="mt-3">
-          <p className="text-sm text-muted">Shared with the student.</p>
+          <p className="text-sm text-muted">Shared with the Student.</p>
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary?.content}</div>
         </div>
       )}

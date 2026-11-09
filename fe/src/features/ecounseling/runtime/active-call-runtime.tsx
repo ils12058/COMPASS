@@ -431,7 +431,7 @@ export function ActiveECounselingRuntimeProvider({
   };
   const stagePresented = appointmentId !== null && (stageCounts[appointmentId] ?? 0) > 0;
   const denialNotice = denial && dismissedDenial !== denial
-    ? `This E-Counseling session is unavailable. ${captureCessationWarning(activeCapture, "access-loss") ?? ""}`.trim()
+    ? `You don't have access to this E-Counseling session. ${captureCessationWarning(activeCapture, "access-loss") ?? ""}`.trim()
     : null;
   // The full stage already shows how the call ended; the dock area doesn't repeat it later.
   if (stagePresented && endedNotice) setEndedNotice(null);

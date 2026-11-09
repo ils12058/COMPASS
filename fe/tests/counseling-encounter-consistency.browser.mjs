@@ -117,13 +117,13 @@ await check("ecounseling-dialog-identity-matches-overview", ePath, { overrides: 
   const record = await openRecordDialog(page);
   const text = await record.innerText();
   assert.match(text, new RegExp(`Institutional ID: ${SYNTH_ID}`), "The dialog shows the same ID as the Student information");
-  assert.match(text, /Scheduled appointment/);
+  assert.match(text, /Scheduled Appointment/);
   assert.match(text, SCHEDULED);
-  assert.match(text, /in Philippine Time\. These times may differ from the scheduled appointment\./);
+  assert.match(text, /in Philippine Time\. These times may differ from the scheduled Appointment\./);
   assert.doesNotMatch(text, /undefined|null|Not provided/);
   assert.equal(await record.getByRole("heading").count(), 1, "One dialog heading, no nested panel title");
   const description = await record.getAttribute("aria-describedby");
-  assert.match(await page.locator(`[id="${description}"]`).innerText(), /The Appointment sets the student, Service, and delivery mode\. You are recorded as the counselor\./);
+  assert.match(await page.locator(`[id="${description}"]`).innerText(), /The Appointment sets the Student, Service, and delivery mode\. You are recorded as the Counselor\./);
   for (const label of ["Actual start", "Actual end"]) assert.equal(await record.getByLabel(label, { exact: true }).inputValue(), "", `${label} is not copied from the schedule`);
   await shown(record.getByRole("group", { name: "Actual counseling interaction" }));
   await shown(record.getByRole("button", { name: "Record encounter", exact: true }));
@@ -328,7 +328,7 @@ await check("correction-form-consistency", `/portal/counseling/encounters/${ENCO
   assert.equal(await start.inputValue(), "2026-10-08T10:05:30", "Saved seconds are shown");
   assert.equal(await start.getAttribute("step"), "1");
   await shown(form.getByRole("group", { name: "Actual counseling interaction" }));
-  assert.match(await form.innerText(), /in Philippine Time\. These times may differ from the scheduled appointment\./);
+  assert.match(await form.innerText(), /in Philippine Time\. These times may differ from the scheduled Appointment\./);
   assert.match(await form.innerText(), /Selected: APT-TEST-1024 · Scheduled Thu, Oct 8, 2026 · 10:00\sAM–11:00\sAM/);
   const save = form.getByRole("button", { name: "Save corrections", exact: true });
   assert.equal(await save.isDisabled(), true, "Nothing to save yet");
@@ -353,14 +353,14 @@ await check("standalone-appointment-recording", "/portal/counseling", { override
     page: 1, page_size: 20, has_next: false,
   },
 } }, async (page) => {
-  await page.getByRole("button", { name: "Record counseling encounter" }).click();
-  await page.getByRole("button", { name: "From Counseling appointment", exact: true }).click();
+  await page.getByRole("button", { name: "Record Counseling Encounter" }).click();
+  await page.getByRole("button", { name: "From Counseling Appointment", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(`${appointment.reference_code} · ${STUDENT}`) }).click();
   const summary = page.locator("form").filter({ has: page.getByRole("group", { name: "Actual counseling interaction" }) });
   const text = await summary.innerText();
   assert.match(text, new RegExp(`Institutional ID: ${SYNTH_ID}`));
   assert.match(text, SCHEDULED);
-  assert.match(text, /The Appointment sets the student, Service, and delivery mode\. You are recorded as the counselor\./);
+  assert.match(text, /The Appointment sets the Student, Service, and delivery mode\. You are recorded as the Counselor\./);
   assert.match(text, /Recording this encounter does not complete the Appointment\./);
   assert.equal(await summary.getByLabel("Actual start", { exact: true }).inputValue(), "");
   await shown(summary.getByRole("button", { name: "Record encounter", exact: true }));
@@ -374,8 +374,8 @@ await check("counseling-workspace-dialog-identity", `/portal/counseling/workspac
   const record = dialog(page);
   await shown(record);
   assert.match(await record.innerText(), new RegExp(`Institutional ID: ${SYNTH_ID}`));
-  assert.doesNotMatch(await record.innerText(), /Scheduled appointment/, "No schedule is invented where the context has none");
-  assert.match(await record.innerText(), /These times may differ from the scheduled appointment\./);
+  assert.doesNotMatch(await record.innerText(), /Scheduled Appointment/, "No schedule is invented where the context has none");
+  assert.match(await record.innerText(), /These times may differ from the scheduled Appointment\./);
 });
 
 await finish();

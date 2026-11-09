@@ -217,7 +217,7 @@ export function InventoryEditor({
       }
       return true;
     } catch (error) {
-      setSaveError(setMutationError(error, "Your Individual Inventory progress could not be saved."));
+      setSaveError(setMutationError(error, "Couldn't save your Individual Inventory progress."));
       return false;
     }
   }
@@ -241,7 +241,7 @@ export function InventoryEditor({
       setConfirmSubmit(false);
       router.replace("/portal/inventory/current");
     } catch (error) {
-      setSubmitError(setMutationError(error, "Your Individual Inventory could not be submitted."));
+      setSubmitError(setMutationError(error, "Couldn't submit your Individual Inventory."));
     } finally {
       setSubmitting(false);
     }
@@ -252,7 +252,7 @@ export function InventoryEditor({
       <div className="space-y-6">
         <InventoryHeading title="Individual Inventory" />
         <InventoryNotice title="Editing is no longer available" tone="warning" role="alert">
-          You can still read this record, but you can no longer edit or submit it because you are no longer a current student.
+          You can still read this record, but you can no longer edit or submit it because you are no longer a current Student.
         </InventoryNotice>
         <GuardedPortalLink
           href="/portal/inventory"
@@ -286,7 +286,7 @@ export function InventoryEditor({
       {refreshNotice}
 
       <div className="mt-4 max-w-3xl space-y-2 text-sm leading-6 text-muted">
-        <p>Your Individual Inventory helps the Guidance and Counseling Office understand your needs and future plans. Please provide accurate information. Your responses are handled as confidential Student information.</p>
+        <p>Your Individual Inventory helps the Guidance Office understand your needs and plans. Give accurate answers; they stay confidential.</p>
         <p>Move between sections in any order. Save progress before leaving.</p>
       </div>
 
@@ -424,9 +424,7 @@ export function InventoryEditor({
         onConfirm={() => void submitInventory()}
       >
         <p>
-          After submission, this Inventory becomes read-only. An authorized
-          Counselor may reopen the current-year record if corrections are
-          needed.
+          After submission, you can&apos;t change your Individual Inventory. A Counselor may reopen this year&apos;s record for corrections.
         </p>
       </ConsequentialActionDialog>
     </section>
