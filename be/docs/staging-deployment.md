@@ -1,6 +1,7 @@
-# Staging deployment and reset-only release baseline (ADR-117)
+# Staging deployment and Phase E reset (ADR-118)
 
-The current Compose/runtime-secret source contract is **25 files**, including the dedicated
+The current Compose/runtime-secret source contract contains the **25-source inventory plus the
+web-only Handoff source (26 declared sources)**, including the dedicated
 non-empty `guidance_followup_encryption_keys` key granted to web only. See
 [`runtime-secrets.md`](runtime-secrets.md) for the authoritative list and service grants. RELEASE-UNBLOCK-1 retires the global Follow-Up gate. Before controlled release, verify
 ADR-FUP-1A governance, the independent keyring, identity policy and current resource access.
@@ -8,14 +9,77 @@ The repository contract does not prove that the host file is present or that UAT
 
 COMPASS-LIVE-RESET-1 completed on **2026-10-17**. Initial baseline installation required that
 separate reset; subsequent deployments **reuse its initialized storage**. No reset, import, seed,
-credential issuance, authentication reset, task purge or data-volume deletion belongs in this flow.
+credential issuance, authentication reset, task purge or data-volume deletion belongs in the
+**routine deploy operation**. Phase E uses the separate reset path below.
 
-> **Phase D deployment refusal.** Revisions containing `0001_release_baseline.py` are rejected
-> by `deploy-staging.yml` before deployment. The old staging database is incompatible and is
-> never upgraded, faked forward or restored into this release. Phase E must complete the
-> separately approved full staging reset, regression and freeze, then lift the refusal and pin
-> the new release-baseline lineage commit. The routine procedure below applies only after that
-> reset and lineage update; Phase D authorizes local verification only.
+## Phase E reset
+
+[ADR-118](decisions/ADR-118-staging-reset-onto-release-baseline.md) replaces the blanket workflow
+refusal with an explicit reset operation and the new release lineage
+`385c074dfe6a38d89363f123c51307ab7d65dfbc`. The old runtime fails that ancestry gate and its
+`0001_canonical_baseline` database fails the routine release-history gate independently.
+Ordinary deploys are accepted only after the reset. This tooling has been rehearsed locally;
+no real host reset or readiness is established by its implementation.
+
+Promote the reviewed integration SHA to `staging` by **fast-forward**, preserving its exact SHA.
+Leave `main` and its historical workflow alone. A successful **Backend full regression** on that
+exact SHA is mandatory for every operation; the PR's own run counts. Dispatch from `staging`.
+
+| Input | Contract |
+| --- | --- |
+| `operation` | `deploy` (default), `reset-preflight`, or `reset` |
+| `expected_staging_sha` | Full SHA of the reviewed, promoted staging revision |
+| `organization_catalog_action` | `check` for both reset operations |
+| `confirm_reset` | `reset` only: exactly `RESET STAGING <first 12 lowercase SHA hex>` |
+| `dataset_email_domain` | Required for reset: plain lowercase DNS domain, reused from preflight |
+
+`deploy` refuses filled reset inputs. `reset-preflight` refuses a confirmation phrase; its domain
+may be empty for discovery. Supplied domains are validated for both reset operations. The optional
+staging environment secret `STAGING_SEED_ONBOARDING_EMAIL` reaches reset one-offs via SSH stdin and
+transient environment only. Its value is never an argument, log, receipt, or persisted configuration.
+If absent, the reset says so and seeds without onboarding delivery. Automation never issues passwords.
+
+1. Stage the exact release under `/opt/compass/releases/<SHA>` and acquire short-lived image-pull
+   credentials. `reset-preflight` checks the Droplet/root, free host lock and absent freeze file,
+   pinned storage/labels/timestamps, exclusive container mounts and read-only database history.
+   It reports database class, migration/account counts, synthetic email domains, safely readable
+   selector revision and realtime state. It also validates runtime-source metadata, realtime Origins,
+   and candidate `check --deploy` **without database tags**. This transient candidate configuration
+   probe and candidate image pull are the only Docker changes; the existing runtime is untouched.
+2. `reset` checks candidate ancestry and rechecks the staging tip, then takes
+   `/opt/compass/.live-reset.lock` with `flock -n`. Repeat the preflight and refuse any snapshot drift.
+   Pull and verify the immutable candidate image and configuration before the destructive boundary.
+3. Write a mode-0600 content-free checkpoint tied to SHA/image/domain, disable app restart policies,
+   stop and remove proxy, web, worker, Beat and realtime. Old work is discarded without draining.
+4. Through the running storage containers, execute `DROP DATABASE … WITH (FORCE)` and
+   `CREATE DATABASE … OWNER …` using PostgreSQL's own DB/user, and `FLUSHALL` using the Redis
+   entrypoint's password-file normalization. Keep all four existing volumes and the network.
+   Recreate PostgreSQL and Redis from the new manifest with `--no-deps --force-recreate --pull never`
+   and wait for health. Caddy's TLS volumes and all runtime secret values remain intact.
+5. Run, with no pulls or dependencies: migrate, identity policy, Services, institutional forms,
+   Organization `--seed --reference reset:<SHA>`, Organization `--check`, migration check, deployment
+   database check, Dataset v1 `seed`, then strict `verify`. Only the last two get a transient
+   `STAGING_SEED_ENABLED=true`. Counts come from the candidate manifest, including E5's allocation.
+6. Start every app/proxy with the routine wait settings, run worker smoke, and verify public metadata
+   plus each actual app image. Publish the shared atomic **single-file** selector and previous-selector
+   refusal. Run the routine host preflight against the resulting release database.
+7. Write and print `/opt/compass/operator/resets/<SHA>-<UTC>.json`, mode `0600`: SHA, image digest,
+   original database class, before/after counts, verification section counts and UTC timestamps.
+   The checkpoint is cleared only after durable receipt creation.
+
+A pre-boundary failure leaves the old runtime running. A failure once the app fence starts keeps app
+services stopped, disables automatic restarts and retains the checkpoint. There is **no rollback**.
+Rerun `reset` with the same SHA, image and domain for recovery; it repeats the complete clean rebuild.
+The protected checkpoint admits only this reset's incomplete release history or unavailable storage;
+a normal `reset-preflight` remains strict. On such a retry only, restore missing/stopped storage
+containers from the already verified candidate on the same pinned resources before repeating the SQL.
+Unknown or mixed history and changed resources remain refused. A stale `.next` state write can be
+replaced only when it is a regular mode-0600 file owned by the operator.
+
+The reset never dumps, exports, imports or restores data; never creates/deletes volumes or networks;
+never touches object storage, Daily resources or Droplet backups; never rotates keys, resets a role
+password, issues participant credentials or modifies `.env`. Provider/object remnants stay untouched
+under ADR-116. Freeze and later credential issuance require separate owner go-aheads.
 
 ## Release catalog initialization boundary
 
@@ -32,7 +96,7 @@ staging is never adopted into the release graph and requires the separate Phase 
 
 The deployment script retains stop/restart fences and catalog receipt checks. Phase D does not
 execute the workflow or inspect live staging. The historical destination contract below records
-the earlier verified environment; Phase E must establish the new reset resources and lineage
+the earlier verified environment; Phase E must verify and preserve these resources while establishing the new database/runtime lineage
 before normal deployment resumes.
 
 ## Verified destination and stable resources
@@ -67,8 +131,8 @@ These counts are observations, not fixed gates that could reject legitimate futu
 
 ## Dispatch and image identity
 
-1. Merge the reviewed change into `staging`.
-2. Wait for **Backend full regression** to complete successfully for the resulting exact commit.
+1. Fast-forward `staging` to the reviewed integration head; preserve the exact SHA and leave `main` alone.
+2. Require a successful **Backend full regression** for that exact commit; its PR run counts.
 3. Dispatch **Deploy staging backend** **from branch `staging`** with `expected_staging_sha` set
    to that full SHA (UI branch selector, or `gh workflow run deploy-staging.yml --ref staging
    -f expected_staging_sha=<FULL_SHA>`). The
@@ -78,10 +142,10 @@ These counts are observations, not fixed gates that could reject legitimate futu
    Inspection found no environment branch allowlist. Restricting the GitHub staging environment to
    branch `staging`, or separately promoting this workflow to main, is the repository-owner follow-up
    for closing that historical dispatch path; this PR does not change repository settings.
-4. The revision must descend from both the canonical baseline and the currently running revision.
+4. A routine deploy must descend from both `385c074dfe6a38d89363f123c51307ab7d65dfbc` and the currently running revision.
    Baseline migration files must match the accepted baseline byte-for-byte. Feature migrations
    extend the immutable `0001_release_baseline`, links and guard graph; never regenerate, fake
-   or edit applied migrations. Phase E establishes the new lineage after the approved reset.
+   or edit applied migrations. Reset skips only the incompatible old-runtime ancestry check.
 
 GitHub Actions builds the amd64 backend from the reviewed SHA and OCI revision/version/build-time
 metadata. A SHA tag already in the registry is reused after metadata validation, never overwritten
@@ -162,7 +226,7 @@ Order for an accepted routine release:
 3. Run `migrate --noinput`, the four canonical synchronizers, `migrate --check`, and Django
    deployment/database checks. No old web/worker/Beat remains running during these operations.
 4. Start only application services/proxy with `--no-deps --pull never`; reuse the already healthy
-   database/broker. Preserve whether realtime was active. Run health checks and
+   database/broker. Start realtime with the other app services. Run health checks and
    `compass_doctor --worker-smoke --worker-timeout 10` (harmless diagnostic task).
 5. Confirm actual app image revisions and public `/api/v1/meta` application, environment, SHA,
    version and build time; only then publish the new selector. Independently check public identity
@@ -207,12 +271,34 @@ owner decisions under [the dataset runbook](staging-dataset-v1.md).
 
 ## First post-reset prerequisites
 
-Merge DEPLOY-1, let exact merged-SHA full regression pass, and dispatch that SHA **using `--ref staging`**.
-The earlier DEPLOY-1 inspection and its no-new-secret conclusion predate the Follow-Up source added
-to the current manifest. Current deployment preflight requires the 25-source inventory, including
-the dedicated Follow-Up key; do not infer host-file presence from that source contract. The CORR-5
-read-only attempt could not establish the host file or effective application configuration because
-SSH timed out. Provisioning remains a separate authorized operator action. Even after provision, the
-secret does not constitute the institutional approval required to enable Follow-Ups. Ensure no
-competing deploy/freeze or active work, and retain the normal independent backup policy. CORR-5 made
-no deployment, migration, seeding, secret operation, restart or live configuration change.
+- [ ] Reviewed integration head promoted by fast-forward, with successful exact-SHA Backend full
+  regression (the PR run counts); every dispatch uses `--ref staging`.
+- [ ] Name-only host audit of the 25-source runtime inventory **plus the Handoff source** (26 declared
+  sources). Required pointers, permissions, ownership and service grants pass the current checker.
+  Historical 25-file wording does not prove current host provisioning.
+- [ ] Independent, non-empty Handoff and Follow-Up keyrings, with approved custody/recovery and
+  institutional policy decisions; preserve all active keys and previous key order.
+- [ ] Host `COMPASS_PORTAL_ORIGIN` is the approved canonical HTTPS frontend origin.
+- [ ] `REALTIME_ALLOWED_ORIGINS` is set for the realtime service, and Vercel
+  `NEXT_PUBLIC_REALTIME_URL` is configured to the public realtime WebSocket endpoint.
+- [ ] Read-only reset preflight recorded; operator reuses its dataset email domain and has reviewed
+  the optional onboarding-delivery choice. No competing host operation or freeze file exists.
+- [ ] Owner separately authorizes the live reset, then the ordinary no-op deploy, frontend deploy,
+  smoke checks and freeze. Freeze uses annotated tag `evaluation-freeze-2026-11` and a record;
+  no host freeze file is created. Evaluation accepts only owner-approved staging fixes.
+- [ ] After freeze and a separate authorization, issue credentials on the host only for the manifest's
+  allocated accounts. Seeded IT Administrators enroll TOTP and save recovery codes at first sign-in.
+
+Earlier DEPLOY-1/CORR-5 observations are historical. Current source/configuration checks must pass
+before any drop; source code, synthetic rehearsal and a green PR do not establish live UAT readiness.
+
+Before crossing the destructive boundary, reset also requires the manifest's pinned PostgreSQL,
+Redis and proxy images to be present locally for `--pull never`. It never silently pulls them after
+a drop. If missing, the operator must resolve image availability under separate live authorization.
+A checkpoint-bound recovery may fence/remove a leftover web one-off only when its image matches
+the exact candidate, its name/labels are Compose-owned, and its mounts/network are canonical.
+Foreign one-offs remain refused; no unrelated process or provider operation is purged.
+
+Canonical classification includes the known Group Sessions and Follow-Up `0001_initial` additions
+alongside the old canonical baselines; these were proven by the origin/staging local rehearsal.
+Other unknown initial histories and mixed release/canonical histories remain refused.

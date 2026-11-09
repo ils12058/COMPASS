@@ -10,7 +10,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-BASELINE = "d86ddc08285f16740848dc5880d9d2285e7dbce8"
+BASELINE = "385c074dfe6a38d89363f123c51307ab7d65dfbc"
 PROJECT = "compass"
 NETWORK = "compass_canonical_d86ddc08"
 VOLUMES = {
@@ -72,7 +72,7 @@ def read_selector(path=Path("/opt/compass/.deploy.env")):
     return result
 
 
-def validate_resources(volumes, network, containers, candidate):
+def validate_resources(volumes, network, containers, candidate, *, reset=False, recovery=False):
     require(candidate["name"] == PROJECT, "Wrong Compose project")
     for key, (name, created) in VOLUMES.items():
         config = candidate["volumes"][key]
@@ -123,11 +123,12 @@ def validate_resources(volumes, network, containers, candidate):
         require(
             labels.get("com.docker.compose.oneoff") == "False", "One-off COMPASS process exists"
         )
-        require(
-            c["State"]["Running"]
-            and c["State"].get("Health", {}).get("Status", "healthy") == "healthy",
-            "Current runtime is not healthy",
-        )
+        if not reset or (service in {"postgres", "redis"} and not recovery):
+            require(
+                c["State"]["Running"]
+                and c["State"].get("Health", {}).get("Status", "healthy") == "healthy",
+                "Current runtime is not healthy",
+            )
         require(set(c["NetworkSettings"]["Networks"]) == {NETWORK}, "Runtime network mismatch")
         require(c["Name"] == f"/compass-{service}-1", "Unexpected service/container identity")
         expected = {
@@ -138,18 +139,26 @@ def validate_resources(volumes, network, containers, candidate):
         actual = {m["Destination"]: m["Name"] for m in c["Mounts"] if m["Type"] == "volume"}
         require(actual == expected, "Runtime persistent mounts differ")
         services[service] = c
-    require(
-        {"web", "worker", "beat", "postgres", "redis", "proxy"} <= services.keys(),
-        "Required runtime services missing",
+    required = (
+        set()
+        if recovery
+        else {"postgres", "redis"}
+        if reset
+        else {"web", "worker", "beat", "postgres", "redis", "proxy"}
     )
+    require(required <= services.keys(), "Required runtime services missing")
     return services
 
 
-def validate_endpoints(services, candidate):
+def validate_endpoints(services, candidate, *, reset=False):
     postgres = dict(item.split("=", 1) for item in services["postgres"]["Config"]["Env"])
     desired = candidate["services"]["postgres"]["environment"]
     require(
-        all(postgres.get(key) == value for key, value in desired.items()),
+        all(
+            postgres.get(key) == value
+            for key, value in desired.items()
+            if not reset or key in {"POSTGRES_DB", "POSTGRES_USER", "PGDATA"}
+        ),
         "Running PostgreSQL configuration differs from candidate",
     )
     for name in ("web", "worker", "beat"):
@@ -194,13 +203,17 @@ def validate_release_history(baseline, applied, *, catalog_table):
     )
 
 
-def inspect(candidate):
+def validate_host():
     with urllib.request.urlopen("http://169.254.169.254/metadata/v1/id", timeout=3) as response:
         require(response.read().decode().strip() == "602091909", "Wrong DigitalOcean Droplet")
     require(Path("/opt/compass").resolve() == Path("/opt/compass"), "Unexpected deployment root")
     require(
         not Path("/opt/compass/.deployment-freeze").exists(), "Operator deployment freeze is active"
     )
+
+
+def inspect(candidate):
+    validate_host()
     selector = read_selector()
     volumes = {name: docker_json("volume", "inspect", name)[0] for name, _ in VOLUMES.values()}
     for old in ("compass_postgres_data", "compass_redis_data"):
@@ -297,6 +310,7 @@ def inspect(candidate):
             name: c["Id"] for name, c in services.items() if name in APP_SERVICES | {"proxy"}
         },
         "accounts": database["accounts"],
+        "migration_count": len(database["migrations"]),
     }
 
 

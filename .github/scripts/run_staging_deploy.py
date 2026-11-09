@@ -17,7 +17,7 @@ from pathlib import Path
 FW = "3d6403c7-9acc-4faf-b6a4-fa5bb092e108"
 DROPLET = 602091909
 PROJECT = "1bb58307-ec9c-4af1-98c4-4177c636e567"
-BASELINE = "d86ddc08285f16740848dc5880d9d2285e7dbce8"
+BASELINE = "385c074dfe6a38d89363f123c51307ab7d65dfbc"
 
 
 def run(*args, **kwargs):
@@ -130,13 +130,64 @@ def ssh_options():
     ]
 
 
+def validate_inputs(operation, sha, confirm_reset, domain, catalog_action):
+    if operation not in {"deploy", "reset-preflight", "reset"}:
+        raise RuntimeError("Invalid staging operation")
+    if not re.fullmatch("[0-9a-fA-F]{40}", sha):
+        raise RuntimeError("expected_staging_sha must be a full hexadecimal SHA")
+    if catalog_action not in {"check", "adopt", "seed"}:
+        raise RuntimeError("Invalid explicit catalog initialization action")
+    if operation == "deploy":
+        if confirm_reset or domain:
+            raise RuntimeError("deploy refuses filled reset inputs")
+        return
+    if catalog_action != "check":
+        raise RuntimeError("Reset operations require organization_catalog_action=check")
+    if operation == "reset" and confirm_reset != "RESET STAGING " + sha.lower()[:12]:
+        raise RuntimeError(
+            "Reset confirmation phrase does not match expected staging SHA"
+        )
+    # Two or more DNS labels; no URL, IP, trailing dot, wildcard, port or shell syntax.
+    if domain and not (
+        len(domain) <= 200
+        and re.fullmatch(
+            r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?",
+            domain,
+        )
+    ):
+        raise RuntimeError("dataset_email_domain must be a plain lowercase DNS name")
+    if operation == "reset" and not domain:
+        raise RuntimeError("reset requires dataset_email_domain")
+    if operation == "reset-preflight" and confirm_reset:
+        raise RuntimeError("reset-preflight refuses a destructive confirmation phrase")
+
+
+def inputs_from_environment():
+    operation = os.environ.get("OPERATION", "deploy")
+    validate_inputs(
+        operation,
+        os.environ["DEPLOY_SHA"],
+        os.environ.get("CONFIRM_RESET", ""),
+        os.environ.get("DATASET_EMAIL_DOMAIN", ""),
+        os.environ.get("ORG_CATALOG_ACTION", "check"),
+    )
+    return operation
+
+
+def validate_runtime_lineage(revision, sha):
+    run("git", "merge-base", "--is-ancestor", BASELINE, revision)
+    run("git", "merge-base", "--is-ancestor", revision, sha)
+
+
 def deploy():
+    operation = inputs_from_environment()
     sha, image = os.environ["DEPLOY_SHA"], os.environ["IMAGE"]
     catalog_action = os.environ.get("ORG_CATALOG_ACTION", "check")
     if catalog_action not in {"check", "adopt", "seed"}:
         raise RuntimeError("Invalid explicit catalog initialization action")
     if not re.fullmatch("[0-9a-f]{40}", sha) or not re.fullmatch(
-        rf"registry.digitalocean.com/compass/compass-backend:{sha}@sha256:[0-9a-f]{{64}}", image
+        rf"registry.digitalocean.com/compass/compass-backend:{sha}@sha256:[0-9a-f]{{64}}",
+        image,
     ):
         raise RuntimeError("Non-immutable candidate image")
     for key, value in {
@@ -166,7 +217,11 @@ def deploy():
         },
         **{
             f"deploy/runtime-secrets/{name}": Path("be/deploy/runtime-secrets") / name
-            for name in ["redis-start.sh", "check-runtime-secrets.py", "runtime_secrets.py"]
+            for name in [
+                "redis-start.sh",
+                "check-runtime-secrets.py",
+                "runtime_secrets.py",
+            ]
         },
     }
     existing = run(
@@ -203,13 +258,88 @@ def deploy():
             f"APP_VERSION={os.environ['APP_VERSION']} BUILD_TIME={os.environ['BUILD_TIME']} "
             f"ORG_CATALOG_ACTION={catalog_action}"
         )
+        if operation != "deploy":
+            # Domain has already been validated as DNS data. The optional email travels via
+            # SSH stdin only, never an argument, file, rendered Compose configuration or log.
+            metadata += (
+                f" DATASET_EMAIL_DOMAIN={os.environ.get('DATASET_EMAIL_DOMAIN', '')}"
+            )
+            reset_command = f"{metadata} bash {release}/deploy/staging/reset.sh"
+            run(*ssh, f"mkdir -p {release}/.registry && chmod 700 {release}/.registry")
+            run(
+                *scp,
+                os.environ["STAGING_REGISTRY_PULL_CONFIG"],
+                f"{target}:{release}/.registry/config.json",
+            )
+            run(*ssh, f"chmod 600 {release}/.registry/config.json")
+            tip = run(
+                "git",
+                "ls-remote",
+                "--refs",
+                "origin",
+                "refs/heads/staging",
+                capture_output=True,
+                text=True,
+            ).stdout.split()
+            if not tip or tip[0] != sha:
+                raise RuntimeError(
+                    "Staging moved before reset operation; no reset permitted"
+                )
+            if operation == "reset-preflight":
+                result = run(
+                    *ssh,
+                    reset_command + " reset-preflight",
+                    capture_output=True,
+                    text=True,
+                )
+                print(result.stderr, end="")
+                print(json.dumps(json.loads(result.stdout), sort_keys=True), flush=True)
+                return
+            # A durable fence admits recovery only for the same SHA/image/domain. Reset-preflight
+            # remains strict; this read-only recovery probe cannot modify containers or storage.
+            probe = (
+                f"cd {release} && COMPASS_IMAGE={image} COMPASS_SECRETS_DIR=/opt/compass/secrets "
+                "docker compose --project-name compass -f compose.staging.yaml config --format json > .candidate-config.json && "
+                f"{metadata} python3 deploy/staging/reset_preflight.py .candidate-config.json "
+                "$(if test -f /opt/compass/operator/resets/in-progress.json; then printf %s --recovery; fi) "
+                "> .reset-preflight.json && cat .reset-preflight.json"
+            )
+            snapshot = json.loads(
+                run(*ssh, probe, capture_output=True, text=True).stdout
+            )
+            print(json.dumps(snapshot, sort_keys=True), flush=True)
+            tip = run(
+                "git",
+                "ls-remote",
+                "--refs",
+                "origin",
+                "refs/heads/staging",
+                capture_output=True,
+                text=True,
+            ).stdout.split()
+            if not tip or tip[0] != sha:
+                raise RuntimeError(
+                    "Staging moved during reset preflight; no reset permitted"
+                )
+            onboarding = os.environ.get("STAGING_SEED_ONBOARDING_EMAIL", "")
+            if any(c in onboarding for c in "\r\n\x00"):
+                raise RuntimeError("Onboarding secret must be a single line")
+            result = run(
+                *ssh,
+                reset_command + " reset",
+                input=onboarding + "\n",
+                capture_output=True,
+                text=True,
+            )
+            print(result.stderr, end="")
+            print(json.dumps(json.loads(result.stdout), sort_keys=True), flush=True)
+            return
         command = f"{metadata} bash {release}/deploy/staging/deploy.sh"
         result = run(*ssh, command + " preflight", capture_output=True, text=True)
         # stderr contains only the runtime-secret check summary. Never print rendered env/config.
         print(result.stderr, end="")
         snapshot = json.loads(result.stdout)
-        run("git", "merge-base", "--is-ancestor", BASELINE, snapshot["current_revision"])
-        run("git", "merge-base", "--is-ancestor", snapshot["current_revision"], sha)
+        validate_runtime_lineage(snapshot["current_revision"], sha)
         print(
             json.dumps(
                 {
@@ -231,7 +361,9 @@ def deploy():
             text=True,
         ).stdout.split()
         if not tip or tip[0] != sha:
-            raise RuntimeError("Staging moved during the build/preflight; no runtime mutation")
+            raise RuntimeError(
+                "Staging moved during the build/preflight; no runtime mutation"
+            )
         if snapshot["current_revision"] == sha:
             if snapshot["current_image"] != image:
                 raise RuntimeError(
@@ -258,6 +390,10 @@ def main():
     if sys.argv[1:] == ["--cleanup"]:
         close_firewall(statefile)
         return
+    if sys.argv[1:] == ["--validate-inputs"]:
+        inputs_from_environment()
+        return
+    inputs_from_environment()  # Reject inputs before acquiring any firewall lease.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     signal.signal(signal.SIGINT, lambda *_: sys.exit(130))
     try:

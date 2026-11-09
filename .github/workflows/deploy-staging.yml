@@ -7,6 +7,20 @@ on:
         description: "Full 40-character SHA currently expected at origin/staging"
         required: true
         type: string
+      operation:
+        description: "Routine deploy, read-only reset preflight, or explicitly confirmed reset"
+        type: choice
+        options: [deploy, reset-preflight, reset]
+        default: deploy
+        required: true
+      confirm_reset:
+        description: "reset only: RESET STAGING followed by the first 12 lowercase SHA characters"
+        type: string
+        required: false
+      dataset_email_domain:
+        description: "reset: plain lowercase DNS domain; reuse the domain reported by preflight"
+        type: string
+        required: false
       organization_catalog_action:
         description: "Catalog check (default); seed/adopt require separately approved cutover"
         type: choice
@@ -41,8 +55,49 @@ jobs:
       STAGING_DEPLOY_PORT: ${{ vars.STAGING_DEPLOY_PORT }}
       STAGING_FIREWALL_ID: ${{ vars.STAGING_FIREWALL_ID }}
       ORG_CATALOG_ACTION: ${{ inputs.organization_catalog_action }}
+      OPERATION: ${{ inputs.operation }}
+      CONFIRM_RESET: ${{ inputs.confirm_reset }}
+      DATASET_EMAIL_DOMAIN: ${{ inputs.dataset_email_domain }}
 
     steps:
+      - name: Validate operation inputs before any other step
+        env:
+          EXPECTED_STAGING_SHA: ${{ inputs.expected_staging_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          def validate_inputs(operation, sha, confirm_reset, domain, catalog_action):
+              if operation not in {"deploy", "reset-preflight", "reset"}:
+                  raise RuntimeError("Invalid staging operation")
+              if not re.fullmatch("[0-9a-fA-F]{40}", sha):
+                  raise RuntimeError("expected_staging_sha must be a full hexadecimal SHA")
+              if catalog_action not in {"check", "adopt", "seed"}:
+                  raise RuntimeError("Invalid explicit catalog initialization action")
+              if operation == "deploy":
+                  if confirm_reset or domain:
+                      raise RuntimeError("deploy refuses filled reset inputs")
+                  return
+              if catalog_action != "check":
+                  raise RuntimeError("Reset operations require organization_catalog_action=check")
+              if operation == "reset" and confirm_reset != "RESET STAGING " + sha.lower()[:12]:
+                  raise RuntimeError("Reset confirmation phrase does not match expected staging SHA")
+              # Two or more DNS labels; no URL, IP, trailing dot, wildcard, port or shell syntax.
+              if domain and not (
+                  len(domain) <= 200
+                  and re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?", domain)
+              ):
+                  raise RuntimeError("dataset_email_domain must be a plain lowercase DNS name")
+              if operation == "reset" and not domain:
+                  raise RuntimeError("reset requires dataset_email_domain")
+              if operation == "reset-preflight" and confirm_reset:
+                  raise RuntimeError("reset-preflight refuses a destructive confirmation phrase")
+
+
+          validate_inputs(os.environ['OPERATION'], os.environ['EXPECTED_STAGING_SHA'], os.environ.get('CONFIRM_RESET', ''), os.environ.get('DATASET_EMAIL_DOMAIN', ''), os.environ['ORG_CATALOG_ACTION'])
+          PY
+
       # Dispatch from staging so both the workflow and its source are the reviewed staging revision.
       - name: Checkout staging branch
         uses: actions/checkout@v4
@@ -83,18 +138,6 @@ jobs:
 
       - name: Test staging deployment tooling
         run: python3 -m unittest discover -s .github/scripts
-
-      # ADR-117 is reset-only. Phase E's separately approved staging reset lifts this
-      # refusal and pins the new release-baseline lineage commit before deployment resumes.
-      - name: Refuse the reset-only release baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          if compgen -G "be/compass/*/migrations/0001_release_baseline.py" > /dev/null; then
-            echo "This revision contains the reset-only release migration baseline." >&2
-            echo "Phase E must reset staging before ordinary deployment can resume." >&2
-            exit 1
-          fi
 
       # Pull requests run targeted tests; the complete backend suite is the deployment gate.
       - name: Require Backend full regression for this exact revision
@@ -230,16 +273,18 @@ jobs:
 
       # One process owns the exact /32 rule for its whole lifetime and revokes it in finally.
       # The always() step below provides a second cleanup attempt after cancellation/failure.
-      - name: Preflight and deploy onto initialized canonical staging
+      - name: Run guarded staging operation
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
           IMAGE: ${{ steps.image.outputs.image }}
+          STAGING_SEED_ONBOARDING_EMAIL: ${{ secrets.STAGING_SEED_ONBOARDING_EMAIL }}
           APP_VERSION: ${{ steps.build_metadata.outputs.version }}
           BUILD_TIME: ${{ steps.image.outputs.build_time }}
         run: python3 .github/scripts/run_staging_deploy.py
 
       - name: Verify public running build identity
+        if: inputs.operation != 'reset-preflight'
         shell: bash
         env:
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}

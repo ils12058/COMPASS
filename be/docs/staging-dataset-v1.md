@@ -129,13 +129,16 @@ history requires its separately reviewed clean-rebuild procedure, not an ORG-1 i
 
 ### Live staging (separate operator authorization only)
 
-The clean rebuild completed on 2026-10-17. Routine [staging deployment](staging-deployment.md)
-never runs this command; do not reseed or reissue credentials during UAT without a separate owner
-decision. For an authorized operator run, verify the canonical release
-by its exact `build_id` and ensure the
-canonical compatibility and deployment checks in the [staging deployment runbook](staging-deployment.md)
-are recorded. The original clean-rebuild evidence remains in git history. Use the release
-image already on the Droplet and a one-off container:
+The first live seed onto the release baseline now runs **inside the separately authorized
+[Phase E reset](staging-deployment.md#phase-e-reset)**, followed by strict verification. Its email
+domain is chosen from the read-only preflight's existing synthetic domains; optional onboarding
+email is a protected staging environment secret. The reset never issues credentials.
+
+Routine deployment never seeds or verifies pristine UAT scenarios. Later incremental seeds remain
+separate operator actions using the deployed release image and the same domain/onboarding settings.
+They preserve completed UAT work and existing credentials; use `verify --allow-uat-changes` for an
+active dataset. Record exact public `build_id`, compatible migration history and deployment checks
+before using the following existing host command. Never run it on old-history staging:
 
 ```bash
 seed_staging_live() {
@@ -159,7 +162,10 @@ seed_staging_live verify
 
 ## Participant credentials
 
-Seeding never sets a password. Participant accounts are provisioned the way Account Management
+Neither the Phase E reset nor seeding sets a password. After the Evaluation freeze and a separate
+owner go-ahead, issue credentials **on the host only**, for exactly the allocated account keys in the
+deployed manifest. Copy its Selection Guide's restricted command; never issue to the whole catalog.
+Participant accounts are provisioned the way Account Management
 provisions accounts: active, email verified (dataset mailboxes are operator-controlled), and **no
 usable password**. They cannot sign in until the operator issues credentials:
 
@@ -169,10 +175,15 @@ usable password**. They cannot sign in until the operator issues credentials:
 install -d -m 700 /root/uat-handoff
 docker compose --project-name compass run --rm --no-deps --pull never -T \
   -v /root/uat-handoff:/handoff -e STAGING_SEED_ENABLED=true -e STAGING_SEED_EMAIL_DOMAIN="$DOMAIN" \
-  web python manage.py seed_staging_dataset issue-credentials --output /handoff/uat-credentials.csv
+  web python manage.py seed_staging_dataset issue-credentials --account "$ACCOUNT_KEY" \
+    --output /handoff/uat-credentials.csv
 ```
 
-- Each UAT-ready credential account gets its own random password from `secrets`, validated by the
+Repeat `--account` for every authorized allocated key using the deployed Selection Guide. The
+example variable represents an explicitly selected key; there is no unrestricted automation or CI
+handoff. Later incremental seeding and named credential reissuance stay separately authorized.
+
+- Each selected credential account gets its own random password from `secrets`, validated by the
   normal COMPASS password policy (15+ characters). Only Django's hash is stored.
 - The plaintext appears once, in a **new** file created with mode `0600`. The command refuses an
   existing file, a path inside the source tree, a disabled account, and the onboarding account.

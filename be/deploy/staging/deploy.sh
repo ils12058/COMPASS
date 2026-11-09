@@ -14,6 +14,7 @@ export COMPASS_IMAGE="$IMAGE" COMPASS_SECRETS_DIR=/opt/compass/secrets
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES
 compose=(docker compose --project-name compass -f "$release/compose.staging.yaml")
 if [[ "${1:-}" == preflight ]]; then
+  [[ ! -e /opt/compass/operator/resets/in-progress.json ]] || { echo "Interrupted reset requires same-SHA recovery" >&2; exit 1; }
   python3 deploy/runtime-secrets/check-runtime-secrets.py --secrets-dir /opt/compass/secrets --env-file /opt/compass/.env --owner compass >&2
   "${compose[@]}" config --format json > .candidate-config.json
   python3 deploy/staging/host_preflight.py .candidate-config.json | tee .host-preflight.json
@@ -23,6 +24,7 @@ fi
 exec 9>/opt/compass/.live-reset.lock
 flock -n 9
 phase=preflight
+[[ ! -e /opt/compass/operator/resets/in-progress.json ]] || { echo "Interrupted reset requires same-SHA recovery" >&2; exit 1; }
 cleanup() {
   result=$?
   trap - EXIT
@@ -108,26 +110,8 @@ done
 apps=(web worker beat realtime proxy)
 "${compose[@]}" up -d --no-deps --pull never --wait --wait-timeout 180 "${apps[@]}"
 "${compose[@]}" exec -T web python manage.py compass_doctor --worker-smoke --worker-timeout 10
-python3 - "$DEPLOY_SHA" "$APP_VERSION" "$BUILD_TIME" <<'PY'
-import json,sys,urllib.request,subprocess
-from pathlib import Path
-with urllib.request.urlopen(urllib.request.Request('https://staging-api.compass-gco.com/api/v1/meta',headers={'Cache-Control':'no-cache','User-Agent':'COMPASS-Staging-Deploy/1.0'}),timeout=15) as r:
-    meta=json.load(r)
-assert meta['application']=='COMPASS' and meta['environment']=='live-staging'
-assert [meta['build_id'],meta['version'],meta['built_at']]==sys.argv[1:]
-# Check every actual app image, not only web's public response.
-import os
-expected_image=json.loads(subprocess.check_output(['docker','image','inspect',os.environ['COMPASS_IMAGE']]))[0]['Id']
-for name in ['web','worker','beat','realtime']:
-    c=json.loads(subprocess.check_output(['docker','inspect','compass-'+name+'-1']))[0]
-    image=json.loads(subprocess.check_output(['docker','image','inspect',c['Image']]))[0]
-    assert c['Image']==expected_image and image['Config']['Labels']['org.opencontainers.image.revision']==sys.argv[1] and c['State']['Running']
-PY
-# Only a validated canonical selector becomes active. Preserve a refusal, not an old-image rollback.
-printf 'COMPASS_IMAGE=%s\nCOMPASS_SECRETS_DIR=/opt/compass/secrets\nCOMPOSE_FILE=%s/compose.staging.yaml\n' "$IMAGE" "$release" > /opt/compass/.deploy.env.next
-chmod 640 /opt/compass/.deploy.env.next
-mv /opt/compass/.deploy.env.next /opt/compass/.deploy.env
-printf 'echo "Automatic rollback is prohibited; use reviewed canonical forward recovery" >&2\nreturn 1\n' > /opt/compass/.deploy.previous.env
-chmod 640 /opt/compass/.deploy.previous.env
+source deploy/staging/deploy_common.sh
+verify_running_release
+publish_selector
 phase=complete
 echo "Canonical staging deployed: $DEPLOY_SHA (existing volumes preserved)"
