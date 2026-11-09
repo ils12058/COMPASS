@@ -1,9 +1,9 @@
 {% extends "compass/email/base.html" %}
-{% block preheader %}The Guidance Office closed your Referral record.{% endblock %}
+{% block preheader %}The Guidance and Counseling Office closed your Referral record.{% endblock %}
 {% block heading %}Referral administratively closed{% endblock %}
 {% block content %}
-<p>The Guidance Office closed your Referral record.</p>
+<p>The Guidance and Counseling Office closed your Referral record.</p>
 {% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Referral</a></p>{% else %}<p>Sign in to COMPASS to review your Referral.</p>{% endif %}
 <p>Care or linked Follow-Ups may still be ongoing.</p>
-<p>Questions? Contact the Guidance Office.</p>
+<p>Questions? Contact the Guidance and Counseling Office.</p>
 {% endblock %}

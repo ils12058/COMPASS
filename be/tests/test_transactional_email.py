@@ -57,7 +57,7 @@ FOOTER_LINES = ("This is an automated COMPASS message.",)
 INSTITUTION_LINES = (
     "COMPASS",
     "University of Camarines Norte",
-    "Guidance Office",
+    "Guidance and Counseling Office",
 )
 EMAIL_EVENTS = tuple(
     event
@@ -143,7 +143,7 @@ def test_every_message_uses_the_branded_shell(name, message):
     heading = re.search(r"<h1 [^>]*>([^<]+)</h1>", message.html_body)
     assert heading
     # Reading order: institutional header, then the message, then the footer.
-    header_at = text.index("COMPASS University of Camarines Norte Guidance Office")
+    header_at = text.index("COMPASS University of Camarines Norte Guidance and Counseling Office")
     heading_at = text.index(heading.group(1))
     footer_at = text.index("This is an automated COMPASS message.")
     assert header_at < heading_at < footer_at
@@ -209,7 +209,7 @@ def test_operational_email_copy_gives_a_clear_next_step(event, required_copy):
     rendered = render_notification_email(event)
     assert required_copy in rendered.text_body
     assert required_copy in visible_text(rendered.html_body)
-    assert "Questions? Contact the Guidance Office." in (
+    assert "Questions? Contact the Guidance and Counseling Office." in (
         rendered.text_body + visible_text(rendered.html_body)
     ) or event in {
         NotificationEvent.APPOINTMENT_RESCHEDULED,

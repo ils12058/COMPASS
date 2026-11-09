@@ -4,4 +4,4 @@
 {% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}
 {% include "notifications/partials/appointment_action.txt" %}{% else %}Sign in to check the time and instructions before your session.{% endif %}
 
-Questions? Contact the Guidance Office.{% endblock %}
+Questions? Contact the Guidance and Counseling Office.{% endblock %}

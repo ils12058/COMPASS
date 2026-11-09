@@ -1,9 +1,9 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}
-The Guidance Office started your Good Moral Certificate request.
+The Guidance and Counseling Office started your Good Moral Certificate request.
 
 Sign in to check your request and instructions.
 
-Questions? Contact the Guidance Office.
+Questions? Contact the Guidance and Counseling Office.
 {% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
 {% include "notifications/partials/operational_action.txt" %}{% endblock %}

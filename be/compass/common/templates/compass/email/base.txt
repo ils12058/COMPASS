@@ -1,6 +1,6 @@
 COMPASS
 University of Camarines Norte
-Guidance Office
+Guidance and Counseling Office
 
 {% block notice %}{% endblock %}{% block content %}{% endblock %}
 

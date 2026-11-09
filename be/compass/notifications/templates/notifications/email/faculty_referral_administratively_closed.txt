@@ -1,8 +1,8 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}The Guidance Office closed your Referral record.
+{% block content %}The Guidance and Counseling Office closed your Referral record.
 
 {% if action_url %}View Referral: {{ action_url }}{% else %}Sign in to COMPASS to review your Referral.{% endif %}
 
 Care or linked Follow-Ups may still be ongoing.
 
-Questions? Contact the Guidance Office.{% endblock %}
+Questions? Contact the Guidance and Counseling Office.{% endblock %}

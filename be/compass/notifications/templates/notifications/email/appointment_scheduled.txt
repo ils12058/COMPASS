@@ -8,4 +8,4 @@ View Appointment: {{ action_url }}
 Sign in to review the latest details. The Appointment may have changed since this notice.
 {% endif %}
 
-Questions? Contact the Guidance Office.{% endblock %}
+Questions? Contact the Guidance and Counseling Office.{% endblock %}

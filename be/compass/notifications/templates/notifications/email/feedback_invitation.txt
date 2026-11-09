@@ -1,4 +1,4 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}You can now give feedback on your recent Guidance Office Service.
+{% block content %}You can now give feedback on your recent Service from the Guidance and Counseling Office.
 
 Sign in to complete the feedback or Client Satisfaction Measurement form.{% endblock %}

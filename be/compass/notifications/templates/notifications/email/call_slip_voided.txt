@@ -1,5 +1,5 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}You no longer need to act on this Call Slip.
 
-Sign in to check the Call Slip. Questions? Contact the Guidance Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+Sign in to check the Call Slip. Questions? Contact the Guidance and Counseling Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
 {% include "notifications/partials/operational_action.txt" %}{% endblock %}

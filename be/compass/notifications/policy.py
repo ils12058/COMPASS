@@ -115,7 +115,7 @@ _EVENT_CATALOG = {
         channels=_EMAIL_CHANNELS,
         title="Referral received",
         message="The Guidance Office received your Referral. Open COMPASS to review it.",
-        email_subject="COMPASS Referral received by the Guidance Office",
+        email_subject="COMPASS Referral received by the Guidance and Counseling Office",
         email_template="faculty_referral_received",
     ),
     NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED: NotificationEventDefinition(

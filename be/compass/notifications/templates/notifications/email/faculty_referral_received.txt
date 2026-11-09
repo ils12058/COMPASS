@@ -1,6 +1,6 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}The Guidance Office received your Referral.
+{% block content %}The Guidance and Counseling Office received your Referral.
 
 {% if action_url %}View Referral: {{ action_url }}{% else %}Sign in to COMPASS to review your Referral.{% endif %}
 
-Questions? Contact the Guidance Office.{% endblock %}
+Questions? Contact the Guidance and Counseling Office.{% endblock %}

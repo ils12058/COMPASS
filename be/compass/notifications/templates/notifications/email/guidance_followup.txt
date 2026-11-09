@@ -3,5 +3,5 @@
 
 Sign in to check what changed and your next steps.
 
-Questions? Contact the Guidance Office.
+Questions? Contact the Guidance and Counseling Office.
 {% endblock %}

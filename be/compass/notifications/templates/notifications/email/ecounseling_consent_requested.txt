@@ -3,4 +3,4 @@
 
 Sign in to review the request and record your decision.
 
-Questions? Contact the Guidance Office.{% endblock %}
+Questions? Contact the Guidance and Counseling Office.{% endblock %}

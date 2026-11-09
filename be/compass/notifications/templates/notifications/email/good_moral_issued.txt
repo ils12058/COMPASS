@@ -3,5 +3,5 @@
 
 Sign in to check your certificate and next steps.
 
-Questions? Contact the Guidance Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+Questions? Contact the Guidance and Counseling Office.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
 {% include "notifications/partials/operational_action.txt" %}{% endblock %}
