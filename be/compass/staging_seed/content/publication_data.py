@@ -243,49 +243,85 @@ RESOURCES = (
 
 # --- Privacy Governance ----------------------------------------------------------------------
 
+# Plain text: the Privacy Notice field preserves paragraph and line breaks but does not render
+# Markdown. Provisional wording until the University approves the official notice.
+_NOTICE_INTRO = (
+    "The University of Camarines Norte Guidance and Counseling Office uses COMPASS to provide "
+    "guidance and counseling services. We handle your personal information in line with the "
+    "Data Privacy Act of 2012 (Republic Act No. 10173)."
+)
+_NOTICE_SECTIONS = (
+    "What we collect\n"
+    "- Your name, student number, College, Program, year level and contact details.\n"
+    "- What you share in your Individual Inventory, Routine Interview, Exit Interview and "
+    "Graduate Tracer forms.\n"
+    "- Your appointments, counseling records, referrals, certificate requests and feedback.",
+    "Why we use it\n"
+    "- To schedule and provide counseling and other guidance services.\n"
+    "- To act on referrals and follow up on your concerns.\n"
+    "- To issue certificates, such as the Good Moral Certificate.\n"
+    "- To prepare summary reports that don't identify you.",
+    "Who can see it\n"
+    "Only authorized Guidance and Counseling Office personnel, and only what their role needs. "
+    "What you discuss in counseling is limited to your counselor, and to another counselor only "
+    "when the Head Guidance Counselor approves it for the continuity of your care. Service "
+    "providers that run parts of COMPASS for us, such as email, handle your information only on "
+    "our instructions. We don't disclose it to anyone else unless the law requires it or you "
+    "agree.",
+    "How long we keep it\n"
+    "We keep your records only as long as the University's records retention schedule requires, "
+    "then delete or anonymize them.",
+    "Your rights\n"
+    "You can ask to see or correct your information, object to how it is used, or ask how it was "
+    "handled. Contact the Guidance and Counseling Office or the University's Data Protection "
+    "Officer. You can also file a complaint with the National Privacy Commission.",
+)
+_NOTICE_ONLINE_SECTION = (
+    "Online counseling\n"
+    "For online appointments, COMPASS connects you and your counselor through a video service "
+    "provider. A session is recorded only if you give permission for that session, and you can "
+    "withdraw it while the session is running. Recordings are kept and protected like your other "
+    "counseling records."
+)
+_NOTICE_PROVISIONAL = (
+    "This notice is provisional. The University's approved wording will replace it."
+)
+
 PRIVACY_NOTICE = {
     "code": "STG-GCO-STUDENT-SERVICES",
-    "name": "Guidance Services Privacy Notice (staging dataset)",
+    "name": "Guidance and Counseling Office Privacy Notice",
 }
 PRIVACY_NOTICE_PUBLISHED = {
-    "title": "Guidance Services Privacy Notice (staging dataset)",
+    "title": "Guidance and Counseling Office Privacy Notice",
     "audiences": ["PUBLIC", "STUDENT"],
     "summary": (
-        "Staging dataset notice describing how the Guidance and Counseling Office uses "
-        "student information in COMPASS. It is not an official University privacy notice."
+        "How the UCN Guidance and Counseling Office collects, uses, protects and keeps your "
+        "personal information in COMPASS."
     ),
-    "body": (
-        "**Staging dataset content.** This notice illustrates the Privacy Notice workflow "
-        "in COMPASS and has not been approved by the University.\n\n"
-        "**What we collect.** Information you provide in your Individual Inventory, Routine "
-        "Interview intake, appointment requests, and feedback forms.\n\n"
-        "**Why we use it.** To provide counseling, referral follow-up, certification, and "
-        "student support services, and to produce aggregate reports without identifying you.\n\n"
-        "**Who can see it.** Only authorized Guidance personnel within their assigned scope. "
-        "Counseling content is limited to your assigned counselor.\n\n"
-        "**Your choices.** You may ask the Guidance and Counseling Office about your records at "
-        "any time."
-    ),
+    "body": "\n\n".join((_NOTICE_INTRO, *_NOTICE_SECTIONS, _NOTICE_PROVISIONAL)),
     "requires_acknowledgment": True,
     "effective_on": (2026, 8, 3),
 }
+# The next revision is a complete notice: publishing it replaces the whole text.
 PRIVACY_NOTICE_DRAFT = {
-    "title": "Guidance Services Privacy Notice (staging dataset, revision 2 draft)",
+    "title": "Guidance and Counseling Office Privacy Notice",
     "audiences": ["PUBLIC", "STUDENT"],
     "summary": (
-        "Draft revision clarifying online counseling sessions. Staging dataset content; not "
-        "an official University privacy notice."
+        "How the UCN Guidance and Counseling Office collects, uses, protects and keeps your "
+        "personal information in COMPASS, including online counseling sessions."
     ),
-    "body": (
-        "**Staging dataset content.** Draft revision for review.\n\n"
-        "Adds a section on **online counseling sessions**: COMPASS uses a video provider only "
-        "for scheduled online appointments, and recordings are never made without your "
-        "session-specific consent."
+    "body": "\n\n".join(
+        (
+            _NOTICE_INTRO,
+            *_NOTICE_SECTIONS[:3],
+            _NOTICE_ONLINE_SECTION,
+            *_NOTICE_SECTIONS[3:],
+            _NOTICE_PROVISIONAL,
+        )
     ),
     "requires_acknowledgment": True,
     "effective_on": None,
 }
-
 
 __all__ = [
     "ANNOUNCEMENTS",
