@@ -124,7 +124,7 @@ if (phase !== 'before') {
     await check(`Failed save preserves unsaved answers ${failure}`, tracerPath, { handler: state.handler }, async page => {
       await page.locator('#gts-mobile').fill('Synthetic retained input');
       await saveButton(page).click();
-      await shown(page.getByRole('alert').filter({ hasText: failure === 409 ? 'The response changed or became unavailable' : 'could not be saved' }));
+      await shown(page.getByRole('alert').filter({ hasText: failure === 409 ? 'The response changed or you no longer have access to it.' : "Couldn't save Graduate Tracer draft." }));
       assert.equal(await page.locator('#gts-mobile').inputValue(), 'Synthetic retained input');
       await shown(page.getByRole('status').filter({ hasText: 'Unsaved changes' }));
       assert.equal(await submitButton(page).isEnabled(), false);
@@ -219,7 +219,7 @@ if (phase !== 'before') {
       if (mode === 'ok' || mode === 'unknown-committed') {
         await shown(page.getByText(/This response is read-only\./)); await hidden(page.locator('form')); assert.equal(state.submissions, 1);
       } else {
-        await shown(dialog.getByText(mode === 'unknown-draft' ? /The response is still a draft/ : /We could not verify whether submission completed/));
+        await shown(dialog.getByText(mode === 'unknown-draft' ? /The response is still a draft/ : /Couldn't confirm whether your response was submitted/));
         if (mode === 'unknown-check-fails') {
           assert.equal(await dialog.getByRole('button', { name: 'Submit Graduate Tracer Survey', exact: true }).isEnabled(), false);
           state.failRefresh = false;

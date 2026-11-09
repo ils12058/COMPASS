@@ -74,7 +74,7 @@ await check("invalid Service context does not reach the API", "/portal/group-ses
   assert.equal(requests.some(r => r.pathname === "/api/v1/services/invalid"), false);
 });
 await check("non-current Student cannot register", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ lifecycle: "GRADUATED" }) }, async page => {
-  await shown(page.getByText(/Registration is available to current students/));
+  await shown(page.getByText(/Registration is available to current Students/));
   await hidden(page.getByRole("button", { name: "Register", exact: true }));
 });
 await check("fixed Service context is rechecked before showing opportunities", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ changed: true }) }, async page => {
@@ -88,7 +88,7 @@ await check("fixed confirmation links to the saved appointment", `/portal/appoin
   assert.match(await page.getByRole("link", { name: "View your confirmed Appointment" }).getAttribute("href"), /44444444-4444-4444-8444-444444444444/);
 });
 await check("view permission does not grant registration", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ noManage: true }) }, async page => {
-  await shown(page.getByText(/Registration is available to current students/));
+  await shown(page.getByText(/Registration is available to current Students/));
   await hidden(page.getByRole("button", { name: "Register", exact: true }));
 });
 await check("booking choices remain usable at 200 percent", "/portal/appointments/book", { role: "STUDENT", device: "phone", handler: handler() }, async page => {
@@ -112,7 +112,7 @@ await check("group success links to session and history", "/portal/group-session
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Register", exact: true }).click();
   await shown(page.getByRole("link", { name: "View session" }));
-  await shown(page.getByText(/Successfully registered/));
+  await shown(page.getByText(/You're registered for "Student workshop"/));
 });
 await check("group capacity conflict is shown without replay", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ groupResult: "full" }) }, async (page, { requests }) => {
   await page.getByRole("button", { name: "Register", exact: true }).click();
@@ -136,7 +136,7 @@ await check("fixed-only without Inventory does not invent a requirement", `/port
   await hidden(page.getByText(/A submitted Individual Inventory for the current Academic Year is required/));
 });
 await check("empty group discovery does not invent a prerequisite or an offering", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ noSessions: true }) }, async page => {
-  await shown(page.getByText(/No upcoming group sessions are currently scheduled for this Service/));
+  await shown(page.getByText(/No upcoming Group Sessions are currently scheduled for this Service/));
   await hidden(page.getByText(/Individual Inventory/));
 });
 await check("fixed and group navigation preserves Service and page context", `/portal/group-sessions/discover?service_id=${sid}&slot_search=Guidance&slot_page=2`, { role: "STUDENT", handler: handler() }, async page => {
@@ -156,7 +156,7 @@ await check("unfiltered event identifies its Service", "/portal/group-sessions/d
 });
 await check("Service with three pathways explains configuration without promising opportunities", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"], noSessions: true }) }, async page => {
   await shown(page.getByText(/This Service supports Group Sessions, scheduled Appointment slots, and individual Appointment booking/));
-  await shown(page.getByText(/No upcoming group sessions are currently scheduled/));
+  await shown(page.getByText(/No upcoming Group Sessions are currently scheduled/));
 });
 await check("flexible-only Service is not a fixed-slot offering", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ paths: ["FLEXIBLE_APPOINTMENT"] }) }, async page => {
   await shown(page.getByText(/This Service no longer offers scheduled slots/));
@@ -180,7 +180,7 @@ for (const reason of ["This session is full.", "Registration has closed."]) awai
 await check("failed reconciliation keeps result unconfirmed", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ groupResult: "unknown", registrationReadFails: true }) }, async (page, { requests }) => {
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Register", exact: true }).click();
-  await shown(page.getByText(/The registration result could not be checked/));
+  await shown(page.getByText(/Couldn't check your registration/));
   await page.getByRole("button", { name: "Check registration" }).click();
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/register")).length, 1);
 });
@@ -199,20 +199,20 @@ await check("confirmed fixed booking remains success when refresh fails", `/port
   await page.getByRole("button", { name: "Book this slot" }).click();
   await page.getByRole("button", { name: "Confirm booking" }).click();
   await shown(page.getByRole("link", { name: "View your confirmed Appointment" }));
-  await shown(page.getByText(/Your Appointment was booked, but the latest booking information could not be refreshed/));
+  await shown(page.getByText(/Your Appointment was booked, but we couldn't refresh the latest booking information/));
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/book")).length, 1);
 });
 await check("confirmed group registration remains success when refresh fails", "/portal/group-sessions/discover", { role: "STUDENT", handler: handler({ refreshFailure: true }) }, async (page, { requests }) => {
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Register", exact: true }).click();
-  await shown(page.getByText(/Successfully registered/));
-  await shown(page.getByText(/Your registration was confirmed, but the latest information could not be refreshed/));
+  await shown(page.getByText(/You're registered for "Student workshop"/));
+  await shown(page.getByText(/Your registration was confirmed, but we couldn't refresh the latest information/));
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   assert.equal(requests.filter(r => r.method === "POST" && r.pathname.endsWith("/register")).length, 1);
 });
 await check("inactive Service cannot filter group discovery", `/portal/group-sessions/discover?service_id=${sid}`, { role: "STUDENT", handler: handler({ changed: true }) }, async page => {
-  await shown(page.getByText(/This Service no longer offers group sessions/));
+  await shown(page.getByText(/This Service no longer offers Group Sessions/));
   await hidden(page.getByRole("button", { name: "Register", exact: true }));
 });
 await check("malformed fixed success cannot fabricate an appointment", `/portal/appointments/book?pathway=FIXED_DATE_SLOT&service_id=${sid}`, { role: "STUDENT", handler: handler({ fixedResult: "malformed" }) }, async page => {
@@ -225,6 +225,6 @@ await check("malformed group success remains unconfirmed without matching histor
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Register", exact: true }).click();
   await shown(page.getByText(/The result for Student workshop is unconfirmed/));
-  await hidden(page.getByText(/Successfully registered/));
+  await hidden(page.getByText(/You're registered for "Student workshop"/));
 });
 await finish();

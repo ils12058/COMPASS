@@ -82,7 +82,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
     await shown(page.getByRole("link", { name: event.title, exact: true }));
     assert.equal(requests.some(r => r.pathname.endsWith("/registrations")), false);
     await hidden(page.getByRole("button", { name: "Schedule Group Session", exact: true }));
-    await page.getByRole("button", { name: /Roster & Attendance/ }).click();
+    await page.getByRole("button", { name: /Roster and attendance/ }).click();
     const dialog = page.getByRole("dialog"); await shown(dialog);
     await shown(dialog.getByText("Synthetic Student", { exact: true }));
     await dialog.getByLabel("Attended: Synthetic Student", { exact: true }).check();

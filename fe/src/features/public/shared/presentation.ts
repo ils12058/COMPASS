@@ -26,7 +26,7 @@ export const resourceCategoryLabels: Record<ResourceCategory, string> = {
 
 export const resourceKindLabels: Record<ResourceKind, string> = {
   [ResourceKindValue.ARTICLE]: "Article",
-  [ResourceKindValue.EXTERNAL_LINK]: "External resource",
+  [ResourceKindValue.EXTERNAL_LINK]: "External Resource",
   [ResourceKindValue.FILE]: "File",
 };
 

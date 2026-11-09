@@ -25,8 +25,8 @@ const routineBase = {
   form_revision: null, inventory_context: null, workflow_state: "ACTIVE", intake_submitted_at: null,
 };
 
-function timingSession({ student = false, endsAtOffsetMs = 0, recording = "NOT_STARTED", transcription = "NOT_STARTED", consent = "APPROVED" } = {}) {
-  const state = { recording, transcription, consent, joins: 0 };
+function timingSession({ student = false, endsAtOffsetMs = 0, recording = "NOT_STARTED", consent = "APPROVED" } = {}) {
+  const state = { recording, consent, joins: 0 };
   const prefix = `/api/v1/e-counseling/${student ? "me/" : ""}appointments`;
   const base = user(student ? "STUDENT" : "COUNSELOR");
   const sessionUser = {
@@ -45,9 +45,7 @@ function timingSession({ student = false, endsAtOffsetMs = 0, recording = "NOT_S
     };
     value.media.media_policy_version = 2;
     value.media.recording.capture_status = state.recording;
-    value.media.transcription.capture_status = state.transcription;
     value.media.recording.consent_status = state.consent;
-    value.media.transcription.consent_status = state.consent;
     value.routine_interview = student ? { id: ROUTINE, intake_status: "DRAFT" } : { id: ROUTINE, intake_status: "SUBMITTED", evaluation_status: "DRAFT" };
     return value;
   };
@@ -119,7 +117,7 @@ async function joinCall(page, waitingFor = STUDENT) {
 
     // Governed controls remain accessible
     await shown(page.getByRole("button", { name: "Start recording", exact: true }));
-    await shown(page.getByRole("button", { name: "Start transcription", exact: true }));
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
   });
 }
 

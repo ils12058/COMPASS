@@ -103,7 +103,7 @@ export function ResourcesListPage() {
 
       <form
         role="search"
-        aria-label="Search managed resources"
+        aria-label="Search managed Resources"
         key={searchParams.toString()}
         onSubmit={(event) => {
           event.preventDefault();
@@ -179,8 +179,8 @@ export function ResourcesListPage() {
         <ListSearchField
           id="resource-search-filter"
           name="search"
-          label="Search resources"
-          placeholder="Search resources"
+          label="Search Resources"
+          placeholder="Search Resources"
           defaultValue={search}
         />
       </FloatingListTools>
@@ -211,10 +211,10 @@ export function ResourcesListPage() {
               : null}
         />
       {list.isPending ? (
-        <ContentListSkeleton label="Loading resources…" />
+        <ContentListSkeleton label="Loading Resources…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
-          {resourceErrorMessage(list.error, "Couldn't load resources. Try again.")}
+          {resourceErrorMessage(list.error, "Couldn't load Resources. Try again.")}
         </PanelMessage>
       ) : result && result.items.length === 0 ? (
         <PanelMessage
@@ -233,10 +233,10 @@ export function ResourcesListPage() {
             : hasFilters
               ? search
                 ? advancedCount > 0
-                  ? "No resources match this search and the selected filters."
-                  : "No resources match this search."
-                : "No resources match the selected filters."
-              : "No resources have been created yet."}
+                  ? "No Resources match this search and the selected filters."
+                  : "No Resources match this search."
+                : "No Resources match the selected filters."
+              : "No Resources have been created yet."}
         </PanelMessage>
       ) : result ? (
           <div className={dataTable.scroll}>
@@ -283,7 +283,7 @@ export function ResourcesListPage() {
                   <tr key={item.id} className={dataTable.row}>
                     <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-64 max-w-sm text-left font-normal`}>
                       <Link href={`/portal/resources/${item.id}${detailQuery ? `?${detailQuery}` : ""}`} className={`${contentRecordLinkClass} break-words`}>
-                        {displayTitle(item.title, "Untitled resource")}
+                        {displayTitle(item.title, "Untitled Resource")}
                       </Link>
                       <span className="mt-1 block text-xs text-muted">{resourceKindLabels[item.kind]}</span>
                     </th>

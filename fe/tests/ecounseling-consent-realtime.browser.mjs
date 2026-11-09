@@ -9,7 +9,7 @@ const OTHER = "b0000000-0000-4000-8000-000000000002";
 const CONSENT = "d0000000-0000-4000-8000-000000000001";
 const PATH = `/portal/e-counseling/${ID}`;
 const enable = `window.__COMPASS_REALTIME_TEST_CONFIG__ = { url: ${JSON.stringify(`${baseURL.replace(/^http/, "ws")}/api/realtime/v1/socket`)} };`;
-const subject = "recording & live transcription";
+const subject = "audio/video recording";
 
 async function eventually(condition, message) {
   const deadline = Date.now() + 12_000;
@@ -19,9 +19,9 @@ async function eventually(condition, message) {
   }
 }
 
-function world({ approved = false, recording = "NOT_STARTED", transcription = "NOT_STARTED", realtime = true, outage = false, withdrawalFailure = false } = {}) {
-  const state = { row: approved ? row("APPROVED") : null, recording, transcription, failure: false, denied: false, hold: false, held: [], sockets: [], reads: [], commands: [] };
-  function row(decision) { return { id: CONSENT, scope: "SESSION_MEDIA_CAPTURE", decision, effective: decision === "APPROVED", requested_at: "2026-10-14T00:00:00Z", decided_at: decision === "PENDING" ? null : "2026-10-14T00:01:00Z", withdrawn_at: null }; }
+function world({ approved = false, recording = "NOT_STARTED", realtime = true, outage = false, withdrawalFailure = false } = {}) {
+  const state = { row: approved ? row("APPROVED") : null, recording, failure: false, denied: false, hold: false, held: [], sockets: [], reads: [], commands: [] };
+  function row(decision) { return { id: CONSENT, scope: "AUDIO_VIDEO_RECORDING", decision, effective: decision === "APPROVED", requested_at: "2026-10-14T00:00:00Z", decided_at: decision === "PENDING" ? null : "2026-10-14T00:01:00Z", withdrawn_at: null }; }
   const send = (id = ID) => {
     for (const socket of state.sockets.filter((socket) => !socket.closed)) socket.route.send(JSON.stringify({ v: 1, type: "ecounseling.consent.changed", appointment_id: id }));
   };
@@ -49,10 +49,9 @@ function world({ approved = false, recording = "NOT_STARTED", transcription = "N
         if (state.denied && role === "COUNSELOR") { await reply({ error: { code: "ecounseling_not_permitted", message: "Synthetic refusal" } }, 403); return true; }
         const value = workspace(); value.appointment = { ...value.appointment, id: ID };
         value.student.display_name = "Consent Test Student"; value.counselor.display_name = "Consent Test Counselor";
-        value.media.media_policy_version = 2;
         const consent = state.row?.withdrawn_at ? "WITHDRAWN" : state.row?.decision ?? "NOT_REQUESTED";
-        value.media.recording.consent_status = consent; value.media.transcription.consent_status = consent;
-        value.media.recording.capture_status = state.recording; value.media.transcription.capture_status = state.transcription;
+        value.media.recording.consent_status = consent;
+        value.media.recording.capture_status = state.recording;
         await reply(value); return true;
       }
       if (method === "GET" && pathname === `${own}/consents`) {
@@ -77,9 +76,9 @@ function world({ approved = false, recording = "NOT_STARTED", transcription = "N
       if (method === "POST" && pathname === `/api/v1/e-counseling/appointments/${ID}/join`) {
         await reply({ appointment_id: ID, workspace_id: "synthetic", provider: "DAILY", room_url: "https://synthetic.daily.co/room", meeting_token: "synthetic", token_expires_at: new Date(Date.now() + 900_000).toISOString() }); return true;
       }
-      if (method === "POST" && /\/(recording|transcription)\/(start|stop)$/.test(pathname)) {
+      if (method === "POST" && /\/recording\/(start|stop)$/.test(pathname)) {
         state.commands.push(pathname);
-        if (pathname.endsWith("/transcription/stop")) state.transcription = "STOP_REQUESTED";
+        if (pathname.endsWith("/recording/stop")) state.recording = "STOP_REQUESTED";
         await reply({ id: "synthetic-capture", status: "STOP_REQUESTED" }); return true;
       }
       return false;
@@ -88,13 +87,16 @@ function world({ approved = false, recording = "NOT_STARTED", transcription = "N
   return { state, send, release, options, request: () => { state.row = row("PENDING"); } };
 }
 
-const permission = (page, text) => page.getByRole("list", { name: "Media permission", exact: true }).getByText(text, { exact: true });
+const permission = (page, text) => page
+  .getByRole("list", { name: "Recording permission", exact: true })
+  .getByRole("listitem")
+  .filter({ hasText: text });
 async function join(page) {
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await shown(page.getByRole("region", { name: "Video call" }).getByText("Waiting for Consent Test Student…", { exact: true }));
 }
 async function withdraw(student) {
-  await student.getByRole("button", { name: "Withdraw recording and live transcription permission", exact: true }).click();
+  await student.getByRole("button", { name: "Withdraw recording permission", exact: true }).click();
   await student.getByRole("alertdialog").getByRole("button", { name: "Withdraw permission", exact: true }).click();
 }
 
@@ -103,21 +105,21 @@ async function withdraw(student) {
   await check("two isolated sessions request-approve-withdraw before any Daily call", PATH, w.options("COUNSELOR"), async (counselor, { requests }) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission · Not requested"));
+      await shown(permission(counselor, "Recording permission · Not requested"));
       await screenshot(counselor, "counselor-permission-request-available");
-      await counselor.getByRole("button", { name: "Request media permission", exact: true }).click();
-      await shown(permission(counselor, "Media permission · Waiting for Student"));
+      await counselor.getByRole("button", { name: "Request recording permission", exact: true }).click();
+      await shown(permission(counselor, "Recording permission · Waiting for Student"));
       await screenshot(counselor, "counselor-permission-pending");
       await shown(student.page.getByRole("button", { name: `Allow ${subject}`, exact: true }));
       await screenshot(student.page, "student-consent-pending");
       await student.page.getByRole("button", { name: `Allow ${subject}`, exact: true }).click();
       await student.page.getByRole("alertdialog").getByRole("button", { name: "Allow", exact: true }).click();
-      await shown(permission(counselor, "Media permission · Approved"));
+      await shown(permission(counselor, "Recording permission · Approved"));
       await shown(student.page.getByText("Allowed", { exact: true }));
       await screenshot(student.page, "student-consent-approved");
       await screenshot(counselor, "counselor-permission-approved");
       await withdraw(student.page);
-      await shown(permission(counselor, "Media permission · Withdrawn"));
+      await shown(permission(counselor, "Recording permission · Withdrawn"));
       await shown(student.page.getByText("Withdrawn", { exact: true }).first());
       await screenshot(student.page, "student-consent-withdrawn");
       assert.equal(w.state.commands.length, 0, "Consent never auto-starts or invents a Stop");
@@ -134,14 +136,14 @@ async function withdraw(student) {
   await check("active-call withdrawal closes an open Start confirmation before a delayed consent response", PATH, w.options("COUNSELOR"), async (counselor) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission · Approved")); await join(counselor);
+      await shown(permission(counselor, "Recording permission · Approved")); await join(counselor);
       await counselor.getByRole("button", { name: "Start recording", exact: true }).click();
       const dialog = counselor.getByRole("alertdialog", { name: "Start recording?", exact: true }); await shown(dialog);
       w.state.hold = true; await withdraw(student.page);
       await hidden(dialog);
       await eventually(() => w.state.held.length > 0, "Consent HTTP refresh starts");
       assert.equal(await counselor.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
-      w.release(); await shown(permission(counselor, "Media permission · Withdrawn"));
+      w.release(); await shown(permission(counselor, "Recording permission · Withdrawn"));
       assert.equal(w.state.commands.length, 0);
       assert.deepEqual(student.errors, []);
     } finally { w.release(); await student.context.close(); }
@@ -149,17 +151,18 @@ async function withdraw(student) {
 }
 
 {
-  const w = world({ approved: true, transcription: "ACTIVE" });
+  const w = world({ approved: true, recording: "ACTIVE" });
   await check("failed consent refresh blocks Start but keeps a legitimate Stop and uncertainty", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission · Approved")); await join(page);
+    await shown(permission(page, "Recording permission · Approved")); await join(page);
     w.state.failure = true; w.send();
-    await shown(page.getByText("Media permission couldn’t be loaded. Recording and transcription can’t start until it loads.", { exact: true }));
-    assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
-    const stop = page.getByRole("button", { name: "Stop transcription", exact: true });
+    await eventually(() => w.state.reads.filter((read) => read.kind === "consents").length >= 1, "The failed permission refresh is attempted");
+    assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).count(), 0, "An active recording never offers Start during a failed permission refresh");
+    const stop = page.getByRole("button", { name: "Stop recording", exact: true });
     assert.equal(await stop.isEnabled(), true); await stop.click();
     await eventually(() => w.state.commands.length === 1, "Only the explicit Stop reaches HTTP");
-    assert.ok(w.state.commands[0].endsWith("/transcription/stop"));
+    assert.ok(w.state.commands[0].endsWith("/recording/stop"));
     assert.equal(await page.getByText("Recording stopped", { exact: true }).count(), 0);
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
   });
 }
 
@@ -168,9 +171,9 @@ async function withdraw(student) {
   await check("provider failure after withdrawal still refreshes permission without claiming recording stopped", PATH, w.options("COUNSELOR"), async (counselor) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission · Approved"));
+      await shown(permission(counselor, "Recording permission · Approved"));
       await withdraw(student.page);
-      await shown(permission(counselor, "Media permission · Withdrawn"));
+      await shown(permission(counselor, "Recording permission · Withdrawn"));
       assert.equal(await counselor.getByRole("button", { name: "Stop recording", exact: true }).isEnabled(), true);
       assert.equal(await counselor.getByText("Recording stopped", { exact: true }).count(), 0);
       assert.equal(w.state.recording, "ACTIVE", "Consent cannot invent physical provider cessation");
@@ -182,10 +185,9 @@ async function withdraw(student) {
 for (const boundary of ["hidden", "offline"]) {
   const w = world();
   await check(`${boundary} tab returns to canonical consent without a manual reload`, PATH, w.options("STUDENT"), async (page) => {
-    await shown(page.getByRole("heading", { name: "Recording & live transcription", exact: true }));
+    await shown(page.getByRole("heading", { name: "Media permissions", exact: true }));
     await eventually(() => w.state.reads.some((read) => read.kind === "workspace") && w.state.reads.some((read) => read.kind === "consents"), "Initial workspace and consent reads completed");
     await eventually(() => w.state.sockets.length === 1 && w.state.sockets[0].ready, "Realtime connection is ready before the foreground transition");
-    const before = w.state.reads.filter((read) => read.kind === "consents").length;
     await page.evaluate((value) => {
       if (value === "hidden") {
         Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
@@ -195,6 +197,8 @@ for (const boundary of ["hidden", "offline"]) {
         window.dispatchEvent(new Event("offline"));
       }
     }, boundary);
+    await page.waitForTimeout(150);
+    const before = w.state.reads.filter((read) => read.kind === "consents").length;
     w.request();
     if (boundary === "hidden") w.send();
     await page.waitForTimeout(150);
@@ -216,7 +220,7 @@ for (const boundary of ["hidden", "offline"]) {
 for (const mode of ["disabled", "outage"]) {
   const w = world({ realtime: mode !== "disabled", outage: mode === "outage" });
   await check(`${mode} transport heals a pre-call request by bounded polling`, PATH, w.options("STUDENT"), async (page) => {
-    await shown(page.getByRole("heading", { name: "Recording & live transcription", exact: true }));
+    await shown(page.getByRole("heading", { name: "Media permissions", exact: true }));
     w.request();
     await shown(page.getByRole("button", { name: `Allow ${subject}`, exact: true }));
     assert.equal(w.state.commands.length, 0);
@@ -238,7 +242,7 @@ for (const mode of ["disabled", "outage"]) {
 {
   const w = world({ approved: true });
   await check("unrelated appointment hint does not refetch current consent; page plus active call share refresh", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission · Approved")); await join(page);
+    await shown(permission(page, "Recording permission · Approved")); await join(page);
     // Wait for the join's canonical refresh; then isolate the consent-specific event counts.
     await eventually(() => w.state.reads.filter((read) => read.kind === "consents").length >= 1, "Consent read completed");
     const before = w.state.reads.filter((read) => read.kind === "consents").length;
@@ -255,11 +259,10 @@ for (const mode of ["disabled", "outage"]) {
 {
   const w = world({ approved: true });
   await check("lost workspace access conceals protected consent state", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission · Approved"));
+    await shown(permission(page, "Recording permission · Approved"));
     w.state.denied = true; w.send();
-    await shown(page.getByRole("heading", { name: "E-Counseling", exact: true }));
-    assert.equal(await page.getByText("Consent Test Student", { exact: true }).count(), 0);
-    assert.equal(await page.getByRole("list", { name: "Media permission", exact: true }).count(), 0);
+    await hidden(page.getByText("Consent Test Student", { exact: true }));
+    await hidden(permission(page, "Recording permission · Approved"));
   });
 }
 

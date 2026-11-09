@@ -291,9 +291,9 @@ const idleRuntime = {
   canonical: { media: undefined, current: true },
   captureWarnings: [],
   capture: {
-    canStop: { recording: false, transcription: false },
-    stopping: { recording: false, transcription: false },
-    failed: { recording: false, transcription: false },
+    canStop: { recording: false },
+    stopping: { recording: false },
+    failed: { recording: false },
     error: null,
     stop: noop,
   },

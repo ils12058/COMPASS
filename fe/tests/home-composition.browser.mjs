@@ -35,7 +35,7 @@ for (const [name, makeWorld] of cases) for (const width of [320,1440]) {
     }
     if(name==="absent-summary-and-announcements") {
       assert.equal(await page.locator("#overview-summary-heading").count(),0);
-      await h.shown(page.getByText("No current announcements.",{exact:true}));
+      await h.shown(page.getByText("No current Announcements.",{exact:true}));
     }
     if(name==="head-without-oversight") assert.equal(await page.locator("#head-guidance-oversight-heading").count(),0);
     await h.noHorizontalOverflow(page);

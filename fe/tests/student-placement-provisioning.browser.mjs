@@ -57,7 +57,7 @@ await check("manager-with-student-academics-manage-reviews-and-posts-student-pla
   await shown(page.getByRole("heading", { name: "Create account", exact: true }));
   const placement = page.getByRole("group", { name: "Initial academic placement (optional)", exact: true });
   await shown(placement);
-  await shown(placement.getByText(/Recorded as unverified/));
+  await shown(placement.getByText(/This placement is unverified and doesn't confirm enrollment\./));
   await page.getByLabel("Institutional ID", { exact: true }).fill("2026-0101");
   await page.getByLabel("Email", { exact: true }).fill("student@synthetic.invalid");
   await page.getByLabel("First name", { exact: true }).fill("Synthetic");

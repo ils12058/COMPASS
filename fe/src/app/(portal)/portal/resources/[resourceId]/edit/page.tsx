@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { ResourceEditPage } from "@/features/resources/resource-edit-page";
 
-export const metadata: Metadata = { title: "Edit resource" };
+export const metadata: Metadata = { title: "Edit Resource" };
 
 export default async function Page({
   params,

@@ -73,7 +73,7 @@ for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${fac
     if(entry.endsWith(id)) {
       assert.equal(await page.getByText("Received by the Guidance Office · Philippine Time",{exact:true}).count(),version>=2?1:0);
       assert.equal(await page.getByText("Administratively closed · Philippine Time",{exact:true}).count(),version===3?1:0);
-      if(version===3) { await page.getByRole("button",{name:/Help/}).click(); await shown(page.getByText(/does not establish that Counseling/)); }
+      if(version===3) { await page.getByRole("button",{name:/Help/}).click(); await shown(page.getByText(/Administrative handling is complete\. Counseling, other support, or the Student’s concern may still need attention\./)); }
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+1),false);
     if ([320,1440].includes(width) && scale === 200) await page.screenshot({path:join(artifacts,`faculty-${version}-${entry.split("/").at(-1)}-${width}-${scale}.png`),fullPage:true});
@@ -94,7 +94,7 @@ for (const error of [409,403,"lost"]) {
     assert.equal(await confirm(page,"Acknowledge receipt").isDisabled(),true);
     assert.equal(f.state.writes,1);
     await dialog(page).getByRole("button",{name:"Cancel",exact:true}).click();
-    await shown(page.getByText("Received by the Guidance Office",{exact:true}));
+    await shown(page.getByText("Received by the Guidance Office",{exact:true}).first());
     assert.equal(await page.getByText("Receipt acknowledged.",{exact:true}).count(),0);
     await page.getByRole("button",{name:"Refresh intake record",exact:true}).click();
     await shown(page.getByRole("button",{name:"Close administratively",exact:true}));

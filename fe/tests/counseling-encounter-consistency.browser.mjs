@@ -1,5 +1,5 @@
-// CE-1 / UX-1a in a real browser: the Record encounter dialog in the E-Counseling workspace, the
-// standalone and Counseling-workspace recording paths, and the correction form. Every request is
+// CE-1 / UX-1a in a real browser: the dedicated Record Counseling Encounter page linked from the
+// E-Counseling and Counseling workspaces, the standalone recording path, and the correction form. Every request is
 // answered with synthetic fixtures and the call uses the fake Call Object, so no account, Daily room,
 // recording or institutional record is touched.
 import assert from "node:assert/strict";
@@ -9,15 +9,13 @@ import { appointment, appointmentId, workspace } from "./support/ui-hierarchy-fi
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("counseling-encounter-consistency");
 const ePath = `/portal/e-counseling/${appointmentId}`;
+const recordPath = `/portal/counseling/encounters/new/appointment/${appointmentId}?from=ecounseling`;
 const SYNTH_ID = "SYNTH-2026-0203";
 const STUDENT = "Synthetic Student";
 const ENCOUNTER = "e0000000-0000-4000-8000-000000000001";
 // The fixture Appointment runs 10:00–11:00 AM Philippine Time on Thursday, October 8, 2026.
 const SCHEDULED = /Thu, Oct 8, 2026 · 10:00\sAM–11:00\sAM/;
 
-const dialog = (page) => page.getByRole("dialog", { name: "Record encounter", exact: true });
-const encounterSection = (page) => page.getByRole("region", { name: /^Counseling Encounter/ });
-const studentSection = (page) => page.getByRole("region", { name: /^Student information/ });
 const stage = (page) => page.getByRole("region", { name: "Video call" });
 const fakeCount = (page, method) => page.evaluate((name) => window.__COMPASS_FAKE_DAILY__.count(name), method);
 const posts = (requests, suffix) => requests.filter((request) => request.method !== "GET" && request.pathname.endsWith(suffix));
@@ -50,7 +48,7 @@ function contextOverview(student) {
 
 // A Counselor's E-Counseling session whose Encounter state a check can change mid-test.
 function session({ institutionalId = SYNTH_ID, post } = {}) {
-  const state = { encounter: null, workspaceReads: 0, heldPosts: [] };
+  const state = { encounter: null, workspaceReads: 0, heldPosts: [], joinState: "OPEN" };
   const student = { id: "student", display_name: STUDENT, institutional_id: institutionalId };
   const overrides = {
     [`/api/v1/e-counseling/appointments/${appointmentId}`]: ({ reply }) => {
@@ -59,9 +57,11 @@ function session({ institutionalId = SYNTH_ID, post } = {}) {
       value.student = student;
       value.counseling_context_available = true;
       value.counseling_encounter = state.encounter;
+      value.provider_readiness.join_state = state.joinState;
       return reply(value);
     },
     [`/api/v1/counseling/context/APPOINTMENT/${appointmentId}`]: ({ reply }) => reply(contextOverview(student)),
+    [`/api/v1/counseling/encounters/${ENCOUNTER}`]: ({ reply }) => reply(savedEncounter()),
     [`POST /api/v1/e-counseling/appointments/${appointmentId}/join`]: ({ reply }) => reply({
       appointment_id: appointmentId,
       workspace_id: "synthetic-workspace",
@@ -83,14 +83,10 @@ function institutionalInput(days) {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
-async function openRecordDialog(page) {
-  // Narrow layouts start the section collapsed beside the call.
-  const toggle = page.getByRole("button", { name: /^Counseling Encounter/ });
-  await shown(toggle);
-  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
-  await encounterSection(page).getByRole("button", { name: "Record encounter", exact: true }).click();
-  await shown(dialog(page));
-  return dialog(page);
+async function openRecordPage(page) {
+  const form = page.locator("form").filter({ has: page.getByRole("group", { name: "Actual counseling interaction" }) });
+  await shown(form);
+  return form;
 }
 
 // Radix restores focus just after the dialog leaves, so wait briefly for it.
@@ -112,34 +108,30 @@ async function errorFor(input) {
   return id ? input.page().locator(`[id="${id}"]`).innerText() : null;
 }
 
-await check("ecounseling-dialog-identity-matches-overview", ePath, { overrides: session().overrides }, async (page) => {
-  await shown(studentSection(page).getByText(SYNTH_ID, { exact: true }));
-  const record = await openRecordDialog(page);
+await check("ecounseling-page-identity-matches-context", recordPath, { overrides: session().overrides }, async (page) => {
+  const record = await openRecordPage(page);
   const text = await record.innerText();
-  assert.match(text, new RegExp(`Institutional ID: ${SYNTH_ID}`), "The dialog shows the same ID as the Student information");
-  assert.match(text, /Scheduled Appointment/);
-  assert.match(text, SCHEDULED);
+  assert.match(text, new RegExp(`Institutional ID: ${SYNTH_ID}`), "The page shows the context's Institutional ID");
+  assert.match(text, /Appointment · Online/);
   assert.match(text, /in Philippine Time\. These times may differ from the scheduled Appointment\./);
   assert.doesNotMatch(text, /undefined|null|Not provided/);
-  assert.equal(await record.getByRole("heading").count(), 1, "One dialog heading, no nested panel title");
-  const description = await record.getAttribute("aria-describedby");
-  assert.match(await page.locator(`[id="${description}"]`).innerText(), /The Appointment sets the Student, Service, and delivery mode\. You are recorded as the Counselor\./);
+  assert.match(await page.locator("main").innerText(), /The Appointment sets the Student, Service, and delivery mode\. You are recorded as the Counselor\./);
   for (const label of ["Actual start", "Actual end"]) assert.equal(await record.getByLabel(label, { exact: true }).inputValue(), "", `${label} is not copied from the schedule`);
   await shown(record.getByRole("group", { name: "Actual counseling interaction" }));
   await shown(record.getByRole("button", { name: "Record encounter", exact: true }));
   await shown(record.getByRole("button", { name: "Cancel", exact: true }));
-  await screenshot(page, "ecounseling-record-dialog");
+  await screenshot(page, "ecounseling-record-page");
 });
 
-await check("ecounseling-dialog-without-institutional-id", ePath, { overrides: session({ institutionalId: null }).overrides }, async (page) => {
-  const record = await openRecordDialog(page);
+await check("ecounseling-page-without-institutional-id", recordPath, { overrides: session({ institutionalId: null }).overrides }, async (page) => {
+  const record = await openRecordPage(page);
   const text = await record.innerText();
   assert.match(text, /Institutional ID: Not provided/);
   assert.doesNotMatch(text, /undefined|null/);
 });
 
-await check("ecounseling-validation-is-specific-and-announced", ePath, { overrides: session().overrides }, async (page, { requests }) => {
-  const record = await openRecordDialog(page);
+await check("ecounseling-page-validation-is-specific-and-announced", recordPath, { overrides: session().overrides }, async (page, { requests }) => {
+  const record = await openRecordPage(page);
   const start = record.getByLabel("Actual start", { exact: true });
   const end = record.getByLabel("Actual end", { exact: true });
   assert.equal(await errorFor(start), null, "Nothing is reported before a save attempt");
@@ -165,7 +157,7 @@ await check("ecounseling-validation-is-specific-and-announced", ePath, { overrid
   assert.equal(posts(requests, "/counseling/encounters").length, 0, "Validation never sends a request");
 });
 
-await check("ecounseling-save-success-other-browser-zone", ePath, {
+await check("ecounseling-page-save-success-other-browser-zone", recordPath, {
   timezoneId: "America/New_York",
   ...session({ post: ({ reply, request }, state) => {
     state.body = JSON.parse(request.postData());
@@ -173,14 +165,11 @@ await check("ecounseling-save-success-other-browser-zone", ePath, {
     return reply(savedEncounter({ started_at: state.body.started_at, ended_at: state.body.ended_at }), 201);
   } }),
 }, async (page, { requests }) => {
-  const record = await openRecordDialog(page);
+  const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Record encounter", exact: true }).click();
-  await hidden(record);
-  const view = encounterSection(page).getByRole("link", { name: "View encounter", exact: true });
-  await shown(view);
-  await page.waitForFunction(() => document.activeElement?.textContent === "View encounter");
-  await shown(page.getByRole("button", { name: /^Counseling Encounter\s*Recorded/ }));
+  await page.waitForURL((url) => url.pathname === `/portal/counseling/encounters/${ENCOUNTER}`);
+  await shown(page.getByRole("heading", { name: "Counseling Encounter", exact: true }));
   const [post] = posts(requests, "/counseling/encounters");
   assert.deepEqual(JSON.parse(post.body), {
     appointment_id: appointmentId,
@@ -194,17 +183,17 @@ await check("ecounseling-save-success-other-browser-zone", ePath, {
 let releasePending;
 let pendingReceived;
 const pendingRequestReceived = new Promise((resolve) => { pendingReceived = resolve; });
-await check("ecounseling-pending-then-unconfirmed", ePath, session({ post: async ({ reply }, state) => {
+await check("ecounseling-page-pending-then-unconfirmed", recordPath, session({ post: async ({ reply }, state) => {
   await new Promise((resolve) => { releasePending = resolve; pendingReceived(); });
   state.released = true;
   return reply({ error: { code: "synthetic_uncertain", message: "Synthetic uncertain result" } }, 503);
 } }), async (page, { requests }) => {
-  const record = await openRecordDialog(page);
+  const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Record encounter", exact: true }).click();
   await shown(record.getByRole("button", { name: "Recording encounter…", exact: true }));
   assert.equal(await record.getByRole("button", { name: "Cancel", exact: true }).isDisabled(), true);
-  assert.equal(await record.getByRole("button", { name: "Close dialog", exact: true }).count(), 0);
+  assert.equal(await record.getByRole("button", { name: "Cancel", exact: true }).isDisabled(), true);
   await page.keyboard.press("Escape");
   await shown(record);
   // Pending controls can render before the mocked HTTP handler starts.
@@ -218,30 +207,19 @@ await check("ecounseling-pending-then-unconfirmed", ePath, session({ post: async
     clearTimeout(timeout);
   }
   releasePending();
-  await shown(record.getByText(/We couldn’t confirm whether the encounter was recorded\. Check your encounters before trying again/));
+  await shown(record.getByText(/Couldn't confirm whether the encounter was recorded\. Check your encounters before trying again/));
   await page.keyboard.press("Escape");
   await shown(record);
   assert.equal(await record.getByLabel("Actual start", { exact: true }).inputValue(), "2026-01-06T09:00", "The unconfirmed attempt keeps its times");
-  await record.getByRole("button", { name: "Close", exact: true }).click();
-  await hidden(record);
-  const checkAgain = encounterSection(page).getByRole("button", { name: "Check again", exact: true });
-  await shown(checkAgain);
-  await focused(checkAgain, "Focus lands on the section's next action");
-  await shown(page.getByRole("button", { name: /^Counseling Encounter\s*Not confirmed/ }));
-  assert.equal(await encounterSection(page).getByRole("button", { name: "Record encounter", exact: true }).count(), 0, "No second save from here");
-  const sessionReads = () => requests.filter((request) => request.method === "GET" && request.pathname === `/api/v1/e-counseling/appointments/${appointmentId}`).length;
-  const reads = sessionReads();
-  await checkAgain.click();
-  const deadline = Date.now() + 5_000;
-  while (sessionReads() <= reads && Date.now() < deadline) await page.waitForTimeout(50);
-  assert.ok(sessionReads() > reads, "Check again reloads the session");
-  await shown(encounterSection(page).getByRole("button", { name: "Check again", exact: true }));
+  await shown(record.getByRole("button", { name: "Refresh encounters", exact: true }));
+  await shown(record.getByRole("link", { name: "View encounters", exact: true }));
+  assert.equal(await record.getByRole("button", { name: "Record encounter", exact: true }).count(), 0, "No second save from an uncertain result");
   assert.equal(posts(requests, "/counseling/encounters").length, 1);
 });
 releasePending?.();
 
-await check("ecounseling-rejected-save-keeps-values", ePath, session({ post: ({ reply }) => reply({ error: { code: "counseling_invalid_time", message: "ended_at must not be in the future." } }, 422) }), async (page) => {
-  const record = await openRecordDialog(page);
+await check("ecounseling-page-rejected-save-keeps-values", recordPath, session({ post: ({ reply }) => reply({ error: { code: "counseling_invalid_time", message: "ended_at must not be in the future." } }, 422) }), async (page) => {
+  const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Record encounter", exact: true }).click();
   const alert = record.getByRole("alert");
@@ -249,56 +227,59 @@ await check("ecounseling-rejected-save-keeps-values", ePath, session({ post: ({ 
   assert.equal(await alert.innerText(), "These actual times weren’t accepted. Check that the end is later than the start and not in the future.");
   assert.equal(await record.getByLabel("Actual end", { exact: true }).inputValue(), "2026-01-06T10:00");
   assert.equal(await record.getByRole("button", { name: "Record encounter", exact: true }).isEnabled(), true, "The Counselor can correct and try again");
-  await page.keyboard.press("Escape");
-  await hidden(record);
 });
 
-await check("ecounseling-already-recorded", ePath, session({ post: ({ reply }, state) => {
+await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ reply }, state) => {
   state.encounter = { id: ENCOUNTER, recorded: true };
   return reply({ error: { code: "counseling_appointment_already_used", message: "Already used" } }, 409);
 } }), async (page) => {
-  const record = await openRecordDialog(page);
+  const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Record encounter", exact: true }).click();
-  await hidden(record);
-  await shown(encounterSection(page).getByText("An encounter was already recorded for this Appointment. The latest details are now shown.", { exact: true }));
-  await shown(encounterSection(page).getByRole("link", { name: "View encounter", exact: true }));
+  await shown(page.getByText("An encounter was already recorded for this Appointment. The latest details are now shown.", { exact: true }));
+  assert.equal(await page.getByRole("button", { name: "Record encounter", exact: true }).count(), 1, "The reconciled page does not replay the rejected write");
 });
 
-await check("ecounseling-dialog-keeps-times-and-call", ePath, { fakeDaily: true, ...session() }, async (page) => {
+const connectedSession = session();
+await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession, overrides: {
+  ...connectedSession.overrides,
+  "/api/v1/counseling/me/encounters": { items: [], page: 1, page_size: 20, has_next: false, ordering: "LATEST_ENCOUNTER" },
+  "/api/v1/counseling/appointment-candidates": {
+    items: [{ id: appointmentId, reference_code: appointment.reference_code, student: { id: "student", display_name: STUDENT, institutional_id: SYNTH_ID }, delivery_mode: "ONLINE", starts_at: appointment.starts_at, ends_at: appointment.ends_at, status: "SCHEDULED" }],
+    page: 1, page_size: 20, has_next: false,
+  },
+} }, async (page) => {
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await shown(stage(page).getByText(`Waiting for ${STUDENT}…`, { exact: true }).first());
-  const record = await openRecordDialog(page);
+  await page.getByRole("link", { name: "Counseling", exact: true }).first().click();
+  await page.getByRole("button", { name: "Record Counseling Encounter" }).click();
+  await page.getByRole("button", { name: "From Counseling Appointment", exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(`${appointment.reference_code} · ${STUDENT}`) }).click();
+  const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
-  await page.keyboard.press("Escape");
-  await hidden(record);
-  const trigger = encounterSection(page).getByRole("button", { name: "Record encounter", exact: true });
-  await focused(trigger, "Focus returns to Record encounter");
-  await trigger.click();
-  assert.equal(await record.getByLabel("Actual start", { exact: true }).inputValue(), "2026-01-06T09:00", "Times survive dismissal");
   await record.getByRole("button", { name: "Cancel", exact: true }).click();
-  await hidden(record);
+  await page.waitForURL((url) => url.pathname === "/portal/counseling");
   assert.equal(await fakeCount(page, "createCallObject"), 1, "The call object is never recreated");
-  assert.equal(await fakeCount(page, "destroy"), 0, "Opening and closing the dialog never ends the call");
-  await shown(stage(page).getByRole("button", { name: "Leave session", exact: true }));
+  assert.equal(await fakeCount(page, "destroy"), 0, "Opening and leaving the record page never ends the call");
+  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
 });
 
 for (const device of ["narrowPhone", "phone", "tablet"]) {
-  await check(`ecounseling-dialog-${device}`, ePath, { device, ...session() }, async (page) => {
-    const record = await openRecordDialog(page);
+  await check(`ecounseling-page-${device}`, recordPath, { device, ...session() }, async (page) => {
+    const record = await openRecordPage(page);
     await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
     await noHorizontalOverflow(page);
     const overflow = await record.evaluate((element) => element.scrollWidth - element.clientWidth);
-    assert.ok(overflow <= 1, `Dialog content overflows by ${overflow}px`);
+    assert.ok(overflow <= 1, `Page form overflows by ${overflow}px`);
     const box = await record.boundingBox();
     for (const control of [record.getByLabel("Actual start", { exact: true }), record.getByLabel("Actual end", { exact: true }), record.getByRole("button", { name: "Record encounter", exact: true }), record.getByRole("button", { name: "Cancel", exact: true })]) {
       await control.scrollIntoViewIfNeeded();
       const rect = await control.boundingBox();
-      assert.ok(rect.x >= box.x - 1 && rect.x + rect.width <= box.x + box.width + 1, "Controls stay inside the dialog");
+      assert.ok(rect.x >= box.x - 1 && rect.x + rect.width <= box.x + box.width + 1, "Controls stay inside the form");
       assert.ok(rect.height >= 40, "Controls keep a usable target");
     }
     assert.match(await record.innerText(), new RegExp(`Institutional ID: ${SYNTH_ID}`));
-    await screenshot(page, `ecounseling-record-dialog-${device}`);
+    await screenshot(page, `ecounseling-record-page-${device}`);
   });
 }
 
@@ -367,15 +348,14 @@ await check("standalone-appointment-recording", "/portal/counseling", { override
   await shown(summary.getByRole("button", { name: "Cancel", exact: true }));
 });
 
-await check("counseling-workspace-dialog-identity", `/portal/counseling/workspace/appointment/${appointmentId}`, { overrides: {
+await check("counseling-workspace-record-page-link", `/portal/counseling/workspace/appointment/${appointmentId}`, { overrides: {
   [`/api/v1/counseling/context/APPOINTMENT/${appointmentId}`]: contextOverview({ id: "student", display_name: STUDENT, institutional_id: SYNTH_ID }),
+  [`GET /api/v1/appointments/${appointmentId}`]: ({ reply }) => reply({ error: { code: "synthetic_unavailable", message: "Synthetic" } }, 503),
 } }, async (page) => {
-  await page.getByRole("button", { name: "Record encounter", exact: true }).click();
-  const record = dialog(page);
-  await shown(record);
-  assert.match(await record.innerText(), new RegExp(`Institutional ID: ${SYNTH_ID}`));
-  assert.doesNotMatch(await record.innerText(), /Scheduled Appointment/, "No schedule is invented where the context has none");
-  assert.match(await record.innerText(), /These times may differ from the scheduled Appointment\./);
+  const link = page.getByRole("link", { name: "Record encounter", exact: true });
+  await shown(link);
+  assert.equal(await link.getAttribute("href"), `/portal/counseling/encounters/new/appointment/${appointmentId}`);
+  assert.equal(await page.getByRole("dialog", { name: /Record encounter/i }).count(), 0);
 });
 
 await finish();

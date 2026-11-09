@@ -29,8 +29,8 @@ const routineBase = {
 
 // A session whose state a test can change while the pages are open, for both roles, with the
 // Routine Interview pages the call should survive.
-function liveSession({ student = false, recording = "NOT_STARTED", transcription = "NOT_STARTED", consent = "APPROVED" } = {}) {
-  const state = { recording, transcription, consent, storage: "NOT_REQUESTED", joins: 0, workspaceStatus: 200, sessionStatus: 200, maintenance: false, evaluationSaves: [], intakeSaves: [], logouts: 0 };
+function liveSession({ student = false, recording = "NOT_STARTED", consent = "APPROVED" } = {}) {
+  const state = { recording, consent, joins: 0, workspaceStatus: 200, sessionStatus: 200, maintenance: false, evaluationSaves: [], intakeSaves: [], logouts: 0 };
   const prefix = `/api/v1/e-counseling/${student ? "me/" : ""}appointments`;
   // The synthetic user can also work on the session's Routine Interview.
   const base = user(student ? "STUDENT" : "COUNSELOR");
@@ -40,10 +40,7 @@ function liveSession({ student = false, recording = "NOT_STARTED", transcription
     value.appointment = { ...value.appointment, id };
     value.media.media_policy_version = 2;
     value.media.recording.capture_status = state.recording;
-    value.media.transcription.capture_status = state.transcription;
     value.media.recording.consent_status = state.consent;
-    value.media.transcription.consent_status = state.consent;
-    value.media.transcription.storage_consent_status = state.storage;
     value.routine_interview = student ? { id: ROUTINE, intake_status: "DRAFT" } : { id: ROUTINE, intake_status: "SUBMITTED", evaluation_status: "DRAFT" };
     return value;
   };
@@ -165,7 +162,7 @@ async function openRoutineFromSession(page) {
     await openRoutineFromSession(page);
     const call = dock(page);
     await shown(call.getByText("Recording", { exact: true }));
-    assert.equal(await call.getByRole("button", { name: /Start recording|Start transcription|^Record$|^Transcript$/ }).count(), 0, "Capture never starts from the dock");
+    assert.equal(await call.getByRole("button", { name: /Start recording|^Record$/ }).count(), 0, "Capture never starts from the dock");
     assert.equal(await call.getByRole("link", { name: /download/i }).count() + await call.getByRole("button", { name: /download/i }).count(), 0, "No files in the dock");
     assert.doesNotMatch(await call.innerText(), /APT-TEST|Appointment reference|consent history|Daily/i);
 
@@ -188,7 +185,7 @@ async function openRoutineFromSession(page) {
     await shown(call.getByText("Recording stopping…", { exact: true }));
     assert.equal(await call.getByRole("button", { name: "Stopping…", exact: true }).isDisabled(), true, "Stopping holds until COMPASS confirms");
     assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/recording/stop")).length, 1, "The stop goes through COMPASS");
-    for (const method of ["startRecording", "stopRecording", "startTranscription", "stopTranscription"]) assert.equal(await fakeCount(page, method), 0, method);
+    for (const method of ["startRecording", "stopRecording"]) assert.equal(await fakeCount(page, method), 0, method);
     await screenshot(page, "dock-capture-stopping");
 
     session.state.recording = "ACTIVE";
@@ -213,7 +210,8 @@ async function openRoutineFromSession(page) {
     await openRoutineFromSession(page);
     const call = dock(page);
     await shown(call);
-    assert.equal(await call.getByRole("button", { name: /Stop recording|Stop transcription/ }).count(), 0, "Students have no stop");
+    assert.equal(await call.getByRole("button", { name: "Stop recording", exact: true }).count(), 0, "Students have no stop");
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
     await call.getByRole("button", { name: "Minimize call", exact: true }).tap();
     const show = call.getByRole("button", { name: "Show call", exact: true });
     assert.equal(await show.getAttribute("aria-expanded"), "false");
@@ -249,7 +247,7 @@ async function openRoutineFromSession(page) {
     await shown(call);
     session.state.consent = "PENDING";
     await fake(page, "providerEvent", "recording-started");
-    await shown(call.getByText("Media permission requested", { exact: true }));
+    await shown(call.getByText("Recording permission requested", { exact: true }));
     assert.equal(await call.getByRole("button", { name: /Allow|Decline/ }).count(), 0, "Decisions stay on the session page");
     await call.getByRole("link", { name: "Review", exact: true }).click();
     await page.waitForURL(new RegExp(`/portal/e-counseling/${appointmentId}$`));

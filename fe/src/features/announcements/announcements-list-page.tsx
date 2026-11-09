@@ -83,7 +83,7 @@ export function AnnouncementsListPage() {
 
       <form
         role="search"
-        aria-label="Search managed announcements"
+        aria-label="Search managed Announcements"
         key={searchParams.toString()}
         onSubmit={(event) => {
           event.preventDefault();
@@ -137,8 +137,8 @@ export function AnnouncementsListPage() {
           <ListSearchField
             id="announcement-search-filter"
             name="search"
-            label="Search announcements"
-            placeholder="Search announcements"
+            label="Search Announcements"
+            placeholder="Search Announcements"
             defaultValue={search}
           />
         </FloatingListTools>
@@ -164,10 +164,10 @@ export function AnnouncementsListPage() {
               : null}
         />
       {list.isPending ? (
-        <ContentListSkeleton label="Loading announcements…" />
+        <ContentListSkeleton label="Loading Announcements…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
-          {announcementErrorMessage(list.error, "Couldn't load announcements. Try again.")}
+          {announcementErrorMessage(list.error, "Couldn't load Announcements. Try again.")}
         </PanelMessage>
       ) : result && result.items.length === 0 ? (
         <PanelMessage
@@ -186,10 +186,10 @@ export function AnnouncementsListPage() {
             : hasFilters
               ? search
                 ? status || audience
-                  ? "No announcements match this search and the selected filters."
-                  : "No announcements match this search."
-                : "No announcements match the selected filters."
-              : "No announcements have been created yet."}
+                  ? "No Announcements match this search and the selected filters."
+                  : "No Announcements match this search."
+                : "No Announcements match the selected filters."
+              : "No Announcements have been created yet."}
         </PanelMessage>
       ) : result ? (
           <ul className="divide-y divide-border">
@@ -200,7 +200,7 @@ export function AnnouncementsListPage() {
                     href={`/portal/announcements/${item.id}${detailQuery ? `?${detailQuery}` : ""}`}
                     className={`${contentRecordLinkClass} break-words font-heading text-lg`}
                   >
-                    {displayTitle(item.title, "Untitled announcement")}
+                    {displayTitle(item.title, "Untitled Announcement")}
                   </Link>
                   <PublicationStatusBadge status={item.status} />
                   {item.is_pinned ? (

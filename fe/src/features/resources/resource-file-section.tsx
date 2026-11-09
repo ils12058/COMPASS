@@ -172,7 +172,7 @@ export function ResourceFileSection({ resource }: { resource: ResourceManagement
 
       <ContentConfirmDialog
         open={removeOpen}
-        title={`Remove ${fileName} from “${displayTitle(resource.title, "Untitled resource")}”?`}
+        title={`Remove ${fileName} from “${displayTitle(resource.title, "Untitled Resource")}”?`}
         description={
           <p>The file will be deleted from this draft. Attach another PDF before publishing the Resource.</p>
         }

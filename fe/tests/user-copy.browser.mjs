@@ -26,7 +26,7 @@ for (const width of [320, 1440]) {
         ['hidden-referral', '/portal/referrals/long', { '/api/v1/referrals/long': error('referral_not_permitted', 404) }, 'You don\'t have access to this Referral.'],
         ['hidden-call-slip', '/portal/call-slips/slip-density-test', { '/api/v1/call-slips/slip-density-test': error('call_slip_not_permitted', 404) }, 'You don\'t have access to this Call Slip.'],
     ])
-        await check(`${name}-${width}`, route, { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(staff), ...overrides } }, async (page) => { await oneAlert(page, text); await shown(page.getByRole('button', { name: 'Retry', exact: true })); });
+        await check(`${name}-${width}`, route, { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(staff), ...overrides } }, async (page) => { await oneAlert(page, text); await shown(page.getByRole('alert').filter({ hasText: text }).getByRole('button', { name: 'Retry', exact: true })); });
     await check(`exit-access-conflict-${width}`, '/portal/exit-interviews', { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), '/api/v1/exit-interviews/me/status': error('exit_interview_opportunity_conflict', 409), '/api/v1/exit-interviews/me': empty } }, async (page) => {
         await oneAlert(page, "This Exit Interview access action can't be completed with the current details.");
         await shown(page.getByRole('button', { name: 'Retry', exact: true }));
@@ -94,7 +94,7 @@ for (const width of [320, 1440]) {
         assert.equal(await opener.evaluate(el => el === document.activeElement), true);
     });
     await check(`inventory-conflict-retains-answers-${width}`, '/portal/inventory/current', { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), '/api/v1/inventory/me/current': inventory, '/api/v1/inventory/me/status': inventoryStatus, '/api/v1/inventory/me/history': empty, 'PUT /api/v1/inventory/me/current': error('inventory_conflict', 409) } }, async (page) => {
-        const field = page.getByLabel('Full name', { exact: true });
+        const field = page.getByLabel('Full name*', { exact: true });
         await field.fill('Unsaved Synthetic Name');
         await page.getByRole('button', { name: 'Save progress', exact: true }).click();
         await oneAlert(page, 'This action cannot be completed with the current inventory details.');
@@ -107,9 +107,9 @@ for (const width of [320, 1440]) {
         assert.ok(await yearLevel.getAttribute('readonly') !== null);
         await page.getByLabel('Semester').selectOption('First Semester');
         await page.getByRole('button', { name: 'Submit request', exact: true }).click();
-        await oneAlert(page, 'The request result could not be confirmed.');
+        await oneAlert(page, "Couldn't confirm the request result.");
         await page.getByRole('button', { name: 'Retry same request', exact: true }).click();
-        await oneAlert(page, 'The request result could not be confirmed.');
+        await oneAlert(page, "Couldn't confirm the request result.");
         const sent = requests.filter(r => r.method === 'POST' && r.pathname.includes('/good-moral/me/requests/'));
         assert.equal(sent.length, 2);
         assert.equal(sent[0].body, sent[1].body);
@@ -216,7 +216,7 @@ for (const width of [320, 1440]) {
     });
     const graduate = { ...user('STUDENT'), student_lifecycle_status: 'GRADUATED', capabilities: ['graduate_tracer.view_self', 'graduate_tracer.manage_self'] };
     await check(`graduate-tracer-confidentiality-${width}`, '/portal/graduate-tracer', { viewport, overrides: { '/api/v1/auth/session': session(graduate), '/api/v1/graduate-tracer/me': error('graduate_tracer_not_found', 404) } }, async (page, { requests }) => {
-        await shown(page.getByText(/^Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission\./));
+        await shown(page.getByText(/^Your response is confidential and will be available only to Guidance Office reviewers with permission after submission\./));
         await shown(page.getByRole('button', { name: 'Start Graduate Tracer Survey', exact: true }));
         assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
         assert.equal(requests.filter(r => r.method !== 'GET' && r.pathname.startsWith('/api/v1/graduate-tracer')).length, 0);

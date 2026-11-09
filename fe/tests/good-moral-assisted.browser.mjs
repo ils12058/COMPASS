@@ -143,7 +143,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
   await check('changed lifecycle refreshes same search and requires explicit reselection', start, f.options, async page => {
     const dialog = await chooseCurrent(page);
     await dialog.getByRole('button', { name: 'Start Good Moral request', exact: true }).click();
-    await shown(dialog.getByText(/lifecycle has changed/));
+    await shown(dialog.getByText(/status changed/));
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     f.state.currentStudent = { ...current, variant: 'GRADUATE' };
     const previousSearches = f.state.searches.length;

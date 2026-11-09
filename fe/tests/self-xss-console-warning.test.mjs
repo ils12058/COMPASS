@@ -61,7 +61,7 @@ test("production emits one styled safety message with the essential meaning and 
   assert.match(text, /can act with the permissions of your signed-in COMPASS session/);
   assert.match(text, /may expose data available to your account/);
   assert.match(text, /COMPASS will never ask you to paste code into Developer Tools/);
-  assert.match(text, /University of Camarines Norte\nGuidance Office\nCOMPASS/);
+  assert.match(text, /University of Camarines Norte\nGuidance and Counseling Office\nCOMPASS/);
   assert.match(text, /Hello, developer/);
   assert.match(headingStyle, /font-size: 40px/);
   assert.match(headingStyle, /font-weight: 800/);

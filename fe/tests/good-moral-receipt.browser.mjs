@@ -166,7 +166,7 @@ for (const behavior of ['stale', 'already', 'conflict', 'policy', 'cancelled', '
 {
   const f = fixture({ refreshFailures: 1 });
   await check('failed-refresh-blocks-other-mutations-until-current-outcome-checked', route, f.options, async page => {
-    await submitInspection(page); await shown(page.getByText(/Latest information could not be refreshed/));
+    await submitInspection(page); await shown(page.getByText(/Couldn't refresh latest information/));
     await hidden(page.getByRole('button', { name: 'Correct certificate details', exact: true }));
     await hidden(page.getByRole('heading', { name: 'Receipt inspection recorded', exact: true }));
     await page.getByRole('button', { name: 'Check current request', exact: true }).click(); await shown(page.getByText('Receipt verified', { exact: true })); assert.equal(f.state.posts.length, 1);
@@ -240,7 +240,7 @@ for (const behavior of ['prepared-elsewhere', 'issued-elsewhere', 'session-chang
     await page.getByRole('button', { name: 'Correct certificate details', exact: true }).click();
     await page.getByLabel('Receipt number', { exact: true }).fill('OR-KEPT-DRAFT');
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await shown(page.getByText(/Latest information could not be refreshed/));
+    await shown(page.getByText(/Couldn't confirm the correction against the details you reviewed/));
     assert.equal(await page.getByLabel('Receipt number', { exact: true }).inputValue(), 'OR-KEPT-DRAFT');
     assert.equal(await page.getByRole('button', { name: 'Save changes', exact: true }).isDisabled(), true);
     assert.equal(f.state.patches.length, 1); assert.equal(f.state.posts.length, 0);
@@ -278,7 +278,7 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
     const disclosure = page.locator('details').filter({ hasText: 'Receipt change history' });
     assert.equal(await disclosure.getAttribute('open'), null);
     await disclosure.locator('summary').click();
-    await shown(disclosure.getByText(/Earlier receipt contents/)); await shown(disclosure.getByText(/Recorder account reference/));
+    await shown(disclosure.getByText(/Changes to this receipt, newest first/)); await shown(disclosure.getByText(/Recorder account reference/));
     assert.equal(browserFixture.requests.filter(r => /accounts|receipt.*search/.test(r.pathname)).length, 0);
   });
 }

@@ -191,7 +191,7 @@ async function revalidateSession(page, state, status = 403) {
       },
     },
   }, async (page) => {
-    const fullName = page.getByLabel("Full name", { exact: true });
+    const fullName = page.getByLabel("Full name*", { exact: true });
     await fullName.fill("Student A edited");
     await page.getByRole("button", { name: "Save progress", exact: true }).click();
     await eventually(() => state.held.length > 0, "Account A's save started");
@@ -278,7 +278,7 @@ function serviceWorld() {
     await name.fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
-    const notice = page.getByText(/^The latest Service details could not be refreshed\./);
+    const notice = page.getByText(/^Couldn't refresh the latest Service details\./);
     await shown(notice);
     assert.equal(await name.inputValue(), MARKER, "The unsaved name is kept");
     assert.equal(await page.getByRole("button", { name: "Save changes", exact: true }).isDisabled(), true, "Saving waits for confirmed details");
@@ -311,7 +311,7 @@ function serviceWorld() {
       "GET /api/v1/inventory/me/current": ({ reply }) => (state.read === 200 ? reply(inventoryRecord) : reply(...failure(state.read))),
     },
   }, async (page) => {
-    const fullName = page.getByLabel("Full name", { exact: true });
+    const fullName = page.getByLabel("Full name*", { exact: true });
     await fullName.fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
@@ -368,8 +368,8 @@ function exitInterviewOverrides(state) {
     await page.getByLabel("Student name", { exact: true }).fill(MARKER);
     state.read = 404;
     await refreshStaleQueries(page);
-    await shown(page.getByRole("heading", { name: "Exit Interview" }));
-    assert.equal(await page.getByLabel("Student name", { exact: true }).count(), 0, "The editor is removed with the record");
+    await shown(page.getByText("You don't have access to this Exit Interview.", { exact: true }));
+    assert.equal(await page.locator("#exit-student-name").count(), 0, "The editor is removed with the record");
   });
 }
 
@@ -427,7 +427,7 @@ async function refreshReferral(page, state) {
     await noteField(page).fill(MARKER);
     state.read = 503;
     await refreshStaleQueries(page);
-    const notice = page.getByText(/^Couldn't refresh the latest Referral details\./);
+    const notice = page.getByText(/^Couldn't refresh the latest Referral details;/);
     await shown(notice);
     assert.equal(await noteField(page).inputValue(), MARKER, "The unsaved note is kept");
     assert.equal(await page.getByRole("button", { name: "Save status note", exact: true }).isDisabled(), true);

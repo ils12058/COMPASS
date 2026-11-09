@@ -26,10 +26,10 @@ function AnnouncementUnavailable({ readsAccount }: { readsAccount: boolean }) {
   return (
     <Notice title={<h1 className="font-heading text-2xl font-bold text-ink">Announcement not found</h1>}>
       {readsAccount ? (
-        <p>This announcement does not exist or is not available to your account.</p>
+        <p>This Announcement does not exist or is not available to your account.</p>
       ) : (
         <>
-          <p>This announcement does not exist or is no longer publicly available.</p>
+          <p>This Announcement does not exist or is no longer publicly available.</p>
           <p className="mt-2">
             If it was shared with COMPASS account holders,{" "}
             <Link href="/login" className="font-semibold text-brand underline">
@@ -101,7 +101,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     if (query.isFetching) {
       return (
         <Notice role="status">
-          This announcement has reached its expiry time. Checking Availability…
+          This Announcement has reached its expiry time. Checking Availability…
         </Notice>
       );
     }
@@ -112,7 +112,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
 
     return (
       <PublicPageError
-        message="This announcement has reached its expiry time. Couldn't confirm whether you can still view it."
+        message="This Announcement has reached its expiry time. Couldn't confirm whether you can still view it."
         onRetry={() => void refetchCurrent()}
       />
     );
@@ -125,7 +125,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
 
     return (
       <PublicPageError
-        message="Couldn't load announcement. Try again."
+        message="Couldn't load Announcement. Try again."
         onRetry={() => void query.refetch()}
       />
     );
@@ -152,7 +152,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
       <div className="px-5 py-6 sm:px-8 sm:py-7">
         <PublicMarkdown>{announcement.body_markdown}</PublicMarkdown>
       </div>
-      {query.isFetching ? <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing announcement…</p> : null}
+      {query.isFetching ? <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing Announcement…</p> : null}
     </Panel>
   );
 }

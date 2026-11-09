@@ -218,19 +218,57 @@ const student = { ...base, capabilities: [...base.capabilities, "inventory.view_
 
 // Complete enough to submit, so a target can be shown never to block resubmission.
 const answers = {
-  full_name: "Maria Santos", student_number: "TEST-01", sex: "FEMALE", date_of_birth: "2005-01-15",
-  civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000",
+  full_name: "Maria Santos", nickname: "Maria", student_number: "TEST-01", sex: "FEMALE", date_of_birth: "2005-01-15",
+  place_of_birth: "Synthetic City", nationality: "Filipino", birth_order_among_siblings: "Second",
+  civil_status_category: "SINGLE", current_address: "Synthetic Street", permanent_address: "Synthetic Street",
+  current_religion_category: "NONE", contact_number: "0917 000 0000", email_address: "maria@example.test",
+  languages_spoken_at_home: "Filipino", languages_most_fluent: "Filipino, English", religion_from_birth: "None",
   geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }],
   parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
   support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
   family_members: [
-    { kind: "FATHER", occupation_category: "FARMER", annual_income_status: "UNKNOWN", email_address: "father@example.test" },
-    { kind: "MOTHER", occupation_category: "NONE", annual_income_status: "NONE" },
+    {
+      kind: "FATHER", name: "Synthetic Father", date_of_birth: "1975-01-01", place_of_birth: "Synthetic City",
+      current_address: "Synthetic Street", permanent_address: "Synthetic Street", contact_number: "0917 000 0001",
+      email_address: "father@example.test", educational_attainment: "College", occupation_category: "FARMER",
+      annual_income_status: "UNKNOWN", business_address: "None", business_telephone: "None",
+      languages_spoken: "Filipino", religion_raised_with: "None", current_religion: "None",
+    },
+    {
+      kind: "MOTHER", name: "Synthetic Mother", date_of_birth: "1976-01-01", place_of_birth: "Synthetic City",
+      current_address: "Synthetic Street", permanent_address: "Synthetic Street", contact_number: "0917 000 0002",
+      email_address: "mother@example.test", educational_attainment: "College", occupation_category: "NONE",
+      annual_income_status: "NONE", business_address: "None", business_telephone: "None",
+      languages_spoken: "Filipino", religion_raised_with: "None", current_religion: "None",
+    },
   ],
-  living_arrangement: "OWN_HOUSE", pwd_status: "NON_PWD", year_level: 2,
-  siblings: [{ sort_order: 0, name: "Ana Santos" }, { sort_order: 1, name: "Maria Santos", is_self: true }],
+  guardian_name: "Synthetic Guardian", guardian_relationship: "Aunt", guardian_address: "Synthetic Street",
+  guardian_contact_number: "0917 000 0003", emergency_contact_name: "Synthetic Contact", emergency_contact_number: "0917 000 0004",
+  siblings: [
+    { sort_order: 0, name: "Ana Santos", sex: "FEMALE", age: 22 },
+    { sort_order: 1, name: "Maria Santos", sex: "FEMALE", age: 21, is_self: true },
+  ],
+  friends_in_school: "None", friends_outside_school: "None", special_interest: "None", special_skills_talents: "None",
+  hobbies_recreation: "None", ambition_goal: "None", characteristics: "None",
+  living_arrangement: "OWN_HOUSE", present_place_people_count: 4, room_sharing_people_count: 2,
+  accidents_experienced: "None", operations_experienced: "None", height: "160 cm", weight: "55 kg",
+  physical_disadvantage: "None", pwd_status: "NON_PWD", illness_this_year: "None", previous_illness: "None", immunizations: [],
+  education_entries: [
+    { level: "ELEMENTARY", school_attended_address: "Synthetic Elementary, Synthetic City", inclusive_years: "2012–2018" },
+    { level: "JUNIOR_HIGH", school_attended_address: "Synthetic Junior High, Synthetic City", inclusive_years: "2018–2022" },
+    { level: "SENIOR_HIGH", school_attended_address: "Synthetic Senior High, Synthetic City", inclusive_years: "2022–2024" },
+  ],
+  year_level: 2, schedule_satisfied: true, course_first_choice: true, course_choice_reasons: ["INTEREST_APTITUDE"],
+  lowest_subjects_grades: "Math — 85", highest_subjects_grades: "English — 95",
+  inclination_performing_arts: "None", inclination_sports: "None", inclination_leadership: "None",
+  interests: ["PAINTING"], other_skills_hobbies: "None", desired_extracurricular_activities: "None",
+  reading_preferences: "None", handedness: "RIGHT", daily_hours_class: "6", daily_hours_library: "1",
+  daily_hours_studying: "2", daily_hours_rest: "8", daily_hours_recreation: "2", daily_hours_other: "1",
+  ideal_monthly_allowance: "FROM_500_TO_1000", intended_work_field: "PROFESSIONAL",
   organization_memberships: [], transportation_entries: [{ mode: "BUS", frequency_category: "DAILY" }],
-  prior_counseling_experience: true,
+  prior_counseling_experience: true, prior_counselor_name: "Synthetic Counselor",
+  prior_counseling_when: "2025", prior_counseling_where: "Synthetic Guidance Office",
+  current_concerns: "None", current_fears: "None",
 };
 const allTargets = [
   "personal.contact_number", "family.father.email_address", "family.spouse.name", "family.parent_statuses",
@@ -284,7 +322,7 @@ const navigationCases = [
   ["Contact number — Personal & contact", "Personal & contact", "inventory-contact-number", "You were asked to review this answer."],
   ["Father's email address — Family & Student support", "Family & Student support", "inventory-family-father-email", "You were asked to review this answer."],
   ["Spouse's name — Family & Student support", "Family & Student support", "inventory-spouse-add", "You were asked to review Spouse information. It appears after you choose Add optional Spouse details."],
-  ["Additional parent circumstances — Family & Student support", "Family & Student support", null, "You were asked to review this answer."],
+  ["Parent circumstances — Family & Student support", "Family & Student support", null, "You were asked to review this answer."],
   ["Siblings — Siblings & background", "Siblings & background", "inventory-sibling-0-name", "You were asked to review this list."],
   ["Landlord or landlady name — Living conditions & health", "Living conditions & health", "inventory-living-arrangement", "You were asked to review boarding-house details. They appear when you choose Boarding house."],
   ["Educational history: Senior high — Educational background", "Educational background", "inventory-education-senior_high-school", "You were asked to review these answers."],
@@ -309,7 +347,7 @@ async function followEveryTarget(page, { mobile = false } = {}) {
       const node = document.activeElement;
       return { id: node?.id ?? "", type: node?.getAttribute("type"), name: node?.getAttribute("name"), checked: node?.checked, label: node?.closest("label")?.textContent?.trim(), invalid: node?.getAttribute("aria-invalid") };
     });
-    if (label.startsWith("Additional parent")) {
+    if (label.startsWith("Parent circumstances")) {
       assert.equal(focus.type, "checkbox", "Focus enters the checkbox group");
       assert.equal(await page.locator("#inventory-parent-statuses").getAttribute("aria-describedby"), "inventory-parent-statuses-review");
     } else if (label.startsWith("Van")) {
@@ -322,7 +360,7 @@ async function followEveryTarget(page, { mobile = false } = {}) {
     }
     assert.equal(focus.invalid, null, "A requested review never marks the answer invalid");
     if (hint) {
-      if (!label.startsWith("Additional parent") && !label.startsWith("Van")) assert.ok((await activeDescription(page)).includes(hint), `${label} is described by its hint`);
+      if (!label.startsWith("Parent circumstances") && !label.startsWith("Van")) assert.ok((await activeDescription(page)).includes(hint), `${label} is described by its hint`);
       await shown(page.getByText(hint, { exact: true }).first());
     }
     const inView = await page.evaluate(() => {

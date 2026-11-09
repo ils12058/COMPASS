@@ -42,7 +42,7 @@ for (const width of [320, 393, 1440]) {
   const cases = [
     ["call-list", "/portal/call-slips", ["Issue Call Slip"]],
     ["call-detail", `/portal/call-slips/${slip.id}`, ["Download Call Slip"]],
-    ["referral-list", "/portal/referrals", ["Record Referral"]],
+    ["referral-list", "/portal/referrals", ["Record referral"]],
     ["referral-detail", "/portal/referrals/long", ["Download Referral Slip"]],
     ["service-list", "/portal/services", ["Create Service"]],
     ["service-detail", `/portal/services/${serviceId}`, ["Edit Service"]],
@@ -121,7 +121,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     await button.click(); await issued;
     await shown(page.getByRole("button", { name: "Preparing Call Slip…", exact: true })); assert.equal(await page.getByRole("button", { name: "Preparing Call Slip…", exact: true }).isDisabled(), true);
     const download = page.waitForEvent("download"); release(); assert.equal((await download).suggestedFilename(), "Synthetic-Call-Slip.pdf");
-    await shown(button); failDownload = true; await button.click(); await shown(page.getByRole("alert").filter({ hasText: /could not be released/ }));
+    await shown(button); failDownload = true; await button.click(); await shown(page.getByRole("alert").filter({ hasText: /Couldn't release the document/ }));
     assert.equal(await button.isEnabled(), true); await noHorizontalOverflow(page);
   });
   release();
@@ -143,7 +143,7 @@ for (const width of [320, 1440]) await check(`privacy-notice-actions-${width}`, 
   await noHorizontalOverflow(page);
 });
 await check("routine-shared-query-error-and-retry", "/portal/routine-interviews/routine", { overrides: { ...overrides, "/api/v1/routine-interviews/routine": ({ reply }) => reply({ error: { code: "synthetic_failure" } }, 503) } }, async (page, { requests }) => {
-  const alert = page.getByRole("alert").filter({ hasText: "Routine Interview could not be loaded" }); await shown(alert);
+  const alert = page.getByRole("alert").filter({ hasText: "Couldn't load this Routine Interview" }); await shown(alert);
   assert.equal(await alert.evaluate((el) => el.tagName), "DIV", "Domain query error uses the shared Notice surface");
   const count = requests.filter((r) => r.pathname === "/api/v1/routine-interviews/routine").length;
   const response = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/routine-interviews/routine");

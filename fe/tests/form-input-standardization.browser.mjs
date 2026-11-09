@@ -96,7 +96,7 @@ const focusedId = (page) => page.evaluate(() => document.activeElement?.id ?? ""
 {
   const fixture = inventoryFixture();
   await check("an-answer-that-reaches-its-limit-says-so", "/portal/inventory/current", { overrides: fixture.overrides }, async (page) => {
-    const nickname = page.getByLabel("Nickname", { exact: true });
+    const nickname = page.getByLabel("Nickname*", { exact: true });
     await nickname.fill("N".repeat(99));
     assert.equal(await page.locator("#inventory-nickname-limit").textContent(), "");
     await nickname.press("End");

@@ -24,14 +24,14 @@ export function OverviewAnnouncements() {
         className="border-b-0 pb-1"
         title="Announcements"
         titleId="overview-announcements-heading"
-        actions={<SectionLink href="/announcements" label="All announcements" icon={Megaphone} />}
+        actions={<SectionLink href="/announcements" label="All Announcements" icon={Megaphone} />}
       />
 
       {list.isPending ? (
         <div aria-busy="true" className="space-y-3 px-4 py-4 sm:px-5">
           <Skeleton className="h-5 w-2/3" />
           <Skeleton className="h-5 w-1/2" />
-          <p className="sr-only">Loading announcements…</p>
+          <p className="sr-only">Loading Announcements…</p>
         </div>
       ) : list.isError ? (
         <PanelMessage
@@ -43,11 +43,11 @@ export function OverviewAnnouncements() {
           )}
         >
           {signedOut
-            ? "Your session has ended. Sign in again to see announcements for your account."
-            : "Couldn't load announcements. Try again."}
+            ? "Your session has ended. Sign in again to see Announcements for your account."
+            : "Couldn't load Announcements. Try again."}
         </PanelMessage>
       ) : items.length === 0 ? (
-        <PanelMessage>No current announcements.</PanelMessage>
+        <PanelMessage>No current Announcements.</PanelMessage>
       ) : (
         <ul className="grid grid-cols-[minmax(0,1fr)] gap-x-6 divide-y divide-border px-4 pb-2 @min-[42rem]:grid-cols-3 @min-[42rem]:divide-y-0 sm:px-5">
           {items.map((announcement) => (

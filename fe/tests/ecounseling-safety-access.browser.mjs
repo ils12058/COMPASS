@@ -26,7 +26,7 @@ async function eventually(condition, message) {
 
 function world(role = "COUNSELOR", states = {}) {
   const student = role === "STUDENT";
-  const state = { recording: "NOT_STARTED", transcription: "NOT_STARTED", artifact: null, workspaceStatus: 200, contextStatus: 200, sessionStatus: 200, linkStatus: 200, joins: 0, logouts: 0, holdContext: false, heldContext: [], holdCredential: false, heldCredentials: [], holdLink: false, heldLinks: [], ...states };
+  const state = { recording: "NOT_STARTED", artifact: null, workspaceStatus: 200, contextStatus: 200, sessionStatus: 200, linkStatus: 200, joins: 0, logouts: 0, holdContext: false, heldContext: [], holdCredential: false, heldCredentials: [], holdLink: false, heldLinks: [], ...states };
   const account = messagesAccount(role, { id: student ? STUDENT.id : COUNSELOR.id });
   account.capabilities.push(...(student ? ["routine_interviews.view_self", "routine_interviews.manage_self"] : ["routine_interviews.view_assigned", "routine_interviews.manage_assigned"]));
   const backend = createMessagesBackend({ viewerId: account.id, viewerRole: role });
@@ -39,7 +39,6 @@ function world(role = "COUNSELOR", states = {}) {
     value.counselor.display_name = "Protected Counselor Fixture";
     value.media.media_policy_version = 2;
     value.media.recording.capture_status = state.recording;
-    value.media.transcription.capture_status = state.transcription;
     value.media.recording.artifact_status = state.artifact;
     value.media.recording.artifact_available = state.artifact === "STORED";
     value.counseling_context_available = true;
@@ -96,11 +95,11 @@ async function signOutMenu(page) {
   await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
 }
 async function assertNoProviderCommands(page, requests) {
-  for (const method of ["startRecording", "stopRecording", "startTranscription", "stopTranscription"]) assert.equal(await count(page, method), 0);
-  assert.equal(requests.filter((request) => /\/(recording|transcription)\/(start|stop)$/.test(request.pathname)).length, 0, "Cleanup never issues backend capture commands");
+  for (const method of ["startRecording", "stopRecording"]) assert.equal(await count(page, method), 0);
+  assert.equal(requests.filter((request) => /\/recording\/(start|stop)$/.test(request.pathname)).length, 0, "Cleanup never issues backend capture commands");
 }
 
-for (const role of ["COUNSELOR", "STUDENT"]) for (const kind of ["recording", "transcription"]) for (const status of ["ACTIVE", "START_REQUESTED", "STOP_REQUESTED", "ERROR"]) {
+for (const role of ["COUNSELOR", "STUDENT"]) for (const kind of ["recording"]) for (const status of ["ACTIVE", "START_REQUESTED", "STOP_REQUESTED", "ERROR"]) {
   const w = world(role, { [kind]: status });
   await check(`${role}-${kind}-${status}-leave-safety`, ePath, w.options, async (page, { requests }) => {
     await join(page, role);
@@ -127,13 +126,12 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const kind of ["recording", "t
 }
 
 for (const role of ["COUNSELOR", "STUDENT"]) {
-  const w = world(role, { recording: "STOP_REQUESTED", transcription: "ERROR" });
-  await check(`${role}-both-unresolved-sign-out`, ePath, w.options, async (page, { requests }) => {
+  const w = world(role, { recording: "STOP_REQUESTED" });
+  await check(`${role}-unresolved-recording-sign-out`, ePath, w.options, async (page, { requests }) => {
     await join(page, role); await signOutMenu(page);
     const dialog = page.getByRole("alertdialog", { name: "Sign out and end this call?" });
     await shown(dialog);
-    assert.match(await dialog.innerText(), /Recording and transcription have not been confirmed as stopped/);
-    assert.match(await dialog.innerText(), /Signing out may not stop recording or transcription/);
+    assert.match(await dialog.innerText(), /The recording may still be running\. Stop it before you sign out\./);
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     assert.equal(await count(page, "destroy"), 0);
     await signOutMenu(page); await page.getByRole("alertdialog").getByRole("button", { name: "Sign out", exact: true }).click();
@@ -144,20 +142,11 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
 }
 
 for (const role of ["COUNSELOR", "STUDENT"]) for (const status of ["NOT_STARTED", "READY"]) {
-  const w = world(role, { recording: status, transcription: status });
+  const w = world(role, { recording: status });
   await check(`${role}-${status}-leave-without-warning`, ePath, w.options, async (page) => {
     await join(page, role); await stage(page).getByRole("button", { name: "Leave session", exact: true }).click();
     await eventually(async () => await count(page, "destroy") === 1, "Terminal capture uses ordinary cleanup");
     assert.equal(await leaveDialog(page).count(), 0);
-  });
-}
-
-for (const role of ["COUNSELOR", "STUDENT"]) {
-  const w = world(role, { transcription: "STOPPED" });
-  await check(`${role}-legacy-transcription-stop-is-uncertain`, ePath, w.options, async (page) => {
-    await join(page, role); await shown(stage(page).getByText("Transcription stop not confirmed", { exact: true }));
-    await stage(page).getByRole("button", { name: "Leave session", exact: true }).click();
-    await shown(leaveDialog(page)); assert.match(await leaveDialog(page).innerText(), /Transcription has not been confirmed as stopped/);
   });
 }
 
@@ -180,7 +169,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const failure of [503, "timeou
 }
 
 for (const role of ["COUNSELOR", "STUDENT"]) {
-  const w = world(role, { recording: "STOP_REQUESTED", transcription: "ERROR" });
+  const w = world(role, { recording: "STOP_REQUESTED" });
   await check(`${role}-403-conceals-dependent-views-and-allows-fresh-recovery`, ePath, w.options, async (page, { requests }) => {
     await join(page, role); await fake(page, "remoteJoin", { userId: "synthetic-remote", name: "Fixture" });
     await page.getByRole("button", { name: /^Messages/ }).click();
@@ -195,7 +184,8 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
     assert.equal(await page.evaluate(() => window.__COMPASS_FAKE_DAILY__.liveListenerCount()), 0);
     assert.equal(w.state.sessionStatus, 200, "Account remains authenticated");
     assert.equal(w.state.joins, 1, "No new credential after denial");
-    await shown(page.getByText(/Recording and transcription have not been confirmed as stopped/));
+    await shown(page.getByText(/The recording may still be running/));
+    assert.doesNotMatch(await page.locator("body").innerText(), /transcri/i);
     await assertNoProviderCommands(page, requests);
     await screenshot(page, `${role.toLowerCase()}-resource-unavailable`);
     w.state.workspaceStatus = 503; await page.getByRole("button", { name: "Retry", exact: true }).first().click();

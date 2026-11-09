@@ -10,7 +10,7 @@ import {
   resolveResourceReader,
 } from "@/features/public/shared/server-reader";
 
-const description = "Resource from the UCN Guidance Office.";
+const description = "Resource from the UCN Guidance and Counseling Office.";
 
 export async function generateMetadata({
   params,
@@ -62,7 +62,7 @@ export default async function ResourceDetailPage({
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
           <Link href={listReturnHref("/resources", backParams, ["search", "category", "kind", "page"])} className={pageBackLinkClass}>
-            Back to resources
+            Back to Resources
           </Link>
           <ResourceDetail resourceId={resourceId} />
         </div>

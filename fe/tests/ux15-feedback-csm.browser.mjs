@@ -333,7 +333,7 @@ await check("customer invalid idempotency key remains a confirmed rejection", cu
   await fillCustomerRequired(page);
   await page.getByRole("button", { name: "Review and submit", exact: true }).click();
   await page.getByRole("button", { name: "Submit Customer Feedback", exact: true }).click();
-  await shown(page.getByRole("alert").filter({ hasText: "This submission attempt could not be verified" }));
+  await shown(page.getByRole("alert").filter({ hasText: "Couldn't verify submission attempt." }));
   assert.equal(submissions, 1);
   assert.equal(await page.getByRole("button", { name: "Check status", exact: true }).count(), 0, "a deterministic key rejection is not described as an uncertain result");
   assert.equal(await page.locator("#feedback-office-visits").isDisabled(), false);

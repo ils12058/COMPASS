@@ -314,7 +314,7 @@ if (phase === "before") {
       const answer = "Synthetic response after a failed save.";
       await page.locator("#routine-coping").fill(answer);
       await getSaveButton(page).click();
-      await shown(page.getByRole("alert").filter({ hasText: "could not be saved" }));
+      await shown(page.getByRole("alert").filter({ hasText: "Couldn't save your Routine Interview progress." }));
       await shown(page.getByRole("status").filter({ hasText: "Unsaved changes" }));
       assert.equal(await page.locator("#routine-coping").inputValue(), answer);
       assert.equal(await getSubmitButton(page).isDisabled(), true);
@@ -397,11 +397,11 @@ if (phase === "before") {
       await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
       await getSubmitButton(page).click();
       await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
-      await shown(page.getByText("We couldn't confirm your Intake status."));
+      await shown(page.getByText(/Couldn't confirm your Intake status;/));
       assert.equal(await page.locator("#routine-coping").inputValue(), answer);
       assert.equal(await getSubmitButton(page).isDisabled(), true);
       await page.getByRole("button", { name: "Check status", exact: true }).click();
-      await shown(page.getByText("We couldn't confirm your Intake status."));
+      await shown(page.getByText(/Couldn't confirm your Intake status;/));
       assert.equal(await page.locator("#routine-coping").inputValue(), answer);
       await page.getByRole("button", { name: "Check status", exact: true }).click();
       await shown(page.getByRole("status").filter({ hasText: "Your Intake is still a draft" }));
@@ -423,7 +423,7 @@ if (phase === "before") {
       await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
       await getSubmitButton(page).click();
       await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
-      await shown(page.getByText("We couldn't confirm your Intake status."));
+      await shown(page.getByText(/Couldn't confirm your Intake status;/));
       const checkStatus = page.getByRole("button", { name: "Check status", exact: true });
       const checksBeforeClick = state.statusChecks;
       await checkStatus.click();

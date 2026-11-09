@@ -283,7 +283,7 @@ test("provider recording events only ask COMPASS to refresh; no transcription ev
   assert.equal(subscribedCallEvents.some((event) => event.startsWith("transcription")), false);
   assert.equal(session.getSnapshot(), before, "Provider events never change the call's own state");
   assert.equal(subscribedCallEvents.includes("transcription-message"), false);
-  daily.transcriptMessage();
+  assert.equal(typeof daily.transcriptMessage, "undefined", "The recording-only fake provider exposes no transcription event helper");
   assert.equal(daily.log.some(([method, event]) => method === "on" && event === "transcription-message"), false);
   assert.doesNotMatch(JSON.stringify(session.getSnapshot()), /SYNTHETIC TRANSCRIPT/);
 });

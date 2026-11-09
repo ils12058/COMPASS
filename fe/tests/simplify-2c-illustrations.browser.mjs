@@ -99,13 +99,13 @@ if (!before) {
     await h.shown(page.locator('#student-home-services-heading'));
     await page.addStyleTag({content:"html { font-size:200%; }"});
     await h.noHorizontalOverflow(page);
-    await h.shown(page.getByRole("link",{name:"Book appointment",exact:true}));
+    await h.shown(page.getByRole("link",{name:"Book Appointment",exact:true}));
   });
   await h.check("home-image-failure", "/portal",homeWorld().options({beforeNavigate:async({context})=>{
     await context.route("**/_next/image?**",route=>route.abort("failed"));
   }}),async page=>{
-    await h.shown(page.getByRole("link",{name:"Book appointment",exact:true}));
-    await h.shown(page.getByRole("link",{name:"View appointments",exact:true}));
+    await h.shown(page.getByRole("link",{name:"Book Appointment",exact:true}));
+    await h.shown(page.getByRole("link",{name:"View Appointments",exact:true}));
     await h.noHorizontalOverflow(page);
   });
 }

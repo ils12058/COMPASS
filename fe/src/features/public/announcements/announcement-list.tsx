@@ -89,13 +89,13 @@ export function AnnouncementList(props: AnnouncementListProps) {
     );
 
   if (audience === "pending" || query.isPending) {
-    return frame(<PublicRowsSkeleton rows={isPreview ? 3 : 5} label="Loading announcements…" />);
+    return frame(<PublicRowsSkeleton rows={isPreview ? 3 : 5} label="Loading Announcements…" />);
   }
 
   if (query.isError) {
     return frame(
       <PublicSectionError
-        message={readsAccount ? "Couldn't load announcements. Try again." : "Couldn't load public announcements. Try again."}
+        message={readsAccount ? "Couldn't load Announcements. Try again." : "Couldn't load public Announcements. Try again."}
         onRetry={() => void query.refetch()}
       />,
     );
@@ -109,9 +109,9 @@ export function AnnouncementList(props: AnnouncementListProps) {
         <PanelMessage action={search ? (
           <Link href={indexHref(undefined, requestedOrdering)} className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
         ) : undefined}>
-          {result.page > 1 ? "No announcements on this page." : search ? "No announcements match this search." : readsAccount
-            ? "No announcements are available right now."
-            : "No public announcements are available right now."}
+          {result.page > 1 ? "No Announcements on this page." : search ? "No Announcements match this search." : readsAccount
+            ? "No Announcements are available right now."
+            : "No public Announcements are available right now."}
         </PanelMessage>
         {!isPreview ? <PublicPagination page={result.page} hasNext={result.has_next} buildHref={(nextPage) => indexHref(search, requestedOrdering, nextPage)} /> : null}
       </>,
@@ -150,7 +150,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
       </ol>
 
       {query.isFetching && !query.isPending ? (
-        <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing announcements…</p>
+        <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing Announcements…</p>
       ) : null}
 
       {!isPreview ? (

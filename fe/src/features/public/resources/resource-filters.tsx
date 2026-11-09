@@ -63,7 +63,7 @@ export function ResourceFilters({
   }
 
   return (
-    <form role="search" aria-label="Search resources" onSubmit={submit} key={`${search ?? ""}:${category ?? ""}:${kind ?? ""}`}>
+    <form role="search" aria-label="Search Resources" onSubmit={submit} key={`${search ?? ""}:${category ?? ""}:${kind ?? ""}`}>
       <FilterToolbar
         fieldsClassName="lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,13rem))]"
         actions={<>
@@ -71,8 +71,8 @@ export function ResourceFilters({
           <Button type="submit">Apply filters</Button>
         </>}
       >
-        <FilterField label="Search resources" htmlFor="resource-filter-search">
-          <Input id="resource-filter-search" name="search" type="search" placeholder="Search resources" defaultValue={search} />
+        <FilterField label="Search Resources" htmlFor="resource-filter-search">
+          <Input id="resource-filter-search" name="search" type="search" placeholder="Search Resources" defaultValue={search} />
         </FilterField>
         <FilterField label="Category" htmlFor="resource-filter-category">
           <Select id="resource-filter-category" name="category" defaultValue={category ?? ""}>
@@ -84,7 +84,7 @@ export function ResourceFilters({
         </FilterField>
         <FilterField label="Resource type" htmlFor="resource-filter-kind">
           <Select id="resource-filter-kind" name="kind" defaultValue={kind ?? ""}>
-            <option value="">All resource types</option>
+            <option value="">All Resource types</option>
             {Object.values(ResourceKindValue).map((value) => (
               <option key={value} value={value}>{resourceKindLabels[value]}</option>
             ))}

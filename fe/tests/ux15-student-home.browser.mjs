@@ -92,7 +92,7 @@ if (!baseline) {
       await shown(attention(page).getByRole("link", { name: "Start Inventory", exact: true }));
       assert.equal(await attention(page).locator("li").count(), 1);
       assert.equal(await attention(page).getByText("Time sensitive", { exact: true }).count(), 0);
-      assert.equal(await page.locator("main").getByRole("link", { name: "Book appointment", exact: true }).getAttribute("href"), "/portal/appointments/book");
+      assert.equal(await page.locator("main").getByRole("link", { name: "Book Appointment", exact: true }).getAttribute("href"), "/portal/appointments/book");
       assert.equal(requests.filter((r) => r.method !== "GET").length, 0, "Rendering never mutates");
     });
   }
@@ -115,7 +115,7 @@ if (!baseline) {
     await check(`lifecycle-${lifecycle}-keeps-own-reading-and-action-eligibility`, "/portal", state.options(), async (page) => {
       const services = page.locator('section[aria-labelledby="student-home-services-heading"]');
       await shown(services);
-      assert.equal(await page.locator("main").getByRole("link", { name: "Book appointment", exact: true }).count(), 0);
+      assert.equal(await page.locator("main").getByRole("link", { name: "Book Appointment", exact: true }).count(), 0);
       assert.equal(await attention(page).getByRole("link", { name: /Start Inventory|Continue Inventory/ }).count(), 0);
       assert.equal(await page.locator('section[aria-labelledby="overview-summary-heading"]').getByText("Routine Interview drafts", { exact: true }).count(), 0, "Non-Current draft counts are unavailable, not zero");
       if (lifecycle === "GRADUATED") {
@@ -135,7 +135,7 @@ if (!baseline) {
     await check("no-unauthorized-shortcuts-or-fabricated-zero-counts", "/portal", state.options(), async (page) => {
       await shown(attention(page).getByText(/No current actions/));
       assert.equal(await page.locator("#student-home-services-heading, #overview-summary-heading").count(), 0);
-      assert.equal(await page.locator("main").getByRole("link", { name: "Book appointment", exact: true }).count(), 0);
+      assert.equal(await page.locator("main").getByRole("link", { name: "Book Appointment", exact: true }).count(), 0);
       assert.equal(await page.locator('main a[href="/portal/services"]').count(), 0);
       await shown(page.locator("#overview-announcements-heading"));
     });
@@ -217,7 +217,7 @@ if (!baseline) {
       await shown(announcements.getByText(state.announcements[2].title, { exact: true }));
       assert.deepEqual(await announcements.locator("li a").evaluateAll((nodes) => nodes.map((n) => n.getAttribute("href"))), state.announcements.map((a) => `/announcements/${a.id}`));
       assert.equal(await announcements.getByText("Pinned", { exact: true }).count(), 1);
-      assert.equal(await announcements.getByRole("link", { name: "All announcements", exact: true }).getAttribute("href"), "/announcements");
+      assert.equal(await announcements.getByRole("link", { name: "All Announcements", exact: true }).getAttribute("href"), "/announcements");
       const read = requests.find((r) => r.pathname === "/api/v1/announcements");
       assert.equal(new URLSearchParams(read.search).get("page_size"), "3");
       assert.equal(new URLSearchParams(read.search).get("page"), "1");
@@ -228,12 +228,12 @@ if (!baseline) {
     const state = homeWorld(); state.announcementsStatus = 500;
     await check("announcement-failure-retry-and-empty-do-not-disrupt-student-actions", "/portal", state.options(), async (page) => {
       const announcements = page.locator('section[aria-labelledby="overview-announcements-heading"]');
-      await shown(announcements.getByText("Couldn't load announcements. Try again.", { exact: true }));
+      await shown(announcements.getByText("Couldn't load Announcements. Try again.", { exact: true }));
       await shown(attention(page).getByRole("link", { name: "Review Call Slip", exact: true }));
-      assert.equal(await announcements.getByText("No current announcements.", { exact: true }).count(), 0);
+      assert.equal(await announcements.getByText("No current Announcements.", { exact: true }).count(), 0);
       state.announcementsStatus = 200; state.announcements = [];
       await announcements.getByRole("button", { name: "Retry", exact: true }).click();
-      await shown(announcements.getByText("No current announcements.", { exact: true }));
+      await shown(announcements.getByText("No current Announcements.", { exact: true }));
     });
   }
   {

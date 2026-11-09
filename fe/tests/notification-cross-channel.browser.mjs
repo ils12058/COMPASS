@@ -11,7 +11,7 @@ const center = "/portal/notifications";
 const families = [
   ["APPOINTMENT", "Appointment scheduled", "Open Appointment", "appointments", appointment.reference_code],
   ["GROUP_SESSION", "Group Session updated", "Open Group Session", "group-sessions", "Synthetic Group Session"],
-  ["GOOD_MORAL", "Good Moral Certificate issued", "Open Good Moral request", "good-moral", "Synthetic Applicant"],
+  ["GOOD_MORAL", "Good Moral Certificate issued", "Open Good Moral Certificate request", "good-moral", "Synthetic Applicant"],
   ["CALL_SLIP", "New Call Slip", "Open Call Slip", "call-slips", slip.student_name_snapshot],
 ];
 const failed = { error: { code: "synthetic_failure", message: "Synthetic failure" } };
@@ -102,7 +102,7 @@ for (const family of families) {
   const f = world({ markFailure: true });
   await check("failed mark-read keeps unread/cache/destination; explicit retry succeeds", center, f.options, async page => {
     await page.getByRole("button", { name: "Open Appointment", exact: true }).click();
-    await shown(page.getByRole("alert").filter({ hasText: "could not be marked as read" }));
+    await shown(page.getByRole("alert").filter({ hasText: "Couldn't mark this notification as read" }));
     await shown(page.getByText("Unread", { exact: true }));
     await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
     assert.equal(new URL(page.url()).pathname, center);
@@ -117,7 +117,7 @@ for (const family of families) {
   const f = world({ markFailure: true });
   await check("mark-all failure leaves count and rows; successful retry reconciles both", center, f.options, async page => {
     await page.getByRole("button", { name: "Mark all read", exact: true }).click();
-    await shown(page.getByRole("alert").filter({ hasText: "could not be marked as read" }));
+    await shown(page.getByRole("alert").filter({ hasText: "Couldn't mark notifications as read" }));
     await shown(page.getByText("Unread", { exact: true }));
     f.state.markFailure = false;
     await page.getByRole("button", { name: "Mark all read", exact: true }).click();
@@ -179,7 +179,7 @@ for (const mode of ["empty", "error", "long desktop", "long phone dark preferenc
     await shown(page.getByRole("heading", { name: "Notifications", exact: true }));
     if (mode === "empty") await shown(page.getByText("No notifications are available yet.", { exact: true }));
     else if (mode === "error") {
-      await shown(page.getByRole("alert").filter({ hasText: "could not be loaded" }));
+      await shown(page.getByRole("alert").filter({ hasText: "Couldn't load notifications" }));
       f.state.listFailure = false;
       await page.getByRole("button", { name: "Retry", exact: true }).click();
       await shown(page.getByRole("heading", { name: families[0][1], exact: true }));

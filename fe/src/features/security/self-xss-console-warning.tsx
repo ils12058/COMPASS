@@ -13,7 +13,7 @@ const WARNING = [
   "COMPASS will never ask you to paste code into Developer Tools.",
   "",
   "University of Camarines Norte",
-  "Guidance Office",
+  "Guidance and Counseling Office",
   "COMPASS",
   "",
   "Opened this intentionally? Hello, developer.",

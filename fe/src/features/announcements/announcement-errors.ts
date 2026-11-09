@@ -11,7 +11,7 @@ const issueCopy: Record<string, string> = {
   page_invalid: "Choose a page number of 1 or more.",
   page_size_invalid: "Choose between 1 and 50 results per page.",
   unsupported_fields: "Review the Announcement details and try again.",
-  ordering_invalid: "Choose a Announcement order.",
+  ordering_invalid: "Choose an Announcement order.",
   audience_invalid: "Choose an audience.",
   expiry_invalid: "Enter a valid expiry date and time.",
   expiry_not_future: "Choose a future expiry time, or archive this Announcement to remove it now.",

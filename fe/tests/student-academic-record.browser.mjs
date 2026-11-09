@@ -66,7 +66,7 @@ function academicFixture({years=true}={}){
   await form.getByRole("button",{name:"Review graduation",exact:true}).click();
   const confirmation=page.getByRole("alertdialog");
   await h.shown(confirmation.getByRole("heading",{name:"Record graduation?",exact:true}));
-  await h.shown(confirmation.getByText(/Recording graduation clears the current placement and sets the Student lifecycle to Graduated\. Exit Interview and Good Moral are not checked or changed\./));
+  await h.shown(confirmation.getByText(/Recording graduation clears the current placement and sets the Student's status to Graduated\. Exit Interview and Good Moral Certificate requirements are not checked or changed\./));
   await h.shown(confirmation.getByText("Will be cleared",{exact:true}));
   assert.equal(f.state.writes.length,0,"confirmation alone never writes");
   await confirmation.getByRole("button",{name:"Record graduation",exact:true}).click();

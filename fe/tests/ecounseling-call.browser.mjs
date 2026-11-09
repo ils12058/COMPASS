@@ -1,7 +1,7 @@
 // The native E-Counseling call and compact session workspace (ADR-093) in a real browser. The page
 // uses the fake Call Object (tests/support/fake-daily.mjs) with synthetic camera and microphone
 // tracks, and every API call is answered with synthetic fixtures: no Daily room, credential,
-// recording, transcript or institutional record is touched.
+// recording or institutional record is touched.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
@@ -17,8 +17,8 @@ const COUNSELOR = "Maria Reyes";
 const AVATAR_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%237c3aed'/%3E%3C/svg%3E";
 
 // A session whose capture and consent state a test can change while the page is open.
-function liveSession({ student = false, version = 2, recording = "NOT_STARTED", transcription = "NOT_STARTED", decision = "APPROVED", storage = null, artifact = null, context = false, joinState = "OPEN", roomProvisioned = true, joinAllowed = true, avatarPhotos = false, participantPhotoUrl = AVATAR_IMAGE } = {}) {
-  const state = { recording, transcription, decision, storage, artifact, failWorkspace: false, joins: 0, workspaceReads: 0, joinState, roomProvisioned, joinAllowed };
+function liveSession({ student = false, recording = "NOT_STARTED", decision = "APPROVED", artifact = null, context = false, joinState = "OPEN", roomProvisioned = true, joinAllowed = true, avatarPhotos = false, participantPhotoUrl = AVATAR_IMAGE } = {}) {
+  const state = { recording, decision, artifact, failWorkspace: false, joins: 0, workspaceReads: 0, joinState, roomProvisioned, joinAllowed };
   const prefix = `/api/v1/e-counseling/${student ? "me/" : ""}appointments/${appointmentId}`;
   const data = () => {
     const value = workspace();
@@ -31,22 +31,14 @@ function liveSession({ student = false, version = 2, recording = "NOT_STARTED", 
     value.provider_readiness.join_state = state.joinState;
     value.provider_readiness.room_provisioned = state.roomProvisioned;
     value.provider_readiness.join_allowed = state.joinAllowed;
-    value.media.media_policy_version = version;
     value.media.recording.capture_status = state.recording;
-    value.media.transcription.capture_status = state.transcription;
-    value.media.transcription.storage_consent_status = state.storage ?? "NOT_REQUESTED";
-    for (const item of [value.media.recording, value.media.transcription]) {
-      item.artifact_status = state.artifact;
-      item.artifact_available = state.artifact === "STORED";
-    }
+    value.media.recording.artifact_status = state.artifact;
+    value.media.recording.artifact_available = state.artifact === "STORED";
     return value;
   };
   const rows = () => {
     const base = consents(state.decision)[0];
-    if (version === 1) return consents(state.decision);
-    const result = [{ ...base, id: "v2-media", scope: "SESSION_MEDIA_CAPTURE" }];
-    if (state.storage) result.push({ ...consents(state.storage)[0], id: "v2-storage", scope: "TRANSCRIPT_STORAGE" });
-    return result;
+    return [{ ...base, id: "recording-consent", scope: "AUDIO_VIDEO_RECORDING" }];
   };
   const overrides = {
     [prefix]: ({ reply }) => {
@@ -310,14 +302,14 @@ await check("leave-and-rejoin-fresh-credential", ePath, { fakeDaily: true, overr
   await check("governed-recording-through-compass", ePath, { fakeDaily: true, overrides: session.overrides }, async (page, { requests }) => {
     await joinCall(page);
     await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
-    await shown(page.getByText("Media permission · Approved", { exact: true }));
+    await shown(page.getByText("Recording permission · Approved", { exact: true }));
     await tray(page).getByRole("button", { name: "Start recording", exact: true }).click();
     const dialog = page.getByRole("alertdialog", { name: "Start recording?", exact: true });
     await shown(dialog);
     const text = await dialog.innerText();
     assert.match(text, /Audio and video from this session will be recorded\./);
-    assert.match(text, /The student has approved media permission\./);
-    assert.match(text, /may be downloaded by an authorized assigned Counselor/);
+    assert.match(text, /The student has allowed recording\./);
+    assert.match(text, /may be downloaded by the assigned Counselor/);
     await dialog.getByRole("button", { name: "Start recording", exact: true }).click();
     await hidden(dialog);
     await shown(stage(page).getByText("Recording", { exact: true }));
@@ -328,54 +320,9 @@ await check("leave-and-rejoin-fresh-credential", ePath, { fakeDaily: true, overr
     await shown(tray(page).getByRole("button", { name: "Stopping…", exact: true }));
     await shown(stage(page).getByText("Recording stopping…", { exact: true }));
     assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/recording/stop")).length, 1);
-    for (const method of ["startRecording", "stopRecording", "startTranscription", "stopTranscription"]) assert.equal(await fakeCount(page, method), 0, `The browser never calls Daily ${method}`);
+    for (const method of ["startRecording", "stopRecording"]) assert.equal(await fakeCount(page, method), 0, `The browser never calls Daily ${method}`);
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
     await screenshot(page, "counselor-recording-governed");
-  });
-}
-
-{
-  const session = liveSession({ storage: "APPROVED" });
-  let body = null;
-  session.overrides[`POST /api/v1/e-counseling/appointments/${appointmentId}/transcription/start`] = ({ reply, request }) => {
-    body = JSON.parse(request.postData());
-    session.state.transcription = "ACTIVE";
-    return reply({ kind: "TRANSCRIPTION", status: "START_REQUESTED", storage_enabled: body.store_transcript });
-  };
-  await check("governed-transcription-storage-choice", ePath, { fakeDaily: true, overrides: session.overrides }, async (page) => {
-    await joinCall(page);
-    await tray(page).getByRole("button", { name: "Start transcription", exact: true }).click();
-    const dialog = page.getByRole("alertdialog", { name: "Start live transcription?", exact: true });
-    await shown(dialog);
-    const liveOnly = dialog.getByRole("radio", { name: /Live transcription only/ });
-    const save = dialog.getByRole("radio", { name: /Live transcription \+ save transcript/ });
-    assert.equal(await liveOnly.isChecked(), true, "Saving is never the implicit default");
-    assert.match(await dialog.innerText(), /The student has allowed transcript storage\./);
-    assert.match(await dialog.innerText(), /Transcript text isn’t shown here\./);
-    await save.check();
-    await dialog.getByRole("button", { name: "Start transcription", exact: true }).click();
-    await hidden(dialog);
-    assert.deepEqual(body, { store_transcript: true });
-    await shown(stage(page).getByText("Transcription on", { exact: true }));
-    assert.equal(await fakeCount(page, "startTranscription"), 0);
-  });
-}
-
-{
-  const session = liveSession();
-  let body = null;
-  session.overrides[`POST /api/v1/e-counseling/appointments/${appointmentId}/transcription/start`] = ({ reply, request }) => {
-    body = JSON.parse(request.postData());
-    return reply({ kind: "TRANSCRIPTION", status: "START_REQUESTED", storage_enabled: false });
-  };
-  await check("transcription-without-storage-consent", ePath, { fakeDaily: true, overrides: session.overrides }, async (page) => {
-    await joinCall(page);
-    await tray(page).getByRole("button", { name: "Start transcription", exact: true }).click();
-    const dialog = page.getByRole("alertdialog", { name: "Start live transcription?", exact: true });
-    await shown(dialog.getByText(/Live transcription only\. The student hasn’t allowed transcript storage/));
-    assert.equal(await dialog.getByRole("radio").count(), 0);
-    await dialog.getByRole("button", { name: "Start transcription", exact: true }).click();
-    await hidden(dialog);
-    assert.deepEqual(body, { store_transcript: false });
   });
 }
 
@@ -391,25 +338,22 @@ await check("leave-and-rejoin-fresh-credential", ePath, { fakeDaily: true, overr
     await page.waitForTimeout(300);
     assert.equal(await stage(page).getByText("Recording", { exact: true }).count(), 0, "COMPASS state, not the browser event, decides what is shown");
     await shown(tray(page).getByRole("button", { name: "Start recording", exact: true }));
-    await fake(page, "transcriptMessage");
-    assert.doesNotMatch(await page.locator("body").innerText(), /SYNTHETIC TRANSCRIPT TEXT/);
+    assert.doesNotMatch(await page.locator("body").innerText(), /transcri/i);
   });
 }
 
-await check("leave-warning-during-capture", ePath, { fakeDaily: true, overrides: liveSession({ recording: "ACTIVE", transcription: "ACTIVE" }).overrides }, async (page, { requests }) => {
+await check("leave-warning-during-capture", ePath, { fakeDaily: true, overrides: liveSession({ recording: "ACTIVE" }).overrides }, async (page, { requests }) => {
   await joinCall(page);
   await shown(stage(page).getByText("Recording", { exact: true }));
-  await shown(stage(page).getByText("Transcription on", { exact: true }));
   await tray(page).getByRole("button", { name: "Leave session", exact: true }).click();
   const dialog = page.getByRole("alertdialog", { name: "Leave this session?", exact: true });
-  assert.match(await dialog.innerText(), /Recording and transcription have not been confirmed as stopped\./);
-  assert.match(await dialog.innerText(), /Leaving the call may not stop recording or transcription/);
+  assert.match(await dialog.innerText(), /The recording may still be running\. Stop it before you leave the call\./);
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await shown(tray(page));
   await tray(page).getByRole("button", { name: "Leave session", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Leave session", exact: true }).click();
   await shown(stage(page).getByRole("button", { name: "Rejoin", exact: true }));
-  assert.equal(requests.filter((request) => request.method === "POST" && /\/(recording|transcription)\/stop$/.test(request.pathname)).length, 0, "Leaving never stops capture");
+  assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/recording/stop")).length, 0, "Leaving never stops capture");
   assert.equal(await fakeCount(page, "stopRecording"), 0);
   // Capture still running outside the call keeps its stop where the Counselor can reach it.
   await shown(page.getByRole("button", { name: "Stop recording", exact: true }));
@@ -464,7 +408,7 @@ await check("remote-audio-autoplay-blocked", ePath, {
     await joinCall(page);
     session.state.failWorkspace = true;
     await fake(page, "providerEvent", "recording-error");
-    await shown(page.getByText(/Session status couldn’t be refreshed\. Starting recording or transcription is paused/));
+    await shown(page.getByText("Couldn't refresh the session status. Recording can't start until it refreshes.", { exact: true }));
     await shown(stage(page).getByText(`Waiting for ${STUDENT}…`, { exact: true }).first());
     const mic = tray(page).getByRole("button", { name: "Microphone", exact: true });
     await mic.click();
@@ -532,7 +476,7 @@ await check("fullscreen-video-fits-landscape-portrait-and-classic", ePath, {
   assert.equal(await fakeCount(page, "join"), 1, "Orientation and fullscreen changes do not restart the call");
 });
 
-await check("layout-presets-desktop", ePath, { fakeDaily: true, overrides: liveSession({ artifact: "STORED", recording: "READY", transcription: "STOPPED", context: true }).overrides }, async (page) => {
+await check("layout-presets-desktop", ePath, { fakeDaily: true, overrides: liveSession({ artifact: "STORED", recording: "READY", context: true }).overrides }, async (page) => {
   const group = page.getByRole("group", { name: "Session layout" });
   await shown(group);
   const width = async () => (await stage(page).boundingBox()).width;
@@ -598,7 +542,7 @@ for (const device of ["phone", "narrowPhone"]) {
     const stageTop = (await stage(page).boundingBox()).y;
     assert.ok(stageTop < viewport.height / 2, `The call starts in the top half of the screen (${stageTop}px)`);
     await joinCall(page);
-    for (const name of ["Microphone", "Camera", "Start recording", "Start transcription", "Leave session"]) {
+    for (const name of ["Microphone", "Camera", "Start recording", "Leave session"]) {
       const box = await tray(page).getByRole("button", { name, exact: true }).boundingBox();
       assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, `${name} fits the screen`);
       assert.ok(box.width >= 44 && box.height >= 44, `${name} is a usable tap target`);
@@ -613,40 +557,38 @@ for (const device of ["phone", "narrowPhone"]) {
   });
 }
 
-await check("student-mobile-v2", ePath, { device: "phone", role: "STUDENT", fakeDaily: true, overrides: liveSession({ student: true, decision: "PENDING", storage: "PENDING" }).overrides }, async (page) => {
+await check("student-mobile-recording-permission", ePath, { device: "phone", role: "STUDENT", fakeDaily: true, overrides: liveSession({ student: true, decision: "PENDING" }).overrides }, async (page) => {
   const viewport = page.viewportSize();
   const stageTop = (await stage(page).boundingBox()).y;
   assert.ok(stageTop < viewport.height / 2, `The call starts in the top half of the screen (${stageTop}px)`);
   await shown(page.getByRole("heading", { name: COUNSELOR, exact: true }));
   await joinCall(page, COUNSELOR);
   for (const name of ["Microphone", "Camera", "Devices", "Leave session"]) await shown(tray(page).getByRole("button", { name, exact: true }));
-  assert.equal(await tray(page).getByRole("button", { name: /recording|transcription/i }).count(), 0, "The Student has no capture controls");
+  assert.equal(await tray(page).getByRole("button", { name: /recording/i }).count(), 0, "The Student has no capture controls");
 
-  await shown(page.getByRole("heading", { name: "Recording & live transcription", exact: true }));
-  await shown(page.getByText("Recording creates a saved audio/video file.", { exact: true }));
-  await shown(page.getByText("Allows a transcript file to be saved.", { exact: true }));
-  assert.equal(await page.getByRole("button", { name: /^Allow / }).count(), 2);
-  assert.equal(await page.getByRole("button", { name: /^Decline / }).count(), 2);
-  assert.equal(await page.getByText(/Live transcription is only saved when transcript storage is separately allowed/).isVisible(), false, "The longer explanation starts collapsed");
+  await shown(page.getByRole("heading", { name: "Media permissions", exact: true }));
+  await shown(page.getByText("Recording is optional and creates a saved audio/video file.", { exact: true }));
+  assert.equal(await page.getByRole("button", { name: /^Allow / }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: /^Decline / }).count(), 1);
   await page.getByText("Details", { exact: true }).first().tap();
-  await shown(page.getByText(/Live transcription is only saved when transcript storage is separately allowed/));
-  await page.getByRole("button", { name: "Allow recording & live transcription", exact: true }).tap();
-  const review = page.getByRole("alertdialog", { name: "Allow recording & live transcription?", exact: true });
+  await shown(page.getByText(/your counselor may start an audio\/video recording/));
+  await page.getByRole("button", { name: "Allow audio/video recording", exact: true }).tap();
+  const review = page.getByRole("alertdialog", { name: "Allow audio/video recording?", exact: true });
   const text = await review.innerText();
-  assert.match(text, /creates a saved audio\/video file/);
-  assert.match(text, /live transcription/);
-  assert.match(text, /Allowing doesn’t start either one/);
+  assert.match(text, /may start an audio\/video recording/);
+  assert.match(text, /Allowing doesn’t start recording/);
   assert.match(text, /doesn’t affect your access to Counseling/);
+  assert.doesNotMatch(text, /transcri/i);
   await review.getByRole("button", { name: "Cancel", exact: true }).tap();
   await noHorizontalOverflow(page);
   await screenshot(page, "student-mobile-v2");
 });
 
 await check("student-withdrawal-consequence", ePath, { role: "STUDENT", fakeDaily: true, overrides: liveSession({ student: true, decision: "APPROVED" }).overrides }, async (page) => {
-  await page.getByRole("button", { name: "Withdraw recording and live transcription permission", exact: true }).click();
+  await page.getByRole("button", { name: "Withdraw recording permission", exact: true }).click();
   const review = page.getByRole("alertdialog");
   const text = await review.innerText();
-  assert.match(text, /Recording or transcription that’s running will be asked to stop/);
+  assert.match(text, /A recording that’s running will be asked to stop/);
   assert.match(text, /Withdrawing doesn’t delete files already created\. They remain subject to the University’s records and privacy requirements, and copies already downloaded can’t be recalled\./);
   assert.doesNotMatch(text, /retention rules|holds govern|deleted right away/);
   assert.match(text, /Counseling continues/);
@@ -654,12 +596,11 @@ await check("student-withdrawal-consequence", ePath, { role: "STUDENT", fakeDail
   await screenshot(page, "student-desktop-approved");
 });
 
-await check("student-v1-scopes-stay-distinct", ePath, { role: "STUDENT", decision: "PENDING" }, async (page) => {
-  for (const name of ["Audio/video recording", "Session transcription", "Transcript storage"]) await shown(page.getByRole("heading", { name, exact: true }));
+await check("recording-only-scope", ePath, { role: "STUDENT", overrides: liveSession({ student: true, decision: "PENDING" }).overrides }, async (page) => {
+  await shown(page.getByRole("heading", { name: "Audio/video recording", exact: true }));
   await shown(page.getByRole("button", { name: "Allow audio/video recording", exact: true }));
-  await shown(page.getByRole("button", { name: "Allow session transcription", exact: true }));
-  assert.match(await page.locator("main").innerText(), /Not requested/);
-  assert.doesNotMatch(await page.locator("main").innerText(), /Recording & live transcription/);
+  assert.equal(await page.getByRole("heading", { level: 3 }).filter({ hasText: /recording/i }).count(), 1, "Only the recording consent scope is presented");
+  assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
 });
 
 await check("help-keyboard-focus", ePath, {}, async (page) => {
@@ -669,7 +610,8 @@ await check("help-keyboard-focus", ePath, {}, async (page) => {
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "About E-Counseling", exact: true });
   await shown(dialog);
-  for (const name of ["Media consent", "Recording", "Transcription", "Transcript storage", "Encounter records", "Call and devices"]) await shown(dialog.getByRole("heading", { name, exact: true }));
+  for (const name of ["Recording permission", "Recording", "Private files", "Encounter records", "Call and devices"]) await shown(dialog.getByRole("heading", { name, exact: true }));
+  assert.doesNotMatch(await dialog.innerText(), /transcri/i);
   assert.equal(await dialog.evaluate((element) => element.contains(document.activeElement)), true);
   await page.keyboard.press("Tab");
   assert.equal(await dialog.evaluate((element) => element.contains(document.activeElement)), true, "Focus stays in Help");
@@ -686,56 +628,33 @@ await check("visible-video-blocker", ePath, { disabledVideo: true }, async (page
 
 await check("active-capture-visible-before-joining", ePath, { role: "STUDENT", mediaStatus: "ACTIVE" }, async (page) => {
   await shown(stage(page).getByText("Recording", { exact: true }));
-  await shown(stage(page).getByText("Transcription on", { exact: true }));
   assert.equal(await stage(page).getByRole("list", { name: "Session capture" }).count(), 1);
+  assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
 });
 
-await check("encounter-separate-from-recording", ePath, {}, async (page) => {
-  const trigger = page.getByRole("button", { name: "Record encounter", exact: true });
+await check("encounter-separate-from-recording", ePath, { overrides: {
+  ...liveSession({ joinState: "CLOSED" }).overrides,
+  [`GET /api/v1/appointments/${appointmentId}`]: ({ reply }) => reply({ error: { code: "synthetic_unavailable", message: "Synthetic" } }, 503),
+} }, async (page) => {
+  const trigger = page.getByRole("link", { name: "Record encounter", exact: true });
   await shown(trigger);
   await shown(page.getByRole("button", { name: /^Counseling Encounter.*Not yet recorded/ }));
-  await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Record encounter", exact: true });
-  await dialog.getByLabel("Actual start", { exact: true }).fill("2026-01-06T09:00");
-  await dialog.getByLabel("Actual end", { exact: true }).fill("2026-01-06T10:00");
-  await page.keyboard.press("Escape");
-  await hidden(dialog);
-  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
-  await trigger.click();
-  assert.equal(await dialog.getByLabel("Actual start", { exact: true }).inputValue(), "2026-01-06T09:00");
+  assert.equal(await trigger.getAttribute("href"), `/portal/counseling/encounters/new/appointment/${appointmentId}?from=ecounseling`);
+  assert.equal(await page.getByRole("dialog", { name: /Record encounter/i }).count(), 0);
 });
 
-let finishEncounter;
-const encounterPending = new Promise((resolve) => { finishEncounter = resolve; });
-await check("encounter-save-dismissal", ePath, { overrides: {
-  "POST /api/v1/counseling/encounters": async ({ reply }) => { await encounterPending; await reply({ error: { code: "test_uncertain", message: "Synthetic uncertain result" } }, 500); },
-} }, async (page, { requests }) => {
-  await page.getByRole("button", { name: "Record encounter", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Record encounter", exact: true });
-  await dialog.getByLabel("Actual start", { exact: true }).fill("2026-01-06T09:00");
-  await dialog.getByLabel("Actual end", { exact: true }).fill("2026-01-06T10:00");
-  await dialog.getByRole("button", { name: "Record encounter", exact: true }).click();
-  await shown(dialog.getByRole("button", { name: "Recording encounter…", exact: true }));
-  await page.keyboard.press("Escape");
-  await shown(dialog);
-  finishEncounter();
-  await shown(dialog.getByText(/Check your encounters before trying again/));
-  assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/counseling/encounters")).length, 1);
-});
-finishEncounter();
-
-await check("v2-session-files-preparing", ePath, { overrides: liveSession({ recording: "READY", transcription: "READY", artifact: "PROCESSING" }).overrides }, async (page) => {
-  await shown(page.getByText("Preparing file…", { exact: true }).first());
-  assert.equal(await page.getByText("Preparing file…", { exact: true }).count(), 2);
-  await shown(page.getByRole("button", { name: /^Session files.*Recording preparing · Transcript preparing/ }));
+await check("recording-file-preparing", ePath, { overrides: liveSession({ recording: "READY", artifact: "PROCESSING" }).overrides }, async (page) => {
+  await shown(page.getByText("Preparing file…", { exact: true }));
+  assert.equal(await page.getByText("Preparing file…", { exact: true }).count(), 1);
+  await shown(page.getByRole("button", { name: /^Session files.*Recording preparing/ }));
   await hidden(page.getByRole("button", { name: "Download recording", exact: true }));
   await page.getByRole("button", { name: "Help: About E-Counseling", exact: true }).click();
   await shown(page.getByRole("dialog").getByRole("heading", { name: "Private files", exact: true }));
 });
 
-await check("v2-no-transcript-saved-copy", ePath, { overrides: liveSession({ recording: "READY", transcription: "READY", artifact: null }).overrides }, async (page) => {
-  await shown(page.getByText("No transcript saved.", { exact: true }));
-  assert.doesNotMatch(await page.locator("main").innerText(), /Transcript storage\s*Off/);
+await check("recording-only-session-files", ePath, { overrides: liveSession({ recording: "READY", artifact: null }).overrides }, async (page) => {
+  await shown(page.getByText("Preparing file…", { exact: true }));
+  assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
 });
 
 let signedRequests = 0;
@@ -755,7 +674,7 @@ let signedRequests = 0;
   attachment.listen(0, "127.0.0.1");
   await once(attachment, "listening");
   const attachmentURL = `http://127.0.0.1:${attachment.address().port}/synthetic-media-download`;
-  const session = liveSession({ recording: "READY", transcription: "READY", artifact: "STORED" });
+  const session = liveSession({ recording: "READY", artifact: "STORED" });
   session.overrides[`/api/v1/e-counseling/appointments/${appointmentId}/media/RECORDING/access`] = ({ reply }) => reply({ url: `${attachmentURL}?token=${++signedRequests}`, expires_at: "2099-10-08T00:00:00Z" });
   await check("v2-fresh-download-per-click", ePath, { overrides: session.overrides }, async (page, { context, requests }) => {
     const button = page.getByRole("button", { name: "Download recording", exact: true });

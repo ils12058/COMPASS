@@ -123,7 +123,7 @@ async function prepared(page) {
   });
   assert.equal(await page.getByRole('button', { name: 'Print certificate', exact: true }).isEnabled(), true);
   await shown(page.getByText('The certificate has been issued. You can print or download the finalized PDF.', { exact: true }));
-  await shown(page.getByText(/physical signature and dry seal/));
+  await shown(page.getByText(/handwritten signature and dry seal/));
 }
 async function setFramePrint(page, mode) {
   await page.evaluate(mode => {
@@ -166,7 +166,12 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) for (const width of [320,
     await page.keyboard.press('Escape');
     await shown(page.getByRole('alertdialog'));
     assert.equal(data.state.issueBodies.length, 1);
-    assert.deepEqual(data.state.issueBodies[0], { expected_preparation_version: preparedVersion, expected_resource_version: certificate().actions.request_version });
+    assert.deepEqual(data.state.issueBodies[0], {
+      expected_preparation_version: preparedVersion,
+      expected_resource_version: certificate().actions.request_version,
+      expected_receipt_revision: '11111111-1111-4111-8111-111111111117',
+      expected_receipt_verification: '11111111-1111-4111-8111-111111111118',
+    });
     assert.equal(data.state.pdfReads, 0);
     data.releaseIssue();
     await data.verificationStarted;
@@ -287,7 +292,7 @@ for (const issueCode of [undefined, 'internal_error']) {
   const data = fixture({ issueCode, refreshFailures: 100 });
   await check(`issuance-${issueCode ? 'uncertain' : 'successful'}-refresh-fails-no-print-until-verified`, route, data.options, async page => {
     await issue(page);
-    await shown(page.getByText(/Latest information could not be refreshed|could not be checked/i).first());
+    await shown(page.getByText(/couldn't refresh the current request|couldn't confirm the issuance or refresh the request/i).first());
     await hidden(page.getByRole('button', { name: 'Print certificate', exact: true }));
     assert.equal(data.state.pdfReads, 0);
     data.state.refreshFailures = 0;

@@ -122,7 +122,7 @@ if (phase !== "before") {
       await page.locator("#exit-delay-other-detail").fill("Synthetic reason for delay.");
       state.failSave = true;
       await save.click();
-      await shown(page.getByRole("alert").filter({ hasText: "draft could not be saved" }));
+      await shown(page.getByRole("alert").filter({ hasText: "Couldn't save the draft." }));
       assert.equal(await page.locator("#exit-delay-other-detail").inputValue(), "Synthetic reason for delay.");
       await shown(page.getByRole("status").filter({ hasText: "Unsaved changes" }));
       state.failSave = false;

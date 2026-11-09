@@ -138,11 +138,10 @@ for (const [label, account] of [
     assert.equal(await row(page, threadIds.counseling).getAttribute("aria-current"), null);
     const directoryText = await directory.innerText();
     assert.match(await row(page, threadIds.counseling).innerText(), /Ana Cruz\s+.*\s*Counseling/s);
-    assert.match(await row(page, threadIds.resolved).innerText(), /Guidance Office[\s\S]*Resolved/);
+    assert.match(await row(page, threadIds.resolved).innerText(), /Guidance Office[\s\S]*Closed/);
     for (const hiddenText of ["Bring your ID", "Good afternoon", "Thank you po", threadIds.office, "OFFICE", "COUNSELING", "RESOLVED"]) {
       assert.ok(!directoryText.includes(hiddenText), `The directory never shows ${hiddenText}`);
     }
-    await shown(page.getByText("Guidance Office", { exact: true }));
     const items = history(page).locator("ol > li");
     await eventually(async () => (await items.count()) === 3, "Three Messages render");
     const texts = await items.allInnerTexts();
@@ -422,7 +421,7 @@ function longWorld() {
     const reopen = page.getByRole("button", { name: "Reopen conversation" });
     await shown(reopen);
     assert.equal(await reopen.evaluate((node) => document.activeElement === node), true, "Focus stays on the status control");
-    await shown(row(page, threadIds.office).getByText("Resolved"));
+    await shown(row(page, threadIds.office).getByText("Closed"));
     await shown(history(page).getByText("Good afternoon po."));
     await reopen.click();
     await shown(page.getByRole("button", { name: "Close conversation" }));

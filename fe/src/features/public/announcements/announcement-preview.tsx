@@ -11,11 +11,11 @@ export function AnnouncementPreview() {
   return (
     <Panel aria-labelledby="latest-announcements">
       <PanelHeader
-        title="Latest announcements"
+        title="Latest Announcements"
         titleId="latest-announcements"
         actions={
           <Link href="/announcements" className={publicPanelLinkClass}>
-            View all announcements
+            View all Announcements
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
         }

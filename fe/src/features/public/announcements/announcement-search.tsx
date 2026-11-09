@@ -37,7 +37,7 @@ export function AnnouncementSearch({
   }
 
   return (
-    <form role="search" aria-label="Search announcements" onSubmit={submit}>
+    <form role="search" aria-label="Search Announcements" onSubmit={submit}>
       <FilterToolbar
         fieldsClassName="sm:grid-cols-1 lg:grid-cols-[minmax(0,28rem)]"
         actions={<>
@@ -45,8 +45,8 @@ export function AnnouncementSearch({
           <Button type="submit">Search</Button>
         </>}
       >
-        <FilterField label="Search announcements" htmlFor="announcement-search">
-          <Input id="announcement-search" name="search" type="search" placeholder="Search announcements" defaultValue={search} key={search} />
+        <FilterField label="Search Announcements" htmlFor="announcement-search">
+          <Input id="announcement-search" name="search" type="search" placeholder="Search Announcements" defaultValue={search} key={search} />
         </FilterField>
       </FilterToolbar>
     </form>

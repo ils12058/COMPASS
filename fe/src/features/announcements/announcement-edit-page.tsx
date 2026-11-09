@@ -18,7 +18,7 @@ export function AnnouncementEditPage({ announcementId }: { announcementId: strin
   const detail = useAnnouncementsGetManaged(announcementId, { query: { retry: false } });
   const backHref = `/portal/announcements/${announcementId}`;
 
-  if (detail.isPending) return <ContentDetailSkeleton label="Loading announcement…" />;
+  if (detail.isPending) return <ContentDetailSkeleton label="Loading Announcement…" />;
   // A failed refresh keeps the form; its unsaved text stays in place.
   if (!detail.data || (detail.isError && shouldHideAnnouncementData(detail.error))) {
     return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;
@@ -28,7 +28,7 @@ export function AnnouncementEditPage({ announcementId }: { announcementId: strin
 
   return (
     <section>
-      <ContentPageHeading title="Edit announcement" backHref={backHref} backLabel="Back to announcement">
+      <ContentPageHeading title="Edit Announcement" backHref={backHref} backLabel="Back to Announcement">
         <div className="mt-3">
           <PublicationStatusBadge status={item.status} />
         </div>

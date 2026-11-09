@@ -38,9 +38,12 @@ for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
     }, async (page) => {
       try {
         await shown(page.locator("main h1"));
-        // WebKit's fonts.ready can wait on layout blocked by the intentional
-        // image gate. Wait only for fonts currently loading, with a hard timeout.
-        await page.waitForFunction(() => [...document.fonts].every((font) => font.status !== "loading"));
+        // Wait for the heading's actual font rather than unrelated faces whose loading can be
+        // coupled to the intentionally gated image request.
+        await page.locator("main h1").evaluate(async (element) => {
+          const font = getComputedStyle(element).font;
+          await document.fonts.load(font, element.textContent ?? "");
+        });
         const image = page.locator(`main img[src*="${route.asset}"]`);
         assert.equal(await image.count(), 1, "Public title and hero placements render exactly one illustration");
         assert.equal(await image.getAttribute("alt"), "", "Nearby content supplies decorative image meaning");
@@ -49,12 +52,32 @@ for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
           "Announcements uses its object in place of the character, without duplication");
         const visible = ["desktop", "tablet"].includes(device) || route.name === "landing";
         assert.equal(await image.isVisible(), visible, "Title-band artwork remains hidden on narrow phones");
+        if (visible) {
+          await image.evaluate((element) => {
+            const source = element.getAttribute("src");
+            element.loading = "eager";
+            element.srcset = "";
+            if (source) element.src = source;
+          });
+          await image.scrollIntoViewIfNeeded();
+        }
         const headingBefore = await page.locator("main h1").boundingBox();
         const imageBefore = visible ? await image.boundingBox() : null;
         release();
         if (visible) {
           await page.waitForFunction((element) => element.complete && element.naturalWidth > 0,
-            await image.elementHandle());
+            await image.elementHandle()).catch(async () => {
+              const state = await image.evaluate((element) => ({
+                complete: element.complete,
+                currentSrc: element.currentSrc,
+                loading: element.loading,
+                naturalWidth: element.naturalWidth,
+                src: element.src,
+                srcAttribute: element.getAttribute("src"),
+                srcset: element.getAttribute("srcset"),
+              }));
+              throw new Error(`Optimized illustration did not load: ${JSON.stringify(state)}`);
+            });
           assert.ok(await image.evaluate((element) => element.complete && element.naturalWidth > 0),
             "The actual optimized artwork loads");
           const imageAfter = await image.boundingBox();
@@ -74,8 +97,8 @@ for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
           }
         }
         await shown(page.getByText(route.name === "resources"
-          ? "No public resources are available right now."
-          : "No public announcements are available right now.", { exact: true }));
+          ? "No public Resources are available right now."
+          : "No public Announcements are available right now.", { exact: true }));
         await noHorizontalOverflow(page);
         await screenshot(page, `${route.name}-${device}`);
       } finally { release(); }

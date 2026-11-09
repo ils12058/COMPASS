@@ -62,10 +62,10 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
       return (
         <Notice title={<h1 className="font-heading text-2xl font-bold text-ink">Resource not found</h1>}>
           {readsAccount ? (
-            <p>This resource does not exist or is not available to your account.</p>
+            <p>This Resource does not exist or is not available to your account.</p>
           ) : (
             <>
-              <p>This resource does not exist or is no longer publicly available.</p>
+              <p>This Resource does not exist or is no longer publicly available.</p>
               <p className="mt-2">
                 If it was shared with COMPASS account holders,{" "}
                 <Link href="/login" className="font-semibold text-brand underline">
@@ -81,7 +81,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
 
     return (
       <PublicPageError
-        message="Couldn't load resource. Try again."
+        message="Couldn't load Resource. Try again."
         onRetry={() => void query.refetch()}
       />
     );
@@ -125,12 +125,12 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
               rel="noopener noreferrer"
               className={buttonVariants({ variant: "primary", className: "min-h-11 px-5 py-2.5" })}
             >
-              Open resource
+              Open Resource
               <ExternalLink size={18} aria-hidden="true" />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           ) : (
-            <p className="text-sm text-danger">This resource has no link to open.</p>
+            <p className="text-sm text-danger">This Resource has no link to open.</p>
           )}
         </PanelFooter>
       ) : null}
@@ -143,7 +143,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
             className="min-h-11 px-5 py-2.5"
           >
             <FileDown size={18} aria-hidden="true" />
-            {download.isPending ? "Preparing download…" : "Download resource"}
+            {download.isPending ? "Preparing download…" : "Download Resource"}
           </Button>
           {download.isError ? (
             <p role="alert" className="w-full text-sm text-danger">
@@ -153,7 +153,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
         </PanelFooter>
       ) : null}
 
-      {query.isFetching ? <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing resource…</p> : null}
+      {query.isFetching ? <p role="status" className="border-t border-border px-5 py-2 text-xs text-muted sm:px-8">Refreshing Resource…</p> : null}
     </Panel>
   );
 }

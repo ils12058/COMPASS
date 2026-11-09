@@ -97,7 +97,7 @@ export function MaintenanceScreen({
         <section aria-labelledby="maintenance-heading" className="mx-auto w-full max-w-lg rounded-sm border border-brand-line bg-surface-raised px-5 py-6 sm:px-8 sm:py-7">
           <div className="border-b border-border pb-5">
             <MaintenanceBrand />
-            <p className="mt-2 text-sm font-medium text-muted">Guidance Office</p>
+            <p className="mt-2 text-sm font-medium text-muted">Guidance and Counseling Office</p>
           </div>
           <h1 id="maintenance-heading" className="mt-5 font-heading text-2xl font-bold leading-tight text-ink [overflow-wrap:anywhere]">{heading}</h1>
           <MaintenanceMessage message={status.message} className="mt-3 text-base leading-7 text-ink" />

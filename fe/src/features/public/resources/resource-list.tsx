@@ -90,11 +90,11 @@ export function ResourceList(props: ResourceListProps) {
   let content: ReactNode = null;
 
   if (loading) {
-    content = <PublicRowsSkeleton rows={isPreview ? 3 : 6} label="Loading resources…" />;
+    content = <PublicRowsSkeleton rows={isPreview ? 3 : 6} label="Loading Resources…" />;
   } else if (query.isError) {
     content = (
       <PublicSectionError
-        message={readsAccount ? "Couldn't load resources. Try again." : "Couldn't load public resources. Try again."}
+        message={readsAccount ? "Couldn't load Resources. Try again." : "Couldn't load public Resources. Try again."}
         onRetry={() => void query.refetch()}
       />
     );
@@ -111,17 +111,17 @@ export function ResourceList(props: ResourceListProps) {
             </Link>
           ) : undefined}
         >
-          {query.data.data.page > 1 ? "No resources on this page." : filtered
+          {query.data.data.page > 1 ? "No Resources on this page." : filtered
             ? search
               ? category || kind
-                ? "No resources match this search and the selected filters."
-                : "No resources match this search."
+                ? "No Resources match this search and the selected filters."
+                : "No Resources match this search."
               : readsAccount
-              ? "No resources match the selected filters."
-              : "No public resources match the selected filters."
+              ? "No Resources match the selected filters."
+              : "No public Resources match the selected filters."
             : readsAccount
-              ? "No resources are available right now."
-              : "No public resources are available right now."}
+              ? "No Resources are available right now."
+              : "No public Resources are available right now."}
         </PanelMessage>
         {!isPreview ? <PublicPagination page={query.data.data.page} hasNext={query.data.data.has_next} buildHref={buildPageHref} /> : null}
       </>
@@ -168,7 +168,7 @@ export function ResourceList(props: ResourceListProps) {
         </ul>
 
         {query.isFetching && !query.isPending ? (
-          <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing resources…</p>
+          <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted sm:px-5">Refreshing Resources…</p>
         ) : null}
 
         {!isPreview ? (

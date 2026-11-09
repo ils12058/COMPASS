@@ -20,9 +20,9 @@ async function eventually(condition, message) {
   }
 }
 
-function world({ recording = "NOT_STARTED", transcription = "NOT_STARTED", realtime = true, outage = false, startFailure = false, stopFailure = false } = {}) {
-  const state = { recording, transcription, artifact: null, available: false, disposed: false, withdrawn: false, failure: false, denied: false, hold: false, holdConsent: false, held: [], heldConsent: [], sockets: [], reads: [], commands: [] };
-  const row = () => ({ id: CONSENT, scope: "SESSION_MEDIA_CAPTURE", decision: "APPROVED", effective: !state.withdrawn, requested_at: "2026-10-14T00:00:00Z", decided_at: "2026-10-14T00:01:00Z", withdrawn_at: state.withdrawn ? "2026-10-14T00:02:00Z" : null });
+function world({ recording = "NOT_STARTED", realtime = true, outage = false, startFailure = false, stopFailure = false } = {}) {
+  const state = { recording, artifact: null, available: false, disposed: false, withdrawn: false, failure: false, denied: false, hold: false, holdConsent: false, held: [], heldConsent: [], sockets: [], reads: [], commands: [] };
+  const row = () => ({ id: CONSENT, scope: "AUDIO_VIDEO_RECORDING", decision: "APPROVED", effective: !state.withdrawn, requested_at: "2026-10-14T00:00:00Z", decided_at: "2026-10-14T00:01:00Z", withdrawn_at: state.withdrawn ? "2026-10-14T00:02:00Z" : null });
   const send = (id = ID, type = "ecounseling.media.changed") => {
     for (const socket of state.sockets.filter((socket) => !socket.closed)) socket.route.send(JSON.stringify({ v: 1, type, appointment_id: id }));
   };
@@ -47,10 +47,8 @@ function world({ recording = "NOT_STARTED", transcription = "NOT_STARTED", realt
         state.reads.push({ role, kind: "workspace" });
         const value = workspace(); value.appointment = { ...value.appointment, id: ID };
         value.student.display_name = "Media Test Student"; value.counselor.display_name = "Media Test Counselor";
-        value.media.media_policy_version = 2;
         value.media.recording.consent_status = state.withdrawn ? "WITHDRAWN" : "APPROVED";
-        value.media.transcription.consent_status = state.withdrawn ? "WITHDRAWN" : "APPROVED";
-        value.media.recording.capture_status = state.recording; value.media.transcription.capture_status = state.transcription;
+        value.media.recording.capture_status = state.recording;
         value.media.recording.artifact_status = state.artifact; value.media.recording.artifact_available = state.available;
         value.media.recording.artifact_disposed_at = state.disposed ? "2026-10-14T00:03:00Z" : null;
         if (state.hold && role === "COUNSELOR") await new Promise((resolve) => state.held.push(resolve));
@@ -68,15 +66,14 @@ function world({ recording = "NOT_STARTED", transcription = "NOT_STARTED", realt
       if (method === "POST" && pathname.endsWith(`/${ID}/join`)) {
         await reply({ appointment_id: ID, workspace_id: "synthetic", provider: "DAILY", room_url: "https://synthetic.daily.co/room", meeting_token: "synthetic", token_expires_at: new Date(Date.now()+900_000).toISOString() }); return true;
       }
-      if (method === "POST" && /\/(recording|transcription)\/(start|stop)$/.test(pathname)) {
+      if (method === "POST" && /\/recording\/(start|stop)$/.test(pathname)) {
         state.commands.push(pathname);
-        const kind = pathname.includes("/recording/") ? "recording" : "transcription";
         const starting = pathname.endsWith("/start");
         const next = starting ? (startFailure ? "ERROR" : "START_REQUESTED") : "STOP_REQUESTED";
-        const changed = state[kind] !== next; state[kind] = next;
+        const changed = state.recording !== next; state.recording = next;
         if (changed) send();
         if (starting ? startFailure : stopFailure) await reply({ error: { code: "ecounseling_provider_unavailable", message: "Synthetic provider uncertainty" } }, 503);
-        else await reply({ id: "synthetic-capture", status: state[kind] });
+        else await reply({ id: "synthetic-capture", status: state.recording });
         return true;
       }
       return false;
@@ -178,14 +175,16 @@ async function openSection(page, label) {
 }
 
 {
-  const w = world({ transcription: "ACTIVE" });
+  const w = world();
   await check("media hint closes stale Start confirmation and failed workspace read cannot authorize Start", PATH, w.options("COUNSELOR"), async (page) => {
     await join(page); await page.getByRole("button", { name: "Start recording", exact: true }).click();
     const dialog = page.getByRole("alertdialog", { name: "Start recording?", exact: true }); await shown(dialog);
-    w.state.failure = true; w.send(); await hidden(dialog);
-    await eventually(() => page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), "Start stays unavailable");
-    await eventually(() => page.getByRole("button", { name: "Stop transcription", exact: true }).isEnabled(), "Consent/workspace uncertainty cannot remove Stop");
+    w.state.recording = "ACTIVE"; w.state.failure = true; w.send(); await hidden(dialog);
+    await eventually(async () => await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), "Start stays unavailable");
+    await shown(page.getByText("Couldn't refresh the session status. Recording can't start until it refreshes.", { exact: true }));
+    assert.equal(await page.getByRole("button", { name: "Stop recording", exact: true }).count(), 0, "A failed read cannot invent an active recording or Stop control");
     assert.equal(w.state.commands.length, 0);
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
   });
 }
 
@@ -197,7 +196,7 @@ async function openSection(page, label) {
     w.state.withdrawn = true; w.send();
     assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
     w.release(); w.send(ID, "ecounseling.consent.changed");
-    await shown(page.getByRole("list", { name: "Media permission", exact: true }).getByText("Media permission · Withdrawn", { exact: true }));
+    await shown(page.getByRole("list", { name: "Recording permission", exact: true }).getByRole("listitem").filter({ hasText: "Recording permission · Withdrawn" }));
     assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
     assert.equal(w.state.commands.length, 0);
   });

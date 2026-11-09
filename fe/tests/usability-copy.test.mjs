@@ -58,7 +58,6 @@ test("E-Counseling errors explain what happened without implementation terms", (
 const APPOINTMENT = "60000000-0000-4000-8000-000000000001";
 const consents = [
   { id: "c1", scope: "AUDIO_VIDEO_RECORDING", decision: "APPROVED", effective: true, requested_at: "2026-10-04T02:00:00Z", decided_at: "2026-10-04T02:01:00Z", withdrawn_at: null },
-  { id: "c2", scope: "LIVE_TRANSCRIPTION", decision: "PENDING", effective: false, requested_at: "2026-10-04T02:02:00Z", decided_at: null, withdrawn_at: null },
 ];
 
 function renderConsent() {

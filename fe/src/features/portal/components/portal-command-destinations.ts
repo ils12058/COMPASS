@@ -83,8 +83,8 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
   const feedback = getFeedbackAccess(user);
   deep("/portal/feedback", "/customer-feedback/responses", "Customer Feedback responses", feedback.canViewCustomerFeedback);
   deep("/portal/feedback", "/csm/responses", "Client Satisfaction Measurement responses", feedback.canViewCsm, ["customer satisfaction measurement"]);
-  deep("/portal/announcements", "/new", "Create announcement");
-  deep("/portal/resources", "/new", "Create resource");
+  deep("/portal/announcements", "/new", "Create Announcement");
+  deep("/portal/resources", "/new", "Create Resource");
   deep("/portal/reports", "/student-profile", "Student profiling", true, ["student profile report"]);
   deep("/portal/reports", "/graduate-tracer", "Graduate Tracer", true, ["graduate tracer report"]);
   deep("/portal/organization", "", "Structure", canViewOrganizationStructure(user), ["campus", "college", "program"]);

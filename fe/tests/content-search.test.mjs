@@ -215,7 +215,7 @@ test("an Announcement search with no matches says so, not that nothing exists", 
 
   const html = render(queryClient, createElement(AnnouncementList, { mode: "index", page: 1, search: "zzz" }));
 
-  assert.match(html, /No announcements match this search\./);
+  assert.match(html, /No Announcements match this search\./);
   assert.doesNotMatch(html, /are available right now/);
 });
 
@@ -267,7 +267,7 @@ test("a Resource search with filters and no matches names both", () => {
     createElement(ResourceList, { mode: "index", page: 1, search: "zzz", category: "MENTAL_HEALTH", kind: "ARTICLE" }),
   );
 
-  assert.match(html, /No resources match this search and the selected filters\./);
+  assert.match(html, /No Resources match this search and the selected filters\./);
 });
 
 // Managed Announcements and Resources read their criteria from the URL.
@@ -312,7 +312,7 @@ test("managed Announcement search with no matches says so", () => {
     search: "search=zzz&status=DRAFT",
   });
 
-  assert.match(html, /No announcements match this search and the selected filters\./);
+  assert.match(html, /No Announcements match this search and the selected filters\./);
 });
 
 test("managed Resource search composes with every structured filter, including folded ones", () => {

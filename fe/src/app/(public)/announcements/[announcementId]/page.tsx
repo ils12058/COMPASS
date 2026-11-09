@@ -10,7 +10,7 @@ import {
   resolveAnnouncementReader,
 } from "@/features/public/shared/server-reader";
 
-const description = "Announcement from the UCN Guidance Office.";
+const description = "Announcement from the UCN Guidance and Counseling Office.";
 
 export async function generateMetadata({
   params,
@@ -62,7 +62,7 @@ export default async function AnnouncementDetailPage({
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-9">
         <div className="max-w-4xl">
           <Link href={listReturnHref("/announcements", backParams, ["search", "page"])} className={pageBackLinkClass}>
-            Back to announcements
+            Back to Announcements
           </Link>
           <AnnouncementDetail announcementId={announcementId} />
         </div>

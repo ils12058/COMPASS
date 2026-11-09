@@ -228,7 +228,8 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
   });
 }
 {
-  const state = world(); const scopes = consents("PENDING");
+  const state = world();
+  const scopes = consents("PENDING").filter((row) => row.scope === "AUDIO_VIDEO_RECORDING");
   const handler = async (request) => {
     if (request.pathname === "/api/v1/student-actions") {
       const pending = scopes.filter((row) => row.decision === "PENDING").length;
@@ -245,21 +246,19 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
     }
     if (request.pathname === `/api/v1/e-counseling/me/appointments/${sessionId}`) {
       const data = workspace(); data.media.recording.consent_status = scopes[0].decision;
-      data.media.transcription.consent_status = scopes[1].decision;
       await request.reply(data); return true;
     }
     return state.handler(request);
   };
   await check("same-tab consent decisions refresh grouped actions without safety polling", "/portal/actions", state.options({ handler, fakeDaily: true }), async (page) => {
-    await shown(page.getByText("2 consent decisions require your review.", { exact: true }));
-    for (let remaining = 1; remaining >= 0; remaining--) {
-      await page.getByRole("link", { name: "Review consent", exact: true }).click();
-      await page.getByRole("button", { name: /^Decline / }).first().click();
-      await page.getByRole("alertdialog").getByRole("button", { name: "Decline", exact: true }).click();
-      await shown(page.getByText("Choice saved. Counseling remains available.", { exact: true }));
-      await page.getByRole("navigation", { name: "Portal navigation" }).getByRole("link", { name: "My actions", exact: true }).click();
-      await shown(page.getByText(remaining ? "A consent decision requires your review." : "You're all caught up.", { exact: true }));
-    }
+    await shown(page.getByText("A consent decision requires your review.", { exact: true }));
+    assert.doesNotMatch(await page.getByRole("main").innerText(), /transcri/i);
+    await page.getByRole("link", { name: "Review consent", exact: true }).click();
+    await page.getByRole("button", { name: /^Decline / }).first().click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Decline", exact: true }).click();
+    await shown(page.getByText("Choice saved. Counseling remains available.", { exact: true }));
+    await page.getByRole("navigation", { name: "Portal navigation" }).getByRole("link", { name: "My actions", exact: true }).click();
+    await shown(page.getByText("You're all caught up.", { exact: true }));
   });
 }
 

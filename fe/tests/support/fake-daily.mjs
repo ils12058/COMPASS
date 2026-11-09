@@ -222,12 +222,10 @@ export function installFakeDaily(target, options = {}) {
       this.selected.speaker = request.outputDeviceId;
       return this.getInputDevices();
     }
-    // The real Call Object has these; COMPASS must never call them (recording and transcription
-    // start and stop only through the COMPASS backend).
+    // The real Call Object has these; COMPASS must never call them because recording starts and
+    // stops only through the COMPASS backend.
     startRecording() { log.push(["startRecording"]); }
     stopRecording() { log.push(["stopRecording"]); }
-    startTranscription() { log.push(["startTranscription"]); }
-    stopTranscription() { log.push(["stopTranscription"]); }
   }
 
   const live = () => instances.find((call) => !call.destroyed);
@@ -306,7 +304,6 @@ export function installFakeDaily(target, options = {}) {
     cameraError(error, errorMsg = { errorMsg: "NotReadableError: raw provider detail", audioOk: true, videoOk: false }) { current().emit("camera-error", { error, errorMsg }); },
     fatal(type) { current().emit("error", { errorMsg: `raw ${type}`, error: { type, msg: `raw ${type}` } }); },
     providerEvent(name) { current().emit(name, { instanceId: "synthetic", startedBy: "synthetic", updatedBy: "synthetic", language: "en", model: "synthetic" }); },
-    transcriptMessage() { current().emit("transcription-message", { text: "SYNTHETIC TRANSCRIPT TEXT", participantId: "remote", timestamp: new Date(), rawResponse: {} }); },
     addDevice(device) {
       devices.push({ groupId: "hotplug", ...device });
       current().emit("available-devices-updated", { availableDevices: devices });

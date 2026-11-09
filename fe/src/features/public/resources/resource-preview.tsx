@@ -9,11 +9,11 @@ export function ResourcePreview() {
   return (
     <Panel aria-labelledby="guidance-resources">
       <PanelHeader
-        title="Guidance resources"
+        title="Guidance Resources"
         titleId="guidance-resources"
         actions={
           <Link href="/resources" className={publicPanelLinkClass}>
-            Browse resources
+            Browse Resources
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
         }

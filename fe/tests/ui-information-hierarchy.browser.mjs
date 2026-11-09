@@ -44,7 +44,7 @@ await check("appointment-dialogs", appointmentPath, {}, async (page) => {
 
 await check("counseling-workspace", `/portal/counseling/workspace/appointment/${appointmentId}`, {}, async (page) => {
   await shown(page.getByRole("heading", { name: "Counseling workspace", exact: true }));
-  await shown(page.getByRole("button", { name: "Record encounter", exact: true }));
+  await shown(page.getByRole("button", { name: "Finish counseling", exact: true }));
   await page.getByRole("button", { name: "Help: About Counseling", exact: true }).click();
   await shown(page.getByRole("dialog", { name: "About Counseling", exact: true }));
   await page.keyboard.press("Escape");
@@ -187,25 +187,25 @@ const retentionAuth = {
   "/api/v1/privacy/retention/policies": { items: [
     ["GRADUATE_TRACER", "Graduate Tracer responses"],
     ["ECOUNSELING_RECORDING", "E-Counseling recordings"],
-    ["ECOUNSELING_TRANSCRIPT", "E-Counseling transcripts"],
   ].map(([category_code, category_label]) => ({ category_code, category_label, adoption_status: "NOT_ADOPTED", retention_period: null, policy_reference: null, effective_date: null })) },
 };
 for (const device of ["desktop", "phone"]) {
   await check(`retention-policies-read-only-${device}`, "/portal/privacy/retention", { role: "INSTITUTIONAL_OFFICER", device, overrides: retentionAuth }, async (page, { requests }) => {
     await shown(page.getByRole("heading", { level: 1, name: "Retention policies", exact: true }));
     await shown(page.getByRole("link", { name: "Retention policies", exact: true }));
-    for (const name of ["Graduate Tracer responses", "E-Counseling recordings", "E-Counseling transcripts"]) await shown(page.getByRole("heading", { name, exact: true }));
-    assert.equal(await page.getByText("Not adopted", { exact: true }).count(), 3);
-    assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 3);
+    for (const name of ["Graduate Tracer responses", "E-Counseling recordings"]) await shown(page.getByRole("heading", { name, exact: true }));
+    assert.equal(await page.getByText("Not adopted", { exact: true }).count(), 2, "Both current record categories show policy status");
+    assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 2, "Both current record categories explain the missing policy");
+    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
     const main = await page.locator("main").innerText();
     assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
     const buttons = page.locator("main").getByRole("button");
     assert.equal(await buttons.count(), 1, "Read-only oversight has only contextual Help");
-    assert.equal(await buttons.getAttribute("aria-label"), "Help: About Retention policies");
+    assert.equal(await buttons.getAttribute("aria-label"), "Help: About retention policies");
     const helpTarget = await buttons.boundingBox();
     assert.ok(helpTarget && helpTarget.width >= 44 && helpTarget.height >= 44);
-    await page.getByRole("button", { name: "Help: About Retention policies", exact: true }).click();
-    const help = page.getByRole("dialog", { name: "About Retention policies", exact: true });
+    await page.getByRole("button", { name: "Help: About retention policies", exact: true }).click();
+    const help = page.getByRole("dialog", { name: "About retention policies", exact: true });
     assert.match(await help.innerText(), /Policy changes need University approval and a reviewed COMPASS update[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
     await page.keyboard.press("Escape");
     await hidden(help);

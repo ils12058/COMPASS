@@ -27,7 +27,7 @@ for (const [role, makeState, heading] of cases) {
     await h.check(`${role}-${width}`, "/portal", state.options({ viewport: { width, height: 1000 } }), async (page, { requests }) => {
       await h.shown(page.locator(`#${heading}`));
       await h.shown(page.getByText("Guidance Office schedule for October", { exact: true }));
-      if (role === "student") await h.shown(page.getByRole("link", { name: "Book appointment", exact: true }));
+      if (role === "student") await h.shown(page.getByRole("link", { name: "Book Appointment", exact: true }));
       if (role === "head") await h.shown(page.locator('section[aria-labelledby="head-guidance-oversight-heading"]').getByRole("link", { name: /Reports/ }));
       if (role === "goa") await h.shown(page.locator("#goa-operations-heading"));
       if (role === "it") await h.shown(page.getByText("2 failed", { exact: true }));
@@ -42,7 +42,7 @@ for (const [role, makeState, heading] of cases) {
           assert.ok(box && box.height >= 43, "Primary work links retain a touch-friendly target");
         }
         const summary = page.locator('section[aria-labelledby="overview-announcements-heading"]');
-        assert.ok(await summary.getByRole("link", { name: "All announcements", exact: true }).isVisible(), "Announcements retain a discoverable destination");
+        assert.ok(await summary.getByRole("link", { name: "All Announcements", exact: true }).isVisible(), "Announcements retain a discoverable destination");
       }
       assert.equal(requests.filter((r) => r.method !== "GET").length, 0);
       const measures = await page.evaluate(() => {

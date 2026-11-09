@@ -492,7 +492,7 @@ for (const [sourceKind, category, visibility] of [
     assert.equal(parameters.get("source_kind"), sourceKind);
     assert.equal(parameters.get("source_id"), sourceId);
     if (visibility === "COUNSELOR_CONFIDENTIAL") await shown(page.getByText("You can assign only the Counselor who has access to this record.", { exact: true }));
-    else await shown(page.getByText(/Operational coordination.*Created from the authorized related record/));
+    else await shown(page.getByText(/Referral coordination · Staff coordination\. Created from the related record you can access\./));
     await noHorizontalOverflow(page);
     if (sourceKind === "COUNSELING_ENCOUNTER") await screenshot(page, "create-counseling-linked-desktop");
   });
@@ -527,7 +527,7 @@ for (const [sourceKind, category, visibility] of [
   const fixture = world("COUNSELOR", { sourceUnavailable: true });
   await check("An unavailable linked source shows a generic context message without count, task link or create link", `/portal/counseling/encounters/${sourceId}`, { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "Counseling Encounter", exact: true }));
-    const message = page.getByText("Linked Follow-Ups are not available for this record.", { exact: true });
+    const message = page.getByText("Couldn't load linked Follow-Ups for this record. Try again.", { exact: true });
     await shown(message);
     const panel = page.locator("section").filter({ has: message });
     assert.equal(await panel.count(), 1);

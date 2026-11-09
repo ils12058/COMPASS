@@ -51,7 +51,7 @@ export function AnnouncementUnavailable({ error, onRetry, backHref = "/portal/an
         </Notice>
       ) : (
         <ContentQueryError
-          message={announcementErrorMessage(error, "Couldn't load announcement. Try again.")}
+          message={announcementErrorMessage(error, "Couldn't load Announcement. Try again.")}
           onRetry={shouldHideAnnouncementData(error) ? undefined : onRetry}
         />
       )}
@@ -69,13 +69,13 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
       : null,
   );
 
-  if (detail.isPending) return <ContentDetailSkeleton label="Loading announcement…" />;
+  if (detail.isPending) return <ContentDetailSkeleton label="Loading Announcement…" />;
   if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
     return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} backHref={backHref} />;
   }
 
   const item = detail.data.data;
-  const title = displayTitle(item.title, "Untitled announcement");
+  const title = displayTitle(item.title, "Untitled Announcement");
   const isDraft = item.status === AnnouncementStatusValue.DRAFT;
   const isPublished = item.status === AnnouncementStatusValue.PUBLISHED;
   const expired = isAnnouncementExpired(item);
@@ -93,7 +93,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         action={!detail.isError ?
           <>
             {item.status !== AnnouncementStatusValue.ARCHIVED ? (
-              <PageActionLink href={`/portal/announcements/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit announcement" />
+              <PageActionLink href={`/portal/announcements/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Announcement" />
             ) : null}
             <AnnouncementLifecycleActions
               announcement={item}
