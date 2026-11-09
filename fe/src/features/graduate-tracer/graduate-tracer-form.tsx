@@ -117,7 +117,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
       setDraftValidationVisible(false);
       setSaveMessage("Draft saved.");
     } catch (error) {
-      setSaveError(graduateTracerErrorMessage(error, "The Graduate Tracer draft could not be saved."));
+      setSaveError(graduateTracerErrorMessage(error, "Couldn't save Graduate Tracer draft. Try again."));
       if (error instanceof CompassApiError && error.status === 409) {
         void queryClient.invalidateQueries({ queryKey: getGraduateTracerGetMyResponseQueryKey() });
       }
@@ -167,7 +167,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
       setSubmitError("The saved response is still a draft. Review its status, then submit again only when you are ready.");
     } catch {
       setNeedsSubmissionCheck(true);
-      setSubmitError("We could not verify whether submission completed. Check the response status before deliberately trying again.");
+      setSubmitError("Couldn't confirm whether your response was submitted. Check its status before trying again.");
     }
   }
 
@@ -196,11 +196,11 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
           return;
         } catch {
           setNeedsSubmissionCheck(true);
-          setSubmitError("We could not verify whether submission completed. Check the response status before deliberately trying again.");
+          setSubmitError("Couldn't confirm whether your response was submitted. Check its status before trying again.");
           return;
         }
       }
-      setSubmitError(graduateTracerErrorMessage(error, "The Graduate Tracer response could not be submitted."));
+      setSubmitError(graduateTracerErrorMessage(error, "Couldn't submit Graduate Tracer response. Try again."));
       if (error instanceof CompassApiError && error.status === 409) {
         void queryClient.invalidateQueries({ queryKey: getGraduateTracerGetMyResponseQueryKey() });
       }
@@ -260,7 +260,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
           {localIssue && !visibleIssues.length ? <PanelMessage role="alert">{localIssue}</PanelMessage> : null}
           {saveError ? <PanelMessage role="alert" tone="danger">{saveError}</PanelMessage> : null}
           <PanelFooter className="items-start justify-between">
-            <FormSaveStatus dirty={dirty} saving={save.isPending} savedMessage={submit.isPending ? "Submitting…" : needsSubmissionCheck ? "Submission status could not be confirmed" : saveMessage} />
+            <FormSaveStatus dirty={dirty} saving={save.isPending} savedMessage={submit.isPending ? "Submitting…" : needsSubmissionCheck ? "Couldn't confirm submission status" : saveMessage} />
             <div className="flex min-w-0 max-w-full flex-wrap gap-3">
               <Button type="button" variant="secondary" className="whitespace-normal" disabled={!dirty || pending} onClick={() => void saveDraft()}>
                 {save.isPending ? "Saving…" : "Save draft"}
@@ -279,7 +279,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
               >
                 <p>
                   Your response will be finalized and made available only to
-                  authorized Guidance and Counseling Office reviewers. You will
+                  Guidance Office reviewers with permission. You will
                   not be able to edit it after submission.
                 </p>
                 {needsSubmissionCheck ? (

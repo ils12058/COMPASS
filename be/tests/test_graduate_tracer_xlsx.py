@@ -123,8 +123,8 @@ def test_graduate_tracer_xlsx_is_aggregate_only_safe_and_compact():
     ]
     assert all(worksheet.sheet_state == "visible" for worksheet in workbook.worksheets)
     summary = workbook["Summary"]
-    assert summary["A3"].value == "At a Glance"
-    assert summary["A4"].value == "Submitted Response Count"
+    assert summary["A3"].value == "At a glance"
+    assert summary["A4"].value == "Submitted response count"
     assert summary["B4"].value == 2
     assert summary["B4"].data_type == "n"
     assert summary.freeze_panes == "A4"
@@ -184,7 +184,7 @@ def test_zero_result_xlsx_still_has_context_methodology_and_zero_sections():
 
     values = workbook_values(workbook)
     assert EMPTY_REPORT_MESSAGE in values
-    assert "Submitted Response Count" in values
+    assert "Submitted response count" in values
     assert "0" in values
     assert any("No response rate is calculated" in value for value in values)
     assert "Small-population privacy notice" not in values

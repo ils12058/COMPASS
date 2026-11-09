@@ -52,7 +52,7 @@ export function getOverviewMetrics(
   if (summary.student) {
     addMetric(
       metrics,
-      "Upcoming appointments",
+      "Upcoming Appointments",
       summary.student.upcoming_appointments_count,
       appointments,
     );
@@ -79,13 +79,13 @@ export function getOverviewMetrics(
   if (summary.guidance) {
     addMetric(
       metrics,
-      "Your upcoming appointments",
+      "Your upcoming Appointments",
       summary.guidance.upcoming_self_appointments_count,
       getAppointmentAccess(user).canViewSelf ? MY_UPCOMING_APPOINTMENTS : undefined,
     );
     addMetric(
       metrics,
-      "Upcoming managed appointments",
+      "Upcoming managed Appointments",
       summary.guidance.upcoming_managed_appointments_count,
       getAppointmentAccess(user).canManage ? MANAGED_UPCOMING_APPOINTMENTS : undefined,
     );

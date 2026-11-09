@@ -155,16 +155,16 @@ export function CustomerFeedbackForm() {
   });
 
   if (!access.canSubmitCustomerFeedback) {
-    return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
+    return <FeedbackAccessUnavailable title="Customer Feedback access" />;
   }
   if (!opportunityId) {
     return (
       <FeedbackAccessUnavailable
-        title={opportunityParam ? "Customer Feedback unavailable" : "Choose a completed service"}
+        title={opportunityParam ? "Completed Service not found" : "Choose a completed Service"}
         message={
           opportunityParam
-            ? "This Feedback opportunity is not available."
-            : "Open Feedback and choose the completed service you want to review."
+            ? "This completed Service was not found."
+            : "Open Feedback and choose the completed Service you want to review."
         }
       />
     );
@@ -176,32 +176,32 @@ export function CustomerFeedbackForm() {
     if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {
       return (
         <FeedbackAccessUnavailable
-          title="Customer Feedback unavailable"
-          message="This Feedback opportunity is not available."
+          title="Completed Service not found"
+          message="Choose another completed Service from Feedback."
         />
       );
     }
     return (
       <FeedbackQueryError
         error={opportunity.error}
-        fallback="The completed service could not be loaded."
+        fallback="Couldn't load the completed Service. Try again."
         onRetry={() => void opportunity.refetch()}
       />
     );
   }
   if (!opportunityData) {
-    return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
+    return <FeedbackAccessUnavailable title="Completed Service not found" message="Choose a completed Service from Feedback." />;
   }
   if (opportunityData.customer_feedback_submitted && !success) {
     return (
       <FeedbackAccessUnavailable
         title="Customer Feedback submitted"
-        message="Feedback for this service has already been submitted."
+        message="Feedback for this Service has already been submitted."
       />
     );
   }
   if (!opportunityData.can_submit_customer_feedback && !isUncertain && !success) {
-    return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
+    return <FeedbackAccessUnavailable title="Customer Feedback not accepting responses" message="You cannot submit feedback for this Service now. Contact the Guidance Office." />;
   }
   const submissionOpportunityId = opportunityData.id;
   const requiredServiceLabel = opportunityData.service_label;
@@ -248,14 +248,14 @@ export function CustomerFeedbackForm() {
       if (mode === "authorization") {
         setUncertainIntent(intent);
         setRetryAllowed(false);
-        setStatusMessage("Your response is still unsubmitted, but the latest attempt was not authorized. Check status again when your access is available.");
+        setStatusMessage("Your response is still unsubmitted. Check its status again when you have access.");
         return;
       }
 
       if (!canonical.can_submit_customer_feedback) {
         setUncertainIntent(intent);
         setRetryAllowed(false);
-        setStatusMessage("This opportunity is not currently accepting Customer Feedback. Your response is preserved; check status again or contact the Guidance and Counseling Office.");
+        setStatusMessage("This Service is not accepting Customer Feedback now. Your answers are kept; check status again or contact the Guidance Office.");
         return;
       }
 
@@ -326,7 +326,7 @@ export function CustomerFeedbackForm() {
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     if (requiredService && !selectedServices.includes(requiredService)) {
-      setServiceError(`Keep ${requiredServiceLabel} selected for this completed service.`);
+      setServiceError(`Keep ${requiredServiceLabel} selected for this completed Service.`);
       focusServiceSelection();
       return;
     }
@@ -386,7 +386,7 @@ export function CustomerFeedbackForm() {
         intentRef.current = null;
         setUncertainIntent(null);
         setRetryAllowed(false);
-        setError(feedbackSubmissionErrorMessage(caught, "Customer Feedback could not be submitted."));
+        setError(feedbackSubmissionErrorMessage(caught, "Couldn't submit Customer Feedback. Try again."));
       }
     } finally {
       operationRef.current = false;

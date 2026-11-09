@@ -28,7 +28,7 @@ export function AnnouncementEditPage({ announcementId }: { announcementId: strin
 
   return (
     <section>
-      <ContentPageHeading title="Edit Announcement" backHref={backHref} backLabel="Back to Announcement">
+      <ContentPageHeading title="Edit announcement" backHref={backHref} backLabel="Back to announcement">
         <div className="mt-3">
           <PublicationStatusBadge status={item.status} />
         </div>

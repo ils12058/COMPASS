@@ -24,7 +24,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     return (
       <section className="space-y-5">
         <GraduateTracerHeading title="Graduate Tracer response" />
-        <Notice role="alert">Submitted Graduate Tracer responses are unavailable to this account.</Notice>
+        <Notice role="alert">You don&apos;t have access to submitted Graduate Tracer responses.</Notice>
       </section>
     );
   }
@@ -39,7 +39,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
     return (
       <section className="space-y-5">
         <GraduateTracerHeading title="Graduate Tracer response" back={<Link href="/portal/graduate-tracer" className={pageBackLinkClass}>Back to Graduate Tracer queue</Link>} />
-        <GraduateTracerError error={detail.error} fallback={graduateTracerErrorCode(detail.error) === "graduate_tracer_not_submitted" ? "This response is not available because it has not been submitted." : "The submitted Graduate Tracer response could not be loaded."} onRetry={() => void detail.refetch()} />
+        <GraduateTracerError error={detail.error} fallback={graduateTracerErrorCode(detail.error) === "graduate_tracer_not_submitted" ? "This response is not available because it has not been submitted." : "Couldn't load submitted Graduate Tracer response. Try again."} onRetry={() => void detail.refetch()} />
       </section>
     );
   }
@@ -66,7 +66,7 @@ export function GraduateTracerDetailPage({ responseId }: { responseId: string })
         meta={<span className="text-sm text-muted">Submitted {formatGraduateTracerDateTime(response.submitted_at)}</span>}
       />
       {detail.isFetching ? <p role="status" className="text-xs text-muted">Refreshing submitted response…</p> : null}
-      {detail.isError ? <GraduateTracerError error={detail.error} fallback="The response could not be refreshed. Showing the last confirmed response." onRetry={() => void detail.refetch()} /> : null}
+      {detail.isError ? <GraduateTracerError error={detail.error} fallback="Couldn't refresh response. Showing the last confirmed response." onRetry={() => void detail.refetch()} /> : null}
       <GraduateTracerResponse detail={response} />
     </section>
   );

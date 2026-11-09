@@ -135,7 +135,7 @@ export function StudentProfileFilters({
 
     if (draft.campus_id) {
       if (scope.is_global && campusesError) {
-        setDraftError("Campus choices could not be verified. Retry the choices and try again.");
+        setDraftError("Couldn't verify campus choices. Retry the choices and try again.");
         return;
       }
       if (!campusChoices.some((campus) => campus.id === draft.campus_id)) {
@@ -145,7 +145,7 @@ export function StudentProfileFilters({
     }
     if (draft.college_id) {
       if (scope.is_global && collegesError) {
-        setDraftError("College choices could not be verified. Retry the choices and try again.");
+        setDraftError("Couldn't verify college choices. Retry the choices and try again.");
         return;
       }
       if (!selectedCollege) {
@@ -170,7 +170,7 @@ export function StudentProfileFilters({
         return;
       }
       if (programs.isError && programChoices.length === 0) {
-        setDraftError("Program choices could not be verified. Retry the choices and try again.");
+        setDraftError("Couldn't verify program choices. Retry the choices and try again.");
         return;
       }
       if (
@@ -243,9 +243,9 @@ export function StudentProfileFilters({
           </Select>
           <p id="report-academic-year-state" className="text-xs text-muted">
             {academicYearsLoading
-              ? "Loading academic years…"
+              ? "Loading Academic Years…"
               : academicYearsError
-                ? "Academic Year choices could not be loaded."
+                ? "Couldn't load Academic Year choices. Try again."
                 : "Leaving this blank resolves the current Academic Year."}
           </p>
           {academicYearsError ? (
@@ -268,7 +268,7 @@ export function StudentProfileFilters({
             onChange={(event) => updateDraft("campus_id", event.target.value)}
           >
             <option value="">
-              {scope.is_global ? "All Campuses" : "All authorized Campuses"}
+              {scope.is_global ? "All Campuses" : "All Campuses you handle"}
             </option>
             {campusChoices.map((campus) => (
               <option key={campus.id} value={campus.id}>
@@ -278,7 +278,7 @@ export function StudentProfileFilters({
           </Select>
           {scope.is_global && campusesError ? (
             <div id="report-campus-state" className="text-xs text-danger">
-              Campus choices could not be loaded.
+              Couldn&apos;t load campus choices. Try again.
               <Button
                 className="ml-2 min-h-8 px-2 text-xs"
                 variant="quiet"
@@ -306,10 +306,10 @@ export function StudentProfileFilters({
               {draft.campus_id
                 ? scope.is_global
                   ? "All Colleges on selected Campus"
-                  : "All authorized Colleges on selected Campus"
+                  : "All Colleges you handle on the selected Campus"
                 : scope.is_global
                   ? "All Colleges"
-                  : "All authorized Colleges"}
+                  : "All Colleges you handle"}
             </option>
             {visibleColleges.map((college) => (
               <option key={college.id} value={college.id}>
@@ -319,7 +319,7 @@ export function StudentProfileFilters({
           </Select>
           {scope.is_global && collegesError ? (
             <div id="report-college-state" className="text-xs text-danger">
-              College choices could not be loaded.
+              Couldn&apos;t load college choices. Try again.
               <Button
                 className="ml-2 min-h-8 px-2 text-xs"
                 variant="quiet"
@@ -363,7 +363,7 @@ export function StudentProfileFilters({
               : programs.isPending
                 ? "Loading programs…"
                 : programs.isError
-                  ? "Program choices could not be refreshed."
+                  ? "Couldn't refresh program choices. Try again."
                   : "Inactive Programs remain available for historical reports."}
           </p>
           {draft.college_id && programs.isError ? (

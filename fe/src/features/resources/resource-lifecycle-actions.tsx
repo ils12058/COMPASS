@@ -36,7 +36,7 @@ export function ResourceLifecycleActions({
   const archive = useResourcesArchive();
   const [open, setOpen] = useState<LifecycleAction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const title = `“${displayTitle(resource.title, "Untitled Resource")}”`;
+  const title = `“${displayTitle(resource.title, "Untitled resource")}”`;
   const isDraft = resource.status === ResourceStatusValue.DRAFT;
   const isArchived = resource.status === ResourceStatusValue.ARCHIVED;
 
@@ -53,10 +53,10 @@ export function ResourceLifecycleActions({
       void refreshResourceQueries(queryClient, resource.id, { readers: true });
     } catch (caught) {
       const fallback =
-        action === "publish" ? "The Resource could not be published." : "The Resource could not be archived.";
+        action === "publish" ? "Couldn't publish resource. Try again." : "Couldn't archive resource. Try again.";
       setError(
         isUncertainResourceMutation(caught)
-          ? `${fallback} Check its current status before trying again.`
+          ? "Couldn't confirm whether the change was saved. Check its current status before trying again."
           : resourceErrorMessage(caught, fallback),
       );
       if (isUncertainResourceMutation(caught) || resourceErrorCode(caught) === "resource_conflict") {
@@ -73,10 +73,10 @@ export function ResourceLifecycleActions({
   return (
     <>
       {isDraft ? (
-        <PageAction icon={Send} label="Publish Resource" disabled={publishBlocked} onClick={() => openDialog("publish")} />
+        <PageAction icon={Send} label="Publish resource" disabled={publishBlocked} onClick={() => openDialog("publish")} />
       ) : null}
       {!isArchived ? (
-        <PageAction icon={Archive} variant="secondary" label="Archive Resource" onClick={() => openDialog("archive")} />
+        <PageAction icon={Archive} variant="secondary" label="Archive resource" onClick={() => openDialog("archive")} />
       ) : null}
 
       <ContentConfirmDialog

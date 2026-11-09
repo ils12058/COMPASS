@@ -370,12 +370,12 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
         "All Colleges",
         "All Programs",
         "3rd Year",
-        "Reporting Scope",
+        "Reporting area",
         "Institution-wide",
         "Generated At",
         expected_timestamp,
         "Submitted Inventory Profile Population (n)",
-        "Current Student Inventory Coverage",
+        "Individual Inventory coverage",
         "CURRENT",
         "Eligible Students",
         "Submitted",
@@ -384,7 +384,7 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
         "Reconciliation of Coverage and Profile Population",
         "Submitted in coverage but outside the profile population",
         "Academic Placement and Inventory Alignment",
-        "Current Students in coverage scope",
+        "Current Students in the reporting area",
         "Current Students with an academic placement",
         "Current Students without an academic placement",
         "Submitted Inventories whose Program College matches the Student's current placement",
@@ -449,7 +449,7 @@ def test_historical_summary_does_not_fabricate_eligible_or_missing_counts(monkey
     pairs = {
         row[0].value: row[1].value for row in summary.iter_rows() if isinstance(row[0].value, str)
     }
-    assert pairs["Current Students in coverage scope"] == (
+    assert pairs["Current Students in the reporting area"] == (
         "Not available from current COMPASS data"
     )
     assert pairs[
@@ -479,7 +479,7 @@ def test_summary_alignment_reports_placement_and_program_differences(monkeypatch
     }
 
     assert "Academic Placement and Inventory Alignment" in workbook_values(workbook)
-    assert pairs["Current Students in coverage scope"] == 8
+    assert pairs["Current Students in the reporting area"] == 8
     assert pairs["Current Students with an academic placement"] == 6
     assert pairs["Current Students without an academic placement"] == 2
     assert pairs["Submitted Inventories"] == 6

@@ -574,7 +574,7 @@ def test_rendered_html_is_table_first_with_branding_overview_and_numbered_tables
         "2. Executive Summary",
         "3. Populations in This Report",
         "3.1 Submitted Inventory Profile Population (n = 10)",
-        "3.2 Current Student Inventory Coverage",
+        "3.2 Individual Inventory coverage",
         "4. Demographics",
         "5. Family and Household",
         "6. Geographic Distribution",
@@ -597,7 +597,7 @@ def test_rendered_html_is_table_first_with_branding_overview_and_numbered_tables
     assert metadata["College filter"] == "All Colleges"
     assert metadata["Program filter"] == "All Programs"
     assert metadata["Year Level filter"] == "All Year Levels"
-    assert metadata["Reporting Scope"] == "Institution-wide"
+    assert metadata["Reporting area"] == "Institution-wide"
     assert metadata["Submitted Inventory Profile Population"] == (
         "10 submitted Individual Inventories"
     )
@@ -818,7 +818,7 @@ def test_single_program_report_skips_redundant_appendix():
 
 def test_current_and_historical_coverage_never_fabricate_historical_counts():
     current = profile_of(synthetic_report(program_count=2, submitted_count=5))
-    assert current["coverage"]["title"] == "Current Student Inventory Coverage"
+    assert current["coverage"]["title"] == "Individual Inventory coverage"
     status = [cell_texts(row) for row in current["coverage"]["status"]["rows"]]
     assert status == [
         ["Eligible current Students", "8"],
@@ -889,7 +889,7 @@ def test_alignment_table_publishes_placement_precedence_and_reports_differences(
     alignment = profile["coverage"]["alignment"]
     assert alignment["title"] == "Academic Placement and Inventory Alignment"
     rows = {cell_texts(row)[0]: cell_texts(row)[1] for row in alignment["rows"]}
-    assert rows["Current Students in coverage scope"] == "8"
+    assert rows["Current Students in the reporting area"] == "8"
     assert rows["Current Students with an academic placement"] == "6"
     assert rows["Current Students without an academic placement"] == "2"
     assert rows["Submitted Inventories"] == "6"
@@ -908,7 +908,7 @@ def test_alignment_table_publishes_placement_precedence_and_reports_differences(
 
     html = rendered_html(report)
     assert "3.4 Academic Placement and Inventory Alignment" in html
-    assert "Current Students in coverage scope" in html
+    assert "Current Students in the reporting area" in html
     assert "Submitted Inventories without a recorded Program" in html
     assert escape(PLACEMENT_PRECEDENCE_NOTE) in html
 
@@ -927,12 +927,12 @@ def test_filter_table_and_metadata_distinguish_selected_filters_from_reporting_s
 
     metadata = {cell_texts(row)[0]: cell_texts(row)[1] for row in profile["metadata"]["rows"]}
     assert metadata["College filter"] == "All Colleges within the reporting scope"
-    assert metadata["Reporting Scope"] == (
+    assert metadata["Reporting area"] == (
         "Limited to assigned Colleges: CAS — College of Synthetic CAS (Main Campus); "
         "CCMS — College of Synthetic CCMS (Main Campus)"
     )
     filters = {cell_texts(row)[0]: cell_texts(row)[1:] for row in profile["filters"]["rows"]}
-    assert filters["Reporting scope"] == [
+    assert filters["Reporting area"] == [
         "Applied — College of the Program recorded on the Inventory",
         "Applied — Student's current academic placement",
     ]
@@ -959,7 +959,7 @@ def test_empty_report_prints_context_and_coverage_without_tables_or_percentages(
     ]
     html = rendered_html(report)
     assert profile["empty_message"] in html
-    assert "Current Student Inventory Coverage" in html
+    assert "Individual Inventory coverage" in html
     assert "100.00%" not in html
     assert "Table 1." not in html
 

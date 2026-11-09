@@ -14,8 +14,8 @@ export function getStudentHomeDestinations(user: UserSummary): StudentHomeDestin
   if (user.role !== "STUDENT") return [];
   const destinations: StudentHomeDestination[] = [];
   if (getAppointmentAccess(user).canViewSelf) {
-    destinations.push({ href: "/portal/appointments/my", icon: CalendarClock, label: "View appointments",
-      description: "Check your scheduled and past appointments." });
+    destinations.push({ href: "/portal/appointments/my", icon: CalendarClock, label: "View Appointments",
+      description: "Check your scheduled and past Appointments." });
   }
   if (getGuidanceMessagesAccess(user).canViewSelf) {
     destinations.push({ href: "/portal/messages", icon: MessageCircle, label: "Guidance Messages",

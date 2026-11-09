@@ -23,7 +23,7 @@ export const publicationAudienceLabels: Record<PublicationAudience, string> = {
   [AnnouncementAudienceValue.PUBLIC]: "Public",
   [AnnouncementAudienceValue.ALL_AUTHENTICATED]: "All signed-in users",
   [AnnouncementAudienceValue.STUDENTS]: "Students",
-  [AnnouncementAudienceValue.GCO_PERSONNEL]: "GCO personnel",
+  [AnnouncementAudienceValue.GCO_PERSONNEL]: "Guidance Office personnel",
 };
 
 export const publicationAudienceDescriptions: Record<PublicationAudience, string> = {

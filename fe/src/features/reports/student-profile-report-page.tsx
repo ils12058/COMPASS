@@ -39,7 +39,7 @@ export function StudentProfileReportPage() {
   const { user } = usePortalSession();
   if (!canAttemptReports(user)) {
     return (
-      <WorkspaceUnavailable title="Student Profiling unavailable">
+      <WorkspaceUnavailable title="Student profiling access">
         You don’t have access to reports.
       </WorkspaceUnavailable>
     );
@@ -124,12 +124,12 @@ function StudentProfileReportWorkspace() {
         !campusesQuery.data
       ) {
         appliedFilterIssue =
-          "Campus choices could not be loaded. Retry before applying the report filters.";
+          "Couldn't load Campus choices. Retry before applying the report filters.";
       } else if (
         !campusChoices.some((campus) => campus.id === applied.params.campus_id)
       ) {
         appliedFilterIssue =
-          "The selected campus is unavailable for your reporting area.";
+          "Choose a Campus in your reporting area.";
       }
     }
     if (!appliedFilterIssue && applied.params.college_id) {
@@ -141,10 +141,10 @@ function StudentProfileReportWorkspace() {
         !collegesQuery.data
       ) {
         appliedFilterIssue =
-          "College choices could not be loaded. Retry before applying the report filters.";
+          "Couldn't load College choices. Retry before applying the report filters.";
       } else if (!appliedCollege) {
         appliedFilterIssue =
-          "The selected college is unavailable for your reporting area.";
+          "Choose a College in your reporting area.";
       } else if (
         applied.params.campus_id &&
         appliedCollege.campus.id !== applied.params.campus_id
@@ -163,7 +163,7 @@ function StudentProfileReportWorkspace() {
         !appliedProgramsQuery.data
       ) {
         appliedFilterIssue =
-          "Program choices could not be loaded to validate the applied report filter.";
+          "Couldn't load Program choices to check the report filter. Try again.";
       } else if (
         !appliedProgramsQuery.data?.data.items.some(
           (program) =>
@@ -189,8 +189,8 @@ function StudentProfileReportWorkspace() {
 
   if (scopeQuery.isPending) {
     return (
-      <section aria-label="Checking Student Profiling access">
-        <ReportsPageHeading title="Student Profiling" />
+      <section aria-label="Checking Student profiling access">
+        <ReportsPageHeading title="Student profiling" />
         <RowsSkeleton label="Checking your report access…" rows={2} framed />
       </section>
     );
@@ -199,19 +199,19 @@ function StudentProfileReportWorkspace() {
     if (isReportScopeDenied(scopeQuery.error)) {
       return (
         <section>
-          <ReportsPageHeading title="Student Profiling unavailable" />
+          <ReportsPageHeading title="Student profiling access" />
          <Notice role="status">
-           No reporting area is currently assigned to your account.
+           You need an assigned reporting area to view this report. Contact the Guidance Office.
          </Notice>
         </section>
       );
     }
     return (
       <section>
-        <ReportsPageHeading title="Student Profiling" />
+        <ReportsPageHeading title="Student profiling" />
         <ReportQueryError
           error={scopeQuery.error}
-          fallback="Your report access could not be checked."
+          fallback="Couldn't check your report access. Try again."
           onRetry={() => void scopeQuery.refetch()}
         />
       </section>
@@ -220,9 +220,9 @@ function StudentProfileReportWorkspace() {
   if (!scope || (!scope.is_global && scope.colleges.length === 0)) {
     return (
       <section>
-        <ReportsPageHeading title="Student Profiling unavailable" />
+        <ReportsPageHeading title="Student profiling access" />
        <Notice role="status">
-         No reporting area is currently assigned to your account.
+         You need an assigned reporting area to view this report. Contact the Guidance Office.
        </Notice>
       </section>
     );
@@ -236,7 +236,7 @@ function StudentProfileReportWorkspace() {
         showGraduateTracer={scope.is_global}
       />
       <ReportsPageHeading
-        title="Student Profiling"
+        title="Student profiling"
         headingId="student-profile-heading"
         actions={
           report ? (
@@ -301,18 +301,18 @@ function StudentProfileReportWorkspace() {
       {canQueryReport && reportQuery.isError && report ? (
         <div className="mt-5">
           <ReportStaleNotice onRetry={() => void reportQuery.refetch()}>
-            The report could not be refreshed. The last confirmed report remains visible.
+            Couldn&apos;t refresh report. The last confirmed report remains visible.
           </ReportStaleNotice>
         </div>
       ) : null}
       {canQueryReport && reportQuery.isFetching && !reportQuery.isPending ? (
         <p role="status" className="mt-4 text-xs text-muted">
-          Refreshing Student Profiling report…
+          Refreshing Student profiling report…
         </p>
       ) : null}
 
       {reportQuery.isPending && canQueryReport ? (
-        <div className="mt-5 space-y-5" aria-busy="true"><span className="sr-only">Loading Student Profiling report…</span>
+        <div className="mt-5 space-y-5" aria-busy="true"><span className="sr-only">Loading Student profiling report…</span>
           <Skeleton className="h-28 w-full rounded-sm" />
           <Skeleton className="h-20 w-full rounded-sm" />
           <Skeleton className="h-52 w-full rounded-sm" />
@@ -324,7 +324,7 @@ function StudentProfileReportWorkspace() {
         <div className="mt-5">
           <ReportQueryError
             error={reportQuery.error}
-            fallback="Student Profiling report could not be loaded."
+            fallback="Couldn't load Student profiling report. Try again."
             onRetry={() => void reportQuery.refetch()}
           />
         </div>

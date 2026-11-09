@@ -23,14 +23,14 @@ export function GraduateTracerWorkspacePage({ filters }: { filters: GraduateTrac
 
   if (access.isStudent && !access.isGraduatedStudent) {
     return (
-      <WorkspaceUnavailable title="Graduate Tracer unavailable">
-        The Graduate Tracer Survey is for graduates.
+      <WorkspaceUnavailable title="Graduate Tracer for graduates">
+        You can use this survey once your Student status is recorded as Graduated.
       </WorkspaceUnavailable>
     );
   }
 
   return (
-    <WorkspaceUnavailable title="Graduate Tracer unavailable">
+    <WorkspaceUnavailable title="Graduate Tracer access">
       You don’t have access to Graduate Tracer.
     </WorkspaceUnavailable>
   );

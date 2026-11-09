@@ -28,7 +28,7 @@ export function ResourceEditPage({ resourceId }: { resourceId: string }) {
 
   return (
     <section>
-      <ContentPageHeading title="Edit Resource" backHref={backHref} backLabel="Back to Resource">
+      <ContentPageHeading title="Edit resource" backHref={backHref} backLabel="Back to resource">
         <div className="mt-3">
           <PublicationStatusBadge status={item.status} />
         </div>

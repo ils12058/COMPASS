@@ -85,7 +85,7 @@ export function OverviewSummary({
 
       {isError && hasContent ? (
         <p role="status" className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">
-          The summary could not be refreshed. Showing the last confirmed counts.
+          Couldn&apos;t refresh summary. Showing the last confirmed counts.
         </p>
       ) : null}
 

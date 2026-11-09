@@ -65,7 +65,7 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
     <Panel className="@container/agenda" aria-labelledby="counselor-agenda-heading">
       <PanelHeader
         className="border-b-0"
-        title={<span className="[overflow-wrap:anywhere]">{"Today's appointments"}</span>}
+        title={<span className="[overflow-wrap:anywhere]">{"Today's Appointments"}</span>}
         titleId="counselor-agenda-heading"
         description={INSTITUTION_TIME_ZONE_LABEL}
         actions={(
@@ -76,14 +76,14 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
       {appointments.isError && page ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
           <p role="status" className="text-sm text-muted">
-            Today’s schedule could not be refreshed. Showing the last confirmed appointments.
+            Couldn&apos;t refresh today’s schedule. Showing the last confirmed Appointments.
           </p>
           <Button variant="secondary" onClick={() => void appointments.refetch()}>Retry</Button>
         </div>
       ) : null}
 
       {appointments.isPending ? (
-        <LoadingRegion label="Loading today's appointments…" className="space-y-4 px-4 py-4 sm:px-5">
+        <LoadingRegion label="Loading today's Appointments…" className="space-y-4 px-4 py-4 sm:px-5">
           {[0, 1, 2].map((row) => (
             <div key={row} aria-hidden="true" className="space-y-2 border-b border-border pb-4 last:border-0 last:pb-0">
               <Skeleton className="h-4 w-28" />
@@ -102,10 +102,10 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
             </Button>
           )}
         >
-          Today’s appointments could not be loaded.
+          Couldn&apos;t load today’s Appointments. Try again.
         </PanelMessage>
       ) : items.length === 0 ? (
-        <PanelMessage>No scheduled appointments today.</PanelMessage>
+        <PanelMessage>No scheduled Appointments today.</PanelMessage>
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -113,7 +113,7 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
           </ul>
           {page?.has_next ? (
             <PanelMessage className="border-t border-border" role="status">
-              Showing the first {AGENDA_PAGE_SIZE} appointments. More are scheduled today.
+              Showing the first {AGENDA_PAGE_SIZE} Appointments. More are scheduled today.
             </PanelMessage>
           ) : null}
         </>
@@ -189,7 +189,7 @@ function CounselorDestinations({ user }: { user: UserSummary }) {
 function HeadGuidanceDestinations({ user }: { user: UserSummary }) {
   const destinations = getHeadGuidanceHomeDestinations(user);
   if (destinations.length === 0) return null;
-  return <HomeShortcuts title="Authorized oversight" titleId="head-guidance-oversight-heading" destinations={destinations} />;
+  return <HomeShortcuts title="Oversight" titleId="head-guidance-oversight-heading" destinations={destinations} />;
 }
 
 export function CounselorHome({

@@ -379,6 +379,6 @@ test("a failed search shows the failure instead of earlier unfiltered rows", asy
 
   const html = render(queryClient, createElement(AnnouncementList, { mode: "index", page: 1, search: "wellness" }));
 
-  assert.match(html, /announcements could not be loaded/i);
+  assert.match(html, /Couldn&#x27;t load (?:public )?announcements/i);
   assert.doesNotMatch(html, /Unfiltered announcement/);
 });

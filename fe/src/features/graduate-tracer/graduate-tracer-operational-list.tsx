@@ -218,7 +218,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
       </form>
 
       {dateRangeInvalid ? <Notice role="alert" tone="warning"><span className="text-ink">Submitted-from date must be on or before the submitted-to date.</span></Notice> : null}
-      {!dateRangeInvalid && queue.isError && page && !hideCached ? <GraduateTracerError error={queue.error} fallback="The submitted-response queue could not be refreshed. Showing the last confirmed results." onRetry={() => void queue.refetch()} /> : null}
+      {!dateRangeInvalid && queue.isError && page && !hideCached ? <GraduateTracerError error={queue.error} fallback="Couldn't refresh submitted responses. Showing the last confirmed results." onRetry={() => void queue.refetch()} /> : null}
 
       {dateRangeInvalid ? null : (
         <Panel aria-labelledby="graduate-tracer-results-heading">
@@ -249,7 +249,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
             <RowsSkeleton label="Loading submitted Graduate Tracer responses…" rows={4} />
           ) : queue.isError && (!page || hideCached) ? (
             <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}>
-              {graduateTracerErrorMessage(queue.error, "The submitted-response queue could not be loaded.")}
+              {graduateTracerErrorMessage(queue.error, "Couldn't load submitted responses. Try again.")}
             </PanelMessage>
           ) : !page ? null : page.items.length === 0 ? (
             <PanelMessage action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>

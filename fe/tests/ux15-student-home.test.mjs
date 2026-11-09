@@ -34,7 +34,7 @@ test("Student hierarchy puts actions before discovery, context and announcements
   assert.deepEqual(sections, [...sections].sort((a, b) => a - b));
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
   assert.match(html, /href="\/portal\/appointments\/book"/);
-  assert.match(html, /Book appointment/);
+  assert.match(html, /Book Appointment/);
 });
 
 test("Home preview preserves the canonical first-five order even when dates would sort differently", () => {
@@ -83,7 +83,7 @@ test("missing Graduate Tracer view authority falls back only to authorized histo
 test("Student metric meanings, null omission, zero and exact destinations are retained", () => {
   const state = homeWorld();
   assert.deepEqual(getOverviewMetrics(state.summary, state.account), [
-    { label: "Upcoming appointments", value: 2, href: "/portal/appointments/my?status=UPCOMING" },
+    { label: "Upcoming Appointments", value: 2, href: "/portal/appointments/my?status=UPCOMING" },
     { label: "Routine Interview drafts", value: 1, href: "/portal/routine-interviews" },
     { label: "Good Moral requests", value: 1, href: "/portal/good-moral" },
     { label: "Active Call Slips", value: 1, href: "/portal/call-slips?state=ACTIVE" },
@@ -107,7 +107,7 @@ test("professional roles and designations retain their composition without Stude
   for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : role === "INSTITUTIONAL_OFFICER" ? ["DPO"] : [] });
     const html = renderWorld(state);
-    assert.doesNotMatch(html, /student-home-services-heading|View all actions|Book appointment/);
+    assert.doesNotMatch(html, /student-home-services-heading|View all actions|Book Appointment/);
     assert.deepEqual(getStudentHomeDestinations(state.account), []);
     assert.equal(html.includes("counselor-work-heading"), role === "COUNSELOR", "Only Counselors receive the dedicated Counselor Home composition");
     if (role === "GUIDANCE_OFFICE_ASSISTANT") {
@@ -129,7 +129,7 @@ test("loading, initial failure, stale empty and confirmed empty remain distinct"
   assert.match(render({ isCaughtUp: true }), /No current actions need your attention/);
   assert.doesNotMatch(render({ staleNotices: ["My actions could not be refreshed."], retryActions() {} }), /caught up/);
   assert.match(render({ staleNotices: ["My actions could not be refreshed."], retryActions() {} }), /Your last confirmed result had no actions/);
-  assert.doesNotMatch(render({ items: [{ id: "error", title: "My actions could not be loaded", detail: "Try again.", href: "/portal/actions", actionLabel: "Open My actions", isError: true }] }), /caught up/);
+  assert.doesNotMatch(render({ items: [{ id: "error", title: "Couldn't load My actions", detail: "Try again.", href: "/portal/actions", actionLabel: "Open My actions", isError: true }] }), /caught up/);
 });
 
 test("greeting and date use institutional time even at a UTC day boundary", () => {

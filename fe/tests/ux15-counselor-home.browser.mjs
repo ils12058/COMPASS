@@ -32,8 +32,8 @@ const canonicalWork = [
 const responsiveMeasurements = [];
 
 await check("desktop-agenda-and-canonical-work", "/portal", counselorWorld({ appointments: appointmentsToday, work: canonicalWork }).options(), async (page, { requests }) => {
-  await shown(agenda(page).getByRole("heading", { name: "Today's appointments", exact: true }));
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("heading", { name: "Today's Appointments", exact: true }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   assert.deepEqual(await work(page).locator("h3").allTextContents(), [
     "Review Guidance Follow-Up",
@@ -67,13 +67,13 @@ await check("desktop-agenda-and-canonical-work", "/portal", counselorWorld({ app
 });
 
 await check("confirmed-empty-agenda-keeps-work-visible", "/portal", counselorWorld({ appointments: [], work: canonicalWork.slice(0, 1) }).options(), async (page) => {
-  await shown(agenda(page).getByText("No scheduled appointments today.", { exact: true }));
+  await shown(agenda(page).getByText("No scheduled Appointments today.", { exact: true }));
   await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   assert.equal(await page.getByRole("heading", { name: "No items currently need attention in My work.", exact: true }).count(), 0);
 });
 
 await check("confirmed-empty-work-keeps-agenda-and-destinations", "/portal", counselorWorld({ appointments: appointmentsToday.slice(0, 2), work: [] }).options(), async (page) => {
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await shown(work(page).getByText("No items currently need attention in My work.", { exact: true }));
   await shown(page.locator("#counselor-continuation-heading"));
   await screenshot(page, "after-counselor-desktop-no-work");
@@ -135,38 +135,38 @@ partial.workStatus = 500;
 await check("partial-failure-keeps-independent-projection-usable", "/portal", partial.options(), async (page) => {
   await shown(agenda(page).getByRole("alert"));
   await shown(work(page).getByRole("alert"));
-  assert.equal(await agenda(page).getByText("No scheduled appointments today.", { exact: true }).count(), 0);
+  assert.equal(await agenda(page).getByText("No scheduled Appointments today.", { exact: true }).count(), 0);
   assert.equal(await work(page).getByText("No items currently need attention in My work.", { exact: true }).count(), 0);
   partial.appointmentsStatus = 200;
   partial.workStatus = 200;
   await agenda(page).getByRole("button", { name: "Retry", exact: true }).click();
   await work(page).getByRole("button", { name: "Retry", exact: true }).click();
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
 });
 
 const stale = counselorWorld({ appointments: appointmentsToday.slice(0, 1), work: canonicalWork.slice(0, 1) });
 await check("stale-agenda-retains-confirmed-items-and-denial-hides-them", "/portal", stale.options(), async (page) => {
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   stale.appointmentsStatus = 500;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await shown(agenda(page).getByText("Today’s schedule could not be refreshed. Showing the last confirmed appointments.", { exact: true }));
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByText("Couldn't refresh today’s schedule. Showing the last confirmed Appointments.", { exact: true }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await screenshot(page, "after-stale-agenda");
   stale.appointmentsStatus = 403;
   await agenda(page).getByRole("button", { name: "Retry", exact: true }).click();
   await shown(agenda(page).getByRole("alert"));
-  await hidden(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
-  assert.equal(await agenda(page).getByText("No scheduled appointments today.", { exact: true }).count(), 0);
+  await hidden(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  assert.equal(await agenda(page).getByText("No scheduled Appointments today.", { exact: true }).count(), 0);
 });
 
 const changed = counselorWorld({ appointments: appointmentsToday.slice(0, 1), work: [] });
 await check("cancelled-or-rescheduled-appointments-disappear-after-authoritative-refresh", "/portal", changed.options(), async (page) => {
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   changed.appointments = [counselorAppointment(1, { hour: 10, status: "CANCELLED" })];
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await shown(agenda(page).getByText("No scheduled appointments today.", { exact: true }));
-  await hidden(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByText("No scheduled Appointments today.", { exact: true }));
+  await hidden(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
 });
 
 const switched = counselorWorld({
@@ -176,7 +176,7 @@ const switched = counselorWorld({
   work: canonicalWork.slice(0, 1),
 });
 await check("account-switch-removes-counselor-private-projections", "/portal", switched.options(), async (page) => {
-  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open Appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await shown(work(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }));
   switched.account = {
     ...switched.account,
@@ -291,7 +291,7 @@ await check("responsive-home-reflows-at-requested-widths-and-enlarged-text", "/p
     }
   }
   assert.deepEqual(await page.locator("main h2").allTextContents(), [
-    "My work", "Today's appointments", "Continue in your workspace", "At a glance", "Announcements",
+    "My work", "Today's Appointments", "Continue in your workspace", "At a glance", "Announcements",
   ]);
 });
 

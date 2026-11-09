@@ -155,19 +155,19 @@ export function CsmForm() {
     message: "Discard your unfinished Client Satisfaction Measurement response?",
   });
 
-  if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+  if (!access.canSubmitCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement access" />;
   if (!opportunityId) {
     return (
       <FeedbackAccessUnavailable
         title={
           opportunityParam
-            ? "Client Satisfaction Measurement unavailable"
-            : "Choose a completed service"
+            ? "Completed Service not found"
+            : "Choose a completed Service"
         }
         message={
           opportunityParam
-            ? "This Feedback opportunity is not available."
-            : "Open Feedback and choose the completed service you want to review."
+            ? "This completed Service was not found."
+            : "Open Feedback and choose the completed Service you want to review."
         }
       />
     );
@@ -179,32 +179,32 @@ export function CsmForm() {
     if (feedbackErrorCode(opportunity.error) === "feedback_opportunity_not_found") {
       return (
         <FeedbackAccessUnavailable
-          title="Client Satisfaction Measurement unavailable"
-          message="This Feedback opportunity is not available."
+          title="Completed Service not found"
+          message="Choose another completed Service from Feedback."
         />
       );
     }
     return (
       <FeedbackQueryError
         error={opportunity.error}
-        fallback="The completed service could not be loaded."
+        fallback="Couldn't load the completed Service. Try again."
         onRetry={() => void opportunity.refetch()}
       />
     );
   }
   if (!opportunityData) {
-    return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+    return <FeedbackAccessUnavailable title="Completed Service not found" message="Choose a completed Service from Feedback." />;
   }
   if (opportunityData.csm_submitted && !success) {
     return (
       <FeedbackAccessUnavailable
         title="Client Satisfaction Measurement submitted"
-        message="Feedback for this service has already been submitted."
+        message="Feedback for this Service has already been submitted."
       />
     );
   }
   if (!opportunityData.can_submit_csm && !isUncertain && !success) {
-    return <FeedbackAccessUnavailable title="Client Satisfaction Measurement unavailable" />;
+    return <FeedbackAccessUnavailable title="Client Satisfaction Measurement not accepting responses" message="You cannot submit feedback for this Service now. Contact the Guidance Office." />;
   }
   const submissionOpportunityId = opportunityData.id;
 
@@ -247,14 +247,14 @@ export function CsmForm() {
       if (!canonical.can_submit_csm) {
         setUncertainIntent(intent);
         setRetryAllowed(false);
-        setStatusMessage("This opportunity is not currently accepting Client Satisfaction Measurement. Your response is preserved; check status again or contact the Guidance and Counseling Office.");
+        setStatusMessage("This Service is not accepting Client Satisfaction Measurement now. Your answers are kept; check status again or contact the Guidance Office.");
         return;
       }
 
       if (mode === "authorization") {
         setUncertainIntent(intent);
         setRetryAllowed(false);
-        setStatusMessage("Your response is still unsubmitted, but the latest attempt was not authorized. Check status again when your access is available.");
+        setStatusMessage("Your response is still unsubmitted. Check its status again when you have access.");
         return;
       }
 
@@ -354,7 +354,7 @@ export function CsmForm() {
         intentRef.current = null;
         setUncertainIntent(null);
         setRetryAllowed(false);
-        setError(feedbackSubmissionErrorMessage(caught, "Client Satisfaction Measurement could not be submitted."));
+        setError(feedbackSubmissionErrorMessage(caught, "Couldn't submit Client Satisfaction Measurement. Try again."));
       }
     } finally {
       operationRef.current = false;

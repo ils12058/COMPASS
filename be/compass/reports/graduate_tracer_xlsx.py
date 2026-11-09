@@ -217,13 +217,13 @@ def _build_summary(
     worksheet.column_dimensions["A"].width = 36
     worksheet.column_dimensions["B"].width = 68
     worksheet.column_dimensions["C"].width = 18
-    _write_text(worksheet, 1, 1, "Graduate Tracer Aggregate Report", bold=True)
+    _write_text(worksheet, 1, 1, "Graduate Tracer aggregate report", bold=True)
     worksheet["A1"].font = Font(bold=True, size=16, color="5B1F26")
     worksheet.row_dimensions[1].height = 26
 
     response_count = int(report_context.get("submitted_response_count") or 0)
-    _summary_heading(worksheet, 3, "At a Glance")
-    _write_text(worksheet, 4, 1, "Submitted Response Count", bold=True, wrap=True)
+    _summary_heading(worksheet, 3, "At a glance")
+    _write_text(worksheet, 4, 1, "Submitted response count", bold=True, wrap=True)
     _write_number(worksheet, 4, 2, response_count, number_format="#,##0")
     if response_count == 0:
         _write_summary_note(worksheet, 5, EMPTY_REPORT_MESSAGE, warning=True)
@@ -233,7 +233,7 @@ def _build_summary(
     graduation_year = report_context.get("graduation_year")
 
     rows: list[tuple[str, object]] = [
-        ("Instrument Schema Version", report_context.get("instrument_schema_version")),
+        ("Instrument version", report_context.get("instrument_schema_version")),
     ]
     if isinstance(college, dict) and college.get("code"):
         rows.append(("College at Graduation", f"{college.get('code')} - {college.get('name')}"))
@@ -249,7 +249,7 @@ def _build_summary(
         ]
     )
     row = 7 if response_count == 0 else 6
-    _summary_heading(worksheet, row, "Report Context")
+    _summary_heading(worksheet, row, "Report context")
     row += 1
     for label, value in rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
@@ -284,7 +284,7 @@ def _build_summary(
         row += 1
 
     row += 1
-    _summary_heading(worksheet, row, "Methodology and Limitations")
+    _summary_heading(worksheet, row, "Methodology and limitations")
     row += 1
     methodology_labels = {
         "population": "Population",

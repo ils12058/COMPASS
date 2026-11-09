@@ -47,7 +47,7 @@ export function ResourceUnavailable({ error, onRetry, backHref = "/portal/resour
   return (
     <section className="space-y-5">
       <ContentPageHeading
-        title={notFound ? "Resource not found" : "Resource unavailable"}
+        title={notFound ? "Resource not found" : "Resource"}
         backHref={backHref}
         backLabel="Resources"
       />
@@ -57,7 +57,7 @@ export function ResourceUnavailable({ error, onRetry, backHref = "/portal/resour
         </Notice>
       ) : (
         <ContentQueryError
-          message={resourceErrorMessage(error, "This Resource could not be loaded.")}
+          message={resourceErrorMessage(error, "Couldn't load resource. Try again.")}
           onRetry={shouldHideResourceData(error) ? undefined : onRetry}
         />
       )}
@@ -79,7 +79,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
   }
 
   const item = detail.data.data;
-  const title = displayTitle(item.title, "Untitled Resource");
+  const title = displayTitle(item.title, "Untitled resource");
   const isDraft = item.status === ResourceStatusValue.DRAFT;
   const missing = isDraft ? missingForPublication(item) : [];
   const externalUrl = getSafeHttpUrl(item.external_url);
@@ -93,7 +93,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         action={!detail.isError ?
           <>
             {item.status !== ResourceStatusValue.ARCHIVED ? (
-              <PageActionLink href={`/portal/resources/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Resource" />
+              <PageActionLink href={`/portal/resources/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit resource" />
             ) : null}
             <ResourceLifecycleActions resource={item} publishBlocked={missing.length > 0} onCompleted={setNotice} />
           </>

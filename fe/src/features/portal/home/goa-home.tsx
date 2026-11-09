@@ -45,13 +45,13 @@ function isAuthorizationFailure(error: unknown): boolean {
 function workErrorMessage(error: unknown): string {
   if (error instanceof CompassApiError && error.status === 403) return "You don't have access to My work.";
   if (error instanceof CompassApiError && error.status === 401) return "Your session has ended. Sign in again to view My work.";
-  return "My work could not be loaded. Try again.";
+  return "Couldn't load My work. Try again.";
 }
 
 function appointmentErrorMessageForGoa(error: unknown): string {
-  if (error instanceof CompassApiError && error.status === 403) return "Managed Appointments are not available for this account.";
+  if (error instanceof CompassApiError && error.status === 403) return "You don't have access to managed Appointments.";
   if (error instanceof CompassApiError && error.status === 401) return "Your session has ended. Sign in again to view managed Appointments.";
-  return "Today's managed Appointments could not be loaded. Try again.";
+  return "Couldn't load today's managed Appointments. Try again.";
 }
 
 function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentionData }) {
@@ -74,7 +74,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
 
       {data.workIsError && data.workHasConfirmedData ? (
         <RefreshFailureNotice
-          message="My work could not be refreshed. Showing the last confirmed items."
+          message="Couldn't refresh My work. Showing the last confirmed items."
           onRetry={() => data.retryWork?.()}
         />
       ) : null}
@@ -102,10 +102,10 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
         </div>
       ) : data.workHasConfirmedData && data.canonicalWorkItems.length === 0 ? (
         <PanelMessage>
-          {data.workIsError ? "The last confirmed My work projection had no items." : "No items currently need attention in My work."}
+          {data.workIsError ? "You had no work items the last time this page loaded." : "No items currently need attention in My work."}
         </PanelMessage>
       ) : data.workHasConfirmedData ? (
-        <PanelMessage>No authorized work items are available to show in this Home preview.</PanelMessage>
+        <PanelMessage>No work items to show here.</PanelMessage>
       ) : null}
 
       {data.workHasConfirmedData && data.workHasNext ? (
@@ -155,7 +155,7 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
 
       {query.isError && page ? (
         <RefreshFailureNotice
-          message="Today's managed Appointments could not be refreshed. Showing the last confirmed schedule."
+          message="Couldn't refresh today's managed Appointments. Showing the last confirmed schedule."
           onRetry={() => void query.refetch()}
           retrying={query.isFetching}
         />
@@ -196,18 +196,18 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
   return (
     <Panel aria-labelledby="goa-operations-heading">
       <PanelHeader className="border-b-0 pb-1" title="Office workload" titleId="goa-operations-heading" />
-      <p className="px-4 pb-3 text-sm leading-6 text-muted sm:px-5">Counts reflect office demand within your scope, not individual assignments.</p>
+      <p className="px-4 pb-3 text-sm leading-6 text-muted sm:px-5">Counts show office demand for the Colleges you handle, not your own assignments.</p>
 
       {query.isError && data ? (
         <RefreshFailureNotice
-          message="Guidance Operations could not be refreshed. Showing the last confirmed office workload."
+          message="Couldn't refresh Guidance Operations. Showing the last confirmed office workload."
           onRetry={() => void query.refetch()}
           retrying={query.isFetching}
         />
       ) : null}
       {initialError ? (
         <Notice role="alert" tone="warning" action={<Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Retry</Button>}>
-          {accessDenied ? "Guidance Operations are not available for this account." : "Office workload could not be loaded. Try again."}
+          {accessDenied ? "You don't have access to Guidance Operations." : "Couldn't load office workload. Try again."}
         </Notice>
       ) : null}
       {query.isPending && !data ? (
@@ -219,7 +219,7 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
       ) : null}
 
       {metrics && metrics.length > 0 ? (
-        <dl aria-label="Scoped office workload metrics" className="divide-y divide-border px-4 sm:px-5">
+        <dl aria-label="Office workload" className="divide-y divide-border px-4 sm:px-5">
           {metrics.map((metric) => (
             <div key={metric.key} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3">
               <dt className="min-w-0 text-sm font-semibold leading-6 [overflow-wrap:anywhere]">
@@ -231,8 +231,8 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
           ))}
         </dl>
       ) : null}
-      {metrics && metrics.length === 0 ? <PanelMessage>No Guidance Operations metrics are available within the returned scope.</PanelMessage> : null}
-      {allZero ? <PanelMessage>{query.isError ? "The last confirmed office workload had no items waiting." : "No work is currently waiting in the returned office metrics."}</PanelMessage> : null}
+      {metrics && metrics.length === 0 ? <PanelMessage>No office workload to show yet.</PanelMessage> : null}
+      {allZero ? <PanelMessage>{query.isError ? "The last confirmed office workload had no items waiting." : "No office work is waiting."}</PanelMessage> : null}
       {data ? <p className="border-t border-border px-4 py-2.5 text-xs text-muted sm:px-5">Updated <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time></p> : null}
     </Panel>
   );

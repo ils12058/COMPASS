@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 
 export function RefreshFailureNotice({
-  message = "Latest information could not be refreshed. Showing the last confirmed result.",
+  message = "Couldn't refresh latest information. Showing the last confirmed result.",
   onRetry,
   retrying = false,
 }: {

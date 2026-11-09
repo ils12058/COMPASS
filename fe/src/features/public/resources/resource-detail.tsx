@@ -81,7 +81,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
 
     return (
       <PublicPageError
-        message="This resource could not be loaded."
+        message="Couldn't load resource. Try again."
         onRetry={() => void query.refetch()}
       />
     );
@@ -130,7 +130,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           ) : (
-            <p className="text-sm text-danger">The external resource link is unavailable.</p>
+            <p className="text-sm text-danger">This resource has no link to open.</p>
           )}
         </PanelFooter>
       ) : null}
@@ -147,7 +147,7 @@ export function ResourceDetail({ resourceId }: { resourceId: string }) {
           </Button>
           {download.isError ? (
             <p role="alert" className="w-full text-sm text-danger">
-              The download could not be prepared. Please try again.
+              Couldn&apos;t prepare download. Try again.
             </p>
           ) : null}
         </PanelFooter>

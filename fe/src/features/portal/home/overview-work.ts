@@ -99,10 +99,10 @@ export function useOverviewAttention(
         rank: { priority: item.priority, dueAt: item.due_at, waitingSince: item.waiting_since, stableKey: item.id } });
     }
     if (studentActions.isError && !studentData) {
-      addErrorRow(items, "student-actions-unavailable", "My actions could not be loaded",
+      addErrorRow(items, "student-actions-unavailable", "Couldn't load My actions",
         "Open My actions to retry.", "/portal/actions", "Open My actions", () => void studentActions.refetch(), AttentionPriority.ACTION_REQUIRED);
     } else if (studentActions.isError && studentData) {
-      staleNotices.push("My actions could not be refreshed. Showing the last confirmed result.");
+      staleNotices.push("Couldn't refresh My actions. Showing the last confirmed result.");
     }
   }
 
@@ -120,10 +120,10 @@ export function useOverviewAttention(
       });
     }
     if (work.isError && !workData) {
-      addErrorRow(items, "work-unavailable", "My work could not be loaded",
+      addErrorRow(items, "work-unavailable", "Couldn't load My work",
         "Open My work to retry.", "/portal/work", "Open My work", () => void work.refetch(), AttentionPriority.ACTION_REQUIRED);
     } else if (work.isError && workData) {
-      staleNotices.push("My work could not be refreshed. Showing the last confirmed items.");
+      staleNotices.push("Couldn't refresh My work. Showing the last confirmed items.");
     }
   }
 

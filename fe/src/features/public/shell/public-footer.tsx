@@ -32,7 +32,7 @@ export function PublicFooter() {
           />
           <div className="min-w-0 [overflow-wrap:anywhere]">
             <p className="font-semibold text-on-brand">University of Camarines Norte</p>
-            <p>Guidance and Counseling Office</p>
+            <p>Guidance Office</p>
             <a
               href="https://ucn.edu.ph"
               className="mt-1 inline-flex min-h-9 items-center gap-1.5 font-semibold text-on-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand"
@@ -59,7 +59,7 @@ export function PublicFooter() {
       <div className="border-t border-on-brand/20">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-5 text-xs text-on-brand/70 sm:px-8 md:flex-row md:items-center md:justify-between">
           <p>© 2026 University of Camarines Norte</p>
-          <p>Developed for the UCN Guidance and Counseling Office</p>
+          <p>Developed for the UCN Guidance Office</p>
         </div>
       </div>
     </footer>

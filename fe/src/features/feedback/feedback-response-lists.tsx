@@ -85,7 +85,7 @@ export function CustomerFeedbackResponseList() {
   const { requested: requestedOrdering, setOrdering } = useListOrdering(FeedbackResponseOrdering);
   const list = useFeedbackListCustomerFeedbackResponses({ ...(formRevisionId ? { form_revision_id: formRevisionId } : {}), ...(search ? { search } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), ...(requestedOrdering ? { ordering: requestedOrdering } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
 
-  if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback responses unavailable" />;
+  if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback responses access" />;
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,7 +128,7 @@ export function CustomerFeedbackResponseList() {
           filterCount={[formRevisionId, service, params.get("submitted_from"), params.get("submitted_to")].filter(Boolean).length}
           clear={hasFilters ? <Button variant="quiet" onClick={clearFilters}>Clear filters</Button> : undefined}
           filters={<>
-            <FilterField label="Service" htmlFor="feedback-service-filter" className="sm:col-span-2"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
+            <FilterField label="Service" htmlFor="feedback-service-filter" className="sm:col-span-2"><Select id="feedback-service-filter" name="service" defaultValue={service ?? ""}><option value="">All Services</option>{feedbackServices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></FilterField>
             <FormRevisionFilter id="feedback-revision" selectedId={formRevisionId} defaultValue={formRevisionId} options={rows?.filter_options.form_revisions} />
             <DateRangeFilters searchParams={params} />
             {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-full">{filterError}</p> : null}
@@ -152,7 +152,7 @@ export function CustomerFeedbackResponseList() {
           }
           context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
         />
-        {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "Customer Feedback responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</PanelMessage> : (
+        {list.isPending ? <FeedbackListSkeleton label="Loading Customer Feedback responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "Couldn't load Customer Feedback responses. Try again.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No Customer Feedback responses match the current search or filters." : "No Customer Feedback responses have been submitted."}</PanelMessage> : (
           <div className={dataTable.scroll}>
             <table className={responseTable}>
               <caption className="sr-only">Customer Feedback response list</caption>
@@ -182,7 +182,7 @@ export function CsmResponseList() {
   const { requested: requestedOrdering, setOrdering } = useListOrdering(FeedbackResponseOrdering);
   const list = useFeedbackListCsmResponses({ ...(clientType ? { client_type: clientType } : {}), ...(service ? { service } : {}), ...(params.get("submitted_from") ? { submitted_from: params.get("submitted_from")! } : {}), ...(params.get("submitted_to") ? { submitted_to: params.get("submitted_to")! } : {}), ...(requestedOrdering ? { ordering: requestedOrdering } : {}), page, page_size: 25 }, { query: { retry: false, enabled: access.canViewCsm } });
 
-  if (!access.canViewCsm) return <FeedbackAccessUnavailable title="CSM responses unavailable" />;
+  if (!access.canViewCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement responses access" />;
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -216,8 +216,8 @@ export function CsmResponseList() {
 
   return (
     <section aria-labelledby="csm-responses-heading">
-      <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Responses are read-only. The service search matches the service named in each response." />
-      <form key={searchParams.toString()} role="search" aria-label="CSM responses" onSubmit={applyFilters}>
+      <FeedbackPageHeading headingId="csm-responses-heading" title="Client Satisfaction Measurement responses" description="Responses are read-only. The Service search matches the Service named in each response." />
+      <form key={searchParams.toString()} role="search" aria-label="Client Satisfaction Measurement responses" onSubmit={applyFilters}>
         <FloatingListTools
           submits
           invalid={Boolean(filterError)}
@@ -229,7 +229,7 @@ export function CsmResponseList() {
             {filterError ? <p role="alert" className="text-sm text-danger sm:col-span-full">{filterError}</p> : null}
           </>}
         >
-          <ListSearchField id="csm-service-filter" name="service" label="Filter by service availed" placeholder="Filter by service availed" defaultValue={service} />
+          <ListSearchField id="csm-service-filter" name="service" label="Filter by Service availed" placeholder="Filter by Service availed" defaultValue={service} />
         </FloatingListTools>
       </form>
       {list.isError && rows ? <RefreshFailureNotice onRetry={() => void list.refetch()} retrying={list.isFetching} /> : null}
@@ -247,7 +247,7 @@ export function CsmResponseList() {
           }
           context={list.isFetching && !list.isPending ? "Refreshing responses…" : rows ? describeResultPage({ count: rows.items.length, page: rows.page, hasNext: rows.has_next, noun: { one: "response", other: "responses" }, filtered: hasFilters }) : null}
         />
-        {list.isPending ? <FeedbackListSkeleton label="Loading CSM responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "CSM responses could not be loaded.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No CSM responses match the current filters." : "No CSM responses have been submitted."}</PanelMessage> : (
+        {list.isPending ? <FeedbackListSkeleton label="Loading Client Satisfaction Measurement responses…" /> : !rows ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>{feedbackErrorMessage(list.error, "Couldn't load Client Satisfaction Measurement responses. Try again.")}</PanelMessage> : rows.items.length === 0 ? <PanelMessage>{hasFilters ? "No Client Satisfaction Measurement responses match the current filters." : "No Client Satisfaction Measurement responses have been submitted."}</PanelMessage> : (
           <div className={dataTable.scroll}>
             <table className={responseTable}>
               <caption className="sr-only">Client Satisfaction Measurement response list</caption>
@@ -256,7 +256,7 @@ export function CsmResponseList() {
             </table>
           </div>
         )}
-        {rows ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={rows.page} hasNext={rows.has_next} label="CSM response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
+        {rows ? <CanonicalPagination className="border-brand-line px-4 py-3 sm:px-5" page={rows.page} hasNext={rows.has_next} label="Client Satisfaction Measurement response pagination" onPageChange={(page) => movePage(router, pathname, params, page)} /> : null}
       </Panel>
     </section>
   );

@@ -103,7 +103,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADM
     await shown(page.getByText(titles[7], { exact: true }));
     state.status = 500;
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await shown(page.getByText("Latest information could not be refreshed. Showing the last confirmed result."));
+    await shown(page.getByText("Couldn't refresh latest information. Showing the last confirmed result."));
     await shown(page.getByText(titles[7], { exact: true }));
     state.status = 403;
     await page.getByRole("button", { name: "Retry", exact: true }).click();

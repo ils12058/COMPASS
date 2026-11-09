@@ -42,7 +42,7 @@ export function StudentProfileDownloads({
         ...current,
         pdf: reportErrorMessage(
           error,
-          "The Student Profiling PDF could not be downloaded.",
+          "Couldn't download Student profiling PDF. Try again.",
         ),
       }));
     } finally {
@@ -62,7 +62,7 @@ export function StudentProfileDownloads({
         ...current,
         xlsx: reportErrorMessage(
           error,
-          "The Student Profiling XLSX could not be downloaded.",
+          "Couldn't download Student profiling XLSX. Try again.",
         ),
       }));
     } finally {

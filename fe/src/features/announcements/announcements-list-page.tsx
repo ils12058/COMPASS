@@ -167,7 +167,7 @@ export function AnnouncementsListPage() {
         <ContentListSkeleton label="Loading announcements…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
-          {announcementErrorMessage(list.error, "Announcements could not be loaded.")}
+          {announcementErrorMessage(list.error, "Couldn't load announcements. Try again.")}
         </PanelMessage>
       ) : result && result.items.length === 0 ? (
         <PanelMessage
@@ -200,7 +200,7 @@ export function AnnouncementsListPage() {
                     href={`/portal/announcements/${item.id}${detailQuery ? `?${detailQuery}` : ""}`}
                     className={`${contentRecordLinkClass} break-words font-heading text-lg`}
                   >
-                    {displayTitle(item.title, "Untitled Announcement")}
+                    {displayTitle(item.title, "Untitled announcement")}
                   </Link>
                   <PublicationStatusBadge status={item.status} />
                   {item.is_pinned ? (

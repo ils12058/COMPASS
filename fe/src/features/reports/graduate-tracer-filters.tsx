@@ -67,7 +67,7 @@ export function GraduateTracerFilters({
       ) : null}
       {optionsQuery.isError ? (
         <Notice role="alert" tone="danger" className="mb-3">
-          Academic classification options could not be loaded.
+          Couldn&apos;t load academic classification options. Try again.
         </Notice>
       ) : null}
       <form aria-label="Graduate Tracer report filters" onSubmit={submit}>

@@ -22,21 +22,21 @@ export function feedbackOpportunityId(value: string | null): string | null {
 
 const knownFeedbackErrors: Record<string, string> = {
   permission_denied: "You don't have access to feedback.",
-  feedback_not_found: "This feedback response is unavailable.",
+  feedback_not_found: "This feedback response was not found.",
   feedback_opportunity_not_found: "This Feedback opportunity is not available.",
-  feedback_already_submitted: "Feedback for this service has already been submitted.",
+  feedback_already_submitted: "Feedback for this Service has already been submitted.",
   feedback_configuration_conflict:
-    "Feedback is temporarily unavailable. Contact the Guidance and Counseling Office.",
+    "Feedback needs a setup change before you can submit it. Contact the Guidance Office.",
   invalid_feedback_request:
     "Some response values were not accepted. Review the form and try again.",
   invalid_idempotency_key:
-    "This submission attempt could not be verified. Review the response and submit again.",
+    "Couldn't verify submission attempt. Review the response and submit again.",
   idempotency_key_conflict:
     "This submission attempt no longer matches its original response details. Review the form and submit again.",
   idempotency_in_progress:
     "This exact submission is still being processed. Retry the same response shortly.",
   idempotency_unavailable:
-    "The submission result could not be confirmed. Retry the same response safely.",
+    "Couldn't confirm whether your response was submitted. Retry with the same answers.",
 };
 
 export function feedbackErrorMessage(error: unknown, fallback: string): string {
@@ -62,7 +62,7 @@ export function feedbackSubmissionErrorMessage(error: unknown, fallback: string)
   // Keep authoritative known-code guidance, including the same-response recovery paths.
   if (code && knownFeedbackErrors[code]) return knownFeedbackErrors[code];
   if (error instanceof CompassApiError && (error.status >= 500 || error.status === 408)) {
-    return "The submission result could not be confirmed. Check your feedback status before trying again. If the status is unclear, contact the Guidance and Counseling Office.";
+    return "Couldn't confirm whether your response was submitted. Check your feedback status before trying again; if it is unclear, contact the Guidance Office.";
   }
   return feedbackErrorMessage(error, fallback);
 }
@@ -151,7 +151,7 @@ export function FeedbackDetailSkeleton({ label }: { label: string }) {
 }
 
 export function FeedbackAccessUnavailable({
-  title = "Feedback unavailable",
+  title = "Feedback access",
   message = "You don’t have access to feedback.",
 }: {
   title?: string;

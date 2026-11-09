@@ -23,7 +23,7 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
   if (query.isError) {
     return (
       <PublicPageError
-        message="Privacy notices could not be loaded."
+        message="Couldn't load privacy notices. Try again."
         onRetry={() => void query.refetch()}
       />
     );

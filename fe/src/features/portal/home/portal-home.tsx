@@ -33,9 +33,9 @@ function isAuthorizationFailure(error: unknown): boolean {
 
 function overviewErrorMessage(error: unknown): string {
   if (error instanceof CompassApiError && error.status === 403) {
-    return "Overview is not available for this account.";
+    return "You don't have access to Overview.";
   }
-  return "The Overview summary could not be loaded. Try again in a moment.";
+  return "Couldn't load overview summary. Try again in a moment.";
 }
 
 // Queries and primary commands remain shared. Student and Counselor Home branches change
@@ -96,7 +96,7 @@ function OperationalPortalHome() {
           <PageActionLink
             href={primaryAction.href}
             icon={CalendarPlus}
-            label={user.role === "STUDENT" ? "Book appointment" : primaryAction.shortLabel}
+            label={user.role === "STUDENT" ? "Book Appointment" : primaryAction.shortLabel}
             labelDetail={user.role === "STUDENT" ? undefined : primaryAction.labelDetail}
           />
         ) : undefined}

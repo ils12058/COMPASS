@@ -18,23 +18,23 @@ export function StudentProfileContext({
   const context = report.report_context;
   const campus =
     referenceLabel(context.campus) ??
-    (isGlobal ? "All Campuses" : "All authorized Campuses");
+    (isGlobal ? "All Campuses" : "All Campuses you handle");
   const college =
     referenceLabel(context.college) ??
     (context.campus
       ? isGlobal
         ? "All Colleges on selected Campus"
-        : "All authorized Colleges on selected Campus"
+        : "All Colleges you handle on the selected Campus"
       : isGlobal
         ? "All Colleges"
-        : "All authorized Colleges");
+        : "All Colleges you handle");
   const program =
     referenceLabel(context.program) ??
     (context.college
       ? "All Programs in selected College"
       : isGlobal
         ? "All Programs"
-        : "All authorized Programs");
+        : "All Programs you handle");
   const yearLevel =
     context.year_level_label ?? "All Year Levels";
   const reportingScope = context.reporting_scope.is_global
@@ -49,7 +49,7 @@ export function StudentProfileContext({
     { label: "College", value: college },
     { label: "Program", value: program },
     { label: "Year Level", value: yearLevel },
-    { label: "Reporting scope", value: reportingScope },
+    { label: "Reporting area", value: reportingScope },
     {
       label: "Submitted Inventory Profile Population",
       value: String(context.submitted_inventory_count),

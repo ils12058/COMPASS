@@ -11,7 +11,7 @@ export function AnnouncementsGate({ children }: { children: ReactNode }) {
   return canManageAnnouncements(user) ? (
     children
   ) : (
-    <WorkspaceUnavailable title="Announcements unavailable">
+    <WorkspaceUnavailable title="Announcement access">
       You don’t have access to manage announcements.
     </WorkspaceUnavailable>
   );

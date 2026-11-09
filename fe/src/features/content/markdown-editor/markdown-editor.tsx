@@ -45,7 +45,7 @@ class MarkdownEditorBoundary extends Component<{ children: ReactNode }, { failed
     if (this.state.failed) {
       return (
         <div role="alert" className="rounded-md border border-danger/40 px-4 py-5 text-sm leading-6">
-          <p className="font-semibold text-danger">The editor could not be loaded.</p>
+          <p className="font-semibold text-danger">Couldn&apos;t load the editor.</p>
           <p className="mt-1 text-muted">
             Reload the page to edit the body. Reloading discards changes that have not been saved.
           </p>

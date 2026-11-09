@@ -17,7 +17,7 @@ import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generat
 export function FacultyHome({ user }: { user: UserSummary }) {
   const query = useFacultyAvailability(user);
   return <FacultyHomeView user={user} availability={query.availability}>
-    {query.isPending ? <FacultyLoading label="Checking Referral availability…" /> : query.isError ? <Panel><PanelMessage role="alert" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>Referral availability could not be checked. No submission is available until this check succeeds.</PanelMessage></Panel> : query.availability?.can_view_submissions && facultyReferralAccess(user).read ? <FacultySubmissionList recent /> : <Panel><PanelHeader title="Digital Referrals" /><PanelMessage>Digital Student Referrals are not available yet.</PanelMessage></Panel>}
+    {query.isPending ? <FacultyLoading label="Checking Referral Availability…" /> : query.isError ? <Panel><PanelMessage role="alert" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>Couldn&apos;t check Referral Availability. Retry before submitting a Referral.</PanelMessage></Panel> : query.availability?.can_view_submissions && facultyReferralAccess(user).read ? <FacultySubmissionList recent /> : <Panel><PanelHeader title="Digital Referrals" /><PanelMessage>Digital Student Referrals are not available yet.</PanelMessage></Panel>}
   </FacultyHomeView>;
 }
 
@@ -29,10 +29,10 @@ export function FacultyHomeView({ user, availability, children }: { user: UserSu
       <div className="min-w-0">{children}</div>
       <Panel><PanelHeader title="Your Faculty account" /><PanelBody className="space-y-4 text-sm">
         <dl><dt className="text-muted">Home College</dt><dd className="mt-1 font-medium [overflow-wrap:anywhere]">{home?.college_name ? `${home.campus_name} · ${home.college_name}` : "Not assigned"}</dd></dl>
-        {!home?.active ? <p className="text-muted">Contact the account administrator to confirm your institutional affiliation.</p> : null}
+        {!home?.active ? <p className="text-muted">Contact the Guidance Office to confirm your institutional affiliation.</p> : null}
         <nav aria-label="Your account" className="flex flex-wrap gap-x-5 gap-y-1">
           <GuardedPortalLink href="/portal/notifications" className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline"><Bell size={18} aria-hidden="true" />Notifications</GuardedPortalLink>
-          <GuardedPortalLink href="/portal/account/profile" className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline"><UserRound size={18} aria-hidden="true" />My Profile</GuardedPortalLink>
+          <GuardedPortalLink href="/portal/account/profile" className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline"><UserRound size={18} aria-hidden="true" />My profile</GuardedPortalLink>
         </nav>
       </PanelBody></Panel>
     </div>

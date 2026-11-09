@@ -58,7 +58,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
 for (const role of ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const world = assessmentWorld({ account: { ...head(), role } });
   await check(`${role} override cannot open direct confidential route`, detail, world.options(), async (page, { requests }) => {
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     assert.ok(!requests.some((item) => item.pathname.startsWith("/api/v1/assessment-records")));
     assert.ok(!(await text(page)).includes(content.score));
     assert.equal(await page.getByRole("link", { name: "Assessment Records", exact: true }).count(), 0);
@@ -67,7 +67,7 @@ for (const role of ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITU
 for (const path of [root, root + "/new", root + "/types", detail]) {
   const world = assessmentWorld({ account: { ...head(), capabilities: [], designations: [] } });
   await check(`Ordinary Counselor baseline direct route ${path}`, path, world.options(), async (page, { requests }) => {
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     assert.ok(!requests.some((item) => item.pathname.startsWith("/api/v1/assessment-records")));
   });
 }
@@ -87,7 +87,7 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   await check("Non-Head Counselor with effective manage reaches and uses the shared catalog", root, world.options(), async (page) => {
     await page.getByRole("link", { name: /Manage assessment types/ }).click();
     await shown(page.getByRole("heading", { name: "Assessment Types", exact: true }));
-    await shown(page.getByText("Manage the Assessment Types used by the Guidance and Counseling Office. Deactivated types remain on existing records but cannot be selected for new results."));
+    await shown(page.getByText("Manage the Assessment Types used by the Guidance Office. Deactivated types remain on existing records but cannot be selected for new results."));
     assert.ok(!(await text(page)).includes("Head Guidance"));
     await page.getByLabel("Name", { exact: true }).fill("Counselor Managed Assessment");
     await page.getByRole("button", { name: "Create type", exact: true }).click();
@@ -98,7 +98,7 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
 {
   const world = assessmentWorld({ account: { ...head(), designations: [], capabilities: ["assessment_records.manage"] } });
   await check("Manage without effective view cannot open the catalog by direct route", root + "/types", world.options(), async (page, { requests }) => {
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     assert.ok(!requests.some((item) => item.pathname.startsWith("/api/v1/assessment-records")));
   });
 }
@@ -292,7 +292,7 @@ for (const status of [403, 404, 500]) {
     await shown(page.getByText(content.score, { exact: true }));
     world.account = { ...head(), id: "different-account", role: "STUDENT", designations: [], capabilities: [] };
     await refreshSession(page);
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     await hidden(page.getByText(content.score, { exact: true }));
   });
 }
@@ -301,7 +301,7 @@ for (const status of [403, 404, 500]) {
   await check("Lost capability in same session conceals confidential projection", detail, world.options({ beforeNavigate: async ({ page }) => { await page.clock.install(); } }), async (page) => {
     await shown(page.getByText(content.score, { exact: true }));
     world.account = { ...world.account, capabilities: [] }; await refreshSession(page);
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     await hidden(page.getByText(content.score, { exact: true }));
   });
 }
@@ -322,7 +322,7 @@ for (const status of [403, 404, 500]) {
   await check("Revoked manage authority during save conceals the draft", root + "/new", world.options(), async (page) => {
     await fill(page); world.account = { ...world.account, capabilities: [] };
     await save(page).click();
-    await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
+    await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     assert.ok(!(await text(page)).includes("88/100"));
     await hidden(page.getByLabel("Score / rating", { exact: true }));
   });

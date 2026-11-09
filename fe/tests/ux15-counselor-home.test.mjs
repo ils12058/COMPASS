@@ -134,13 +134,13 @@ test("without self Appointment authority the agenda is omitted instead of report
   const html = renderHome(counselorUser(), [counselorAppointment(1)], attention([{
     id: "task", title: "Review Routine Interview", detail: "Awaiting your review", href: "/portal/routine-interviews/task", actionLabel: "Review Routine Interview",
   }]));
-  assert.doesNotMatch(html, /counselor-agenda-heading|No scheduled appointments today/);
+  assert.doesNotMatch(html, /counselor-agenda-heading|No scheduled Appointments today/);
   assert.match(html, /counselor-work-heading/);
 });
 
 test("empty canonical work is not mistaken for completed professional responsibilities", () => {
   const html = renderHome(counselorUser({ capabilities: ["appointments.view_self"] }), [], attention());
-  assert.match(html, /No scheduled appointments today\./);
+  assert.match(html, /No scheduled Appointments today\./);
   assert.match(html, /No items currently need attention in My work\./);
   assert.match(html, /Continue in your workspace|Guidance operations/);
 });

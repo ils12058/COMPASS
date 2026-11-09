@@ -2,7 +2,7 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { InventoryCoverage, Methodology } from "@/lib/api/generated/model";
 
 const FILTER_LABELS: Record<string, string> = {
-  access_scope: "authorized reporting area",
+  access_scope: "reporting area",
   academic_year_id: "Academic Year",
   campus_id: "Campus",
   college_id: "College",
@@ -11,7 +11,7 @@ const FILTER_LABELS: Record<string, string> = {
 };
 
 function countValue(value: number | null): string {
-  return value === null ? "Unavailable" : String(value);
+  return value === null ? "Not counted" : String(value);
 }
 
 // Limits on what the counts above can show; each sits under the counts, separated by the panel's line.
@@ -29,7 +29,7 @@ export function StudentProfileCoverage({
   const values =
     isCurrent
       ? [
-          { label: "Eligible current Students", value: countValue(coverage.eligible_student_count) },
+          { label: "Current Students", value: countValue(coverage.eligible_student_count) },
           { label: "Submitted", value: String(coverage.submitted_count) },
           { label: "Draft", value: String(coverage.draft_count) },
           {
@@ -42,7 +42,7 @@ export function StudentProfileCoverage({
           { label: "Draft", value: String(coverage.draft_count) },
           {
             label: "Without Individual Inventory",
-            value: "Unavailable for historical Academic Years",
+            value: "Not counted for historical Academic Years",
           },
         ];
   const comparison = isCurrent
@@ -62,7 +62,7 @@ export function StudentProfileCoverage({
   return (
     <Panel className="overflow-hidden" aria-labelledby="inventory-coverage-heading">
       <PanelHeader
-        title={isCurrent ? "Current Student Inventory Coverage" : "Inventory Coverage (historical)"}
+        title={isCurrent ? "Individual Inventory coverage" : "Individual Inventory coverage (historical)"}
         titleId="inventory-coverage-heading"
         description={coverage.scope_note}
       />

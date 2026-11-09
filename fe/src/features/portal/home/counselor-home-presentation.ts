@@ -14,12 +14,12 @@ const COUNSELOR_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/routine-interviews",
     label: "Routine Interviews",
-    description: "Continue authorized intake and evaluation work.",
+    description: "Continue intake and evaluation work.",
   },
   {
     href: "/portal/follow-ups",
     label: "Follow-Ups",
-    description: "Review assigned Guidance follow-up work.",
+    description: "Review assigned Guidance Follow-Up work.",
   },
   {
     href: "/portal/counseling",
@@ -29,7 +29,7 @@ const COUNSELOR_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/messages",
     label: "Messages",
-    description: "Continue authorized Guidance conversations.",
+    description: "Continue your Guidance conversations.",
   },
   {
     href: "/portal/assessment-records",
@@ -39,12 +39,12 @@ const COUNSELOR_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/operations",
     label: "Guidance operations",
-    description: "Open your authorized operational workspaces.",
+    description: "Open your Guidance workspaces.",
   },
   {
     href: "/portal/referrals",
     label: "Referrals",
-    description: "Continue authorized Referral work.",
+    description: "Continue Referral work.",
   },
   {
     href: "/portal/call-slips",
@@ -54,7 +54,7 @@ const COUNSELOR_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/good-moral",
     label: "Good Moral",
-    description: "Continue authorized preparation or issuance.",
+    description: "Continue Good Moral Certificate preparation or issuance.",
   },
 ];
 
@@ -67,7 +67,7 @@ const HEAD_OVERSIGHT_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/organization",
     label: "Organization",
-    description: "Open authorized organization responsibilities.",
+    description: "Open your organization responsibilities.",
   },
   {
     href: "/portal/availability",
@@ -77,7 +77,7 @@ const HEAD_OVERSIGHT_DESTINATIONS: CounselorHomeDestination[] = [
   {
     href: "/portal/services",
     label: "Services",
-    description: "Open authorized service configuration.",
+    description: "Manage Services.",
   },
 ];
 
@@ -106,8 +106,8 @@ export function getHeadGuidanceHomeDestinations(user: UserSummary) {
     getAppointmentAccess(user).canManage && visible.has("/portal/appointments")
       ? [{
           href: "/portal/appointments/manage",
-          label: "Manage appointments",
-          description: "Open the Appointments you are authorized to manage.",
+          label: "Manage Appointments",
+          description: "Open the Appointments you manage.",
         }]
       : [],
   ).slice(0, 5));

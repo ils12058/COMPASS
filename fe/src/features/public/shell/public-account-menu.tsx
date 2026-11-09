@@ -28,7 +28,7 @@ export function PublicAccountMenu({ user }: { user: UserSummary }) {
       await logout.mutateAsync();
     } catch (caught) {
       if (!(caught instanceof CompassApiError && caught.status === 401)) {
-        setError(authErrorMessage(caught, "Sign out could not be completed. Please try again."));
+        setError(authErrorMessage(caught, "Couldn't sign out. Try again."));
         return;
       }
     }

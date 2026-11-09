@@ -214,7 +214,7 @@ export function ResourcesListPage() {
         <ContentListSkeleton label="Loading resources…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
-          {resourceErrorMessage(list.error, "Resources could not be loaded.")}
+          {resourceErrorMessage(list.error, "Couldn't load resources. Try again.")}
         </PanelMessage>
       ) : result && result.items.length === 0 ? (
         <PanelMessage
@@ -283,7 +283,7 @@ export function ResourcesListPage() {
                   <tr key={item.id} className={dataTable.row}>
                     <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-64 max-w-sm text-left font-normal`}>
                       <Link href={`/portal/resources/${item.id}${detailQuery ? `?${detailQuery}` : ""}`} className={`${contentRecordLinkClass} break-words`}>
-                        {displayTitle(item.title, "Untitled Resource")}
+                        {displayTitle(item.title, "Untitled resource")}
                       </Link>
                       <span className="mt-1 block text-xs text-muted">{resourceKindLabels[item.kind]}</span>
                     </th>

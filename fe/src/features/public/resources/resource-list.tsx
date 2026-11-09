@@ -94,7 +94,7 @@ export function ResourceList(props: ResourceListProps) {
   } else if (query.isError) {
     content = (
       <PublicSectionError
-        message={readsAccount ? "Resources could not be loaded." : "Public resources could not be loaded."}
+        message={readsAccount ? "Couldn't load resources. Try again." : "Couldn't load public resources. Try again."}
         onRetry={() => void query.refetch()}
       />
     );

@@ -36,7 +36,7 @@ await check("GOA desktop canonical work, managed schedule and scoped operations"
     "Review Guidance Follow-Up",
   ], "The Home keeps the canonical Work Queue order and shows a bounded five-item preview");
   assert.equal(await schedulePanel(page).locator("ul > li").count(), 5, "Only the first five managed Appointments are shown");
-  await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
+  await shown(schedulePanel(page).getByRole("link", { name: "Open managed Appointment with Alexandria Maria Catherine Johnson Williams" }));
   await shown(schedulePanel(page).getByText("Counselor: Sam Counselor 1", { exact: true }));
   await shown(schedulePanel(page).getByText("Showing the first 5 scheduled Appointments. Open the full schedule to see more.", { exact: true }));
   await shown(operationsPanel(page).getByText("Messages awaiting reply", { exact: true }));
@@ -82,7 +82,7 @@ await check("GOA desktop canonical work, managed schedule and scoped operations"
   await page.getByRole("button", { name: "Collapse navigation", exact: true }).click();
   await shown(page.getByRole("button", { name: "Expand navigation", exact: true }));
   await noHorizontalOverflow(page);
-  await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
+  await shown(schedulePanel(page).getByRole("link", { name: "Open managed Appointment with Alexandria Maria Catherine Johnson Williams" }));
   await screenshot(page, "after-goa-desktop-work-operations-dock-collapsed");
   await page.getByRole("button", { name: "Expand navigation", exact: true }).click();
 });
@@ -103,8 +103,8 @@ await check("GOA empty work stays separate from available schedule and zero metr
   },
 }).options(), async (page) => {
   await shown(workPanel(page).getByText("No items currently need attention in My work.", { exact: true }));
-  await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Synthetic GOA Student 1" }));
-  await shown(operationsPanel(page).getByText("No work is currently waiting in the returned office metrics.", { exact: true }));
+  await shown(schedulePanel(page).getByRole("link", { name: "Open managed Appointment with Synthetic GOA Student 1" }));
+  await shown(operationsPanel(page).getByText("No office work is waiting.", { exact: true }));
   assert.equal(await operationsPanel(page).getByText("Good Moral requests awaiting Counselor issuance", { exact: true }).count(), 0, "Null is not presented as a zero count");
   await screenshot(page, "after-goa-desktop-no-work");
 });
@@ -140,20 +140,20 @@ await check("GOA independent initial failures do not become empty states and can
   await schedulePanel(page).getByRole("button", { name: "Retry", exact: true }).click();
   await operationsPanel(page).getByRole("button", { name: "Retry", exact: true }).click();
   await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
-  await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
+  await shown(schedulePanel(page).getByRole("link", { name: "Open managed Appointment with Alexandria Maria Catherine Johnson Williams" }));
 });
 
 const stale = goaWorld();
 await check("GOA transient refresh failure retains confirmed data with a freshness notice", "/portal", stale.options(), async (page) => {
   await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
-  await shown(schedulePanel(page).getByRole("link", { name: "Open managed appointment with Alexandria Maria Catherine Johnson Williams" }));
+  await shown(schedulePanel(page).getByRole("link", { name: "Open managed Appointment with Alexandria Maria Catherine Johnson Williams" }));
   stale.workStatus = 500;
   stale.appointmentsStatus = 500;
   stale.operationsStatus = 500;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await shown(workPanel(page).getByText("My work could not be refreshed. Showing the last confirmed items.", { exact: true }));
-  await shown(schedulePanel(page).getByText("Today's managed Appointments could not be refreshed. Showing the last confirmed schedule.", { exact: true }));
-  await shown(operationsPanel(page).getByText("Guidance Operations could not be refreshed. Showing the last confirmed office workload.", { exact: true }));
+  await shown(workPanel(page).getByText("Couldn't refresh My work. Showing the last confirmed items.", { exact: true }));
+  await shown(schedulePanel(page).getByText("Couldn't refresh today's managed Appointments. Showing the last confirmed schedule.", { exact: true }));
+  await shown(operationsPanel(page).getByText("Couldn't refresh Guidance Operations. Showing the last confirmed office workload.", { exact: true }));
   await shown(workPanel(page).getByRole("heading", { name: "Review Guidance Follow-Up", exact: true }).first());
   await screenshot(page, "after-goa-partial-stale-data");
 });
@@ -208,7 +208,7 @@ await check("Counselor Home remains unchanged", "/portal", counselorWorld({
   appointments: [counselorAppointment(1, { hour: 10 })],
   work: [workItem("ROUTINE_EVALUATION", 1)],
 }).options(), async (page) => {
-  await shown(page.getByRole("heading", { name: "Today's appointments", exact: true }));
+  await shown(page.getByRole("heading", { name: "Today's Appointments", exact: true }));
   await shown(page.getByRole("heading", { name: "My work", exact: true }));
   await screenshot(page, "after-counselor-non-regression");
 });

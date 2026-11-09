@@ -28,7 +28,7 @@ export function GraduateTracerDownload({
       setError(
         reportErrorMessage(
           caught,
-          "The Graduate Tracer XLSX could not be downloaded.",
+          "Couldn't download Graduate Tracer XLSX. Try again.",
         ),
       );
     } finally {

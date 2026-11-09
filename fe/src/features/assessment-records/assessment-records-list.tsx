@@ -295,7 +295,7 @@ export function AssessmentListPage() {
               </FilterField>
               {types.isError ? (
                 <p role="alert" className="text-sm text-danger">
-                  Assessment Types could not be loaded.{" "}
+                  Couldn&apos;t load Assessment Types. Try again.{" "}
                   <Button
                     type="button"
                     variant="quiet"

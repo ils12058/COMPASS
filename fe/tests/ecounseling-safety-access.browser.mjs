@@ -165,7 +165,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const failure of [503, "timeou
   const w = world(role, { recording: "STOP_REQUESTED" });
   await check(`${role}-${failure}-preserves-call-and-warning`, ePath, w.options, async (page) => {
     await join(page, role); w.state.workspaceStatus = failure; await refresh(page);
-    await shown(page.getByText("Latest information could not be refreshed. Showing the last confirmed result.", { exact: true }));
+    await shown(page.getByText("Couldn't refresh latest information. Showing the last confirmed result.", { exact: true }));
     await shown(stage(page).getByText("Recording stopping…", { exact: true }));
     assert.equal(await count(page, "destroy"), 0);
     await stage(page).getByRole("button", { name: "Microphone", exact: true }).click();
@@ -174,7 +174,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) for (const failure of [503, "timeou
     assert.match(await leaveDialog(page).innerText(), /The recording may still be running/);
     await leaveDialog(page).getByRole("button", { name: "Cancel", exact: true }).click();
     w.state.workspaceStatus = 200; await page.getByRole("button", { name: "Retry", exact: true }).first().click();
-    await hidden(page.getByText("Latest information could not be refreshed. Showing the last confirmed result.", { exact: true }));
+    await hidden(page.getByText("Couldn't refresh latest information. Showing the last confirmed result.", { exact: true }));
     assert.equal(await count(page, "join"), 1);
   });
 }

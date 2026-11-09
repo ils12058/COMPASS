@@ -191,8 +191,8 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
         return;
       }
       const message = isUncertainResourceMutation(caught)
-        ? "The changes could not be confirmed as saved. Save again to make sure they are kept."
-        : resourceErrorMessage(caught, "The changes could not be saved.");
+        ? "Couldn't confirm whether your changes were saved. Save again to make sure they are kept."
+        : resourceErrorMessage(caught, "Couldn't save changes. Try again.");
       if (acknowledgePublicationConsequences) setReviewError(message);
       else setFormError(message);
     }
@@ -232,8 +232,8 @@ export function ResourceForm({ resource }: { resource: ResourceManagementRespons
       } catch (caught) {
         setFormError(
           isUncertainResourceMutation(caught)
-            ? "The draft could not be confirmed as saved. Check the Resources list before saving again."
-            : resourceErrorMessage(caught, "The draft could not be saved."),
+            ? "Couldn't confirm whether your draft was saved. Check the Resources list before saving again."
+            : resourceErrorMessage(caught, "Couldn't save draft. Try again."),
         );
       }
       return;

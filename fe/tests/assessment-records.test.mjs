@@ -53,7 +53,7 @@ test("Assessment Records copy is authority-neutral and keeps catalog lifecycle f
   const typesPage = readFileSync(new URL("../src/features/assessment-records/assessment-types-page.tsx", import.meta.url), "utf8");
   const editor = readFileSync(new URL("../src/features/assessment-records/assessment-record-editor.tsx", import.meta.url), "utf8");
   for (const source of [typesPage, editor]) assert.doesNotMatch(source, /Head Guidance/);
-  assert.match(typesPage, /Manage the Assessment Types used by the Guidance and Counseling Office\./);
+  assert.match(typesPage, /Manage the Assessment Types used by the Guidance Office\./);
   assert.match(typesPage, /Deactivated types remain on existing records but cannot be selected for new results\./);
   assert.match(editor, /No active Assessment Types are available\./);
   assert.match(editor, /href="\/portal\/assessment-records\/types"/);

@@ -120,14 +120,14 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
         <Notice
           role="alert"
           className="w-full px-5 py-6 sm:px-6"
-          title={<h1 className="font-heading text-2xl font-bold text-ink">We could not verify your session.</h1>}
+          title={<h1 className="font-heading text-2xl font-bold text-ink">Session check failed</h1>}
           action={
             <Button variant="secondary" onClick={() => void verifySession(true)}>
               Retry
             </Button>
           }
         >
-          We could not check your session, so this page cannot be shown yet.
+          Couldn&apos;t check your session. Retry to open this page.
         </Notice>
       </main>
     );
@@ -135,7 +135,7 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     const user = session.data.data.user;
     const pageContent = (user.role === "FACULTY" && !facultyPortalPathAvailable(pathname)) ||
       (user.role !== "FACULTY" && (pathname === "/portal/faculty" || pathname.startsWith("/portal/faculty/")))
-      ? <WorkspaceUnavailable title="Workspace unavailable">This account cannot open this workspace.</WorkspaceUnavailable>
+      ? <WorkspaceUnavailable title="Workspace access">You don&apos;t have access to this workspace.</WorkspaceUnavailable>
       : children;
     content = (
       <PortalSessionProvider value={session.data.data}>

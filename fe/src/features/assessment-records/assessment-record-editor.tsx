@@ -295,7 +295,7 @@ function AssessmentRecordForm({
                     </p>
                   ) : types.isError ? (
                     <p role="alert" className="mt-2 text-sm text-danger">
-                      Assessment Types could not be loaded.{" "}
+                      Couldn&apos;t load Assessment Types. Try again.{" "}
                       <Button
                         type="button"
                         variant="quiet"
@@ -319,7 +319,7 @@ function AssessmentRecordForm({
                           .
                         </>
                       ) : (
-                        "An authorized staff member can add or reactivate one in Assessment Types."
+                        "A staff member with permission can add or reactivate one in Assessment Types."
                       )}
                     </p>
                   ) : null}

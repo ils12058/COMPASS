@@ -44,7 +44,7 @@ export function OverviewAnnouncements() {
         >
           {signedOut
             ? "Your session has ended. Sign in again to see announcements for your account."
-            : "Announcements could not be loaded."}
+            : "Couldn't load announcements. Try again."}
         </PanelMessage>
       ) : items.length === 0 ? (
         <PanelMessage>No current announcements.</PanelMessage>

@@ -373,7 +373,7 @@ await check("customer ineligible opportunity stays unavailable", customerPath, f
   family: "customer",
   opportunity: customerOpportunity({ can_submit_customer_feedback: false }),
 }), async (page) => {
-  await shown(page.getByRole("heading", { name: "Customer Feedback unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Customer Feedback not accepting responses", exact: true }));
   assert.equal(await page.getByRole("button", { name: "Review and submit", exact: true }).count(), 0);
 });
 
@@ -410,12 +410,12 @@ await check("customer Browser Back asks before discarding the response", custome
 });
 
 await check("Customer Feedback malformed opportunity is rejected before a read", "/portal/feedback/customer-feedback?opportunity=not-a-uuid", feedbackOptions({ family: "customer" }), async (page, fixture) => {
-  await shown(page.getByRole("heading", { name: "Customer Feedback unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Completed Service not found", exact: true }));
   assert.equal(fixture.requests.some(({ pathname }) => pathname.includes("/feedback/opportunities/")), false);
 });
 
 await check("Customer Feedback opportunity owned by another Student is unavailable", customerPath, feedbackOptions({ family: "customer", unrelated: true }), async (page, fixture) => {
-  await shown(page.getByRole("heading", { name: "Customer Feedback unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Completed Service not found", exact: true }));
   assert.equal(fixture.requests.some(({ method }) => method === "POST"), false);
 });
 
@@ -648,17 +648,17 @@ await check("CSM ineligible opportunity stays unavailable", csmPath, feedbackOpt
   family: "csm",
   opportunity: csmOpportunity({ can_submit_csm: false }),
 }), async (page) => {
-  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement not accepting responses", exact: true }));
   assert.equal(await page.getByRole("button", { name: "Review and submit", exact: true }).count(), 0);
 });
 
 await check("CSM malformed opportunity is rejected before a read", "/portal/feedback/csm?opportunity=not-a-uuid", feedbackOptions({ family: "csm" }), async (page, fixture) => {
-  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Completed Service not found", exact: true }));
   assert.equal(fixture.requests.some(({ pathname }) => pathname.includes("/feedback/opportunities/")), false);
 });
 
 await check("CSM opportunity owned by another Student is unavailable", csmPath, feedbackOptions({ family: "csm", unrelated: true }), async (page, fixture) => {
-  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Completed Service not found", exact: true }));
   assert.equal(fixture.requests.some(({ method }) => method === "POST"), false);
 });
 

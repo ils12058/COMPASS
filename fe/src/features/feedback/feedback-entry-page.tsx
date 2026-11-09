@@ -122,14 +122,14 @@ export function FeedbackEntryPage() {
         title="Feedback"
         description={
           access.hasStudentSubmissionAccess
-            ? "Give feedback on completed Guidance and Counseling Office services."
+            ? "Give feedback on completed Guidance Office Services."
             : undefined
         }
       />
 
       {access.hasStudentSubmissionAccess ? (
         <Panel className="mt-5" aria-labelledby="feedback-services-heading">
-          <PanelHeader title="Completed services" titleId="feedback-services-heading" />
+          <PanelHeader title="Completed Services" titleId="feedback-services-heading" />
 
           {invalidSelected ? (
             <PanelMessage role="alert" className="border-b border-border">
@@ -142,14 +142,14 @@ export function FeedbackEntryPage() {
           ) : null}
 
           {opportunities.isPending || (selectedId && selected.isPending) ? (
-            <FeedbackListSkeleton label="Loading completed services…" />
+            <FeedbackListSkeleton label="Loading completed Services…" />
           ) : null}
 
           {opportunities.isError ? (
             <div className="px-4 py-4 sm:px-5">
               <FeedbackQueryError
                 error={opportunities.error}
-                fallback="Completed services could not be loaded."
+                fallback="Couldn't load completed Services. Try again."
                 onRetry={() => void opportunities.refetch()}
               />
             </div>
@@ -171,7 +171,7 @@ export function FeedbackEntryPage() {
               </ul>
             ) : (
               <PanelMessage>
-                You do not currently have a completed service waiting for feedback.
+                You do not currently have a completed Service waiting for feedback.
               </PanelMessage>
             )
           ) : null}
@@ -198,7 +198,7 @@ export function FeedbackEntryPage() {
                   href="/portal/feedback/csm/responses"
                   className="font-semibold text-brand underline hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  CSM responses
+                  Client Satisfaction Measurement responses
                 </Link>
               </li>
             ) : null}

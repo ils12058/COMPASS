@@ -122,8 +122,8 @@ export function StudentProfileReportContent({
           <div>
             <dt className="font-semibold text-ink">
               {report.inventory_coverage.mode === "CURRENT"
-                ? "Current Student Inventory Coverage"
-                : "Inventory Coverage (historical)"}
+                ? "Individual Inventory coverage"
+                : "Individual Inventory coverage (historical)"}
             </dt>
             <dd className="mt-1 text-muted">
               {report.inventory_coverage.mode === "CURRENT"
@@ -133,7 +133,7 @@ export function StudentProfileReportContent({
             </dd>
           </div>
           <div>
-            <dt className="font-semibold text-ink">Reporting scope</dt>
+            <dt className="font-semibold text-ink">Reporting area</dt>
             <dd className="mt-1 text-muted">
               {report.methodology.access_scope_note}
             </dd>

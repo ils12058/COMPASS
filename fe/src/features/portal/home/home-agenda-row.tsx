@@ -4,7 +4,7 @@ import type { AppointmentResponse } from "@/lib/api/generated/model";
 
 export function HomeAgendaRow({ appointment, managed = false }: { appointment: AppointmentResponse; managed?: boolean }) {
   return <li>
-    <Link href={`/portal/appointments/${appointment.id}`} aria-label={`Open ${managed ? "managed " : ""}appointment with ${appointment.student.display_name}`}
+    <Link href={`/portal/appointments/${appointment.id}`} aria-label={`Open ${managed ? "managed " : ""}Appointment with ${appointment.student.display_name}`}
       className="grid min-h-11 min-w-0 gap-2 px-4 py-3 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus @min-[20rem]/agenda:grid-cols-[6rem_minmax(0,1fr)] @min-[20rem]/agenda:gap-4 sm:px-5">
       <p className="text-sm font-semibold tabular-nums text-ink">
         <time dateTime={appointment.starts_at} className="block">{formatAppointmentTime(appointment.starts_at)}</time>

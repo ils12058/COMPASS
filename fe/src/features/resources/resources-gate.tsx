@@ -11,7 +11,7 @@ export function ResourcesGate({ children }: { children: ReactNode }) {
   return canManageResources(user) ? (
     children
   ) : (
-    <WorkspaceUnavailable title="Resources unavailable">
+    <WorkspaceUnavailable title="Resource access">
       You don’t have access to manage resources.
     </WorkspaceUnavailable>
   );

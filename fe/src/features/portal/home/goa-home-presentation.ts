@@ -128,15 +128,15 @@ export function presentGoaOperations(data: GuidanceOperationsResponse, user: Use
 type GoaDestinationCopy = { description: string; label?: string };
 
 const DESTINATIONS: Record<string, GoaDestinationCopy> = {
-  "/portal/appointments": { label: "Manage Appointments", description: "Coordinate scheduled Appointments in your authorized scope." },
-  "/portal/operations": { description: "Review scoped office workload and schedule context." },
-  "/portal/good-moral": { description: "Continue authorized Good Moral request work." },
-  "/portal/call-slips": { description: "Review Call Slips in your operational scope." },
-  "/portal/messages": { description: "Continue authorized Guidance conversations." },
+  "/portal/appointments": { label: "Manage Appointments", description: "Coordinate scheduled Appointments." },
+  "/portal/operations": { description: "Review office workload and schedules." },
+  "/portal/good-moral": { description: "Continue Good Moral Certificate request work." },
+  "/portal/call-slips": { description: "Review Call Slips." },
+  "/portal/messages": { description: "Continue your Guidance conversations." },
   "/portal/referrals": { description: "Review Referrals available to you." },
   "/portal/follow-ups": { description: "Review Guidance Follow-Ups available to you." },
-  "/portal/group-sessions": { description: "Open Group Sessions within your operational scope." },
-  "/portal/availability": { description: "Review the availability workspace available to you." },
+  "/portal/group-sessions": { description: "Open Group Sessions." },
+  "/portal/availability": { description: "Review Availability." },
   "/portal/services": { description: "Open the Services workspace available to you." },
 };
 

@@ -17,18 +17,18 @@ import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs
 import { PageHeader } from "@/components/ui/page-header";
 
 const REPORT_ERROR_COPY: Record<string, string> = {
-  permission_denied: "This report is unavailable for your assigned reporting area.",
+  permission_denied: "You don't have access to this report.",
   report_filter_not_found:
-    "A selected report filter could not be found. Review the filters and try again.",
+    "Couldn't find selected report filter. Review the filters and try again.",
   report_configuration_conflict:
-    "The report cannot be generated with the current academic-year setup. Contact the institutional administrator.",
+    "The Academic Year setup needs attention before you can generate this report. Contact the Guidance Office.",
   invalid_report_filter: "Check the report filters and try again.",
   small_population_disclosure_restricted:
     "Aggregate reporting is restricted for this population to protect respondent confidentiality.",
-  report_document_unavailable: "The Student Profiling PDF is temporarily unavailable.",
-  report_workbook_unavailable: "The report XLSX is temporarily unavailable.",
+  report_document_unavailable: "Couldn't generate the Student profiling PDF. Try again.",
+  report_workbook_unavailable: "Couldn't generate the report XLSX. Try again.",
   release_audit_unavailable:
-    "The report could not be released because its required privacy audit is unavailable.",
+    "Couldn't record the required privacy audit for this download. Try again.",
 };
 
 export function reportProgramName(program: ProgramColumn): string {
@@ -57,10 +57,10 @@ export function ReportNavigation({
   showGraduateTracer: boolean;
 }) {
   const links = [
-    { href: "/portal/reports", label: "All Reports", key: "index" },
+    { href: "/portal/reports", label: "All reports", key: "index" },
     {
       href: "/portal/reports/student-profile",
-      label: "Student Profiling",
+      label: "Student profiling",
       key: "student-profile",
     },
     ...(showGraduateTracer
@@ -238,7 +238,7 @@ export const reportSection = {
 
 export function formatReportPercentage(value: number | null): string {
   if (value === null) return "N/A";
-  return Number.isFinite(value) ? value.toFixed(2) + "%" : "Unavailable";
+  return Number.isFinite(value) ? value.toFixed(2) + "%" : "Not reported";
 }
 
 export function reportGeneratedAt(value: string): string {

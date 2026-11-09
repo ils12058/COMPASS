@@ -38,8 +38,8 @@ type Service = {
 const services: Service[] = [
   {
     href: "/portal/appointments/book",
-    label: "Book appointment",
-    audience: "Current students",
+    label: "Book Appointment",
+    audience: "Current Students",
     icon: CalendarClock,
     available: (user) => getAppointmentAccess(user).canBook,
   },
@@ -53,7 +53,7 @@ const services: Service[] = [
   {
     href: "/portal/good-moral/request",
     label: "Request Good Moral Certificate",
-    audience: "Current students and graduates",
+    audience: "Current Students and graduates",
     icon: Award,
     available: (user) => {
       const access = getGoodMoralAccess(user);
@@ -64,13 +64,13 @@ const services: Service[] = [
   {
     href: "/portal/exit-interviews",
     label: "Exit Interview",
-    audience: "Current students",
+    audience: "Current Students",
     icon: DoorOpen,
     available: (user) => getExitInterviewAccess(user).hasStudentWorkspace,
   },
   {
     href: "/portal/graduate-tracer",
-    label: "Graduate Tracer Survey",
+    label: "Graduate Tracer survey",
     audience: "Graduates",
     icon: GraduationCap,
     available: (user) => getGraduateTracerAccess(user).hasStudentWorkspace,
@@ -177,7 +177,7 @@ export function QuickAccess({ className }: { className?: string }) {
           </ul>
           {user ? null : (
             <p className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-3 text-xs leading-5 text-muted sm:px-5">
-              Sign in with your University of Camarines Norte COMPASS account to use these services.
+              Sign in with your University of Camarines Norte COMPASS account to use these Services.
             </p>
           )}
         </>

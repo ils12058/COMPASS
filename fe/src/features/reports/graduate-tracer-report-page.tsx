@@ -30,7 +30,7 @@ export function GraduateTracerReportPage() {
   const { user } = usePortalSession();
   if (!canAttemptReports(user)) {
     return (
-      <WorkspaceUnavailable title="Graduate Tracer unavailable">
+      <WorkspaceUnavailable title="Graduate Tracer access">
         You don’t have access to reports.
       </WorkspaceUnavailable>
     );
@@ -65,9 +65,9 @@ function GraduateTracerReportWorkspace() {
     if (isReportScopeDenied(scopeQuery.error)) {
       return (
         <section>
-          <ReportsPageHeading title="Graduate Tracer unavailable" />
+          <ReportsPageHeading title="Graduate Tracer access" />
          <Notice role="status">
-           No reporting area is currently assigned to your account.
+           You need an assigned reporting area to view this report. Contact the Guidance Office.
          </Notice>
         </section>
       );
@@ -77,7 +77,7 @@ function GraduateTracerReportWorkspace() {
         <ReportsPageHeading title="Graduate Tracer" />
         <ReportQueryError
           error={scopeQuery.error}
-          fallback="Your report access could not be checked."
+          fallback="Couldn't check your report access. Try again."
           onRetry={() => void scopeQuery.refetch()}
         />
       </section>
@@ -86,9 +86,9 @@ function GraduateTracerReportWorkspace() {
   if (!scope || (!scope.is_global && scope.colleges.length === 0)) {
     return (
       <section>
-        <ReportsPageHeading title="Graduate Tracer unavailable" />
+        <ReportsPageHeading title="Graduate Tracer access" />
        <Notice role="status">
-         No reporting area is currently assigned to your account.
+         You need an assigned reporting area to view this report. Contact the Guidance Office.
        </Notice>
       </section>
     );
@@ -97,14 +97,14 @@ function GraduateTracerReportWorkspace() {
     return (
       <section>
         <ReportNavigation current="graduate-tracer" showGraduateTracer={false} />
-        <ReportsPageHeading title="Graduate Tracer unavailable" />
+        <ReportsPageHeading title="Graduate Tracer access" />
         <Notice
           action={
             <Link
               href="/portal/reports/student-profile"
               className="inline-flex min-h-10 items-center font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              Open Student Profiling
+              Open Student profiling
             </Link>
           }
         >
@@ -139,7 +139,7 @@ function GraduateTracerReportWorkspace() {
       {canQueryReport && reportQuery.isError && report ? (
         <div className="mt-5">
           <ReportStaleNotice onRetry={() => void reportQuery.refetch()}>
-            The report could not be refreshed. The last confirmed report remains visible.
+            Couldn&apos;t refresh report. The last confirmed report remains visible.
           </ReportStaleNotice>
         </div>
       ) : null}
@@ -161,7 +161,7 @@ function GraduateTracerReportWorkspace() {
         <div className="mt-5">
           <ReportQueryError
             error={reportQuery.error}
-            fallback="Graduate Tracer report could not be loaded."
+            fallback="Couldn't load Graduate Tracer report. Try again."
             onRetry={() => void reportQuery.refetch()}
           />
         </div>

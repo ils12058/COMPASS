@@ -230,7 +230,7 @@ async function revalidateSession(page, state, status = 403) {
     const readsBefore = state.profilesServed.length;
     state.sessionStatus = 503;
     await revalidateSession(page, state);
-    await shown(page.getByText("We could not verify your session.", { exact: true }));
+    await shown(page.getByText("Session check failed", { exact: true }));
     state.sessionStatus = 200;
     await page.getByRole("button", { name: "Retry", exact: true }).click();
     await shown(menuButton(page, "PROFILE ACCOUNT A"));

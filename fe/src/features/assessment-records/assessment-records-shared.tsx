@@ -22,7 +22,7 @@ export const assessmentContentFields = [
 
 export function AssessmentUnavailable() {
   return (
-    <WorkspaceUnavailable title="Assessment Records unavailable">
+    <WorkspaceUnavailable title="Assessment Records access">
       You don’t have access to assessment records.
     </WorkspaceUnavailable>
   );
@@ -43,7 +43,7 @@ export function assessmentErrorMessage(error: unknown): string {
     if (code === "csrf_failed")
       return "The security check expired. Try saving again.";
     if (code === "assessment_record_content_unavailable")
-      return "The confidential assessment content is unavailable. Contact the Guidance Office administrator.";
+      return "Couldn't open the confidential assessment content. Contact the Guidance Office.";
     if (error.status === 403)
       return "You don't have access to these assessment records.";
     if (error.status === 404)
@@ -53,7 +53,7 @@ export function assessmentErrorMessage(error: unknown): string {
     if (error.status === 422)
       return "Check the selected Student, Assessment Type, date and result fields, then try again.";
   }
-  return "Assessment Records could not be loaded or saved. Try again.";
+  return "Couldn't load or save Assessment Records. Try again.";
 }
 
 export function AssessmentError({

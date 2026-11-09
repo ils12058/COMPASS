@@ -99,7 +99,7 @@ export function EligibleStudentPicker({
           </Button>
         </div>
       ) : isLoading ? (
-        <p role="status" className="mt-4 text-sm text-muted">Loading eligible Students…</p>
+        <p role="status" className="mt-4 text-sm text-muted">Loading Students…</p>
       ) : items.length === 0 ? (
         <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
           No Students match this search.

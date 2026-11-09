@@ -45,7 +45,7 @@ export function PortalUserMenu() {
         finishLogout();
         return;
       }
-      setError(authErrorMessage(caught, "Sign out could not be completed. Please try again."));
+      setError(authErrorMessage(caught, "Couldn't sign out. Try again."));
     }
   }
 

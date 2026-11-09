@@ -101,7 +101,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
     if (query.isFetching) {
       return (
         <Notice role="status">
-          This announcement has reached its expiry time. Checking availability…
+          This announcement has reached its expiry time. Checking Availability…
         </Notice>
       );
     }
@@ -112,7 +112,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
 
     return (
       <PublicPageError
-        message="This announcement has reached its expiry time and its availability could not be confirmed."
+        message="This announcement has reached its expiry time. Couldn't confirm whether you can still view it."
         onRetry={() => void refetchCurrent()}
       />
     );
@@ -125,7 +125,7 @@ export function AnnouncementDetail({ announcementId }: { announcementId: string 
 
     return (
       <PublicPageError
-        message="This announcement could not be loaded."
+        message="Couldn't load announcement. Try again."
         onRetry={() => void query.refetch()}
       />
     );

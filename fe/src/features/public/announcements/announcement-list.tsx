@@ -95,7 +95,7 @@ export function AnnouncementList(props: AnnouncementListProps) {
   if (query.isError) {
     return frame(
       <PublicSectionError
-        message={readsAccount ? "Announcements could not be loaded." : "Public announcements could not be loaded."}
+        message={readsAccount ? "Couldn't load announcements. Try again." : "Couldn't load public announcements. Try again."}
         onRetry={() => void query.refetch()}
       />,
     );

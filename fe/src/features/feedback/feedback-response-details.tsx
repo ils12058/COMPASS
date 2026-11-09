@@ -61,7 +61,7 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 
 function notFoundMessage(error: unknown, instrument: "Customer Feedback" | "CSM"): string | null {
   if (feedbackErrorCode(error) === "feedback_not_found" || (error && typeof error === "object" && "status" in error && error.status === 404)) {
-    return instrument === "CSM" ? "CSM response not found" : "Feedback response not found";
+    return instrument === "CSM" ? "Client Satisfaction Measurement response not found" : "Feedback response not found";
   }
   return null;
 }
@@ -71,11 +71,11 @@ export function CustomerFeedbackResponseDetail({ responseId }: { responseId: str
   const access = getFeedbackAccess(user);
   const detail = useFeedbackGetCustomerFeedbackResponse(responseId, { query: { retry: false, enabled: access.canViewCustomerFeedback } });
   const confirmed = safeQueryData(detail);
-  if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback response unavailable" />;
+  if (!access.canViewCustomerFeedback) return <FeedbackAccessUnavailable title="Customer Feedback response access" />;
   if (detail.isPending) return <FeedbackDetailSkeleton label="Loading Customer Feedback response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "Customer Feedback");
-    return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Customer Feedback response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
+    return <section><FeedbackPageHeading title={missing ?? "Customer Feedback response"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/customer-feedback/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Couldn't load Customer Feedback response. Try again." onRetry={() => void detail.refetch()} />}</div></section>;
   }
   const item = confirmed.data;
   const services = item.services_received.map((value) => serviceLabels[value] ?? value).join(", ");
@@ -140,11 +140,11 @@ export function CsmResponseDetail({ responseId }: { responseId: string }) {
   const access = getFeedbackAccess(user);
   const detail = useFeedbackGetCsmResponse(responseId, { query: { retry: false, enabled: access.canViewCsm } });
   const confirmed = safeQueryData(detail);
-  if (!access.canViewCsm) return <FeedbackAccessUnavailable title="CSM response unavailable" />;
-  if (detail.isPending) return <FeedbackDetailSkeleton label="Loading CSM response…" />;
+  if (!access.canViewCsm) return <FeedbackAccessUnavailable title="Client Satisfaction Measurement response access" />;
+  if (detail.isPending) return <FeedbackDetailSkeleton label="Loading Client Satisfaction Measurement response…" />;
   if (!confirmed) {
     const missing = notFoundMessage(detail.error, "CSM");
-    return <section><FeedbackPageHeading title={missing ?? "CSM response could not be loaded"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="CSM response could not be loaded." onRetry={() => void detail.refetch()} />}</div></section>;
+    return <section><FeedbackPageHeading title={missing ?? "Client Satisfaction Measurement response"} /><div className="mt-5">{missing ? <Link href="/portal/feedback/csm/responses" className={pageBackLinkClass}>Back to responses</Link> : <FeedbackQueryError error={detail.error} fallback="Couldn't load Client Satisfaction Measurement response. Try again." onRetry={() => void detail.refetch()} />}</div></section>;
   }
   const item = confirmed.data;
   const clientLabel = item.client_type === CSMClientTypeValue.CITIZEN ? "Citizen" : item.client_type === CSMClientTypeValue.BUSINESS ? "Business" : "Government";

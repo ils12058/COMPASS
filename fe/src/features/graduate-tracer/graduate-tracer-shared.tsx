@@ -18,11 +18,11 @@ export function graduateTracerErrorMessage(error: unknown, fallback: string): st
   if (!(error instanceof CompassApiError)) return fallback;
   switch (readApiErrorCode(error.body)) {
     case "graduate_tracer_not_found":
-      return "The Graduate Tracer response could not be found or is no longer available.";
+      return "This Graduate Tracer response was not found.";
     case "graduated_student_required":
       return "Only graduates can start, edit, or submit a Graduate Tracer response.";
     case "graduate_tracer_conflict":
-      return "The response changed or became unavailable before this action completed. Check its current status before continuing.";
+      return "The response changed or you no longer have access to it. Check its current status before continuing.";
     case "invalid_graduate_tracer_request":
       return "Review the survey answers and correct the invalid values.";
     case "permission_denied":

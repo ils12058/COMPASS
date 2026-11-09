@@ -94,7 +94,7 @@ export function HeroCopy() {
         </p>
       </div>
       <p className="mt-4 max-w-xl text-base leading-7 text-on-brand/85 sm:text-lg">
-        The online platform of the UCN Guidance and Counseling Office.
+        The online platform of the UCN Guidance Office.
       </p>
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {/* Same session check as the site header, so both offer the same next step. */}

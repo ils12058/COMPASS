@@ -109,7 +109,7 @@ test('Booking rejection, key conflict, slot conflict and connection failure stay
 for (const code of ['idempotency_in_progress', 'idempotency_unavailable'])
     test(`Feedback ${code}: same-response recovery remains explicit`, () => {
         const text = feedbackErrorMessage(api(code, 503), fallback);
-        assert.match(text, /same response/);
+        assert.match(text, code === 'idempotency_unavailable' ? /same answers/ : /same response/);
         assert.doesNotMatch(text, /not submitted|new submission|was not saved/);
     });
 test('Feedback submission wording keeps authoritative known codes ahead of generic statuses', () => {
@@ -120,7 +120,7 @@ test('Feedback submission wording keeps authoritative known codes ahead of gener
 test('Feedback generic failure requires status checking without promising unchanged identity', () => {
     for (const status of [408, 500, 503]) {
         const text = feedbackSubmissionErrorMessage(api('internal_error', status), fallback);
-        assert.match(text, /could not be confirmed.*Check your feedback status.*contact/);
+        assert.match(text, /Couldn't confirm whether.*Check your feedback status.*contact/);
         assert.doesNotMatch(text, /not submitted|Retry the same|new submission|was not saved/);
     }
     assert.match(feedbackSubmissionErrorMessage(api('invalid_feedback_request'), fallback), /Review the form/);
@@ -215,12 +215,12 @@ test('Graduate Tracer confidentiality copy names authorized Office reviewers and
     client.getQueryCache().build(client, { queryKey: getGraduateTracerGetMyResponseQueryKey() }).setState({ status: 'error', fetchStatus: 'idle', error: api('graduate_tracer_not_found', 404), errorUpdatedAt: Date.now() });
     const html = renderToStaticMarkup(h(QueryClientProvider, { client }, h(GraduateTracerStudentWorkspace, { access: getGraduateTracerAccess(graduate) })));
     client.clear();
-    assert.match(html, /Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission\./);
+    assert.match(html, /Your response is confidential and will be available only to Guidance Office reviewers with permission after submission\./);
     assert.match(html, /Starting creates a private draft; it does not submit answers\./);
     assert.match(html, /Start Graduate Tracer Survey/);
     assert.doesNotMatch(html, /Head Guidance|PRIVATE-DIAGNOSTIC-SENTINEL/);
     const form = readFileSync(new URL('../src/features/graduate-tracer/graduate-tracer-form.tsx', import.meta.url), 'utf8');
-    assert.match(form.replace(/\s+/g, ' '), /Your response will be finalized and made available only to authorized Guidance and Counseling Office reviewers\. You will not be able to edit it after submission\./);
+    assert.match(form.replace(/\s+/g, ' '), /Your response will be finalized and made available only to Guidance Office reviewers with permission\. You will not be able to edit it after submission\./);
     for (const file of readdirSync(new URL('../src/features/graduate-tracer/', import.meta.url)))
         assert.doesNotMatch(readFileSync(new URL(`../src/features/graduate-tracer/${file}`, import.meta.url), 'utf8'), /Head Guidance/, file);
 });

@@ -35,7 +35,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), result);
       void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
     } catch (error) {
-      setStartError(graduateTracerErrorMessage(error, "The Graduate Tracer response could not be started."));
+      setStartError(graduateTracerErrorMessage(error, "Couldn't start Graduate Tracer response. Try again."));
       if (isUncertainGraduateTracerMutation(error)) {
         const check = await response.refetch();
         if (check.data?.data) {
@@ -57,24 +57,24 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
       return;
     }
     setNeedsStatusCheck(true);
-    setStartError(graduateTracerErrorMessage(check.error, "The response status could not be verified."));
+    setStartError(graduateTracerErrorMessage(check.error, "Couldn't verify response status. Try again."));
   }
 
   if (!access.canViewSelf) {
     return (
       <section className="space-y-5">
-        <GraduateTracerHeading title="Graduate Tracer Survey" />
-        <Notice role="alert">Your Graduate Tracer response is unavailable to this account.</Notice>
+        <GraduateTracerHeading title="Graduate Tracer survey" />
+        <Notice role="alert">You don&apos;t have access to your Graduate Tracer response.</Notice>
       </section>
     );
   }
 
   if (response.isPending && !detail) {
-    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerFormSkeleton /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer survey" /><GraduateTracerFormSkeleton /></section>;
   }
 
   if (hideCached) {
-    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer survey" /><GraduateTracerError error={response.error} fallback="Couldn't load your Graduate Tracer response. Try again." onRetry={() => void response.refetch()} /></section>;
   }
 
   if (detail) {
@@ -84,11 +84,11 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
       <section className="space-y-5" aria-labelledby="graduate-tracer-student-heading">
         <GraduateTracerHeading
           id="graduate-tracer-student-heading"
-          title="Graduate Tracer Survey"
+          title="Graduate Tracer survey"
 
           meta={<GraduateTracerStatus submitted={submitted} />}
         />
-        {response.isError ? <Notice role="alert" tone="warning"><span className="text-ink">The latest status could not be refreshed. Showing the last confirmed response.</span></Notice> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
+        {response.isError ? <Notice role="alert" tone="warning"><span className="text-ink">Couldn&apos;t refresh latest status. Showing the last confirmed response.</span></Notice> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
         {submitted ? (
           <div className="space-y-6">
             <p className="text-sm text-muted">Submitted {formatGraduateTracerDateTime(detail.submitted_at)}. This response is read-only.</p>
@@ -107,19 +107,19 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
   }
 
   if (response.isError && !isNotStarted) {
-    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer Survey" /><GraduateTracerError error={response.error} fallback="Your Graduate Tracer response could not be loaded." onRetry={() => void response.refetch()} /></section>;
+    return <section className="space-y-5"><GraduateTracerHeading title="Graduate Tracer survey" /><GraduateTracerError error={response.error} fallback="Couldn't load your Graduate Tracer response. Try again." onRetry={() => void response.refetch()} /></section>;
   }
 
   return (
     <section className="space-y-5" aria-labelledby="graduate-tracer-student-heading">
       <GraduateTracerHeading
         id="graduate-tracer-student-heading"
-        title="Graduate Tracer Survey"
+        title="Graduate Tracer survey"
         description="This survey collects information about graduate education and employment experiences to support graduate employability research and curriculum improvement."
       />
       <div className="max-w-3xl rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5">
         <IllustratedIntroduction edgeFade src={access.canManageSelf && isNotStarted && !startError && !needsStatusCheck && !start.isPending ? "/illustrations/graduate-tracer-3d.png" : undefined}>
-        <p className="text-sm leading-6 text-muted">Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission. Starting creates a private draft; it does not submit answers.</p>
+        <p className="text-sm leading-6 text-muted">Your response is confidential and will be available only to Guidance Office reviewers with permission after submission. Starting creates a private draft; it does not submit answers.</p>
         {access.canManageSelf ? (
           <>
             <Button className="mt-4" disabled={start.isPending || needsStatusCheck} onClick={() => void beginSurvey()}>

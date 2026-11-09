@@ -343,7 +343,7 @@ async function openRoutineFromSession(page) {
     session.state.workspaceStatus = 401;
     session.state.sessionStatus = 503;
     await fake(page, "providerEvent", "recording-started");
-    await shown(page.getByRole("heading", { name: "We could not verify your session.", exact: true }));
+    await shown(page.getByRole("heading", { name: "Session check failed", exact: true }));
     const call = dock(page);
     await shown(call);
     await call.getByRole("button", { name: "Microphone", exact: true }).click();

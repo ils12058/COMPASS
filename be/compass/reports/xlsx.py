@@ -287,7 +287,7 @@ def _percentage_value(value: object) -> Decimal | None:
 def _coverage_heading(coverage: dict[str, object]) -> str:
     mode = str(coverage.get("mode") or "")
     if mode == "CURRENT":
-        return "Current Student Inventory Coverage"
+        return "Individual Inventory coverage"
     if mode == "HISTORICAL_LIMITED":
         return "Inventory Coverage — Historical Academic Year (limited)"
     raise StudentProfilingWorkbookUnavailable("The Student Profiling coverage mode is unsupported.")
@@ -408,7 +408,7 @@ def _alignment_rows(coverage: dict[str, object]) -> list[tuple[str, int | str]]:
                 "The Student Profiling academic alignment is inconsistent."
             )
         return [
-            ("Current Students in coverage scope", values["current_student_count"]),
+            ("Current Students in the reporting area", values["current_student_count"]),
             (
                 "Current Students with an academic placement",
                 values["current_with_placement_count"],
@@ -435,7 +435,7 @@ def _alignment_rows(coverage: dict[str, object]) -> list[tuple[str, int | str]]:
                 )
         unavailable = "Not available from current COMPASS data"
         return [
-            ("Current Students in coverage scope", unavailable),
+            ("Current Students in the reporting area", unavailable),
             ("Current Students with an academic placement", unavailable),
             ("Current Students without an academic placement", unavailable),
             *inventory_rows,
@@ -587,7 +587,7 @@ def _build_summary_sheet(
         ("College filter", _organization_display(report_context.get("college"), "All Colleges")),
         ("Program filter", _organization_display(report_context.get("program"), "All Programs")),
         ("Year Level filter", report_context.get("year_level_label") or "All Year Levels"),
-        ("Reporting Scope", _reporting_scope_text(report_context)),
+        ("Reporting area", _reporting_scope_text(report_context)),
         ("Generated At", _generated_at_text(report_context.get("generated_at"))),
     ]
 

@@ -446,7 +446,7 @@ def _metadata_rows(
             str(report_context.get("year_level_label") or "All Year Levels"),
         ),
         (
-            "Reporting Scope",
+            "Reporting area",
             "Institution-wide"
             if is_global
             else "Limited to assigned Colleges: " + "; ".join(scope_labels),
@@ -479,7 +479,7 @@ def _filter_rows(
         _row([_cell("Academic Year"), _cell("Applied"), _cell("Applied")]),
         _row(
             [
-                _cell("Reporting scope"),
+                _cell("Reporting area"),
                 _cell("Institution-wide" if is_global else by_inventory),
                 _cell(
                     "Institution-wide"
@@ -549,7 +549,7 @@ def _alignment_table(coverage: dict[str, object], mode: str) -> dict[str, object
             ]
         )
         for label in (
-            "Current Students in coverage scope",
+            "Current Students in the reporting area",
             "Current Students with an academic placement",
             "Current Students without an academic placement",
         )
@@ -575,7 +575,7 @@ def _alignment_table(coverage: dict[str, object], mode: str) -> dict[str, object
         if matched + mismatched != with_program:
             raise _unavailable("academic alignment Program comparison does not reconcile.")
         rows = [
-            _count_row("Current Students in coverage scope", current),
+            _count_row("Current Students in the reporting area", current),
             _count_row("Current Students with an academic placement", with_placement),
             _count_row("Current Students without an academic placement", without_placement),
             *inventory_rows,
@@ -650,7 +650,7 @@ def _coverage_tables(
         missing = _require_count(coverage.get("missing_count"), "coverage missing count")
         if submitted + draft + missing != eligible:
             raise _unavailable("coverage states do not sum to the eligible Students.")
-        title = "Current Student Inventory Coverage"
+        title = "Individual Inventory coverage"
         note = str(methodology.get("coverage_note") or "")
         count_header = "Students"
         status_rows = [
@@ -1237,7 +1237,7 @@ def _executive_summary(
             f"Submitted: {_count_text(submitted)}; Draft: {_count_text(draft)}; "
             f"Without Individual Inventory: {_count_text(missing)}"
         )
-        coverage_label = "Current Student Inventory Coverage"
+        coverage_label = "Individual Inventory coverage"
     elif mode == "HISTORICAL_LIMITED":
         submitted = _require_count(coverage.get("submitted_count"), "coverage Submitted count")
         draft = _require_count(coverage.get("draft_count"), "coverage Draft count")

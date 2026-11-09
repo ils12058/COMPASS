@@ -31,7 +31,7 @@ for (const [name, setup, width, enlarged] of visualScenarios) {
       await shown(page.locator('section[aria-labelledby="counselor-work-heading"] li').first());
     } else {
       await shown(attention(page));
-      if (setup.failure) await shown(page.getByText("My actions could not be loaded", { exact: true }));
+      if (setup.failure) await shown(page.getByText("Couldn't load My actions", { exact: true }));
       else if (setup.items?.length === 0) await shown(attention(page).getByText(/caught up|No current actions/));
       else await shown(attention(page).locator("li").first());
     }
@@ -73,7 +73,7 @@ if (!baseline) {
         assert.ok(measures.panels.every((panel) => panel.scroll <= panel.client + 1), "Each Home region reflows internally");
         assert.ok(measures.boxes.every((link) => link.left >= -1 && link.right <= width + 1 && link.tabIndex >= 0), "Every Home link remains within the viewport and focusable");
         assert.ok(measures.targets.every((target) => target.height >= measures.minimumTarget - 1), "Student actions and discovery retain the established 44px/rem-scaled minimum targets");
-        assert.deepEqual(await page.locator("main h2").allTextContents(), ["Needs your attention", "Guidance services", "At a glance", "Announcements"]);
+        assert.deepEqual(await page.locator("main h2").allTextContents(), ["Needs your attention", "Guidance Services", "At a glance", "Announcements"]);
         geometry.push({ name: `layout-${width}`, enlarged, ...measures });
         if (width === 320 && enlarged) {
           await screenshot(page, "after-announcements-320-200-detail", page.locator('section[aria-labelledby="overview-announcements-heading"]'));
@@ -158,7 +158,7 @@ if (!baseline) {
   {
     const state = homeWorld(); state.actionsStatus = 500;
     await check("initial-action-failure-retries-without-claiming-completion", "/portal", state.options(), async (page) => {
-      await shown(attention(page).getByText("My actions could not be loaded", { exact: true }));
+      await shown(attention(page).getByText("Couldn't load My actions", { exact: true }));
       assert.equal(await attention(page).getByText(/caught up/).count(), 0);
       await shown(page.locator("#student-home-services-heading"));
       state.actionsStatus = 200; state.items = [];
@@ -187,12 +187,12 @@ if (!baseline) {
       await shown(attention(page).getByRole("heading", { name: "Call Slip", exact: true }));
       state.actionsStatus = 500;
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-      await shown(attention(page).getByText("My actions could not be refreshed. Showing the last confirmed result.", { exact: true }));
+      await shown(attention(page).getByText("Couldn't refresh My actions. Showing the last confirmed result.", { exact: true }));
       assert.deepEqual(await attention(page).locator("li h3").allTextContents(), ["Call Slip", "Routine Interview", "Guidance Messages", "Exit Interview", "Individual Inventory"]);
       await screenshot(page, "after-stale-actions");
       state.actionsStatus = 403;
       await attention(page).getByRole("button", { name: "Retry", exact: true }).click();
-      await shown(attention(page).getByText("My actions could not be loaded", { exact: true }));
+      await shown(attention(page).getByText("Couldn't load My actions", { exact: true }));
       await hidden(attention(page).getByRole("heading", { name: "Call Slip", exact: true }));
       assert.equal(await attention(page).getByText(/caught up/).count(), 0);
     });
@@ -228,7 +228,7 @@ if (!baseline) {
     const state = homeWorld(); state.announcementsStatus = 500;
     await check("announcement-failure-retry-and-empty-do-not-disrupt-student-actions", "/portal", state.options(), async (page) => {
       const announcements = page.locator('section[aria-labelledby="overview-announcements-heading"]');
-      await shown(announcements.getByText("Announcements could not be loaded.", { exact: true }));
+      await shown(announcements.getByText("Couldn't load announcements. Try again.", { exact: true }));
       await shown(attention(page).getByRole("link", { name: "Review Call Slip", exact: true }));
       assert.equal(await announcements.getByText("No current announcements.", { exact: true }).count(), 0);
       state.announcementsStatus = 200; state.announcements = [];

@@ -54,7 +54,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   test(`${role} failed refresh retains readable data and suppresses lifecycle actions`, () => {
     const html = render(role, ["call_slips.view", "call_slips.manage"], "ACTIVE", { error: new TypeError("Synthetic offline") });
     assertReadable(html); assertNoManagement(html);
-    assert.match(html, /Latest information could not be refreshed/);
+    assert.match(html, /Couldn&#x27;t refresh latest information/);
   });
 }
 for (const state of ["ACTIVE", "COMPLETED", "VOIDED"]) {

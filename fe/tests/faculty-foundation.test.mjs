@@ -44,9 +44,9 @@ test("Faculty holding Home states unavailable Referrals and missing affiliation 
   const html = renderHome(faculty);
   assert.match(html, /Digital Student Referrals are not available yet/);
   assert.match(html, /Not assigned/);
-  assert.match(html, /Contact the account administrator/);
+  assert.match(html, /Contact the Guidance Office/);
   assert.doesNotMatch(html, /Book appointment|Record referral|href=.*referrals/);
   const assigned = renderHome({ ...faculty, faculty_affiliation: { college_name: "Faculty College", campus_name: "Main Campus", active: true } });
   assert.match(assigned, /Main Campus · Faculty College/);
-  assert.doesNotMatch(assigned, /Contact the account administrator/);
+  assert.doesNotMatch(assigned, /Contact the Guidance Office/);
 });

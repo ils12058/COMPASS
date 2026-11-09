@@ -40,7 +40,7 @@ export type ParsedGraduateTracerFilters = {
 const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 const FILTER_LABELS: Record<string, string> = {
-  academic_year_id: "academic year",
+  academic_year_id: "Academic Year",
   campus_id: "campus",
   college_id: "college",
   program_id: "program",

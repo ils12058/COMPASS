@@ -37,7 +37,7 @@ export function AnnouncementLifecycleActions({
   const archive = useAnnouncementsArchive();
   const [open, setOpen] = useState<LifecycleAction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const title = `“${displayTitle(announcement.title, "Untitled Announcement")}”`;
+  const title = `“${displayTitle(announcement.title, "Untitled announcement")}”`;
   const isDraft = announcement.status === AnnouncementStatusValue.DRAFT;
   const isArchived = announcement.status === AnnouncementStatusValue.ARCHIVED;
 
@@ -55,10 +55,10 @@ export function AnnouncementLifecycleActions({
     } catch (caught) {
       const fallback =
         action === "publish"
-          ? "The Announcement could not be published."
-          : "The Announcement could not be archived.";
+          ? "Couldn't publish announcement. Try again."
+          : "Couldn't archive announcement. Try again.";
       if (isUncertainAnnouncementMutation(caught)) {
-        setError(`${fallback} Check its current status before trying again.`);
+        setError("Couldn't confirm whether the change was saved. Check its current status before trying again.");
       } else {
         setError(announcementErrorMessage(caught, fallback));
       }
@@ -78,10 +78,10 @@ export function AnnouncementLifecycleActions({
   return (
     <>
       {isDraft ? (
-        <PageAction icon={Send} label="Publish Announcement" disabled={publishBlocked} onClick={() => openDialog("publish")} />
+        <PageAction icon={Send} label="Publish announcement" disabled={publishBlocked} onClick={() => openDialog("publish")} />
       ) : null}
       {!isArchived ? (
-        <PageAction icon={Archive} variant="secondary" label="Archive Announcement" onClick={() => openDialog("archive")} />
+        <PageAction icon={Archive} variant="secondary" label="Archive announcement" onClick={() => openDialog("archive")} />
       ) : null}
 
       <ContentConfirmDialog

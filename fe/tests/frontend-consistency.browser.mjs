@@ -103,7 +103,7 @@ for (const width of [320, 393, 1440]) {
   });
 }
 await check("student-tracer-metadata", "/portal/graduate-tracer", { mobile: true, overrides: { "/api/v1/auth/session": session(graduate), "/api/v1/graduate-tracer/me": tracer } }, async (page) => {
-  await shown(page.getByRole("heading", { level: 1, name: "Graduate Tracer Survey" }));
+  await shown(page.getByRole("heading", { level: 1, name: "Graduate Tracer survey" }));
   await shown(page.locator("[data-page-header]").getByText("Submitted", { exact: true }));
   assert.equal(await page.locator("[data-page-header-actions]").count(), 0); await noHorizontalOverflow(page);
 });

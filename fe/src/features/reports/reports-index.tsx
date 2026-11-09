@@ -22,7 +22,7 @@ export function ReportsIndex() {
   const { user } = usePortalSession();
   if (!canAttemptReports(user)) {
     return (
-      <WorkspaceUnavailable title="Reports unavailable">
+      <WorkspaceUnavailable title="Reports access">
         You don’t have access to reports.
       </WorkspaceUnavailable>
     );
@@ -50,7 +50,7 @@ function ReportsIndexWorkspace() {
         <section>
           <ReportsPageHeading title="Reports" />
           <Notice role="status">
-            No reporting area is currently assigned to your account.
+            You need an assigned reporting area to view this report. Contact the Guidance Office.
           </Notice>
         </section>
       );
@@ -60,7 +60,7 @@ function ReportsIndexWorkspace() {
         <ReportsPageHeading title="Reports" />
         <ReportQueryError
           error={scopeQuery.error}
-          fallback="Your report access could not be checked."
+          fallback="Couldn't check your report access. Try again."
           onRetry={() => void scopeQuery.refetch()}
         />
       </section>
@@ -72,7 +72,7 @@ function ReportsIndexWorkspace() {
       <section>
         <ReportsPageHeading title="Reports" />
         <Notice role="status">
-          No reporting area is currently assigned to your account.
+          You need an assigned reporting area to view this report. Contact the Guidance Office.
         </Notice>
       </section>
     );
@@ -82,7 +82,7 @@ function ReportsIndexWorkspace() {
     {
       href: "/portal/reports/student-profile",
       icon: ClipboardList,
-      title: "Student Profiling",
+      title: "Student profiling",
       description:
         "Aggregate profile statistics from submitted Individual Inventories.",
     },
