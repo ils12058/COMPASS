@@ -198,7 +198,7 @@ def test_exit_legacy_admitted_draft_and_no_good_moral_extra(world):
     assert actions(world) == []
 
 
-def test_graduate_available_not_obligation_draft_submitted_and_disposed(world):
+def test_graduate_available_not_obligation_draft_and_submitted(world):
     User.objects.filter(pk=world.student.pk).update(student_lifecycle_status="GRADUATED")
     assert actions(world) == []
     row = GraduateTracerResponse.objects.create(
@@ -207,10 +207,6 @@ def test_graduate_available_not_obligation_draft_submitted_and_disposed(world):
     assert kinds(world) == [Kind.GRADUATE_TRACER_CONTINUE]
     GraduateTracerResponse.objects.filter(pk=row.pk).update(
         status="SUBMITTED", submitted_at=timezone.now()
-    )
-    assert actions(world) == []
-    GraduateTracerResponse.objects.filter(pk=row.pk).update(
-        student=None, anonymized_at=timezone.now(), confidential_content_ciphertext=None
     )
     assert actions(world) == []
 
@@ -658,19 +654,6 @@ def test_consent_pending_capability_and_graduated_denial_remain_canonical(world)
         consent_id=consent.pk,
         decision="DENIED",
         context=AuditContext.user(world.student),
-    )
-    assert actions(world) == []
-
-
-def test_disposed_participation_hides_stray_personal_graduate_draft(world):
-    from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
-
-    User.objects.filter(pk=world.student.pk).update(student_lifecycle_status="GRADUATED")
-    GraduateTracerResponse.objects.create(
-        student=world.student, confidential_content_ciphertext="structural"
-    )
-    GraduateTracerDisposedParticipation.objects.create(
-        student=world.student, instrument_schema_version=1, disposed_on=timezone.now().date()
     )
     assert actions(world) == []
 

@@ -108,6 +108,4 @@ def record_event(
     return event
 
 
-record = record_event
-
-__all__ = ["AuditContext", "record", "record_event"]
+__all__ = ["AuditContext", "record_event"]

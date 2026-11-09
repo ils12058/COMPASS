@@ -31,11 +31,3 @@ class Command(BaseCommand):
             f"designation grants created={result.designation_grants_created}. "
             "Unknown database rows were retained."
         )
-        self.stdout.write(
-            "Retired capability state: "
-            f"role grants deleted={result.retired_role_grants_deleted}; "
-            f"designation grants deleted={result.retired_designation_grants_deleted}; "
-            f"overrides deleted={result.retired_overrides_deleted}; "
-            f"capabilities deleted={result.retired_capabilities_deleted}. "
-            "Other unknown database rows were retained."
-        )

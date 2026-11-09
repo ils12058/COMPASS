@@ -249,13 +249,13 @@ Record an event directly and keep a successful state change and its `SUCCESS` ev
 ```python
 from django.db import transaction
 
-from compass.audit import record
+from compass.audit import record_event
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 
 with transaction.atomic():
     user.save(update_fields=["first_name", "updated_at"])
-    record(
+    record_event(
         context=AuditContext.from_request(request),
         action="accounts.updated",
         outcome=AuditEvent.Outcome.SUCCESS,

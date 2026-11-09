@@ -8,12 +8,7 @@ import pytest
 from openpyxl import load_workbook
 
 from compass.common.institutional_time import institution_today
-from compass.graduate_tracer.disposition import verify_anonymized
-from compass.graduate_tracer.models import (
-    GraduateTracerResponse,
-)
 from compass.organization.models import Campus, College, Program
-from tests.historical_outcome_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     make_head,
@@ -322,46 +317,3 @@ def test_contradictory_report_filters_rejected_with_422():
         f"/api/v1/reports/graduate-tracer/xlsx?college_id={college_b.pk}&program_id={prog_a1.pk}"
     )
     assert xlsx_res.status_code == 422
-
-
-@pytest.mark.django_db
-def test_anonymization_retention_invariant_drops_quasi_identifiers():
-    sync_policy()
-    college_a, college_b, prog_a1, prog_a2, prog_b1 = create_org_hierarchy()
-    student = make_user("anon-retention@example.edu")
-    client = auth_client(student)
-    post_empty(client, "/api/v1/graduate-tracer/me")
-    payload = valid_employed_payload()
-    payload["graduated_college_id"] = str(college_a.pk)
-    payload["graduated_program_id"] = str(prog_a1.pk)
-    payload["graduation_year"] = 2024
-    put_json(client, "/api/v1/graduate-tracer/me", payload)
-    post_empty(client, "/api/v1/graduate-tracer/me/submit")
-
-    source = GraduateTracerResponse.objects.get(student=student)
-    assert source.graduated_college_id == college_a.pk
-    assert source.graduated_program_id == prog_a1.pk
-    assert source.graduation_year == 2024
-
-    # The retired executor's committed outcome (ADR-072/112), written directly (ADR-114).
-    historical_anonymized_contribution(source)
-
-    # A historical anonymous contribution carries no quasi-identifiers
-    retained = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
-    assert retained.student_id is None
-    assert retained.graduated_college_id is None
-    assert retained.graduated_program_id is None
-    assert retained.graduation_year is None
-    assert verify_anonymized(retained)
-
-    # ...and the integrity rule rejects one that still carries any of them.
-    for quasi in (
-        {"graduated_college_id": college_a.pk},
-        {"graduated_program_id": prog_a1.pk},
-        {"graduation_year": 2024},
-    ):
-        GraduateTracerResponse.objects.filter(pk=retained.pk).update(**quasi)
-        assert not verify_anonymized(retained)
-        GraduateTracerResponse.objects.filter(pk=retained.pk).update(
-            graduated_college_id=None, graduated_program_id=None, graduation_year=None
-        )

@@ -1,4 +1,4 @@
-"""ADR-084 confidential storage, disclosure, retention, migration and rotation.
+"""ADR-084 confidential storage, disclosure, migration and rotation.
 
 Only synthetic keys and synthetic personal data; dedicated transactional test database.
 """
@@ -28,17 +28,12 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.graduate_tracer import confidential_content as content
 from compass.graduate_tracer import services
-from compass.graduate_tracer.disposition import (
-    ANALYTICAL_FIELDS,
-)
 from compass.graduate_tracer.models import GraduateTracerResponse
-from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
 from compass.notifications.models import EmailDelivery, Notification
 from compass.reports.graduate_tracer import build_graduate_tracer_report
 from compass.reports.graduate_tracer_xlsx import render_graduate_tracer_xlsx
 from tests.encryption_oracles import graduate_tracer_confidential_content_v1 as frozen
 from tests.graduate_tracer_test_helpers import encrypted_row
-from tests.historical_outcome_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     make_head,
@@ -299,7 +294,6 @@ def effects():
         AuditEvent.objects.count(),
         Notification.objects.count(),
         EmailDelivery.objects.count(),
-        GraduateTracerDisposedParticipation.objects.count(),
     )
 
 
@@ -312,10 +306,6 @@ def test_raw_storage_removed_private_columns_and_queryable_search_and_e1(world, 
     text = json.dumps(raw_all(), default=str)
     assert "PRIVATE-" not in text and "graduate@example.edu" not in text
     assert "Historical Searchable Graduate" in text
-    for field in ANALYTICAL_FIELDS:
-        assert list(GraduateTracerResponse.objects.values_list(field, flat=True)) == [
-            getattr(item, field)
-        ]
     monkeypatch.setattr(content, "decrypt_bound_json", forbid)
     monkeypatch.setattr(content, "read_confidential_content", forbid)
     monkeypatch.setattr(content, "read_private_projection", forbid)
@@ -398,11 +388,10 @@ def test_draft_replacement_cannot_repair_corruption_and_is_atomic(world):
     assert (raw_all(), effects()) == before
 
 
-def test_no_decrypt_aggregate_services_json_xlsx_and_anonymous_population(
+def test_no_decrypt_aggregate_services_json_xlsx_for_submitted_responses(
     world, settings, monkeypatch
 ):
     item = filled(world, submit=True)
-    historical_anonymized_contribution(item)
     other = encrypted_row(
         GraduateTracerResponse,
         student=make_user("report-identifiable@example.edu"),
@@ -430,11 +419,9 @@ def test_no_decrypt_aggregate_services_json_xlsx_and_anonymous_population(
     client = auth_client(world["head"])
     assert client.get("/api/v1/reports/graduate-tracer").status_code == 200
     assert client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
-    assert [
+    assert {
         row["id"] for row in client.get("/api/v1/graduate-tracer/responses").json()["items"]
-    ] == [str(other.pk)]
-    anonymous = GraduateTracerResponse.objects.get(student__isnull=True)
-    assert client.get(f"/api/v1/graduate-tracer/responses/{anonymous.pk}").status_code == 404
+    } == {str(item.pk), str(other.pk)}
 
 
 @pytest.mark.parametrize("family", NAMES)
@@ -516,26 +503,16 @@ def rotate(**options):
     return out.getvalue()
 
 
-def test_rotation_bytes_timestamp_metadata_anonymous_skip_and_idempotence(world, settings):
+def test_rotation_bytes_timestamp_metadata_and_idempotence(world, settings):
     filled(world, submit=True)
-    anonymous = GraduateTracerResponse.objects.create(
-        student=None,
-        status="SUBMITTED",
-        submitted_at=timezone.now(),
-        anonymized_at=timezone.now(),
-        confidential_content_ciphertext=None,
-    )
     before, counts = raw_all(), effects()
     settings.GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = (K2, K1)
     assert rotate(dry_run=True, batch_size=1).count("failures 0") == 4
     assert raw_all() == before
-    assert "Anonymous contributions skipped: 1" in rotate(batch_size=1)
+    assert rotate(batch_size=1).count("failures 0") == 4
     after = raw_all()
     for family in NAMES:
         for old, new in zip(before[family], after[family], strict=True):
-            if old["id"] == anonymous.pk:
-                assert old == new and new["confidential_content_ciphertext"] is None
-                continue
             col = "confidential_content_ciphertext"
             assert Fernet(K1).decrypt(old[col].encode()) == Fernet(K2).decrypt(new[col].encode())
             assert Fernet(K1).extract_timestamp(old[col].encode()) == Fernet(K2).extract_timestamp(
@@ -748,3 +725,20 @@ def test_dataset_tracer_projection_uses_explicit_encrypted_snapshots(world, monk
         "graduation_year": 2020,
         "sex": "MALE",
     }
+
+
+@pytest.mark.parametrize("submitted", [False, True])
+@pytest.mark.parametrize(
+    "invalid_values",
+    [
+        {"student_id": None},
+        {"confidential_content_ciphertext": None},
+        {"confidential_content_ciphertext": ""},
+    ],
+)
+def test_response_requires_student_and_confidential_content(world, submitted, invalid_values):
+    item = filled(world, submit=submitted)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GraduateTracerResponse.objects.filter(pk=item.pk).update(**invalid_values)
+    item.refresh_from_db()
+    assert item.student_id is not None and item.confidential_content_ciphertext

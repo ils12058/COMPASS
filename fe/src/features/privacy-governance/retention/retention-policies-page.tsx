@@ -41,7 +41,7 @@ export function RetentionPoliciesPage() {
     <section>
       <PrivacyPageHeader
         title="Retention Policies"
-        description="View the retention policy status recorded in COMPASS. Policy changes are governed through institutional approval and reviewed system updates."
+        description="View the retention policy status recorded in COMPASS. Policy changes need institutional approval."
         help={<RetentionHelp />}
       />
       {query.isError && items ? (

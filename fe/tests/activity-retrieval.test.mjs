@@ -23,7 +23,7 @@ const staff = { id: "00000000-0000-4000-8000-000000000001", display_name: "José
 const ok = (data) => ({ data, status: 200, headers: {} });
 const page = (items, number = 1, next = false) => ({ items, page: number, page_size: 20, has_next: next });
 const event = { id: "e1", type: "referral.created", title: "Referral recorded", description: "A referral was recorded.", occurred_at: "2026-10-04T00:00:00Z", staff };
-const privacyEvent = { id: "p1", category: "PRIVACY_GOVERNANCE", type: "privacy.disposition.completed", title: "Disposition completed", description: "The domain executor verified the approved treatment.", occurred_at: event.occurred_at, actor_display_name: "DPO Operator", artifact_type: null, artifact_format: null, scope: null, resource_reference: "case-opaque" };
+const privacyEvent = { id: "p1", category: "PRIVACY_GOVERNANCE", type: "privacy.retention.updated", title: "Retention policy updated", description: "A retention policy governance record was updated.", occurred_at: event.occurred_at, actor_display_name: "DPO Operator", artifact_type: null, artifact_format: null, scope: null, resource_reference: "policy-opaque" };
 const platformEvent = { id: "t1", type: "platform.maintenance.enabled", title: "Maintenance Mode enabled", description: "Manual Maintenance Mode was enabled.", occurred_at: event.occurred_at, actor_display_name: "IT Operator", actor_type: "USER" };
 
 function render(component, { capabilities = [], records = [], errors = [], pathname = "/portal/account/activity", search = "" } = {}) {
@@ -118,10 +118,10 @@ test("platform filters compose and preserve the curated list without export", ()
 });
 
 test("privacy criteria and retention presentation survive URL reload", () => {
-  const params = { search: "verified", category: "PRIVACY_GOVERNANCE", event_type: privacyEvent.type, actor: "DPO", date_from: "2026-10-01", date_to: "2026-10-04", page: 2, page_size: 20 };
+  const params = { search: "updated", category: "PRIVACY_GOVERNANCE", event_type: privacyEvent.type, actor: "DPO", date_from: "2026-10-01", date_to: "2026-10-04", page: 2, page_size: 20 };
   const { html, requested } = render(createElement(PrivacyActivityPage), { capabilities: [browse, exportCapability], pathname: "/portal/privacy/activity", search: new URLSearchParams(params).toString(), records: [[getPrivacyGovernanceListActivityQueryKey(params), ok(page([{ ...privacyEvent, provider_id: "PRIVATE-PROVIDER", raw_metadata: "PRIVATE-METADATA" }], 2, true))]] });
   assert.ok(requested.some((key) => key[0] === "/api/v1/privacy/activity" && key[1].category === "PRIVACY_GOVERNANCE" && key[1].actor === "DPO"));
-  assert.match(html, /Export CSV|Disposition completed|Category|Event type|Actor|Date from|Date to/);
+  assert.match(html, /Export CSV|Retention policy updated|Category|Event type|Actor|Date from|Date to/);
   assert.doesNotMatch(html, /PRIVATE/);
 });
 
@@ -131,7 +131,7 @@ test("browse-only Privacy Activity has no export action", () => {
 });
 
 test("CSV request uses every active criterion and omits page selection", () => {
-  const criteria = { search: "draft", category: "PRIVACY_GOVERNANCE", event_type: "privacy.retention.rule.updated", actor: "José", date_from: "2026-10-01", date_to: "2026-10-04" };
+  const criteria = { search: "policy", category: "PRIVACY_GOVERNANCE", event_type: "privacy.retention.updated", actor: "José", date_from: "2026-10-01", date_to: "2026-10-04" };
   const url = new URL(getPrivacyGovernanceExportActivityUrl(criteria), "https://example.edu");
   for (const [key, value] of Object.entries(criteria)) assert.equal(url.searchParams.get(key), value);
   assert.equal(url.searchParams.has("page"), false);
@@ -154,8 +154,8 @@ test("URL changes reset pages and pagination preserves all active criteria", () 
 test("event-type choices are the generated closed vocabularies", () => {
   assert.equal(Object.values(SupervisedActivityType).length, 22);
   assert.equal(enumValue("auth.login", Object.values(SupervisedActivityType)), undefined);
-  assert.equal(enumValue("privacy.disposition.completed", Object.values(PrivacyActivityType)), "privacy.disposition.completed");
-  assert.equal(enumValue("privacy.disposition.completed", Object.values(TechnicalActivityType)), undefined);
+  assert.equal(enumValue("privacy.retention.updated", Object.values(PrivacyActivityType)), "privacy.retention.updated");
+  assert.equal(enumValue("privacy.retention.updated", Object.values(TechnicalActivityType)), undefined);
 });
 
 test("filter form has named controls and a shared dialog with explicit apply/clear", () => {
@@ -170,8 +170,8 @@ test("refresh failure retains confirmed data but authority failure hides it", ()
   const key = getPrivacyGovernanceListActivityQueryKey({ page: 1, page_size: 20 });
   for (const status of [503, 403]) {
     const { html } = render(createElement(PrivacyActivityPage), { capabilities: [browse, exportCapability], pathname: "/portal/privacy/activity", records: [[key, ok(page([privacyEvent]))]], errors: [[key, apiError(status)]] });
-    if (status === 503) assert.match(html, /Disposition completed|Retry/);
-    else assert.doesNotMatch(html, /Disposition completed/);
+    if (status === 503) assert.match(html, /Retention policy updated|Retry/);
+    else assert.doesNotMatch(html, /Retention policy updated/);
     assert.match(html, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*data-page-action-label[^>]*>Export CSV/);
   }
 });

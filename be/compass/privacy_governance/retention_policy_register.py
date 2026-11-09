@@ -90,8 +90,7 @@ def validate_register(entries):
     return entries
 
 
-# One entry per record category the former in-app engine covered. Legacy contract versions,
-# triggers, durations and actions are not carried over; they were never institutional policy.
+# One entry per record category covered by retention policy oversight.
 REGISTER: tuple[RetentionPolicy, ...] = validate_register(
     (
         RetentionPolicy(

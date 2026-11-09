@@ -256,15 +256,14 @@ if (phase !== 'before') {
     });
   }
 
-  for (const condition of ['non-graduate', 'restricted', 'read-only-draft', 'submitted', 'disposed']) {
+  for (const condition of ['non-graduate', 'restricted', 'read-only-draft', 'submitted']) {
     const account = condition === 'non-graduate' ? { ...graduate, student_lifecycle_status: 'ENROLLED' } : condition === 'restricted' ? { ...graduate, capabilities: [] } : condition === 'read-only-draft' ? { ...graduate, capabilities: ['graduate_tracer.view_self'] } : graduate;
-    const state = tracerFixture({ account, disposed: condition === 'disposed', submitted: condition === 'submitted' });
+    const state = tracerFixture({ account, submitted: condition === 'submitted' });
     await check(`Eligibility and historical response ${condition}`, tracerPath, { handler: state.handler }, async page => {
       if (condition === 'non-graduate') await shown(page.getByText('The Graduate Tracer Survey is for graduates.', { exact: true }));
       else if (condition === 'restricted') await shown(page.getByRole('heading', { name: 'Graduate Tracer unavailable', exact: true }));
       else if (condition === 'read-only-draft') await shown(page.getByText('This saved draft is read-only for this account.', { exact: true }));
       else if (condition === 'submitted') await shown(page.getByText(/This response is read-only\./));
-      else await shown(page.getByText(/Your personal response was anonymized/));
       await hidden(page.locator('form')); assert.equal(state.writes.length, 0); assert.equal(state.submissions, 0);
       if (['restricted', 'non-graduate'].includes(condition)) assert.equal(state.reads, 0);
     });

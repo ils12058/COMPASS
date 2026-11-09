@@ -1,8 +1,4 @@
-"""Read-only retention policy oversight from the code-owned register (ADR-115).
-
-The former rule, case, hold and approval routes are retired (ADR-114, ADR-115). Their tables stay
-internal historical evidence; this router never reads or serializes them, and it never mutates.
-"""
+"""Read-only retention policy oversight from the code-owned register (ADR-115)."""
 
 from datetime import date
 

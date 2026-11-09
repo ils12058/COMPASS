@@ -1,53 +1,14 @@
 """Synthetic historical outcomes that the retired ADR-072 engine once committed. Test-only.
 
 The canonical schema has no disposition ledger (ADR-114, CANON-1C) and COMPASS never creates these
-outcomes. Graduate Tracer and E-Counseling still carry the resulting markers (an anonymous
-contribution, disposed media), so these helpers write those rows directly to prove the surviving
-readers, reports and fences keep honouring them. Nothing here exercises a destructive path.
+outcomes. E-Counseling still carries disposed-media markers, so these helpers write those rows
+directly to prove the surviving readers and fences keep honouring them. Nothing here exercises a
+destructive path.
 """
 
 from datetime import timedelta
 
 from django.utils import timezone
-
-from compass.common.institutional_time import (
-    institution_date,
-    institution_day_start,
-    institution_today,
-)
-from compass.graduate_tracer.disposition import ANALYTICAL_FIELDS
-from compass.graduate_tracer.models import (
-    GTS_SCHEMA_VERSION,
-    GraduateTracerResponse,
-    GraduateTracerStatus,
-)
-from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
-
-
-def historical_anonymized_contribution(source):
-    """The committed outcome of the retired anonymization executor, written directly."""
-    submitted_day = institution_day_start(institution_date(source.submitted_at))
-    operation_day = institution_day_start(institution_today())
-    retained = GraduateTracerResponse.objects.create(
-        student=None,
-        confidential_content_ciphertext=None,
-        instrument_schema_version=GTS_SCHEMA_VERSION,
-        status=GraduateTracerStatus.SUBMITTED,
-        submitted_at=submitted_day,
-        anonymized_at=operation_day,
-        **{field: getattr(source, field) for field in ANALYTICAL_FIELDS},
-    )
-    GraduateTracerResponse.objects.filter(pk=retained.pk).update(
-        created_at=submitted_day, updated_at=operation_day
-    )
-    GraduateTracerDisposedParticipation.objects.get_or_create(
-        student_id=source.student_id,
-        instrument_schema_version=GTS_SCHEMA_VERSION,
-        defaults={"disposed_on": institution_today()},
-    )
-    source.delete()
-    retained.refresh_from_db()
-    return retained
 
 
 def historically_disposed_media(capture, artifact=None, storage=None):

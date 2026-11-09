@@ -20,13 +20,8 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 
 from compass.account_management.services import InvalidManagementInput, set_capability_override
-from compass.accounts.bootstrap import RETIRED_CAPABILITY_CODES, sync_identity_policy
 from compass.accounts.models import (
     Capability,
-    Designation,
-    DesignationCapability,
-    Role,
-    RoleCapability,
     UserCapabilityOverride,
 )
 from compass.accounts.policy import (
@@ -38,10 +33,8 @@ from compass.accounts.policy import (
 )
 from compass.accounts.services import effective_capabilities
 from compass.api.v1.router import api
-from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
-from compass.audit.services import record_event
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.privacy_governance import retention_policy_register as register
 from compass.privacy_governance.retention_policy_register import (
@@ -482,12 +475,11 @@ def test_every_registered_operation_is_documented_and_none_reaches_disposition()
 
 
 def test_retired_capabilities_leave_the_canonical_identity_policy():
-    assert set(RETIRED) <= set(RETIRED_CAPABILITY_CODES)
     assert {
         "institutional_forms.manage",
         "document_branding.view",
         "document_branding.manage",
-    } <= set(RETIRED_CAPABILITY_CODES)
+    }.isdisjoint(CAPABILITY_CODES)
     assert set(RETIRED).isdisjoint(CAPABILITY_CODES)
     for grants in (*ROLE_CAPABILITY_GRANTS.values(), *DESIGNATION_CAPABILITY_GRANTS.values()):
         assert set(RETIRED).isdisjoint(grants)
@@ -499,77 +491,6 @@ def test_retired_capabilities_leave_the_canonical_identity_policy():
     assert "code-owned retention policy register" in view.description
     assert "no rule, hold, approval, or disposition authority" in view.description
     assert VIEW not in CAPABILITY_DEPENDENCIES
-
-
-def persisted_grants():
-    return (
-        set(RoleCapability.objects.values_list("role__code", "capability__code")),
-        set(DesignationCapability.objects.values_list("designation__code", "capability__code")),
-        set(
-            UserCapabilityOverride.objects.values_list("user__email", "capability__code", "effect")
-        ),
-    )
-
-
-def test_sync_purges_persisted_retired_authority_and_is_idempotent():
-    sync_policy()
-    dpo = make_dpo()
-    officer = make_user("legacy-override@example.edu")
-    head = make_head()
-    UserCapabilityOverride.objects.create(
-        user=head,
-        capability=Capability.objects.get(code="reports.view"),
-        effect="REVOKE",
-        reason="Unrelated synthetic override",
-    )
-    record_event(
-        context=AuditContext.system(),
-        action=actions.DISPOSITION_APPROVED,
-        outcome="SUCCESS",
-        target_type="privacy.disposition.case",
-        target_id="00000000-0000-0000-0000-000000000001",
-        metadata={"category": "GRADUATE_TRACER", "rule_revision": 2},
-    )
-    unrelated = persisted_grants()
-    # Pre-ADR-115 persisted state: retired rows, DPO grants, a role grant and an override.
-    Capability.objects.filter(code=VIEW).update(name="View retention and disposition")
-    for code in RETIRED:
-        capability = Capability.objects.create(code=code, name=f"Legacy {code}")
-        DesignationCapability.objects.create(
-            designation=Designation.objects.get(code="DPO"), capability=capability
-        )
-        RoleCapability.objects.create(
-            role=Role.objects.get(code="INSTITUTIONAL_OFFICER"), capability=capability
-        )
-        UserCapabilityOverride.objects.create(
-            user=officer, capability=capability, effect="GRANT", reason="Legacy override"
-        )
-    history = list(AuditEvent.objects.order_by("pk").values())
-
-    first = sync_identity_policy()
-    assert (
-        first.retired_role_grants_deleted,
-        first.retired_designation_grants_deleted,
-        first.retired_overrides_deleted,
-        first.retired_capabilities_deleted,
-    ) == (2, 2, 2, 2)
-    assert first.capabilities_updated == 1
-    assert not Capability.objects.filter(code__in=RETIRED).exists()
-    assert persisted_grants() == unrelated
-    assert Capability.objects.get(code=VIEW).name == "View retention policy oversight"
-    assert effective_capabilities(dpo) == DPO_AUTHORITY
-    assert effective_capabilities(officer) == frozenset()
-    for code in RETIRED:
-        assert not dpo.has_capability(code) and not officer.has_capability(code)
-
-    second = sync_identity_policy()
-    assert all(getattr(second, field.name) == 0 for field in dataclasses.fields(second))
-    assert persisted_grants() == unrelated
-    # Historical events are untouched; each sync only appends its own summary event.
-    kept = [event["id"] for event in history]
-    assert list(AuditEvent.objects.filter(pk__in=kept).order_by("pk").values()) == history
-    appended = AuditEvent.objects.exclude(pk__in=kept).values_list("action", flat=True)
-    assert set(appended) == {actions.IDENTITY_POLICY_SYNCED}
 
 
 @pytest.mark.parametrize("code", RETIRED)

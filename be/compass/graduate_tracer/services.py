@@ -138,22 +138,6 @@ class GraduateTracerConflict(GraduateTracerError):
     pass
 
 
-class GraduateTracerDisposed(GraduateTracerError):
-    pass
-
-
-def _require_personal_response_available(student):
-    from .participation import GraduateTracerDisposedParticipation
-
-    if GraduateTracerDisposedParticipation.objects.filter(
-        student=student, instrument_schema_version=GTS_SCHEMA_VERSION
-    ).exists():
-        raise GraduateTracerDisposed(
-            "Your personal response was anonymized under an approved retention rule. "
-            "Its aggregate contribution remains; the personal response cannot be restored."
-        )
-
-
 class GraduateTracerOrdering(StrEnum):
     """Closed orderings for submitted Graduate Tracer responses (ADR-090); newest first."""
 
@@ -182,14 +166,12 @@ class GraduateTracerPage:
 
 
 def _queryset():
-    return (
-        GraduateTracerResponse.objects.filter(anonymized_at__isnull=True)
-        .select_related("student", "student__role", "graduated_college", "graduated_program")
-        .prefetch_related(
-            "education_rows",
-            "professional_exam_rows",
-            "training_rows",
-        )
+    return GraduateTracerResponse.objects.select_related(
+        "student", "student__role", "graduated_college", "graduated_program"
+    ).prefetch_related(
+        "education_rows",
+        "professional_exam_rows",
+        "training_rows",
     )
 
 
@@ -305,8 +287,6 @@ def ensure_my_response(
             raise GraduateTracerNotFound("The Student account was not found.")
         _validate_graduated_student_access(locked, "graduate_tracer.manage_self")
 
-        _require_personal_response_available(locked)
-
         existing = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(student_id=locked.pk, instrument_schema_version=GTS_SCHEMA_VERSION)
@@ -364,7 +344,6 @@ def ensure_my_response(
 
 def get_my_response(student: User) -> GraduateTracerResponse:
     _validate_graduated_student_access(student, "graduate_tracer.view_self")
-    _require_personal_response_available(student)
     item = (
         _queryset()
         .filter(student_id=student.pk, instrument_schema_version=GTS_SCHEMA_VERSION)
@@ -698,7 +677,6 @@ def replace_my_draft(
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
         _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
-        _require_personal_response_available(locked_student)
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(
@@ -933,7 +911,6 @@ def submit_my_response(
         if locked_student is None:
             raise GraduateTracerNotFound("The Student account was not found.")
         _validate_graduated_student_access(locked_student, "graduate_tracer.manage_self")
-        _require_personal_response_available(locked_student)
         item = (
             GraduateTracerResponse.objects.select_for_update()
             .filter(

@@ -836,8 +836,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "compass.ecounseling.replay_media_webhooks",
         "schedule": 60,
     },
-    # In-app retention discovery and disposition dispatch are retired (ADR-114). Do not
-    # reschedule compass.privacy_governance.* tasks; they are non-mutating tombstones.
     "notification-push-recovery": {
         "task": "compass.notifications.push.dispatch_due",
         "schedule": 60,

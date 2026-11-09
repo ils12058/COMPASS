@@ -17,7 +17,7 @@ from datetime import date
 from django.db import DatabaseError, connection, transaction
 
 from compass.accounts.bootstrap import IdentityPolicySyncError, sync_identity_policy
-from compass.accounts.models import Designation, Role, User
+from compass.accounts.models import Designation, Role
 from compass.common.correlation import reset_current_request_id, set_current_request_id
 from compass.institutional_forms.bootstrap import CanonicalFormSyncError, sync_institutional_forms
 from compass.institutional_forms.services import (
@@ -62,13 +62,11 @@ from .scenarios.continuity import seed_demo_coverage
 from .scenarios.rich import RICH_STORIES, run_story
 from .staff import FORMER_STAFF
 from .students import STUDENTS
-from .support import SeedSession, StagingSeedConflict, StagingSeedError
+from .support import SeedSession, StagingSeedError
 from .timeline import resolve_timeline
 
 # Session-level PostgreSQL advisory lock reserved for every Staging Dataset v1 write mode.
 SEED_RUN_ADVISORY_LOCK_KEY = 2_026_101_601
-# Identifiers of the retired Demo Dataset v1/v2 lineage. Dataset v1 never adopts or upgrades it.
-RETIRED_DEMO_IDENTIFIER_PREFIX = "DEMO-2026-"
 REQUIRED_FORM_FAMILIES = (
     "individual_inventory",
     "referral_slip",
@@ -151,14 +149,6 @@ def sync_prerequisites() -> None:
         raise StagingSeedError(f"Canonical synchronization failed: {exc}") from exc
 
 
-def refuse_retired_lineage() -> None:
-    if User.objects.filter(institutional_id__startswith=RETIRED_DEMO_IDENTIFIER_PREFIX).exists():
-        raise StagingSeedConflict(
-            "This database contains retired Demo Dataset (DEMO-2026-…) accounts. Staging Dataset "
-            "v1 is a new lineage for a clean canonical database and never upgrades the old one."
-        )
-
-
 def verify_prerequisites() -> None:
     required_roles = {account.role for account in ACCOUNTS}
     if Role.objects.filter(code__in=required_roles).count() != len(required_roles):
@@ -196,7 +186,6 @@ def finalize_account_state(session: SeedSession) -> None:
 
 def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     _unit("Encryption preflight", verify_encryption_keyrings)
-    _unit("Retired lineage preflight", refuse_retired_lineage)
     _unit("Canonical synchronization", sync_prerequisites)
     _unit("Prerequisite verification", verify_prerequisites)
 

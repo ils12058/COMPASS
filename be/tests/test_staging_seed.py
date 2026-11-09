@@ -315,7 +315,8 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     # graduating Student's one unsupported fifth-year value is normalized back to the frozen
     # snapshot here; the dedicated seed regression below verifies the corrected fourth year.
     # The GOA rename intentionally changes the two assistant personas, emails, handles and
-    # scenario ids; no other seeded identity or scenario content moves.
+    # scenario ids. P12 removes only DPO-NEG-01; the scenario counts and hashes below
+    # reflect that deletion, verified against the base manifest with only that item removed.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
     original_scenarios = [
         pre_cont1b_catalog_snapshot(asdict(s))
@@ -323,7 +324,7 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
         if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS
     ]
     assert len(original_accounts) == 113
-    assert len(original_scenarios) == 91
+    assert len(original_scenarios) == 90
     assert fingerprint([identity(a) for a in ACCOUNTS]) == (
         "c9346f81bc288d917ab88cf576121d40adfb8b5ead0a3b0761da627078efc4e5"
     )
@@ -334,12 +335,12 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
         == "5d6b54777ff7017154c84fc023fca6aa1dc9d844683916c69c8130b814504a23"
     )
     assert fingerprint(original_scenarios) == (
-        "562ff5e59d046027f8b20a928b9974163b397ee21dba6137d27900ebfea6b6ab"
+        "d96da24594565639240a8b12b86124c396951eb4ed596a0df32822a216b1edb8"
     )
     assert fingerprint(
         [pre_cont1b_catalog_snapshot(asdict(s)) for s in SCENARIOS if s.id not in COLLEGE_SCENARIOS]
-    ) == ("7209cea6ce74eda619752cbb5e300312ff27089271f07bdcc6f7acc17e2c4110")
-    assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 102
+    ) == ("6cdf028356965bfcc79230ff6eda65970cce6a12c6b9e883f860a3662276b7cb")
+    assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 101
     for key in PROMOTED_KEYS:
         student = STUDENTS_BY_KEY[key]
         assert student.group == StudentGroup.BACKGROUND
@@ -473,22 +474,6 @@ def test_every_mode_refuses_before_touching_the_database(app_env, enabled, messa
             with pytest.raises(CommandError, match=message):
                 call_command(COMMAND, *arguments, stdout=StringIO())
     assert len(queries) == 0
-
-
-@pytest.mark.django_db
-def test_retired_demo_lineage_is_never_upgraded():
-    sync_identity_policy()
-    User.objects.create_user(
-        email="old@compass-demo.test",
-        password=None,
-        role=Role.objects.get(code="STUDENT"),
-        first_name="Old",
-        last_name="Persona",
-        institutional_id="DEMO-2026-0101",
-    )
-    with pytest.raises(Exception, match="retired Demo Dataset"):
-        seed_once()
-    assert not User.objects.filter(institutional_id__startswith="STG-").exists()
 
 
 @pytest.mark.django_db

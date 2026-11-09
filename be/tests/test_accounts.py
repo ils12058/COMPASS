@@ -169,7 +169,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
 
 
 @pytest.mark.django_db
-def test_policy_sync_removes_all_retired_capability_state():
+def test_retired_capabilities_are_absent_from_canonical_policy():
     sync_policy()
     retired_codes = (
         "institutional_forms.manage",
@@ -179,33 +179,6 @@ def test_policy_sync_removes_all_retired_capability_state():
         "privacy_governance.retention.approve",
     )
     assert set(retired_codes).isdisjoint(CAPABILITY_CODES)
-
-    counselor_role = Role.objects.get(code="COUNSELOR")
-    head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
-    user = make_user(role=counselor_role, email="retired-authority@example.edu")
-    for code in retired_codes:
-        retired = Capability.objects.create(code=code, name=f"Retired {code}")
-        RoleCapability.objects.create(role=counselor_role, capability=retired)
-        DesignationCapability.objects.create(designation=head, capability=retired)
-        UserCapabilityOverride.objects.create(
-            user=user,
-            capability=retired,
-            effect=UserCapabilityOverride.Effect.GRANT,
-            reason="Legacy override that must not survive retirement",
-        )
-        assert not user.has_capability(code)
-
-    output = StringIO()
-    call_command("sync_identity_policy", stdout=output)
-
-    assert not Capability.objects.filter(code__in=retired_codes).exists()
-    assert not RoleCapability.objects.filter(capability__code__in=retired_codes).exists()
-    assert not DesignationCapability.objects.filter(capability__code__in=retired_codes).exists()
-    assert not UserCapabilityOverride.objects.filter(capability__code__in=retired_codes).exists()
-    assert "role grants deleted=5" in output.getvalue()
-    assert "designation grants deleted=5" in output.getvalue()
-    assert "overrides deleted=5" in output.getvalue()
-    assert "capabilities deleted=5" in output.getvalue()
 
 
 @pytest.mark.django_db
@@ -219,14 +192,6 @@ def test_reference_reads_do_not_grant_management_to_students_or_staff():
         assert not actor.has_capability("services.manage")
         assert not actor.has_capability("organization.view")
         assert not actor.has_capability("services.view")
-
-
-@pytest.mark.django_db
-def test_policy_sync_rejects_legacy_rows_before_creating_new_capabilities():
-    Capability.objects.create(code="organization.view", name="Legacy organization read")
-    with pytest.raises(CommandError, match="Run accounts migration"):
-        call_command("sync_identity_policy", stdout=StringIO())
-    assert not Capability.objects.filter(code="organization.structure.view").exists()
 
 
 @pytest.mark.django_db

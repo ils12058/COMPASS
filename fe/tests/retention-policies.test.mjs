@@ -17,7 +17,7 @@ import { withNextRouter } from "./support/next-router.mjs";
 const view = "privacy_governance.retention.view";
 const key = getPrivacyGovernanceListRetentionPoliciesQueryKey();
 const entry = (category_code, category_label, values = {}) => ({ category_code, category_label, adoption_status: "NOT_ADOPTED", retention_period: null, policy_reference: null, effective_date: null, ...values });
-const register = { items: [entry("GRADUATE_TRACER", "Graduate Tracer responses"), entry("ECOUNSELING_RECORDING", "E-Counseling recordings"), entry("ECOUNSELING_TRANSCRIPT", "E-Counseling transcripts")] };
+const register = { items: [entry("GRADUATE_TRACER", "Graduate Tracer responses"), entry("ECOUNSELING_RECORDING", "E-Counseling recordings")] };
 const retired = /Create|Edit|Activate|Retire|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|Retention &amp; Disposition|Retention rules|0 days|N\/A/;
 
 function render(component, { capabilities = [view], data, error, pathname = "/portal/privacy/retention" } = {}) {
@@ -57,10 +57,10 @@ test("navigation and landing name the oversight page Retention Policies", () => 
 test("each category is read-only and states that no policy is recorded without implying deletion", () => {
   const html = render(createElement(RetentionPoliciesPage), { data: { items: register.items.map((item) => ({ ...item, source_id: "SECRET-SOURCE", student_name: "SECRET PERSON" })) } });
   assert.match(html, /<h1[^>]*>Retention Policies<\/h1>/);
-  assert.match(html, /View the retention policy status recorded in COMPASS\. Policy changes are governed through institutional approval and reviewed system updates\./);
-  for (const label of ["Graduate Tracer responses", "E-Counseling recordings", "E-Counseling transcripts"]) assert.match(html, new RegExp(`<h3[^>]*>${label}</h3>`));
-  assert.equal(html.split(">Not adopted<").length - 1, 3);
-  assert.equal(html.split(NOT_ADOPTED_COPY).length - 1, 3);
+  assert.match(html, /View the retention policy status recorded in COMPASS\. Policy changes need institutional approval\./);
+  for (const label of ["Graduate Tracer responses", "E-Counseling recordings"]) assert.match(html, new RegExp(`<h3[^>]*>${label}</h3>`));
+  assert.equal(html.split(">Not adopted<").length - 1, 2);
+  assert.equal(html.split(NOT_ADOPTED_COPY).length - 1, 2);
   assert.match(html, /COMPASS doesn’t delete or anonymize records under these policies\. Records disposition goes through the University’s authorized process outside COMPASS\./);
   assert.doesNotMatch(html, /Retention period|Policy reference|Effective date/);
   assert.doesNotMatch(html, retired);

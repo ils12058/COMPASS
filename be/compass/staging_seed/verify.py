@@ -3,7 +3,7 @@
 ``verify_dataset`` runs inside a ``READ ONLY`` PostgreSQL transaction when it is the outermost
 transaction, so verification and report generation cannot change the database. It checks:
 
-* schema: migrations applied, no model drift, no pre-canonical history, no retired ledger/tasks;
+* schema: migrations applied, no model drift, no pre-canonical history;
 * configuration: canonical roles, capabilities, organization catalog, forms and service;
 * accounts: identity, role, designations, lifecycle, affiliation, auth state, collisions;
 * organization: Counselor responsibilities and staff supervision exactly as declared;
@@ -30,7 +30,6 @@ from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.state import ProjectState
 from django.utils import timezone
 
-from compass.accounts.bootstrap import RETIRED_CAPABILITY_CODES
 from compass.accounts.models import (
     Capability,
     DesignationCapability,
@@ -94,16 +93,10 @@ from .manifest import (
     stakeholder,
     validate_manifest,
 )
-from .seed import REQUIRED_FORM_FAMILIES, RETIRED_DEMO_IDENTIFIER_PREFIX
+from .seed import REQUIRED_FORM_FAMILIES
 from .staff import COUNSELOR_RESPONSIBILITIES, STAFF_SUPERVISION
 from .students import CURRENT_YEAR, STUDENTS
 
-RETIRED_TABLES = (
-    "privacy_governance_operationalretentionrule",
-    "privacy_governance_dispositioncase",
-    "privacy_governance_dispositionhold",
-)
-RETIRED_TASK_PREFIX = "compass.privacy_governance."
 # Counseling-content authority: only Counselors (and the Head designation) hold these.
 COUNSELING_CONTENT = frozenset(
     {
@@ -367,7 +360,6 @@ def _predicate(lookup: Lookup, key: str, name: str) -> bool:
         return {
             "retention_view": "privacy_governance.retention.view" in capabilities,
             "activity_export": "privacy_governance.activity.export" in capabilities,
-            "no_retention_manage": capabilities.isdisjoint(RETIRED_CAPABILITY_CODES),
         }[arg]
     if kind == "privacy":
         return PrivacyNoticeRevision.objects.filter(status="DRAFT").exists()
@@ -387,21 +379,11 @@ def _schema(section: Section) -> None:
     section.check(not changes, f"Model drift: {sorted(changes)} need migrations.")
     unknown = pre_canonical_history(connection)
     section.check(not unknown, f"Pre-canonical migration history recorded: {unknown[:3]}.")
-    tables = set(connection.introspection.table_names())
-    section.check(tables.isdisjoint(RETIRED_TABLES), "A retired disposition ledger table exists.")
-    from config.celery import app
-
-    app.autodiscover_tasks(force=True)
-    retired = [name for name in app.tasks if name.startswith(RETIRED_TASK_PREFIX)]
-    section.check(not retired, f"Retired disposition tasks are registered: {retired}.")
 
 
 def _configuration(section: Section) -> None:
     capabilities = set(Capability.objects.values_list("code", flat=True))
     section.check(set(CAPABILITY_CODES) <= capabilities, "Canonical capabilities are missing.")
-    section.check(
-        capabilities.isdisjoint(RETIRED_CAPABILITY_CODES), "A retired capability still exists."
-    )
     for role, grants in ROLE_CAPABILITY_GRANTS.items():
         stored = set(
             RoleCapability.objects.filter(role__code=role).values_list(
@@ -542,12 +524,6 @@ def _accounts(section: Section, lookup: Lookup, domain, onboarding, allow) -> di
         institutional_id__in=known
     )
     section.check(not strays.exists(), f"{strays.count()} STG- account(s) are not in the manifest.")
-    section.check(
-        not User.objects.filter(
-            institutional_id__startswith=RETIRED_DEMO_IDENTIFIER_PREFIX
-        ).exists(),
-        "Retired Demo Dataset accounts are present.",
-    )
     emails = [fact.email for fact in facts.values() if fact.exists]
     section.check(len(emails) == len(set(emails)), "Two dataset accounts share an email.")
     return facts

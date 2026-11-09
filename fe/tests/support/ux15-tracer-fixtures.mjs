@@ -26,7 +26,7 @@ export function tracerRecord(employed = true) {
     curriculum_improvement_suggestions: '',
   };
 }
-export function tracerFixture({ employed = true, partial = false, account = graduate, disposed = false, submitted = false, detailOverrides = {} } = {}) {
+export function tracerFixture({ employed = true, partial = false, account = graduate, submitted = false, detailOverrides = {} } = {}) {
   let detail = tracerRecord(employed);
   if (partial) detail = { ...detail, name: '', birth_date: null, email: '', civil_status: null, sex: null, region_of_origin: null, province: '', residence_location: null, graduated_college_id: null, graduated_program_id: null, graduated_college: null, graduated_program: null, graduation_year: null, education: [], professional_exams: [], trainings: [], current_employment_state: null };
   if (submitted) detail = { ...detail, status: 'SUBMITTED', submitted_at: '2026-10-21T01:00:00Z' };
@@ -37,7 +37,6 @@ export function tracerFixture({ employed = true, partial = false, account = grad
     if (pathname === '/api/v1/graduate-tracer/classification-options') { await reply(classifications); return true; }
     if (pathname === '/api/v1/graduate-tracer/me' && method === 'GET') {
       state.reads++;
-      if (disposed) { await reply({ error: { code: 'graduate_tracer_disposed' } }, 410); return true; }
       if (state.failRefresh) { await reply({ error: { code: 'synthetic_failure' } }, 503); return true; }
       await reply(detail); return true;
     }

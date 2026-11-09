@@ -323,7 +323,7 @@ def test_platform_matches_only_safe_presentation_and_operator_before_paging(user
         target_id="bad",
         at=now + timedelta(seconds=1),
     )
-    event(users["it"], actions.RETENTION_RULE_CREATED, "privacy.retention.rule")
+    event(users["it"], actions.PRIVACY_RETENTION_CREATED, "privacy.retention")
     c = client(users["it"])
     criteria = {
         "search": "manual",
@@ -410,18 +410,21 @@ def test_privacy_search_supports_visible_scope_artifact_format_and_reference(use
         assert len(ids(c.get(PRIV_PATH, {"search": search}))) == 1
 
 
-def test_new_and_historical_retention_events_survive_search_filter_and_export(users):
-    for action, (_, _, target) in actions.RETENTION_PRESENTATIONS.items():
-        event(users["dpo"], action, target, metadata={"internal_note": "HIDDEN-CONFIDENTIAL"})
+def test_retention_policy_events_survive_search_filter_and_export(users):
     for action in (
         actions.PRIVACY_RETENTION_CREATED,
         actions.PRIVACY_RETENTION_UPDATED,
         actions.PRIVACY_RETENTION_RETIRED,
     ):
-        event(users["dpo"], action, "privacy.retention")
+        event(
+            users["dpo"],
+            action,
+            "privacy.retention",
+            metadata={"internal_note": "HIDDEN-CONFIDENTIAL"},
+        )
     c = client(users["dpo"])
     listed = c.get(PRIV_PATH, {"category": "PRIVACY_GOVERNANCE", "page_size": 50})
-    assert len(ids(listed)) == 14
+    assert len(ids(listed)) == 3
     for item in listed.json()["items"]:
         assert (
             len(ids(c.get(PRIV_PATH, {"event_type": item["type"], "search": item["title"]}))) == 1
@@ -457,16 +460,16 @@ def test_export_all_matching_not_page_and_safe_minimized_audit(users):
     for n in range(24):
         event(
             users["it"],
-            actions.RETENTION_RULE_UPDATED,
-            "privacy.retention.rule",
+            actions.PRIVACY_RETENTION_UPDATED,
+            "privacy.retention",
             at=now - timedelta(seconds=n),
         )
     c = client(users["dpo"])
     criteria = {
         "category": "PRIVACY_GOVERNANCE",
-        "event_type": actions.RETENTION_RULE_UPDATED,
+        "event_type": actions.PRIVACY_RETENTION_UPDATED,
         "actor": "IT",
-        "search": "draft updated",
+        "search": "policy updated",
     }
     assert len(ids(c.get(PRIV_PATH, criteria))) == 20
     response = c.get(PRIV_PATH + "/export", criteria)
@@ -493,13 +496,13 @@ def test_export_all_matching_not_page_and_safe_minimized_audit(users):
     assert export.metadata == {
         "exported_row_count": 24,
         "category": "PRIVACY_GOVERNANCE",
-        "event_type": actions.RETENTION_RULE_UPDATED,
+        "event_type": actions.PRIVACY_RETENTION_UPDATED,
         "date_from": None,
         "date_to": None,
         "search_applied": True,
         "actor_applied": True,
     }
-    assert "draft updated" not in str(export.metadata)
+    assert "policy updated" not in str(export.metadata)
     for forbidden in (
         "HIDDEN-CONFIDENTIAL",
         "PRIVATE-UA",

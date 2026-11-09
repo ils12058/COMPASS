@@ -2,15 +2,14 @@
 
 The reset-only baseline removes the retired ADR-072 ledger (rules, cases, holds), its tombstone
 tasks, fallback services and preflight command. These tests prove the absence, and that the
-surviving canonical boundaries still hold: code-owned oversight for the DPO, historical audit
-vocabulary, Graduate Tracer anonymous-contribution invariants and the E-Counseling disposal and
-unknown-room fences. All data is synthetic; nothing exercises a destructive path.
+surviving canonical boundaries still hold: code-owned oversight for the DPO and the
+E-Counseling disposal and unknown-room fences. All data is synthetic; nothing exercises a
+destructive path.
 """
 
 import ast
 import importlib
-import json
-from datetime import UTC, date, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,10 +22,6 @@ from django.test import override_settings
 from django.utils import timezone
 
 from compass.accounts.services import effective_capabilities
-from compass.audit import actions
-from compass.audit.context import AuditContext
-from compass.audit.models import AuditEvent
-from compass.audit.services import record_event
 from compass.ecounseling.media import process_media_webhook_event
 from compass.ecounseling.models import DailyWebhookReceipt as Receipt
 from compass.ecounseling.models import (
@@ -34,20 +29,13 @@ from compass.ecounseling.models import (
     ECounselingMediaCapture,
     ECounselingRoom,
 )
-from compass.graduate_tracer.disposition import ANALYTICAL_FIELDS, verify_anonymized
 from compass.graduate_tracer.models import (
-    GraduateTracerEducation,
-    GraduateTracerProfessionalExam,
     GraduateTracerResponse,
-    GraduateTracerTraining,
 )
-from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
 from compass.integrations.daily import DailyClient
-from compass.reports.graduate_tracer import build_graduate_tracer_report
 from config.celery import app
 from tests.graduate_tracer_test_helpers import encrypted_row
 from tests.historical_outcome_fixtures import (
-    historical_anonymized_contribution,
     historically_disposed_media,
     legacy_media_source,
 )
@@ -243,114 +231,7 @@ def test_retired_ledger_routes_are_unreachable_and_the_register_is_served(dpo):
     assert {item["adoption_status"] for item in response.json()["items"]} == {"NOT_ADOPTED"}
 
 
-def test_historical_audit_vocabulary_is_still_presented(dpo):
-    """Append-only history from earlier environments keeps its presenters (ADR-114)."""
-
-    for action in (
-        actions.RETENTION_RULE_ACTIVATED,
-        actions.DISPOSITION_APPROVED,
-        actions.DISPOSITION_COMPLETED,
-    ):
-        record_event(
-            context=AuditContext.system(),
-            action=action,
-            outcome="SUCCESS",
-            target_type=(
-                "privacy.retention.rule"
-                if action == actions.RETENTION_RULE_ACTIVATED
-                else "privacy.disposition.case"
-            ),
-            target_id="00000000-0000-4000-8000-000000000002",
-            metadata={"category": "GRADUATE_TRACER", "rule_revision": 1},
-        )
-    titles = {
-        item["title"]
-        for item in auth_client(dpo)
-        .get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE&page_size=50")
-        .json()["items"]
-    }
-    assert {"Retention rule activated", "Disposition approved", "Disposition completed"} <= titles
-    assert AuditEvent.objects.filter(action=actions.DISPOSITION_COMPLETED).count() == 1
-
-
 # --- Surviving historical-outcome readers -------------------------------------------------------
-
-
-def test_historical_anonymized_contribution_keeps_its_integrity_and_exclusions(dpo):
-    source = tracer(
-        undergraduate_degree_reasons=["PEER_INFLUENCE"],
-        degree_other_reason="Confidential detail",
-    )
-    student = source.student
-    for model, values in (
-        (
-            GraduateTracerEducation,
-            {
-                "degree_and_specialization": "Identifying degree",
-                "college_or_university": "Named school",
-                "year_graduated": 2020,
-            },
-        ),
-        (GraduateTracerProfessionalExam, {"examination_name": "Named exam"}),
-        (GraduateTracerTraining, {"title": "Specific training"}),
-    ):
-        encrypted_row(model, response=source, position=1, **values)
-    before = build_graduate_tracer_report()
-    analytical = {field: getattr(source, field) for field in ANALYTICAL_FIELDS}
-    source_id = source.pk
-    anonymous = historical_anonymized_contribution(source)
-
-    assert verify_anonymized(anonymous) and anonymous.pk != source_id
-    assert {field: getattr(anonymous, field) for field in ANALYTICAL_FIELDS} == analytical
-    assert anonymous.confidential_content_ciphertext is None
-    assert all(
-        not model.objects.exists()
-        for model in (
-            GraduateTracerEducation,
-            GraduateTracerProfessionalExam,
-            GraduateTracerTraining,
-        )
-    )
-    after = build_graduate_tracer_report()
-    assert after["sections"] == before["sections"]
-    assert after["report_context"]["submitted_response_count"] == 1
-    assert GraduateTracerDisposedParticipation.objects.filter(student=student).exists()
-    client = auth_client(student)
-    for response in (
-        client.get("/api/v1/graduate-tracer/me"),
-        post_json(client, "/api/v1/graduate-tracer/me", {}),
-    ):
-        assert response.json()["error"]["code"] == "graduate_tracer_disposed"
-    served = json.dumps(auth_client(dpo).get(f"{ROOT}/policies").json())
-    assert str(anonymous.pk) not in served and str(source_id) not in served
-    head = auth_client(make_head())
-    assert head.get(f"/api/v1/graduate-tracer/responses/{anonymous.pk}").status_code == 404
-    assert head.get("/api/v1/graduate-tracer/responses").json()["items"] == []
-    # The integrity rule still rejects a contribution that carries a quasi-identifier.
-    GraduateTracerResponse.objects.filter(pk=anonymous.pk).update(graduation_year=2024)
-    assert not verify_anonymized(anonymous)
-
-
-@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
-def test_historical_anonymized_submission_keeps_its_manila_report_day():
-    # 00:00 on 9 October in Manila is still 8 October in UTC.
-    GraduateTracerResponse.objects.create(
-        student=None,
-        confidential_content_ciphertext=None,
-        status="SUBMITTED",
-        submitted_at=datetime(2026, 10, 8, 16, 0, tzinfo=UTC),
-        anonymized_at=datetime(2026, 10, 9, 16, 0, tzinfo=UTC),
-        sex="FEMALE",
-        current_employment_state="EMPLOYED",
-    )
-    on_the_day = build_graduate_tracer_report(
-        submitted_from=date(2026, 10, 9), submitted_to=date(2026, 10, 9)
-    )
-    day_before = build_graduate_tracer_report(
-        submitted_from=date(2026, 10, 8), submitted_to=date(2026, 10, 8)
-    )
-    assert on_the_day["report_context"]["submitted_response_count"] == 1
-    assert day_before["report_context"]["submitted_response_count"] == 0
 
 
 def test_disposal_markers_fence_late_provider_callbacks_without_a_ledger():

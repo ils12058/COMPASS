@@ -16,7 +16,6 @@ from compass.audit.context import AuditContext
 from compass.common.institutional_time import institution_day_start
 from compass.graduate_tracer import reminders
 from compass.graduate_tracer.models import GraduateTracerReminderOccurrence, GraduateTracerStatus
-from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
 from compass.graduate_tracer.services import (
     ensure_my_response,
     replace_my_draft,
@@ -175,15 +174,6 @@ def test_draft_remains_eligible(graduate):
     assert reminders.dispatch_due_reminders(now=institution_day_start(date(2026, 11, 8))) == 1
 
 
-def test_disposed_completed_participation_does_not_reinvite(graduate):
-    student, _ = graduate
-    GraduateTracerDisposedParticipation.objects.create(
-        student=student, instrument_schema_version=1, disposed_on=date(2026, 10, 1)
-    )
-    assert reminders.dispatch_due_reminders(now=institution_day_start(date(2026, 11, 8))) == 0
-    assert reminders.list_reminders()["items"][0]["reminders"][0]["state"] == "ANSWERED"
-
-
 def test_bounded_scan_advances_without_future_or_completed_starvation(graduate, monkeypatch):
     make_graduate(date(2026, 5, 7))
     future, _ = make_graduate(date(2026, 12, 1))
@@ -304,7 +294,7 @@ def test_generic_email_and_in_app_link_are_live(graduate):
     assert row["target_id"] == str(student.pk)
 
 
-@pytest.mark.parametrize("change", ["submitted", "inactive", "current", "disposed", "preference"])
+@pytest.mark.parametrize("change", ["submitted", "inactive", "current", "preference"])
 @override_settings(
     MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
 )
@@ -317,10 +307,6 @@ def test_queued_email_rechecks_current_participation(graduate, change):
         NotificationPreference.objects.create(user=student, optional_email_enabled=False)
     elif change == "submitted":
         submit(student)
-    elif change == "disposed":
-        GraduateTracerDisposedParticipation.objects.create(
-            student=student, instrument_schema_version=1, disposed_on=date(2026, 11, 8)
-        )
     else:
         if change == "inactive":
             student.is_active = False
@@ -384,13 +370,17 @@ def test_currentness_rejects_another_recipient_target(graduate):
     assert not notification_is_current(notice)
 
 
-def test_lifecycle_is_rechecked_after_discovery(graduate, monkeypatch):
+@pytest.mark.parametrize("change", ["inactive", "submitted"])
+def test_current_participation_is_rechecked_after_discovery(graduate, monkeypatch, change):
     student, _ = graduate
     issue = reminders._issue
 
     def changed_before_lock(record_id, *, at):
-        student.is_active = False
-        student.save(update_fields=["is_active"])
+        if change == "submitted":
+            submit(student, at=at)
+        else:
+            student.is_active = False
+            student.save(update_fields=["is_active"])
         return issue(record_id, at=at)
 
     monkeypatch.setattr(reminders, "_issue", changed_before_lock)

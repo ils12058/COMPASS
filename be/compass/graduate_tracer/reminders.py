@@ -28,7 +28,6 @@ from .models import (
     GraduateTracerResponse,
     GraduateTracerStatus,
 )
-from .participation import GraduateTracerDisposedParticipation
 
 SCAN_BATCH = 500
 FOLLOW_UP_DAYS = 30
@@ -61,14 +60,13 @@ def _records():
     submitted = GraduateTracerResponse.objects.filter(
         student_id=OuterRef("student_id"), status=GraduateTracerStatus.SUBMITTED
     )
-    disposed = GraduateTracerDisposedParticipation.objects.filter(student_id=OuterRef("student_id"))
     return StudentGraduationRecord.objects.annotate(
         six_month_due=Func(
             F("graduation_date"),
             template="(%(expressions)s + INTERVAL '6 months')::date",
             output_field=DateField(),
         ),
-        answered=Exists(submitted) | Exists(disposed),
+        answered=Exists(submitted),
         initial_issued_at=Subquery(
             occurrences.filter(kind=GraduateTracerReminderKind.SIX_MONTH).values("issued_at")[:1]
         ),
@@ -87,12 +85,9 @@ def _active_graduates(queryset):
 
 
 def _answered(student_id) -> bool:
-    return (
-        GraduateTracerResponse.objects.filter(
-            student_id=student_id, status=GraduateTracerStatus.SUBMITTED
-        ).exists()
-        or GraduateTracerDisposedParticipation.objects.filter(student_id=student_id).exists()
-    )
+    return GraduateTracerResponse.objects.filter(
+        student_id=student_id, status=GraduateTracerStatus.SUBMITTED
+    ).exists()
 
 
 def _issue(record_id, *, at) -> bool:

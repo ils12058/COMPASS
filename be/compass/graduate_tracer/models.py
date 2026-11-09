@@ -9,8 +9,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from .participation import GraduateTracerDisposedParticipation  # noqa: F401
-
 GTS_SCHEMA_VERSION = 1
 
 
@@ -243,8 +241,6 @@ class GraduateTracerResponse(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="graduate_tracer_responses",
-        null=True,
-        blank=True,
     )
     instrument_schema_version = models.PositiveSmallIntegerField(
         default=GTS_SCHEMA_VERSION, editable=False
@@ -368,7 +364,6 @@ class GraduateTracerResponse(models.Model):
     )
 
     submitted_at = models.DateTimeField(null=True, blank=True)
-    anonymized_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -392,26 +387,14 @@ class GraduateTracerResponse(models.Model):
                 condition=(
                     models.Q(
                         student__isnull=False,
-                        anonymized_at__isnull=True,
                         confidential_content_ciphertext__isnull=False,
                     )
                     & ~models.Q(confidential_content_ciphertext="")
-                )
-                | models.Q(
-                    student__isnull=True,
-                    anonymized_at__isnull=False,
-                    status="SUBMITTED",
-                    confidential_content_ciphertext__isnull=True,
                 ),
                 name="graduatetracerresponse_cipher_shape",
             ),
             models.CheckConstraint(
-                condition=(
-                    models.Q(student__isnull=False, anonymized_at__isnull=True)
-                    | models.Q(
-                        student__isnull=True, anonymized_at__isnull=False, status="SUBMITTED"
-                    )
-                ),
+                condition=models.Q(student__isnull=False),
                 name="graduate_tracer_identity_shape",
             ),
             models.UniqueConstraint(

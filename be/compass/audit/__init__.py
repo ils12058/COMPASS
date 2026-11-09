@@ -11,9 +11,7 @@ def record_event(*args, **kwargs):
     return _record_event(*args, **kwargs)
 
 
-record = record_event
-
-__all__ = ["AuditContext", "AuditEvent", "record", "record_event"]
+__all__ = ["AuditContext", "AuditEvent", "record_event"]
 
 
 def __getattr__(name: str):

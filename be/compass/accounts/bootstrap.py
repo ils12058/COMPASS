@@ -12,7 +12,6 @@ from compass.accounts.models import (
     DesignationCapability,
     Role,
     RoleCapability,
-    UserCapabilityOverride,
 )
 from compass.accounts.policy import (
     CAPABILITY_DEFINITIONS,
@@ -26,16 +25,6 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
-
-RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
-RETIRED_CAPABILITY_CODES = (
-    "institutional_forms.manage",
-    "document_branding.view",
-    "document_branding.manage",
-    # In-app retention management and disposition approval are retired (ADR-114, ADR-115).
-    "privacy_governance.retention.manage",
-    "privacy_governance.retention.approve",
-)
 
 
 class IdentityPolicySyncError(RuntimeError):
@@ -52,10 +41,6 @@ class IdentityPolicySyncResult:
     capabilities_updated: int = 0
     role_grants_created: int = 0
     designation_grants_created: int = 0
-    retired_role_grants_deleted: int = 0
-    retired_designation_grants_deleted: int = 0
-    retired_overrides_deleted: int = 0
-    retired_capabilities_deleted: int = 0
 
     @property
     def changed(self) -> bool:
@@ -89,7 +74,7 @@ def _sync_definition(model, definition) -> tuple[object, str]:
 def sync_identity_policy() -> IdentityPolicySyncResult:
     """Reconcile canonical roles, designations, capabilities, and baseline grants.
 
-    Unknown database rows are retained; only retired capability state is removed.
+    Unknown database rows are retained.
     """
 
     counts = {field_name: 0 for field_name in IdentityPolicySyncResult.__dataclass_fields__}
@@ -100,30 +85,6 @@ def sync_identity_policy() -> IdentityPolicySyncResult:
                 "Run accounts migration 0002_student_session_summary_capabilities "
                 "before policy sync."
             )
-        if Capability.objects.filter(code__in=RENAMED_LEGACY_CAPABILITY_CODES).exists():
-            raise IdentityPolicySyncError(
-                "Legacy capability rows remain. Run accounts migration "
-                "0006_rename_reference_capabilities before sync_identity_policy."
-            )
-        counts["retired_role_grants_deleted"] = RoleCapability.objects.filter(
-            capability__code__in=RETIRED_CAPABILITY_CODES
-        ).count()
-        RoleCapability.objects.filter(capability__code__in=RETIRED_CAPABILITY_CODES).delete()
-        counts["retired_designation_grants_deleted"] = DesignationCapability.objects.filter(
-            capability__code__in=RETIRED_CAPABILITY_CODES
-        ).count()
-        DesignationCapability.objects.filter(capability__code__in=RETIRED_CAPABILITY_CODES).delete()
-        counts["retired_overrides_deleted"] = UserCapabilityOverride.objects.filter(
-            capability__code__in=RETIRED_CAPABILITY_CODES
-        ).count()
-        UserCapabilityOverride.objects.filter(
-            capability__code__in=RETIRED_CAPABILITY_CODES
-        ).delete()
-        counts["retired_capabilities_deleted"] = Capability.objects.filter(
-            code__in=RETIRED_CAPABILITY_CODES
-        ).count()
-        Capability.objects.filter(code__in=RETIRED_CAPABILITY_CODES).delete()
-
         roles = {}
         for definition in ROLE_DEFINITIONS:
             role, result = _sync_definition(Role, definition)
@@ -183,7 +144,5 @@ def sync_identity_policy() -> IdentityPolicySyncResult:
 __all__ = [
     "IdentityPolicySyncError",
     "IdentityPolicySyncResult",
-    "RENAMED_LEGACY_CAPABILITY_CODES",
-    "RETIRED_CAPABILITY_CODES",
     "sync_identity_policy",
 ]

@@ -41,14 +41,6 @@ class Command(BaseCommand):
             raise CommandError(
                 "Legacy plaintext Graduate Tracer columns remain; apply migrations first."
             )
-        from compass.graduate_tracer.models import GraduateTracerResponse
-
-        anonymous = GraduateTracerResponse.objects.filter(
-            student__isnull=True, anonymized_at__isnull=False
-        )
-        if anonymous.exclude(confidential_content_ciphertext__isnull=True).exists():
-            raise CommandError("Anonymous Graduate Tracer ciphertext invariant failed.")
-        self.stdout.write(f"Anonymous contributions skipped: {anonymous.count()}")
         failures, failed_total = [], 0
         for name, column, _relation in FAMILIES:
             model = apps.get_model("graduate_tracer", name)
@@ -58,10 +50,6 @@ class Command(BaseCommand):
             while True:
                 with transaction.atomic():
                     rows = model.objects.order_by("pk")
-                    if name == "GraduateTracerResponse":
-                        rows = rows.filter(student__isnull=False, anonymized_at__isnull=True)
-                    elif rows.filter(response__student__isnull=True).exists():
-                        raise CommandError("Anonymous Graduate Tracer child invariant failed.")
                     if not dry_run:
                         rows = rows.select_for_update(of=("self",))
                     if last_pk is not None:

@@ -29,6 +29,7 @@
   },
   "additive_migrations": [
     "graduate_tracer/migrations/0002_graduate_tracer_reminder_occurrences.py",
+    "graduate_tracer/migrations/0003_remove_anonymous_contributions.py",
     "accounts/migrations/0002_student_session_summary_capabilities.py",
     "accounts/migrations/0003_rename_guidance_services_staff_role.py",
     "appointments/migrations/0002_appointment_reminders.py",

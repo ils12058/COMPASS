@@ -446,10 +446,6 @@ def _raise(exc: GraduateTracerError) -> NoReturn:
             "graduate_tracer_confidential_content_unavailable",
             "The Graduate Tracer confidential content is unavailable.",
         ) from None
-    from .services import GraduateTracerDisposed
-
-    if isinstance(exc, GraduateTracerDisposed):
-        raise APIError(409, "graduate_tracer_disposed", str(exc)) from exc
     if isinstance(exc, GraduateTracerNotFound):
         raise APIError(404, "graduate_tracer_not_found", str(exc)) from exc
     if isinstance(exc, GraduateTracerNotPermitted):
