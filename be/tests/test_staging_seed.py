@@ -59,6 +59,7 @@ from compass.staging_seed.config import StagingSeedConfigurationError, load_conf
 from compass.staging_seed.credentials import (
     HANDOFF_COLUMNS,
     CredentialIssuanceError,
+    _validate_output,
     issue_credentials,
 )
 from compass.staging_seed.guard import StagingSeedingRefused, ensure_seeding_allowed
@@ -505,6 +506,23 @@ def test_documentation_scan_rejects_credential_material():
     ):
         with pytest.raises(ReportError):
             _scan("example.md", leaked)
+
+
+def test_handoff_guard_in_the_container_layout_allows_a_mounted_operator_directory():
+    # The image keeps the project at /app, so the parent of BASE_DIR is the filesystem root and
+    # must not count as the source tree; the project itself still does.
+    directory = scratch_dir()
+    with (
+        override_settings(BASE_DIR=Path("/app")),
+        patch("compass.staging_seed.credentials._repository_root", lambda: None),
+    ):
+        target = directory / "handoff.csv"
+        assert _validate_output(target) == target.resolve()
+        with pytest.raises(CredentialIssuanceError, match="source tree"):
+            _validate_output(Path("/app/handoff.csv"))
+        with pytest.raises(CredentialIssuanceError, match="source tree"):
+            _validate_output(Path("/app/config/handoff.csv"))
+    directory.rmdir()
 
 
 # --- Command refusal before any work ----------------------------------------------------------

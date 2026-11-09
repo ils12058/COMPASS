@@ -79,7 +79,12 @@ def _repository_root() -> Path | None:
 
 def _validate_output(path: Path) -> Path:
     target = path.expanduser().resolve()
-    protected = {Path(settings.BASE_DIR).resolve(), Path(settings.BASE_DIR).resolve().parent}
+    base = Path(settings.BASE_DIR).resolve()
+    protected = {base}
+    # In a checkout BASE_DIR is <repository>/be, so its parent is the repository. In the image
+    # BASE_DIR is /app and its parent is the filesystem root, which would refuse every path.
+    if base.parent != Path(base.anchor):
+        protected.add(base.parent)
     repository = _repository_root()
     if repository is not None:
         protected.add(repository)
