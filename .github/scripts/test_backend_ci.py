@@ -504,11 +504,20 @@ class ShardingTests(unittest.TestCase):
         self.assertEqual(len(homes), 1)
 
     def test_targeted_shard_count_scales_with_selected_runtime(self):
-        weights = backend_ci.load_weights()
-        small = selected("be/compass/announcements/services.py").files
-        large = selected("be/compass/inventory/services.py").files
-        self.assertEqual(backend_ci.shard_count_for(small, weights), 1)
-        self.assertEqual(backend_ci.shard_count_for(large, weights), backend_ci.TARGETED_MAX_SHARDS)
+        # Exercise the shard calculation independently of changing CI measurements.
+        files = ["test_synthetic_duration.py"]
+        target = backend_ci.TARGETED_SHARD_SECONDS
+        for seconds, expected in (
+            (1, 1),
+            (target, 1),
+            (target + 1, 2),
+            (target * backend_ci.TARGETED_MAX_SHARDS, backend_ci.TARGETED_MAX_SHARDS),
+            (target * (backend_ci.TARGETED_MAX_SHARDS + 1), backend_ci.TARGETED_MAX_SHARDS),
+        ):
+            with self.subTest(seconds=seconds):
+                self.assertEqual(
+                    backend_ci.shard_count_for(files, {files[0]: seconds}), expected
+                )
 
 
 if __name__ == "__main__":
