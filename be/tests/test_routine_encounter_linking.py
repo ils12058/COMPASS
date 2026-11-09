@@ -18,6 +18,7 @@ from compass.counseling.context_access import resolve_counseling_context
 from compass.counseling.context_services import get_context_overview
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import (
+    CounselingAppointmentInvalid,
     CounselingLinkedRoutineConflict,
     CounselingNotFound,
     CounselingRoutineInterviewAlreadyLinked,
@@ -49,6 +50,8 @@ from tests.test_routine_interviews import (
     submit_inventory,
     sync_policy,
 )
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 
 LINKED = "routine_interview.encounter_linked"
 
@@ -226,24 +229,24 @@ def test_routine_ensured_after_the_encounter_is_linked_at_creation():
 
 
 @pytest.mark.django_db
-def test_incompatible_appointment_encounter_stays_independent_until_corrected():
+def test_appointment_entry_mode_is_required_and_linked_routine_cannot_be_unlinked():
     _, student, counselor, service = setup_domain("appointment-correct")
     appointment = make_appointment(student=student, counselor=counselor, service=service)
     routine = ensure_for_appointment(
         student=student, appointment_id=appointment.pk, context=context(student)
     )
 
-    # Counseling allows a WALK_IN entry on an Appointment; the Routine rules do not.
-    encounter = record(counselor, entry_mode="WALK_IN", appointment_id=appointment.pk)
+    # P11 rejects a non-Appointment entry before recording or linking any Encounter.
+    with pytest.raises(CounselingAppointmentInvalid) as caught:
+        record(counselor, entry_mode="WALK_IN", appointment_id=appointment.pk)
+    assert str(caught.value) == (
+        "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+    )
+    assert not CounselingEncounter.objects.filter(appointment=appointment).exists()
     routine.refresh_from_db()
     assert routine.counseling_encounter_id is None
 
-    update_encounter(
-        encounter_id=encounter.pk,
-        counselor=counselor,
-        changes={"entry_mode": "APPOINTMENT"},
-        context=context(counselor),
-    )
+    encounter = record(counselor, entry_mode="APPOINTMENT", appointment_id=appointment.pk)
     routine.refresh_from_db()
     assert routine.counseling_encounter_id == encounter.pk
     assert [event["link_source"] for event in link_events(routine)] == ["APPOINTMENT"]

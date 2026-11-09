@@ -31,7 +31,7 @@ from compass.organization.models import (
 from compass.student_academics.models import StudentAcademicProfile
 from tests.catalog_test_helpers import authority, client_for, hierarchy, manager, student
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("inventory_psgc")]
 
 
 @pytest.fixture

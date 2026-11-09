@@ -130,12 +130,12 @@ def test_worklist_reports_the_three_reasons():
         service=service,
         status=AppointmentStatus.COMPLETED,
     )
-    walk_in = link_encounter(
+    mismatched = link_encounter(
         appointment=conflict,
         counselor=counselor,
         student=student,
         service=service,
-        entry_mode=CounselingEntryMode.WALK_IN,
+        delivery_mode="ONLINE",
     )
 
     by_id = review_by_appointment(counselor)
@@ -153,7 +153,7 @@ def test_worklist_reports_the_three_reasons():
     assert by_id[str(uncompleted.pk)].appointment.status == AppointmentStatus.SCHEDULED
 
     assert by_id[str(conflict.pk)].reason is CounselingDocumentationReviewReason.LINKED_CONFLICT
-    assert by_id[str(conflict.pk)].encounter_id == walk_in.pk
+    assert by_id[str(conflict.pk)].encounter_id == mismatched.pk
 
     row = by_id[str(missing.pk)].appointment
     assert row.student_id == student.pk
@@ -254,7 +254,7 @@ def test_worklist_excludes_states_that_need_no_reconciliation():
         counselor=counselor,
         student=student,
         service=service,
-        entry_mode=CounselingEntryMode.WALK_IN,
+        delivery_mode="ONLINE",
     )
     move(future_conflict, starts_at=later, ends_at=later + timedelta(hours=1))
 
@@ -319,7 +319,7 @@ def test_worklist_gives_one_row_per_appointment_with_conflict_precedence():
         counselor=counselor,
         student=student,
         service=service,
-        entry_mode=CounselingEntryMode.CALLED_IN,
+        delivery_mode="ONLINE",
     )
     scheduled_conflict = make_appointment(student=student, provider=counselor, service=service)
     link_encounter(
@@ -572,7 +572,7 @@ def test_recorded_and_linked_facts_agree_with_the_worklist_reason():
         counselor=counselor,
         student=student,
         service=service,
-        entry_mode=CounselingEntryMode.REFERRED,
+        delivery_mode="ONLINE",
     )
     nothing_linked = make_appointment(
         student=student,

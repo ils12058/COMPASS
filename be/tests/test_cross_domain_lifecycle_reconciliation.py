@@ -48,6 +48,9 @@ from tests.test_routine_interviews import (
 )
 
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
+
 def setup_online_appointment(prefix: str):
     sync_policy()
     admin = make_user(f"{prefix}-admin@example.edu", "IT_ADMIN")
