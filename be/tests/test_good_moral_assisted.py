@@ -414,7 +414,8 @@ def test_notification_mandatory_safe_unique_and_transactional(
     definition = get_event_definition(EVENT)
     assert definition.channels == {"IN_APP", "EMAIL"}
     mail = render_notification_email(EVENT)
-    assert "Sign in to review the request status" in mail.text_body and "<p>" in mail.html_body
+    assert "Sign in to check your request and instructions." in mail.text_body
+    assert "<p>Sign in to check your request and instructions.</p>" in mail.html_body
     for text in [notification.title, notification.message, mail.text_body, mail.html_body]:
         for private in [
             str(item.pk),

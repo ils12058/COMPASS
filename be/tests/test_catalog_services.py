@@ -634,7 +634,9 @@ def test_account_management_rejects_unsupported_catalog_delegation(setup):
 
     auth, _, issued = setup
     target = student()
-    with pytest.raises(InvalidManagementInput, match="eligible staff"):
+    with pytest.raises(
+        InvalidManagementInput, match=r"^This Permission requires an eligible Staff Role\.$"
+    ):
         set_capability_override(
             actor=auth["actor"],
             actor_session=issued.session,

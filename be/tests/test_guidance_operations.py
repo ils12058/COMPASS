@@ -222,7 +222,10 @@ def test_multiple_heads_fail_closed_for_message_fallback(world):
     StudentAcademicProfile.objects.filter(student=world.other_student).update(
         current_college=world.colleges[3]
     )
-    with pytest.raises(MessagesConflict, match="routing"):
+    with pytest.raises(
+        MessagesConflict,
+        match=r"^A Counselor must be assigned before you can start this conversation\.$",
+    ):
         open_for_other_student()
     assert not GuidanceThread.objects.filter(student=world.other_student).exists()
     for actor in (world.head, world.other, world.head_goa):

@@ -307,14 +307,23 @@ def test_reserved_code_disable_provider_invariant_and_generic_services():
     sync_policy()
     admin = user("admin@example.edu", "IT_ADMIN")
     context = AuditContext.user(admin)
-    with pytest.raises(CanonicalServiceReserved, match="system-managed"):
+    with pytest.raises(
+        CanonicalServiceReserved,
+        match=r"^COMPASS isn't set up for this yet\. Contact your IT Administrator\.$",
+    ):
         create_service(code=" counseling ", name="Manual", booking_pathways=[], context=context)
     assert not Service.objects.filter(code="COUNSELING").exists()
 
     service = Service.objects.get(pk=sync_canonical_services().service_id)
-    with pytest.raises(CanonicalServiceReserved, match="system-managed"):
+    with pytest.raises(
+        CanonicalServiceReserved,
+        match=r"^COMPASS isn't set up for this yet\. Contact your IT Administrator\.$",
+    ):
         create_service(code="COUNSELING", name="Duplicate", booking_pathways=[], context=context)
-    with pytest.raises(CanonicalServiceRequired, match="cannot be disabled"):
+    with pytest.raises(
+        CanonicalServiceRequired,
+        match=r"^The Counseling Service is required by COMPASS and can't be disabled\.$",
+    ):
         set_service_active(service_id=service.pk, is_active=False, context=context)
     service.refresh_from_db()
     assert service.is_active

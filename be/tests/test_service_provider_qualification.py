@@ -287,7 +287,10 @@ def test_new_direct_counseling_and_routine_follow_current_qualification_and_mode
         },
     )
     assert record_direct(selected, student).counselor_id == selected.pk
-    with pytest.raises(CounselingNotPermitted, match="does not permit"):
+    with pytest.raises(
+        CounselingNotPermitted,
+        match=r"^This Counselor isn't assigned to the Counseling Service\.$",
+    ):
         record_direct(unselected, student)
 
     assert get_direct_creation_options(selected).delivery_modes == ("IN_PERSON",)
@@ -358,7 +361,10 @@ def test_removing_online_keeps_existing_online_counseling_fulfillable():
     # No new ONLINE work can start: direct Counseling, direct Routine Interviews, or booking.
     with pytest.raises(CounselingNotPermitted, match="delivery mode"):
         record_direct(counselor, student, mode="ONLINE")
-    with pytest.raises(RoutineInterviewAppointmentInvalid, match="delivery mode"):
+    with pytest.raises(
+        RoutineInterviewAppointmentInvalid,
+        match=r"^The Counseling Service doesn't support this Delivery mode\.$",
+    ):
         create_direct(
             counselor=counselor,
             student_id=student.pk,

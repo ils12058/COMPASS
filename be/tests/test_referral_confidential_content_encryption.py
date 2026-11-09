@@ -203,7 +203,8 @@ def test_void_reason_lifecycle_invariant(voided, void_reason, valid):
             write(item, payload)
         set_token(item, token(item, asdict(payload)))
         with pytest.raises(
-            content.ReferralConfidentialContentUnavailable, match="unavailable"
+            content.ReferralConfidentialContentUnavailable,
+            match=r"^Couldn't load the Referral\. Try again\.$",
         ) as caught:
             read(item)
         assert caught.value.reason == "malformed"
