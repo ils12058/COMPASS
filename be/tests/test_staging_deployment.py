@@ -70,61 +70,36 @@ def test_backward_and_non_atomic_plans_are_refused():
 
 
 @pytest.mark.parametrize(
-    "module_name",
-    [
-        "compass.appointments.migrations.0002_appointment_reminders",
-        "compass.guidance_followups.migrations.0001_initial",
-        "compass.guidance_followups.migrations.0002_guidancefollowupmutation",
-        "compass.group_sessions.migrations.0001_initial",
-        "compass.service_catalog.migrations.0002_booking_pathways",
-        "compass.service_catalog.migrations.0003_fixed_date_slots",
-        "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session",
-        "compass.group_sessions.migrations.0003_group_session_scheduling_and_external_facilitators",
-        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more",
-    ],
+    "path",
+    sorted((Path(__file__).parents[1] / "compass").glob("*/migrations/0*.py")),
+    ids=lambda path: f"{path.parent.parent.name}.{path.stem}",
 )
-def test_exact_reviewed_migration_sources_allow_their_pinned_operations(module_name):
-    app_label = module_name.split(".")[1]
-    migration_name = module_name.rsplit(".", 1)[1]
-    migration = importlib.import_module(module_name).Migration(migration_name, app_label)
-    guard.validate_operations([(migration, False)])
-
-
-def test_reviewed_migration_source_digest_must_match(monkeypatch):
-    migration = importlib.import_module(
-        "compass.service_catalog.migrations.0002_booking_pathways"
-    ).Migration("0002_booking_pathways", "service_catalog")
-    key = f"{migration.app_label}/{migration.name}"
-    monkeypatch.setitem(guard.REVIEWED_MIGRATIONS, key, "0" * 64)
-    with pytest.raises(guard.Refused):
-        guard.validate_operations([(migration, False)])
-
-
-@pytest.mark.parametrize(
-    "module_name",
-    [
-        "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session",
-        "compass.group_sessions.migrations.0003_group_session_scheduling_and_external_facilitators",
-        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more",
-    ],
-)
-def test_corr_lifecycle_migrations_are_refused_without_their_reviewed_pin(module_name, monkeypatch):
-    app_label = module_name.split(".")[1]
-    migration_name = module_name.rsplit(".", 1)[1]
-    migration = importlib.import_module(module_name).Migration(migration_name, app_label)
-    monkeypatch.delitem(guard.REVIEWED_MIGRATIONS, f"{app_label}/{migration_name}")
-    with pytest.raises(guard.Refused):
-        guard.validate_operations([(migration, False)])
-
-
-def test_org1_cutover_is_not_implicitly_approved_for_routine_deployment():
-    module_name = "compass.organization.migrations.0002_program_policy_and_catalog_initialization"
-    migration = importlib.import_module(module_name).Migration(
-        "0002_program_policy_and_catalog_initialization", "organization"
+def test_release_graph_is_refused_for_routine_deployment_even_with_a_digest_pin(path, monkeypatch):
+    app_label = path.parent.parent.name
+    migration = importlib.import_module(f"compass.{app_label}.migrations.{path.stem}").Migration(
+        path.stem, app_label
     )
-    # ORG-1 authorizes source implementation, not a real institutional migration rollout.
-    # Do not silently add the data migration to REVIEWED_MIGRATIONS.
-    with pytest.raises(guard.Refused, match="coordinated procedure"):
+    monkeypatch.setitem(
+        guard.REVIEWED_MIGRATIONS,
+        f"{app_label}/{path.stem}",
+        guard.hashlib.sha256(path.read_bytes()).hexdigest(),
+    )
+    with pytest.raises(guard.Refused, match="Phase E staging reset"):
+        guard.validate_operations([(migration, False)])
+
+
+def test_future_reviewed_migration_source_digest_must_match(monkeypatch):
+    operation = migrations.AddConstraint(
+        "example", models.UniqueConstraint(fields=["id"], name="example_unique")
+    )
+    migration, _ = plan(operation)[0]
+    source = b"synthetic reviewed migration"
+    monkeypatch.setattr(guard.Path, "read_bytes", lambda path: source)
+    key = f"{migration.app_label}/{migration.name}"
+    monkeypatch.setitem(guard.REVIEWED_MIGRATIONS, key, guard.hashlib.sha256(source).hexdigest())
+    guard.validate_operations([(migration, False)])
+    monkeypatch.setitem(guard.REVIEWED_MIGRATIONS, key, "0" * 64)
+    with pytest.raises(guard.Refused, match="source changed"):
         guard.validate_operations([(migration, False)])
 
 

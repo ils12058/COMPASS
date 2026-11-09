@@ -1266,3 +1266,26 @@ def test_approval_revalidates_the_recording_communication_policy(case, monkeypat
 
     patch_communication(monkeypatch, communication_policy(case))
     assert decide(case, g)["decision"] == "APPROVED"
+
+
+def test_database_communication_scope_constraints(case):
+    g = request(case)
+    row = Grant.objects.get(pk=g["id"])
+    assert row.communication_purpose is None
+    assert row.communication_policy_digest == ""
+    for changes in (
+        {"communication_purpose": "CASE_COORDINATION", "communication_policy_digest": ""},
+        {
+            "communication_purpose": "CASE_COORDINATION",
+            "communication_policy_digest": "0" * 64,
+            "original_counselor_id": None,
+        },
+        {"communication_purpose": None, "communication_policy_digest": "0" * 64},
+    ):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            Grant.objects.filter(pk=row.pk).update(**changes)
+    Grant.objects.filter(pk=row.pk).update(
+        communication_purpose="CASE_COORDINATION", communication_policy_digest="0" * 64
+    )
+    row.refresh_from_db()
+    assert row.communication_purpose == "CASE_COORDINATION"

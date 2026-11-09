@@ -1,14 +1,12 @@
-"""Fail-closed guard for the reset-only canonical migration baseline (CANON-1C).
+"""Fail-closed guard for the reset-only release migration baseline (ADR-117).
 
-The canonical baseline replaced every historical COMPASS migration with one
-``0001_canonical_baseline`` per app. It installs only into an empty database. A database that still
-records any pre-canonical COMPASS migration (for example a restored backup of the old staging
-schema) must never be "upgraded" in place, faked forward or served by this code: its tables, the
-retired disposition ledger and old ciphertext history do not match the canonical schema.
+Each COMPASS app starts at ``0001_release_baseline``. Immutable SQL guard migrations
+recreate the final database functions and triggers. The release graph installs only into an
+empty database: any recorded COMPASS migration absent from the current code, including the
+previous canonical baseline, is refused. Never upgrade, fake forward or restore old history.
 
-A database system check reports the condition at the start of ``migrate`` and in
-``manage.py check --database default``; a ``pre_migrate`` receiver enforces it even when checks are
-skipped. Both only read ``django_migrations``.
+A database check reports ``compass.E001``; a ``pre_migrate`` receiver also enforces refusal
+when checks are skipped. Both only read ``django_migrations``.
 """
 
 from __future__ import annotations
@@ -50,8 +48,8 @@ def check_canonical_migration_history(app_configs=None, databases=None, **kwargs
         if unknown:
             errors.append(
                 checks.Error(
-                    "This database records COMPASS migrations that the canonical baseline does not "
-                    f"define ({len(unknown)}, for example {unknown[0]}). The canonical baseline is "
+                    "This database records COMPASS migrations that the release baseline does not "
+                    f"define ({len(unknown)}, for example {unknown[0]}). The release baseline is "
                     "reset-only and installs only into an empty database.",
                     hint=(
                         "Do not migrate, fake or restore pre-canonical history into this runtime. "
@@ -64,13 +62,13 @@ def check_canonical_migration_history(app_configs=None, databases=None, **kwargs
 
 
 def refuse_pre_canonical_migrate(sender, using=DEFAULT_DB_ALIAS, **kwargs):
-    """``pre_migrate`` receiver: never apply the canonical baseline over pre-canonical history."""
+    """``pre_migrate`` receiver: never apply the release baseline over pre-canonical history."""
 
     unknown = pre_canonical_history(connections[using])
     if unknown:
         raise CommandError(
             f"Refusing to migrate: the database records {len(unknown)} pre-canonical COMPASS "
-            f"migrations (for example {unknown[0]}). The canonical baseline is reset-only."
+            f"migrations (for example {unknown[0]}). The release baseline is reset-only."
         )
 
 

@@ -15,7 +15,7 @@ from compass.organization.canonical import BASELINE_VERSION, CANONICAL_CAMPUSES
 from compass.organization.models import Campus, CatalogInitialization, College, Program
 from compass.organization.program_policy import validate_program_policy
 
-CATALOG_MIGRATION = ("organization", "0002_program_policy_and_catalog_initialization")
+CATALOG_MIGRATION = ("organization", "0001_release_baseline")
 # Cooperative initialization lock; not a fence against old binaries or privileged SQL.
 CATALOG_INITIALIZATION_LOCK = 477580715031
 

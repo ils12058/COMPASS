@@ -1,10 +1,11 @@
 # COMPASS Staging Dataset v1 (`seed_staging_dataset`)
 
 `seed_staging_dataset` builds, verifies and documents **COMPASS Staging Dataset v1**: a
-deterministic, synthetic, UAT-ready world for the reset-only canonical baseline (CANON-1C). It
+deterministic, synthetic, UAT-ready world for the reset-only release baseline (ADR-117). It
 contains a fictional Guidance and Counseling Office, 14 staff and negative-test accounts, and 102
 Students designed for stakeholder testing. The decision record is
-[ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md).
+[ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md) for the dataset decision
+and [ADR-117](decisions/ADR-117-release-baseline.md) for the current reset-only migration graph.
 
 Dataset v1 is a **new lineage**. It is not the retired Demo Dataset v1/v2 (`seed_demo_staging`,
 whose historical notes remain in git history) and never upgrades it: a database that
@@ -117,7 +118,8 @@ podman compose --profile local run --rm web python manage.py seed_staging_datase
 
 `seed` syncs only identity policy, Institutional Forms and the canonical Counseling Service.
 Organization must first be explicitly initialized (`--seed` only on a fresh empty catalog) or,
-for existing data after the approved migration, deliberately adopted (`--adopt`). Repeated checks
+for an already compatible release database, deliberately adopted (`--adopt`). Old migration
+history is incompatible and requires the separately approved Phase E reset. Repeated checks
 use `initialize_organization_catalog --check`. The seeder never reconciles catalog names, status or
 Program policy; missing or retired fixture identities fail preflight rather than being repaired.
 ORG-1 deployment/adoption remains separately approval-dependent; see

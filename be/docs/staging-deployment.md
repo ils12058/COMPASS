@@ -1,4 +1,4 @@
-# Routine canonical staging deployment (COMPASS-DEPLOY-1)
+# Staging deployment and reset-only release baseline (ADR-117)
 
 The current Compose/runtime-secret source contract is **25 files**, including the dedicated
 non-empty `guidance_followup_encryption_keys` key granted to web only. See
@@ -10,25 +10,30 @@ COMPASS-LIVE-RESET-1 completed on **2026-10-17**. Initial baseline installation 
 separate reset; subsequent deployments **reuse its initialized storage**. No reset, import, seed,
 credential issuance, authentication reset, task purge or data-volume deletion belongs in this flow.
 
-## ORG-1 compatibility boundary — no operational cutover authorized
+> **Phase D deployment refusal.** Revisions containing `0001_release_baseline.py` are rejected
+> by `deploy-staging.yml` before deployment. The old staging database is incompatible and is
+> never upgraded, faked forward or restored into this release. Phase E must complete the
+> separately approved full staging reset, regression and freeze, then lift the refusal and pin
+> the new release-baseline lineage commit. The routine procedure below applies only after that
+> reset and lineage update; Phase D authorizes local verification only.
 
-The new Organization migration is intentionally not in `REVIEWED_MIGRATIONS`. Its data backfill and
-constraints require a separately reviewed coordinated procedure; normal deployment preflight
-continues to refuse it. No workflow was dispatched or live destination inspected by ORG-1.
+## Release catalog initialization boundary
 
-After that separate approval, the workflow's `organization_catalog_action` is `check` by default.
-An approved first adoption can deliberately select `adopt`; `seed` is only for a genuinely empty
-catalog. The orchestrator passes this bounded choice as `ORG_CATALOG_ACTION`. The deployment script
-retains its stop/restart fences, applies reviewed migrations, invokes the explicit initializer,
-and checks its receipt before restarting applications. There is no recurring canonical sync.
-Fresh installation is separate from normal deployment's existing initialized-account/volume gates;
-choosing seed does not bypass those gates.
+The old Organization upgrade/backfill is retired. `organization.0001_release_baseline` now creates
+`CatalogInitialization` and the current catalog fields. Its guard migration installs the year-level
+function before the policy CHECK. The entire graph is immutable and reset-only; no baseline or guard
+migration is a routine `REVIEWED_MIGRATIONS` exception.
 
-Retire old web, workers, Beat, CLI tools and external scheduled writers before adoption. Old images
-still have destructive writers and Python policy readers. A receipt cannot stop them. After adoption,
-retain policy columns/history and use a compatible rollback image or roll forward; never restart
-the old reconciler. See [ORG-1 recovery](../../docs/org-1/deployment-and-recovery.md). Historical
-resource/account observations below remain dated evidence, not reverified operational state.
+For a fresh release database, synchronize identity policy, Services and institutional forms, then
+run `initialize_organization_catalog --seed`. This is explicit bootstrap configuration, never a
+migration side effect. On an already compatible initialized release database, catalog action
+`check` remains the default; an approved compatible catalog may use deliberate `adopt`. Old-history
+staging is never adopted into the release graph and requires the separate Phase E reset.
+
+The deployment script retains stop/restart fences and catalog receipt checks. Phase D does not
+execute the workflow or inspect live staging. The historical destination contract below records
+the earlier verified environment; Phase E must establish the new reset resources and lineage
+before normal deployment resumes.
 
 ## Verified destination and stable resources
 
@@ -75,7 +80,8 @@ These counts are observations, not fixed gates that could reject legitimate futu
    for closing that historical dispatch path; this PR does not change repository settings.
 4. The revision must descend from both the canonical baseline and the currently running revision.
    Baseline migration files must match the accepted baseline byte-for-byte. Feature migrations
-   extend `0001_canonical_baseline`; never regenerate, fake or edit applied migrations.
+   extend the immutable `0001_release_baseline`, links and guard graph; never regenerate, fake
+   or edit applied migrations. Phase E establishes the new lineage after the approved reset.
 
 GitHub Actions builds the amd64 backend from the reviewed SHA and OCI revision/version/build-time
 metadata. A SHA tag already in the registry is reused after metadata validation, never overwritten
@@ -116,75 +122,34 @@ or backward plans fail **before downtime**. There is no bypass input. Plan and s
 coordinated migration procedure for those changes, including preservation of UAT data and queued
 work; do not weaken this guard to push a release through.
 
-### Reviewed COMPASS-INT-FINAL exceptions
+### Immutable release schema and future migrations
 
-The following six additive migrations are individually source-digest pinned in
-`database_preflight.py`. The exception is limited to these exact files and forward, atomic plans;
-editing a reviewed migration changes its digest and fails preflight until it is reviewed again.
-It does not permit arbitrary constraints, defaults, `RunPython`, or `RunSQL`:
+The release has 36 immutable files across 29 apps: one `0001_release_baseline` per app,
+Appointments' Django-generated `0002_release_baseline_links`, and six `0002_database_guards`
+files (Counseling, Good Moral, Group Sessions, Organization, Referrals and Service Catalog).
+`baseline-sha256.json` and `canonical_migrations.json` pin every file. `additive_migrations` is
+empty at release; later features explicitly register ordinary additions.
 
-- `appointments.0002_appointment_reminders` adds reminder revision fields to existing
-  appointments and creates new occurrence/batch tables with their indexes and uniqueness rules.
-  The existing-row revision value is `1`; reminder dispatch remains disabled by default.
-- `guidance_followups.0001_initial` and `guidance_followups.0002_guidancefollowupmutation` create
-  new Follow-Up tables and constraints. They do not import or rewrite existing records.
-- `group_sessions.0001_initial` creates new Group Session tables, indexes, and constraints.
-- `service_catalog.0002_booking_pathways` creates the pathway table and backfills
-  `FLEXIBLE_APPOINTMENT` for existing Services whose legacy booking flag is enabled. The reviewed
-  backfill reads in batches of 500 and uses conflict-safe inserts; it does not enable new pathways.
-- `service_catalog.0003_fixed_date_slots` creates the new fixed-date slot table, indexes, and
-  time-order constraint.
+The guard files reproduce the final catalog definitions, including unconditional Good Moral
+Official Receipt guards, Group Session and facilitator deletion protections, Fixed Slot booking
+history and deletion protections, immutable Referral provenance/administration, and Organization's
+year-level validation function. Counseling preserves three historical constraint identities and
+their backing indexes. The Organization CHECK that calls the function runs after its creation.
+The code-owned function/trigger list in `tests/test_canonical_baseline.py` prevents silent loss
+in a future squash. [ADR-117](decisions/ADR-117-release-baseline.md) lists each app's files.
 
-### Reviewed CORR-1A/1B lifecycle exceptions (2026-10-18)
+All prior coordinated migration exceptions are retired. The routine preflight refuses every
+release baseline, link and guard migration even if someone adds a source-digest exception.
+A candidate must find every immutable release migration already applied and no unknown COMPASS
+history. `organization.0001_release_baseline` creates `CatalogInitialization`; its migration record
+and receipt table must agree. Explicit fresh bootstrap synchronizes identity policy, Services and
+institutional forms, then initializes the empty Organization catalog with `--seed`. Migrations
+perform no configuration writes or data backfills. Existing old-history databases are refused.
 
-Three further migrations from the CORR-1A/1B service-catalog work are source-digest pinned the same
-way. They are not additive: each changes Django-level delete behavior and installs PostgreSQL
-lifecycle triggers, and `group_sessions.0003` adds constraints that existing rows must satisfy.
-
-- `group_sessions.0002_alter_groupsessionfacilitator_group_session` changes the facilitator's
-  Group Session foreign key from `CASCADE` to `PROTECT` (Django-level only; the database constraint
-  stays `NO ACTION`) and installs a `BEFORE DELETE` trigger that refuses to delete Group Sessions.
-- `group_sessions.0003_group_session_scheduling_and_external_facilitators` keeps the facilitator
-  user column (`counselor_id`, renamed in Django only to `internal_user`) and makes it nullable for
-  external guests. It adds `schedule_revision` (existing rows `1`), `kind` (`INTERNAL`),
-  `external_display_name`, `display_name_snapshot` (backfilled from the user's name), and
-  `removed_at`. It replaces the old session/counselor uniqueness with an identity check, an
-  active-internal uniqueness rule and **at most one active lead per session**, and installs a
-  `BEFORE DELETE` trigger that turns facilitator deletion into `removed_at`.
-- `service_catalog.0004_serviceappointmentslot_withdrawn_at_and_more` adds nullable `withdrawn_at`,
-  changes the slot's appointment and Service foreign keys to Django `PROTECT`, creates the
-  append-only `ServiceAppointmentSlotBooking` history (unique slot/appointment), backfills one
-  history row per currently booked slot in batches of 500, and installs triggers that record
-  future bookings and refuse slot/history deletion.
-
-Live UAT evidence (read-only, 2026-10-18 UTC 21:19, before any of the three ran): `group_sessions`
-was at 0001 and `service_catalog` at 0003; there were 0 Group Sessions, facilitators, registrations
-and Fixed Slots; none of the five trigger function names existed; and the booking history table did
-not exist. The only data-dependent failure is the active-lead uniqueness in 0003. The deployed code
-assigns at most one lead per session (a single lead ID over deduplicated facilitators), so it cannot
-arise through the application, only through a manual database edit.
-
-`tests/test_corr_migration_rehearsal.py` rehearses the exact plan on PostgreSQL from the live state
-with representative rows (two Group Sessions with one and two facilitators, a registration, a booked
-and an open Fixed Slot). It verifies row preservation, the backfilled facilitator and booking history,
-each trigger, and the new constraints. It also proves the failure mode: if a session had two leads,
-0002 commits, 0003 rolls back completely (no new columns), and the plan continues forward once the
-data is reviewed. Because a failed `migrate` stops the deployment after the migration boundary with
-application services left stopped, check `SELECT group_session_id FROM
-group_sessions_groupsessionfacilitator WHERE is_lead GROUP BY 1 HAVING count(*) > 1` returns no rows
-immediately before dispatching a release that contains 0003.
-
-All nine migrations use Django's atomic migration behavior on PostgreSQL. The deployment stops
-application producers before applying them and never starts or recreates PostgreSQL or Redis.
-Each migration and its migration-history row commit together; an interrupted atomic migration is
-rolled back by PostgreSQL, while previously committed migrations remain recorded for forward
-recovery. The deployment does not roll back schema or restart an old application image after the
-migration boundary. Before the first live rollout of each reviewed plan, rehearse it on a
-disposable database with the canonical baseline and representative pre-existing rows; record
-row-preservation, resulting backfilled rows, transaction recovery, and observed migration duration
-in the execution report. The COMPASS-INT-FINAL six-migration plan was the first such rollout; the
-CORR-1A/1B plan's rehearsal is `tests/test_corr_migration_rehearsal.py` (about 7 seconds per full
-back-and-forward cycle with its representative rows on a local disposable PostgreSQL 17.11).
+Phase E performs the reset through its separate approved procedure. Afterwards normal releases
+use only the forward policy above; any future exception needs exact source review, disposable
+migration rehearsal, recorded row-preservation and transaction-recovery evidence. No baseline
+file is regenerated and no old-history database is made compatible by faking records.
 
 Order for an accepted routine release:
 

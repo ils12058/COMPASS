@@ -16,6 +16,9 @@
   encryption envelope, keyring and rotation contract; all authorization, consent and lifecycle
   rules.
 
+- Superseded in part by [ADR-117](ADR-117-release-baseline.md): the migration graph, immutable
+  guard files and Phase D deployment refusal; the Dataset v1 decision remains in force.
+
 ## Context
 
 The owner approved a clean-slate rebuild of disposable staging. The historical graph had 102

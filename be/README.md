@@ -5,15 +5,18 @@ Service Catalog, Availability, Appointments, Counseling, Student workflows, repo
 publications, platform operations, and Privacy Governance. Deployment-critical canonical
 configuration is synchronized explicitly after migrations; ordinary requests do not create it.
 
-> **Reset-only canonical baseline (CANON-1C).** Each app has one schema-only
-> `0001_canonical_baseline` migration that installs into an **empty** PostgreSQL database. A
-> database that records any earlier COMPASS migration is refused by `migrate` and by
-> `manage.py check --database default` (`compass.E001`); it is never upgraded, faked or restored
-> in place. Bootstrap order on a fresh database: `migrate`, `sync_identity_policy`,
-> `sync_canonical_services`, `sync_institutional_forms`, then explicit
-> `initialize_organization_catalog --seed` on a fresh empty catalog. Existing catalogs require
-> separately approved `--adopt`; subsequent bootstraps use `--check`. Later
-> features add ordinary `0002_…` migrations on top of the baseline.
+> **Reset-only release baseline (ADR-117).** All 29 apps with models start at a schema-only
+> `0001_release_baseline`. Appointments also has `0002_release_baseline_links` for its Service
+> Catalog foreign-key cycle; six apps have immutable `0002_database_guards` migrations for final
+> PostgreSQL guards or preserved constraint names. Every file is checksum-frozen. Install only
+> into an **empty** PostgreSQL database. Old COMPASS history is refused by `migrate` and
+> `manage.py check --database default` (`compass.E001`); never upgrade, fake or restore it.
+> Fresh bootstrap: `migrate`, `sync_identity_policy`, `sync_canonical_services`,
+> `sync_institutional_forms`, `initialize_organization_catalog --seed`, then database checks.
+> Subsequent catalog checks use `--check`. Future migrations extend this graph and are registered
+> in `additive_migrations`; never regenerate or edit the immutable release files.
+> Ordinary staging deployment is refused until Phase E completes the separately approved reset
+> and pins the new release lineage. Phase D does not reset or deploy staging.
 
 ## Baseline
 

@@ -546,7 +546,7 @@ def test_postgresql_prevents_physical_deletion_of_unbooked_fixed_slot(env):
 
 @pytest.mark.django_db(transaction=True)
 def test_postgresql_records_legacy_slot_pointer_changes_in_booking_history(env):
-    from django.db import connection
+    from django.db import DatabaseError, connection, transaction
 
     if connection.vendor != "postgresql":
         pytest.skip("The rolling-deployment compatibility trigger is PostgreSQL-specific.")
@@ -583,6 +583,14 @@ def test_postgresql_records_legacy_slot_pointer_changes_in_booking_history(env):
     assert ServiceAppointmentSlotBooking.objects.filter(
         slot=target_slot,
         appointment=appointment,
+    ).exists()
+
+    # Retained from the CORR migration rehearsal: booking history rejects direct deletion.
+    with pytest.raises(DatabaseError, match="Fixed Slot booking history is append-only"):
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute("DELETE FROM service_catalog_serviceappointmentslotbooking")
+    assert ServiceAppointmentSlotBooking.objects.filter(
+        slot=target_slot, appointment=appointment
     ).exists()
 
 
@@ -647,32 +655,6 @@ def test_fixed_slot_preserves_booking_provenance_after_appointment_lifecycle(env
         slot.delete()
     with pytest.raises(ProtectedError):
         appointment.delete()
-
-
-@pytest.mark.django_db
-def test_fixed_slot_lifecycle_migration_refuses_rollback_while_slot_history_exists(env):
-    from importlib import import_module
-
-    from django.apps import apps
-    from django.db import connection
-
-    counselor = env["counselor"]
-    service = env["service"]
-    create_fixed_slot(
-        service_id=service.pk,
-        provider_id=counselor.pk,
-        delivery_mode="IN_PERSON",
-        starts_at=future_local_start(hour=13),
-        actor=counselor,
-        context=AuditContext.user(counselor),
-    )
-    migration = import_module(
-        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more"
-    )
-
-    with connection.schema_editor() as schema_editor:
-        with pytest.raises(RuntimeError, match="slot or booking history exists"):
-            migration.prevent_slot_history_rollback(apps, schema_editor)
 
 
 @pytest.mark.django_db

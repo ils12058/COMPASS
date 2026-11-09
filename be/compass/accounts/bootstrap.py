@@ -82,8 +82,8 @@ def sync_identity_policy() -> IdentityPolicySyncResult:
     with transaction.atomic():
         if Capability.objects.filter(code__startswith="shared_summaries.").exists():
             raise IdentityPolicySyncError(
-                "Run accounts migration 0002_student_session_summary_capabilities "
-                "before policy sync."
+                "Retired Shared Summary capability identities are incompatible with the "
+                "reset-only release baseline. Rebuild before policy sync."
             )
         roles = {}
         for definition in ROLE_DEFINITIONS:

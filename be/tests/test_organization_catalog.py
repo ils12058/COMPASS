@@ -306,7 +306,17 @@ def test_initializer_refuses_an_unapplied_schema_even_with_a_receipt():
 
     initialize_organization_catalog(action="seed")
     MigrationRecorder.Migration.objects.filter(
-        app="organization", name="0002_program_policy_and_catalog_initialization"
+        app="organization", name="0001_release_baseline"
     ).delete()
     with pytest.raises(CatalogInitializationError, match="schema is incompatible"):
         initialize_organization_catalog(action="check")
+
+
+@pytest.mark.django_db
+def test_database_resource_versions_are_positive_for_every_catalog_model():
+    from django.db import IntegrityError, transaction
+
+    initialize_organization_catalog(action="seed")
+    for model in (Campus, College, Program):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            model.objects.update(resource_version=0)

@@ -1,4 +1,4 @@
-"""The reset-only canonical migration baseline (CANON-1C) and its fail-closed history guard."""
+"""The reset-only release migration baseline (ADR-117) and its fail-closed history guard."""
 
 import ast
 import hashlib
@@ -21,7 +21,7 @@ from compass.common.canonical_baseline import (
 )
 
 COMPASS = Path(__file__).resolve().parents[1] / "compass"
-BASELINE = "0001_canonical_baseline"
+BASELINE = "0001_release_baseline"
 
 
 def compass_apps():
@@ -49,8 +49,31 @@ def test_registered_migrations_preserve_immutable_schema_only_baselines():
     assert set(present) == with_models
     actual = {str(path.relative_to(COMPASS)) for path in COMPASS.glob("*/migrations/0*.py")}
     assert actual == registered_migrations()
-    for name in actual:
-        assert name.endswith(f"{BASELINE}.py") or name in registered_migrations()
+    manifest = json.loads((COMPASS / "common/canonical_migrations.json").read_text())
+    immutable = {name.removeprefix("compass/") for name in manifest["baseline_sha256"]}
+    loader = MigrationLoader(None, ignore_no_migrations=True)
+    for path in COMPASS.glob("*/migrations/0*.py"):
+        relative = str(path.relative_to(COMPASS))
+        tree = ast.parse(path.read_text())
+        calls = {
+            node.func.attr
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        }
+        assert "RunPython" not in calls, path
+        if relative not in immutable:
+            continue
+        label = labels[path.parent.parent.name]
+        migration = loader.disk_migrations[(label, path.stem)]
+        types = {type(operation).__name__ for operation in migration.operations}
+        if path.stem == "0002_database_guards":
+            assert types <= {"RunSQL", "AddConstraint", "AddIndex"}, path
+            assert "RunSQL" in types, path
+        else:
+            assert path.stem in {BASELINE, "0002_release_baseline_links"}, path
+            assert calls.isdisjoint({"RunPython", "RunSQL", "SeparateDatabaseAndState"}), path
+        for app, name in migration.dependencies:
+            assert name in {BASELINE, "0002_release_baseline_links", "__first__"}, (path, app, name)
     for path in COMPASS.glob(f"*/migrations/{BASELINE}.py"):
         tree = ast.parse(path.read_text())
         calls = {
@@ -105,17 +128,91 @@ def test_a_fresh_database_passes_the_history_guard():
 
 
 @pytest.mark.django_db
-def test_pre_canonical_history_is_refused_by_check_and_migrate():
+@pytest.mark.parametrize(
+    "old_name", ["0008_remove_plaintext_confidential_content", "0001_canonical_baseline"]
+)
+def test_pre_canonical_history_is_refused_by_check_and_migrate(old_name):
     with connection.cursor() as cursor:
         cursor.execute(
             "INSERT INTO django_migrations (app, name, applied) VALUES (%s, %s, now())",
-            ["accounts", "0008_remove_plaintext_confidential_content"],
+            ["accounts", old_name],
         )
-    assert pre_canonical_history(connection) == [
-        "accounts.0008_remove_plaintext_confidential_content"
-    ]
+    assert pre_canonical_history(connection) == [f"accounts.{old_name}"]
     errors = check_canonical_migration_history(databases=["default"])
     assert [error.id for error in errors] == [CHECK_ID]
     assert "reset-only" in errors[0].msg
     with pytest.raises(CommandError, match="pre-canonical"):
         refuse_pre_canonical_migrate(sender=None, using="default")
+    # Exercise the actual command; skip_checks proves the receiver cannot be bypassed.
+    with pytest.raises(CommandError, match="pre-canonical"):
+        call_command("migrate", skip_checks=True, stdout=StringIO(), verbosity=0)
+    with pytest.raises(CommandError, match="reset-only"):
+        call_command("check", databases=["default"], stdout=StringIO())
+
+
+# Code-owned catalog from Phase D's reference schema, independent of migration contents.
+# A future squash must preserve these objects even though Django's model state omits them.
+DATABASE_FUNCTIONS = (
+    "compass_group_session_facilitator_preserve_delete",
+    "compass_group_session_prevent_delete",
+    "compass_service_slot_booking_prevent_delete",
+    "compass_service_slot_prevent_delete",
+    "compass_service_slot_record_booking_history",
+    "gm_inspection_eligibility_guard",
+    "gm_inspection_request_guard",
+    "gm_or_key",
+    "gm_receipt_assignment_guard",
+    "gm_receipt_closure_successor",
+    "gm_receipt_identity_claim",
+    "gm_receipt_identity_guard",
+    "gm_receipt_mutation_guard",
+    "gm_receipt_projection_guard",
+    "gm_receipt_request_guard",
+    "gm_receipt_verification_guard",
+    "organization_valid_year_levels_v1",
+    "referrals_administration_immutable",
+    "referrals_submission_origin_immutable",
+)
+DATABASE_TRIGGERS = (
+    ("good_moral_goodmoralreceiptassignment", "gm_inspection_assignment"),
+    ("good_moral_goodmoralreceiptassignment", "gm_receipt_assignment_guard"),
+    ("good_moral_goodmoralreceiptassignment", "gm_receipt_closure_successor"),
+    ("good_moral_goodmoralreceiptassignment", "gm_receipt_projection_revision"),
+    ("good_moral_goodmoralreceiptidentity", "gm_receipt_identity_claim"),
+    ("good_moral_goodmoralreceiptidentity", "gm_receipt_identity_guard"),
+    ("good_moral_goodmoralreceiptmutation", "gm_receipt_mutation_guard"),
+    ("good_moral_goodmoralreceiptverification", "gm_inspection_verification"),
+    ("good_moral_goodmoralreceiptverification", "gm_receipt_verification_guard"),
+    ("good_moral_goodmoralrequest", "gm_inspection_request"),
+    ("good_moral_goodmoralrequest", "gm_inspection_request_guard"),
+    ("good_moral_goodmoralrequest", "gm_receipt_projection_request"),
+    ("good_moral_goodmoralrequest", "gm_receipt_request_guard"),
+    ("group_sessions_groupsession", "compass_group_session_prevent_delete"),
+    ("group_sessions_groupsessionfacilitator", "compass_group_session_facilitator_preserve_delete"),
+    ("referrals_referral", "referrals_administration_guard"),
+    ("referrals_referral", "referrals_submission_origin_guard"),
+    ("service_catalog_serviceappointmentslot", "compass_service_slot_prevent_delete"),
+    ("service_catalog_serviceappointmentslot", "compass_service_slot_record_booking_history"),
+    (
+        "service_catalog_serviceappointmentslotbooking",
+        "compass_service_slot_booking_prevent_delete",
+    ),
+)
+
+
+@pytest.mark.django_db
+def test_every_code_owned_function_and_trigger_exists_in_postgresql():
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+            "WHERE n.nspname='public'"
+        )
+        functions = {row[0] for row in cursor.fetchall()}
+        cursor.execute(
+            "SELECT c.relname, t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+            "JOIN pg_namespace n ON n.oid=c.relnamespace "
+            "WHERE n.nspname='public' AND NOT t.tgisinternal"
+        )
+        triggers = set(cursor.fetchall())
+    assert set(DATABASE_FUNCTIONS) <= functions
+    assert set(DATABASE_TRIGGERS) <= triggers

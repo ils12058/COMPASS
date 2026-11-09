@@ -1,4 +1,7 @@
-"""Self-tests for backend CI selection and sharding. Run: python3 -m unittest discover .github/scripts"""
+"""Self-tests for backend CI selection and sharding.
+
+Run: python3 -m unittest discover -s .github/scripts
+"""
 
 from __future__ import annotations
 
@@ -20,19 +23,34 @@ def selected(*paths: str) -> backend_ci.Selection:
 
 class SelectionTests(unittest.TestCase):
     def test_guidance_operations_and_sources_select_aggregate_regressions(self):
-        for source in ("guidance_operations", "guidance_messages", "routine_interviews",
-                       "good_moral", "call_slips", "appointments",
-                       "overview", "work_queue", "service_catalog"):
+        for source in (
+            "guidance_operations",
+            "guidance_messages",
+            "routine_interviews",
+            "good_moral",
+            "call_slips",
+            "appointments",
+            "overview",
+            "work_queue",
+            "service_catalog",
+        ):
             result = selected(f"be/compass/{source}/services.py")
             self.assertFalse(result.full)
             self.assertIn("test_guidance_operations.py", result.files)
         # Organization and identity policy are shared scope infrastructure and keep the full gate.
         self.assertTrue(selected("be/compass/organization/access_scope.py").full)
         result = selected("be/compass/guidance_operations/api.py")
-        for name in ("test_work_queue.py", "test_overview.py", "test_guidance_messages.py",
-                     "test_routine_interviews.py", "test_good_moral.py", "test_call_slips.py",
-                     "test_appointment_management_scope.py", "test_accounts.py",
-                     "test_openapi_contract.py"):
+        for name in (
+            "test_work_queue.py",
+            "test_overview.py",
+            "test_guidance_messages.py",
+            "test_routine_interviews.py",
+            "test_good_moral.py",
+            "test_call_slips.py",
+            "test_appointment_management_scope.py",
+            "test_accounts.py",
+            "test_openapi_contract.py",
+        ):
             self.assertIn(name, result.files)
         self.assertNotIn("test_staging_seed.py", result.files)
 
@@ -42,26 +60,40 @@ class SelectionTests(unittest.TestCase):
         self.assertNotIn("test_guidance_operations.py", result.files)
 
     def test_assessment_records_selects_its_actual_boundaries(self):
-        for path in ("services.py", "api.py", "confidential_content.py",
-                     "management/commands/rotate_assessment_record_confidential_content.py"):
+        for path in (
+            "services.py",
+            "api.py",
+            "confidential_content.py",
+            "management/commands/rotate_assessment_record_confidential_content.py",
+        ):
             result = selected("be/compass/assessment_records/" + path)
             self.assertFalse(result.full)
-            for name in ("test_assessment_records.py", "test_assessment_records_configuration.py",
-                         "test_capability_dependencies.py", "test_operational_students.py",
-                         "test_confidential_data_crypto.py", "test_audit.py",
-                         "test_runtime_secrets.py", "test_runtime_secrets_compose.py",
-                         "test_openapi_contract.py"):
+            for name in (
+                "test_assessment_records.py",
+                "test_assessment_records_configuration.py",
+                "test_capability_dependencies.py",
+                "test_operational_students.py",
+                "test_confidential_data_crypto.py",
+                "test_audit.py",
+                "test_runtime_secrets.py",
+                "test_runtime_secrets_compose.py",
+                "test_openapi_contract.py",
+            ):
                 self.assertIn(name, result.files)
             self.assertNotIn("test_student_support.py", result.files)
-        self.assertTrue(selected("be/compass/assessment_records/migrations/0001_initial.py").full)
+        self.assertTrue(
+            selected("be/compass/assessment_records/migrations/0001_release_baseline.py").full
+        )
 
     def test_assessment_shared_changes_remain_conservative(self):
         for path in ("be/compass/accounts/policy.py", "be/compass/audit/actions.py"):
             self.assertTrue(selected(path).full)
         self.assertIn("test_runtime_secrets.py", selected("be/compose.staging.yaml").files)
         self.assertIn("test_openapi_contract.py", selected("contracts/openapi.json").files)
-        for path in ("fe/src/features/assessment-records/assessment-records-list.tsx",
-                     "fe/src/features/portal/components/portal-workspaces.ts"):
+        for path in (
+            "fe/src/features/assessment-records/assessment-records-list.tsx",
+            "fe/src/features/portal/components/portal-workspaces.ts",
+        ):
             self.assertFalse(selected(path).full)
             self.assertNotIn("test_assessment_records.py", selected(path).files)
 
@@ -84,26 +116,45 @@ class SelectionTests(unittest.TestCase):
                 "test_runtime_secrets.py",
             ):
                 self.assertIn(name, result.files)
-        self.assertTrue(selected("be/compass/guidance_messages/migrations/0001_initial.py").full)
         self.assertTrue(
-            selected("be/compass/guidance_messages/migrations/0002_guidance_message_template.py").full
+            selected("be/compass/guidance_messages/migrations/0001_release_baseline.py").full
+        )
+        self.assertTrue(
+            selected("be/compass/guidance_messages/migrations/0002_future_feature.py").full
         )
 
     def test_student_actions_and_domain_sources_select_projection_regressions(self):
         for source in (
-            "student_actions", "inventory", "routine_interviews", "exit_interviews",
-            "graduate_tracer", "call_slips", "ecounseling", "guidance_messages", "overview",
-            "appointments", "service_catalog", "counseling",
+            "student_actions",
+            "inventory",
+            "routine_interviews",
+            "exit_interviews",
+            "graduate_tracer",
+            "call_slips",
+            "ecounseling",
+            "guidance_messages",
+            "overview",
+            "appointments",
+            "service_catalog",
+            "counseling",
         ):
             result = selected(f"be/compass/{source}/student_actions.py")
             self.assertFalse(result.full)
             self.assertIn("test_student_actions.py", result.files)
             self.assertNotIn("test_staging_seed.py", result.files)
         composition = selected("be/compass/student_actions/services.py")
-        for name in ("test_inventory.py", "test_routine_interviews.py", "test_exit_interviews.py",
-                     "test_graduate_tracer.py", "test_call_slips.py", "test_ecounseling.py",
-                     "test_guidance_messages.py", "test_notifications.py", "test_accounts.py",
-                     "test_capability_dependencies.py"):
+        for name in (
+            "test_inventory.py",
+            "test_routine_interviews.py",
+            "test_exit_interviews.py",
+            "test_graduate_tracer.py",
+            "test_call_slips.py",
+            "test_ecounseling.py",
+            "test_guidance_messages.py",
+            "test_notifications.py",
+            "test_accounts.py",
+            "test_capability_dependencies.py",
+        ):
             self.assertIn(name, composition.files)
 
     def test_work_queue_and_source_changes_select_projection_regressions(self):
@@ -122,7 +173,9 @@ class SelectionTests(unittest.TestCase):
         self.assertIn(
             "test_guidance_messages_rotation.py", selected("be/compass/work_queue/api.py").files
         )
-        self.assertNotIn("test_staging_seed.py", selected("be/compass/work_queue/services.py").files)
+        self.assertNotIn(
+            "test_staging_seed.py", selected("be/compass/work_queue/services.py").files
+        )
         self.assertIn(
             "test_runtime_secrets.py",
             selected("be/deploy/runtime-secrets/runtime_secrets.py").files,
@@ -142,8 +195,14 @@ class SelectionTests(unittest.TestCase):
     def test_recent_domain_suites_run_for_source_changes(self):
         for path, expected in (
             ("be/compass/good_moral/services.py", "test_good_moral_assisted.py"),
-            ("be/compass/reports/graduate_tracer.py", "test_graduate_tracer_graduation_classification.py"),
-            ("be/compass/graduate_tracer/services.py", "test_graduate_tracer_graduation_classification.py"),
+            (
+                "be/compass/reports/graduate_tracer.py",
+                "test_graduate_tracer_graduation_classification.py",
+            ),
+            (
+                "be/compass/graduate_tracer/services.py",
+                "test_graduate_tracer_graduation_classification.py",
+            ),
             ("be/compass/activity/domains.py", "test_domain_activity.py"),
             ("be/compass/referrals/services.py", "test_domain_activity.py"),
         ):
@@ -175,11 +234,15 @@ class SelectionTests(unittest.TestCase):
                 continue
             tree = ast.parse(path.read_text(encoding="utf-8"))
             declares_model = any(
-                isinstance(node, ast.ClassDef) and any(
-                    isinstance(base, ast.Attribute) and base.attr == "Model"
-                    and isinstance(base.value, ast.Name) and base.value.id == "models"
+                isinstance(node, ast.ClassDef)
+                and any(
+                    isinstance(base, ast.Attribute)
+                    and base.attr == "Model"
+                    and isinstance(base.value, ast.Name)
+                    and base.value.id == "models"
                     for base in node.bases
-                ) for node in ast.walk(tree)
+                )
+                for node in ast.walk(tree)
             )
             if declares_model:
                 relative = path.relative_to(backend_ci.ROOT).as_posix()
@@ -190,7 +253,7 @@ class SelectionTests(unittest.TestCase):
             workflow = (backend_ci.ROOT / ".github/workflows" / name).read_text()
             self.assertIn("branches: [staging, canon/compass-clean-baseline]", workflow)
         targeted = (backend_ci.ROOT / ".github/workflows/backend-targeted.yml").read_text()
-        self.assertIn('base_ref=$PR_BASE_REF', targeted)
+        self.assertIn("base_ref=$PR_BASE_REF", targeted)
         self.assertIn('gh workflow run frontend-targeted.yml --ref "$PR_HEAD_REF"', targeted)
         deploy = (backend_ci.ROOT / ".github/workflows/deploy-staging.yml").read_text()
         self.assertIn("  workflow_dispatch:", deploy)
@@ -231,12 +294,10 @@ class SelectionTests(unittest.TestCase):
             "test_handoff.py",
             "test_handoff_configuration.py",
             "test_handoff_concurrency.py",
-            "test_handoff_migrations.py",
             "test_continuity.py",
             "test_continuity_access.py",
             "test_continuity_release_concurrency.py",
             "test_continuity_contract.py",
-            "test_continuity_migrations.py",
             "test_counseling_context.py",
             "test_counseling_downstream_lifecycle.py",
             "test_routine_encounter_linking.py",
@@ -260,7 +321,11 @@ class SelectionTests(unittest.TestCase):
 
     def test_referral_change_reaches_call_slips(self):
         result = selected("be/compass/referrals/services.py")
-        for name in ("test_referrals.py", "test_call_slips.py", "test_referral_call_slip_lifecycle.py"):
+        for name in (
+            "test_referrals.py",
+            "test_call_slips.py",
+            "test_referral_call_slip_lifecycle.py",
+        ):
             self.assertIn(name, result.files)
 
     def test_availability_change_reaches_reservations_and_slots(self):
@@ -276,7 +341,11 @@ class SelectionTests(unittest.TestCase):
 
     def test_ecounseling_change_reaches_media_and_retention(self):
         result = selected("be/compass/ecounseling/media.py")
-        for name in ("test_ecounseling.py", "test_ecounseling_media_v2.py", "test_disposition_decommission.py"):
+        for name in (
+            "test_ecounseling.py",
+            "test_ecounseling_media_v2.py",
+            "test_disposition_decommission.py",
+        ):
             self.assertIn(name, result.files)
 
     def test_privacy_governance_change_reaches_retention_and_media(self):
@@ -374,23 +443,32 @@ class ShardingTests(unittest.TestCase):
             for name in ("test_one.py", "two_test.py", "nested/test_three.py", "helper.py"):
                 (tests / name).touch()
             with patch.object(backend_ci, "TESTS", tests):
-                self.assertEqual(backend_ci.all_test_files(),
-                                 ["nested/test_three.py", "test_one.py", "two_test.py"])
-                self.assertTrue(any("nested/test_three.py is in no CI bundle" in problem
-                                    for problem in backend_ci.verify()))
+                self.assertEqual(
+                    backend_ci.all_test_files(),
+                    ["nested/test_three.py", "test_one.py", "two_test.py"],
+                )
+                self.assertTrue(
+                    any(
+                        "nested/test_three.py is in no CI bundle" in problem
+                        for problem in backend_ci.verify()
+                    )
+                )
 
     def test_split_parts_select_every_collected_node_once(self):
         filename = "test_inventory_confidential_content_encryption.py"
         nodes = [f"tests/{filename}::test_example[{i}]" for i in range(19)]
         with patch.object(backend_ci, "collect_node_ids", return_value=nodes):
-            targets = [backend_ci.pytest_targets([backend_ci.Item(filename, part, 4)])
-                       for part in range(4)]
+            targets = [
+                backend_ci.pytest_targets([backend_ci.Item(filename, part, 4)]) for part in range(4)
+            ]
         flattened = [node for target in targets for node in target]
         self.assertCountEqual(flattened, nodes)
         self.assertEqual(len(set(flattened)), len(flattened))
 
     def test_split_files_are_spread_over_parts(self):
-        buckets = backend_ci.plan(backend_ci.all_test_files(), backend_ci.FULL_SHARDS, backend_ci.load_weights())
+        buckets = backend_ci.plan(
+            backend_ci.all_test_files(), backend_ci.FULL_SHARDS, backend_ci.load_weights()
+        )
         parts = [
             item.part
             for bucket in buckets
@@ -406,7 +484,10 @@ class ShardingTests(unittest.TestCase):
         self.assertEqual(first, second)
 
         def load(bucket):
-            return sum(max(weights.get(i.file, backend_ci.DEFAULT_TEST_SECONDS), 1.0) / i.parts for i in bucket)
+            return sum(
+                max(weights.get(i.file, backend_ci.DEFAULT_TEST_SECONDS), 1.0) / i.parts
+                for i in bucket
+            )
 
         loads = [load(bucket) for bucket in first]
         self.assertLess(max(loads) - min(loads), 0.15 * max(loads))
@@ -414,7 +495,12 @@ class ShardingTests(unittest.TestCase):
     def test_new_untimed_file_still_lands_in_exactly_one_shard(self):
         files = [*backend_ci.all_test_files(), "test_brand_new_feature.py"]
         buckets = backend_ci.plan(files, backend_ci.FULL_SHARDS, backend_ci.load_weights())
-        homes = [i for i, bucket in enumerate(buckets) for item in bucket if item.file == "test_brand_new_feature.py"]
+        homes = [
+            i
+            for i, bucket in enumerate(buckets)
+            for item in bucket
+            if item.file == "test_brand_new_feature.py"
+        ]
         self.assertEqual(len(homes), 1)
 
     def test_targeted_shard_count_scales_with_selected_runtime(self):

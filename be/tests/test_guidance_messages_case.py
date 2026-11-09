@@ -441,3 +441,18 @@ def test_student_is_never_a_participant_and_receives_no_notification(world):
     assert client.get(f"{BASE}/case-grants/{world.grant['id']}/context").status_code == 404
     items = client.get(f"{BASE}/threads").json()["items"]
     assert str(thread.pk) not in {item["id"] for item in items}
+
+
+@pytest.mark.parametrize("changes", [{"student_subject_id": None}, {"student_id": "subject"}])
+def test_database_case_thread_rejects_missing_subject_and_legacy_student(world, changes):
+    values = dict(changes)
+    if values.get("student_id") == "subject":
+        values["student_id"] = world.student.pk
+    fields = {
+        "kind": CASE_KIND,
+        "relationship_case_grant_id": world.grant["id"],
+        "student_subject_id": world.student.pk,
+        "created_by_id": world.author.pk,
+    } | values
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GuidanceThread.objects.create(**fields)

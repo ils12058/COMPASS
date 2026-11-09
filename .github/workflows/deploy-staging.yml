@@ -81,14 +81,20 @@ jobs:
           deploy_sha="$(git rev-parse HEAD)"
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Require canonical source lineage
-        env:
-          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+      - name: Test staging deployment tooling
+        run: python3 -m unittest discover -s .github/scripts
+
+      # ADR-117 is reset-only. Phase E's separately approved staging reset lifts this
+      # refusal and pins the new release-baseline lineage commit before deployment resumes.
+      - name: Refuse the reset-only release baseline
+        shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor d86ddc08285f16740848dc5880d9d2285e7dbce8 "$DEPLOY_SHA"
-          git diff --exit-code d86ddc08285f16740848dc5880d9d2285e7dbce8 -- 'be/compass/*/migrations/0001_canonical_baseline.py'
-          python3 -m unittest discover -s .github/scripts
+          if compgen -G "be/compass/*/migrations/0001_release_baseline.py" > /dev/null; then
+            echo "This revision contains the reset-only release migration baseline." >&2
+            echo "Phase E must reset staging before ordinary deployment can resume." >&2
+            exit 1
+          fi
 
       # Pull requests run targeted tests; the complete backend suite is the deployment gate.
       - name: Require Backend full regression for this exact revision

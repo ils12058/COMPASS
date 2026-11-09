@@ -7,39 +7,9 @@ import json
 import os
 from pathlib import Path
 
-# The staging coordinator deliberately keeps RunPython, constraints, and non-null defaults
-# outside the routine policy unless the complete migration source has been reviewed. Pinning the
-# source digest makes the exception exact: editing one of these migrations requires a new review.
-REVIEWED_MIGRATIONS = {
-    "appointments/0002_appointment_reminders": (
-        "d3df93c555e2ebb91b6efcb188325620946c49aa2007dbaf55fadc8b81e5b101"
-    ),
-    "guidance_followups/0001_initial": (
-        "1f2e8b449c32b2650129e5cf4e83806dd4ee424c29b7391d4c8d8a218f906806"
-    ),
-    "guidance_followups/0002_guidancefollowupmutation": (
-        "68aae55d167f46c4fccc3937256291a9c3fb48c09fef5cbec8f140821163337e"
-    ),
-    "group_sessions/0001_initial": (
-        "8c948628511004f2249873a1fd9e3d72f393f0d7957c76d2cc730284d7584ca2"
-    ),
-    "service_catalog/0002_booking_pathways": (
-        "627cb721f11d06e1fe0fd8dce2c91aec50b70d25924dff0e55e2607618536951"
-    ),
-    "service_catalog/0003_fixed_date_slots": (
-        "ff54707a1d30f4f424e982f8913c6f896f7f021fe575154ce96075677a587381"
-    ),
-    # CORR-1A/1B lifecycle protection, reviewed against live UAT data on 2026-10-18.
-    "group_sessions/0002_alter_groupsessionfacilitator_group_session": (
-        "185beaefa5296d82abd1c717c29c5d4662273bd7becbab01651d845133d3a9d3"
-    ),
-    "group_sessions/0003_group_session_scheduling_and_external_facilitators": (
-        "ebef7a189f9716dbe949b2591698bd99df295583b54ad26ab412958c6bae5d36"
-    ),
-    "service_catalog/0004_serviceappointmentslot_withdrawn_at_and_more": (
-        "7f1c9254ffe7b1249356c1628d2771f40753015b894e2f50e73e47766bb6f76e"
-    ),
-}
+# Future coordinated exceptions require a separately reviewed source digest.
+# The immutable release graph is reset-only and is never a routine deployment exception.
+REVIEWED_MIGRATIONS: dict[str, str] = {}
 
 
 class Refused(RuntimeError):
@@ -56,6 +26,11 @@ def validate_operations(plan):
 
     root = Path(__file__).resolve().parents[2]
     for migration, backwards in plan:
+        require(
+            migration.name
+            not in {"0001_release_baseline", "0002_release_baseline_links", "0002_database_guards"},
+            "Release baseline requires the Phase E staging reset; routine deployment refused",
+        )
         require(
             not backwards and migration.atomic,
             "Backwards/non-atomic migration requires coordinated review",
@@ -95,7 +70,7 @@ def validate_operations(plan):
             )
 
 
-CATALOG_MIGRATION = ("organization", "0002_program_policy_and_catalog_initialization")
+CATALOG_MIGRATION = ("organization", "0001_release_baseline")
 
 
 def validate_catalog_initialization(action, *, migration_applied, receipt_exists, populated):
@@ -125,12 +100,12 @@ def inspect_database():
     )
     root = Path(__file__).resolve().parents[2]
     baseline = json.loads((Path(__file__).with_name("baseline-sha256.json")).read_text())
-    require(len(baseline) == 26, "Canonical baseline manifest changed")
+    require(len(baseline) == 36, "Release baseline manifest changed")
     labels = set()
     for filename, digest in baseline.items():
         require(
             hashlib.sha256((root / filename).read_bytes()).hexdigest() == digest,
-            "Canonical baseline was modified",
+            "Release baseline was modified",
         )
         labels.add(filename.split("/")[1])
     with transaction.atomic():
@@ -154,8 +129,8 @@ def inspect_database():
         loader.check_consistent_history(connection)
         applied = set(loader.applied_migrations)
         require(
-            all((label, "0001_canonical_baseline") in applied for label in labels),
-            "Missing applied canonical baseline",
+            all((filename.split("/")[1], Path(filename).stem) in applied for filename in baseline),
+            "Missing applied release baseline or database guards",
         )
         require(
             all(key in loader.disk_migrations for key in applied),

@@ -597,3 +597,20 @@ def test_designation_role_compatibility_fails_closed_for_unknown_codes():
         designation_code="DPO",
         role_code="UNKNOWN_ROLE",
     )
+
+
+@pytest.mark.django_db
+def test_policy_sync_preserves_goa_user_link_and_capabilities():
+    call_command("sync_identity_policy", stdout=StringIO())
+    user = make_user(role="GUIDANCE_OFFICE_ASSISTANT", email="release-goa@example.edu")
+    role_pk = user.role_id
+    before = effective_capabilities(user)
+    assert {"referrals.manage", "guidance_messages.manage"} <= before
+    call_command("sync_identity_policy", stdout=StringIO())
+    user.refresh_from_db()
+    assert user.role_id == role_pk
+    assert user.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+    assert user.role.name == "Guidance Office Assistant"
+    assert Role.objects.filter(code="GUIDANCE_OFFICE_ASSISTANT").count() == 1
+    assert not Role.objects.filter(code="GUIDANCE_SERVICES_STAFF").exists()
+    assert effective_capabilities(user) == before

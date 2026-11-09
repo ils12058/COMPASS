@@ -839,3 +839,30 @@ def test_new_operation_rows_must_reference_the_current_result(world):
                 result_request_version=version,
             )
     assert Mutation.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_fresh_schema_has_unconditional_guards_and_required_origin():
+    tables = connection.introspection.table_names()
+    assert "good_moral_goodmoralreceiptledger" not in tables
+    assert "good_moral_goodmoralreceiptimportbatch" not in tables
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT p.proname, pg_get_functiondef(p.oid) FROM pg_proc p "
+            "WHERE p.proname LIKE 'gm_receipt_%' OR p.proname LIKE 'gm_inspection_%'"
+        )
+        definitions = dict(cursor.fetchall())
+        for definition in definitions.values():
+            assert "goodmoralreceiptledger" not in definition
+            assert "LEGACY_" not in definition
+        assert {
+            "gm_receipt_identity_guard",
+            "gm_receipt_projection_guard",
+            "gm_inspection_request_guard",
+        } <= definitions.keys()
+        cursor.execute(
+            "SELECT column_default, is_nullable FROM information_schema.columns "
+            "WHERE table_name='good_moral_goodmoralrequest' AND column_name='initiation_origin'"
+        )
+        assert cursor.fetchone() == (None, "NO")
+    assert not GoodMoralRequest._meta.get_field("initiation_origin").has_default()

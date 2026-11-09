@@ -174,6 +174,26 @@ def normalize_infrastructure(service):
     return re.sub(r"/opt/compass/releases/[0-9a-f]{40}/", "/CANONICAL-RELEASE/", encoded)
 
 
+def validate_release_history(baseline, applied, *, catalog_table):
+    """Host tooling is uploaded alone; full unknown-history checks run inside the candidate."""
+    labels = {p.split("/")[1] for p in baseline}
+    require(
+        all((p.split("/")[1], Path(p).stem) in applied for p in baseline),
+        "Release database or guards not initialized",
+    )
+    require(
+        not any(
+            a in labels and n.startswith("0001") and n != "0001_release_baseline"
+            for a, n in applied
+        ),
+        "Pre-canonical migration history",
+    )
+    require(
+        ("organization", "0001_release_baseline") in applied and catalog_table == 1,
+        "Release catalog migration/receipt table mismatch",
+    )
+
+
 def inspect(candidate):
     with urllib.request.urlopen("http://169.254.169.254/metadata/v1/id", timeout=3) as response:
         require(response.read().decode().strip() == "602091909", "Wrong DigitalOcean Droplet")
@@ -244,6 +264,8 @@ def inspect(candidate):
     sql = (
         "SELECT json_build_object('migrations',"
         "(SELECT json_agg(json_build_array(app,name)) FROM django_migrations),"
+        "'catalog_table',(SELECT count(*) FROM information_schema.tables "
+        "WHERE table_schema='public' AND table_name='organization_cataloginitialization'),"
         "'accounts',(SELECT count(*) FROM accounts_user),"
         "'retired',(SELECT count(*) FROM information_schema.tables "
         "WHERE table_schema='public' AND table_name IN "
@@ -262,19 +284,8 @@ def inspect(candidate):
     )
     database = json.loads(raw)
     baseline = json.loads(Path(__file__).with_name("baseline-sha256.json").read_text())
-    labels = {p.split("/")[1] for p in baseline}
     applied = {tuple(x) for x in database["migrations"]}
-    require(
-        all((a, "0001_canonical_baseline") in applied for a in labels),
-        "Canonical database not initialized",
-    )
-    require(
-        not any(
-            a in labels and n.startswith("0001") and n != "0001_canonical_baseline"
-            for a, n in applied
-        ),
-        "Pre-canonical migration history",
-    )
+    validate_release_history(baseline, applied, catalog_table=database["catalog_table"])
     require(
         database["accounts"] > 0 and database["retired"] == 0, "Canonical population/schema missing"
     )

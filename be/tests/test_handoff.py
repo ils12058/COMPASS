@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 from cryptography.fernet import Fernet
 from django.core.management import call_command
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.utils import timezone
 
@@ -793,3 +793,16 @@ def test_office_original_metadata_revalidates_current_scope(workflow_case):
     StudentAcademicProfile.objects.filter(student=c.student).update(current_college=college)
     with pytest.raises(ContinuityError):
         op(c, g, "metadata")
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [{"state": "UNKNOWN"}, {"state": "SUBMITTED"}, {"version": 0}, {"content_ciphertext": ""}],
+)
+def test_database_constraints(workflow_case, bad):
+    c = workflow_case
+    g = selected.approved(c)
+    draft(c, g)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Handoff.objects.all().update(**bad)
+    assert Handoff.objects.get().state == "DRAFT"

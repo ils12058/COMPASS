@@ -122,10 +122,11 @@ retention duration is selected here.
 3. Take and verify the approved canonical PostgreSQL backup and separately secured keyring backup.
 4. Provision the web-only Follow-Up keyring and approved runtime variables. Keep all new dispatch
    flags false; verify worker/Beat/realtime key exclusions using rendered Compose configuration.
-5. Run history/preflight checks and review `migrate --plan`. Apply guarded additive migrations:
-   REM appointments.0002; Follow-Up 0001_initial then 0002_guidancefollowupmutation; Agent 2's reviewed
-   independent migration graph. Existing canonical migration bytes remain immutable and unknown
-   historical migrations remain refused. No reset or destructive reseeding is part of this rollout.
+5. Run history/preflight checks and review `migrate --plan`. Follow-Up starts at
+   `0001_release_baseline`; its mutation table is included there. The Appointments reminder
+   schema is included in its release baseline and links migration. ADR-117 freezes the entire
+   release graph and refuses old history. Ordinary deployment is blocked until Phase E completes
+   the separately approved staging reset and pins the new lineage; this runbook grants no reset.
 6. Synchronize identity policy to install Follow-Up capabilities and dependency-coherent grants.
 7. Deploy compatible web, worker, one Beat and frontend; retain existing Redis/realtime boundaries.
 8. With synthetic/approved fixtures, smoke role denial, confidential source access, create/retry,

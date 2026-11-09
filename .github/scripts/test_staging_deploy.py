@@ -253,11 +253,27 @@ class DestinationTests(unittest.TestCase):
 
     def test_baseline_manifest_matches_immutable_sources(self):
         hashes = json.loads((ROOT / "be/deploy/staging/baseline-sha256.json").read_text())
-        self.assertEqual(len(hashes), 26)
+        self.assertEqual(len(hashes), 36)
         for filename, digest in hashes.items():
             self.assertEqual(
                 hashlib.sha256((ROOT / "be" / filename).read_bytes()).hexdigest(), digest
             )
+
+    def test_release_history_requires_every_guard_and_matching_catalog(self):
+        baseline = json.loads((ROOT / "be/deploy/staging/baseline-sha256.json").read_text())
+        applied = {(p.split("/")[1], Path(p).stem) for p in baseline}
+        host.validate_release_history(baseline, applied, catalog_table=1)
+        # No code-package registration file is available in the host's uploaded tooling bundle.
+        cases = [
+            (applied - {("good_moral", "0002_database_guards")}, 1),
+            (applied - {("organization", "0001_release_baseline")}, 1),
+            (applied | {("accounts", "0001_retired_baseline")}, 1),
+            (applied, 0),
+        ]
+        for history, catalog_table in cases:
+            with self.subTest(history=history, catalog_table=catalog_table):
+                with self.assertRaises(host.Refused):
+                    host.validate_release_history(baseline, history, catalog_table=catalog_table)
 
 
 class FirewallTests(unittest.TestCase):

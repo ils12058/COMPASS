@@ -1165,39 +1165,6 @@ def test_postgresql_preserves_removed_facilitator_identity_on_direct_delete(
 
 
 @pytest.mark.django_db
-def test_group_session_lifecycle_migration_refuses_rollback_while_history_exists(
-    group_service, counselor
-):
-    from importlib import import_module
-
-    from django.apps import apps
-    from django.db import connection
-
-    create_group_session(
-        service_id=group_service.pk,
-        organizer=counselor,
-        title="Retain Group Session Lifecycle",
-        starts_at=timezone.now() + timedelta(days=9),
-        ends_at=timezone.now() + timedelta(days=9, hours=1),
-        capacity=5,
-        facilitators=[
-            {
-                "kind": "INTERNAL",
-                "internal_user_id": counselor.pk,
-                "is_lead": True,
-            }
-        ],
-    )
-    migration = import_module(
-        "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session"
-    )
-
-    with connection.schema_editor() as schema_editor:
-        with pytest.raises(RuntimeError, match="Group Session history exists"):
-            migration.allow_group_session_deletion_migration_reverse(apps, schema_editor)
-
-
-@pytest.mark.django_db
 def test_group_session_staff_scope_and_facilitator_participant_privacy(
     group_service, counselor, other_counselor, student
 ):
@@ -1391,3 +1358,24 @@ def test_group_session_current_account_and_capability_are_rechecked(group_servic
     client = auth_client(counselor, recent_mfa=True)
     assert client.get("/api/v1/group-sessions").status_code == 403
     assert client.get(f"/api/v1/group-sessions/{session.id}").status_code == 403
+
+
+@pytest.mark.django_db
+def test_database_rejects_two_active_leads(group_service, counselor, other_counselor):
+    from django.db import IntegrityError, transaction
+
+    session = create_group_session(
+        service_id=group_service.pk,
+        organizer=counselor,
+        title="Active lead constraint",
+        starts_at=timezone.now() + timedelta(days=9),
+        ends_at=timezone.now() + timedelta(days=9, hours=1),
+        capacity=5,
+        facilitators=[
+            {"kind": "INTERNAL", "internal_user_id": counselor.pk, "is_lead": True},
+            {"kind": "INTERNAL", "internal_user_id": other_counselor.pk, "is_lead": False},
+        ],
+    )
+    co = session.facilitators.get(internal_user=other_counselor)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        session.facilitators.filter(pk=co.pk).update(is_lead=True, removed_at=None)

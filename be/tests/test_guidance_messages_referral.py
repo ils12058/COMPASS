@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from django.db import IntegrityError, transaction
 
 from compass.accounts.models import Capability, Designation, Role, User, UserCapabilityOverride
 from compass.accounts.services import effective_capabilities
@@ -622,3 +623,14 @@ def test_faculty_referral_context_requires_current_submission_read(world):
         None,
         True,
     )
+
+
+def test_database_referral_thread_requires_student_subject(world):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GuidanceThread.objects.create(
+            kind=ThreadKind.REFERRAL_COORDINATION,
+            requester=world.faculty,
+            relationship_referral=world.referral,
+            routing_college=world.ccms,
+            created_by=world.faculty,
+        )
