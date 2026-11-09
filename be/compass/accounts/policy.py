@@ -115,7 +115,10 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="organization.catalog.manage",
         name="Manage organization catalog",
-        description="Explicit delegated catalog definition authority; no default grants.",
+        description=(
+            "Create, rename and activate Campuses, Colleges and Programs. IT Administrators hold "
+            "it by default; other eligible staff need an explicit grant."
+        ),
     ),
     CapabilityDefinition(
         code="counseling.handoff.manage_own",
@@ -714,6 +717,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "platform_operations.manage",
             "organization.structure.view",
             "organization.manage",
+            "organization.catalog.manage",
             "student_academics.view",
             "student_academics.manage",
             "student_academics.import",

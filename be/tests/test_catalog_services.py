@@ -44,13 +44,12 @@ def setup():
     "role",
     ["IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
 )
-def test_no_role_or_designation_baseline_grants(role):
+def test_only_it_admin_has_a_baseline_catalog_grant(role):
     user, _ = manager(role, grant=False)
-    assert not user.has_capability("organization.catalog.manage")
-    assert all(
-        "organization.catalog.manage" not in grants
-        for grants in (*ROLE_CAPABILITY_GRANTS.values(), *DESIGNATION_CAPABILITY_GRANTS.values())
-    )
+    assert user.has_capability("organization.catalog.manage") is (role == "IT_ADMIN")
+    baselines = (*ROLE_CAPABILITY_GRANTS.items(), *DESIGNATION_CAPABILITY_GRANTS.items())
+    holders = {code for code, grants in baselines if "organization.catalog.manage" in grants}
+    assert holders == {"IT_ADMIN"}
     if role not in CATALOG_ELIGIBLE_ROLES:
         with pytest.raises(ValueError, match="eligible staff"):
             set_user_capability_override(
@@ -202,6 +201,10 @@ def test_service_reloads_authentication_and_authority(setup, defect):
             user=user, capability__code="organization.catalog.manage"
         ).update(effect="REVOKE")
     elif defect == "expired_override":
+        # IT Administrators hold Catalog authority by default; an expired grant matters for
+        # staff whose authority comes only from the grant.
+        user, issued = manager("COUNSELOR")
+        auth = authority(user, issued)
         UserCapabilityOverride.objects.filter(user=user).update(
             expires_at=timezone.now() - timedelta(seconds=1)
         )
@@ -476,9 +479,27 @@ def test_api_mfa_csrf_status_history_and_errors(setup):
     assert response.json()["error"]["code"] == "mfa_setup_required"
 
 
+def test_it_admin_manages_the_catalog_by_default_until_revoked():
+    user, issued = manager("IT_ADMIN", grant=False)
+    hierarchy()
+    assert not UserCapabilityOverride.objects.filter(user=user).exists()
+    cs.create_campus(**authority(user, issued), code="DFLT", name="Default", is_active=False)
+    assert Campus.objects.filter(code="DFLT").exists()
+    set_user_capability_override(
+        user=user,
+        capability="organization.catalog.manage",
+        effect="REVOKE",
+        reason="Synthetic revocation of the default",
+    )
+    with pytest.raises(cs.CatalogError) as error:
+        cs.create_campus(**authority(user, issued), code="DENIED", name="Denied", is_active=False)
+    assert error.value.code == "permission_denied"
+    assert not Campus.objects.filter(code="DENIED").exists()
+
+
 @pytest.mark.parametrize(
     "role",
-    ["IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
+    ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
 )
 def test_http_catalog_permission_is_separate_from_role_and_relationship_management(role):
     user, issued = manager(role, grant=False)
@@ -661,7 +682,7 @@ def test_rotated_credential_cannot_reuse_a_previously_resolved_session(setup):
     assert error.value.code == "invalid_session"
 
 
-@pytest.mark.parametrize("role", sorted(CATALOG_ELIGIBLE_ROLES))
+@pytest.mark.parametrize("role", sorted(CATALOG_ELIGIBLE_ROLES - {"IT_ADMIN"}))
 def test_explicit_catalog_grant_adds_only_catalog_authority(role):
     from compass.accounts.services import effective_capabilities
 

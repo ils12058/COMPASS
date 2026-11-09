@@ -5,7 +5,8 @@ acceptance remain unapproved. No real user was inspected or granted authority.
 
 Catalog and relationship authority are independent. `organization.catalog.manage` adds exactly that
 capability, requires `organization.structure.view`, and is suppressed for unsupported roles even if
-a malformed ORM override exists. IT Administrator and Head designation do not imply Catalog rights.
+a malformed ORM override exists. IT Administrator and Head designation do not imply Catalog rights. (Superseded 2026-11-10 by owner decision: the IT
+Administrator role now includes `organization.catalog.manage`; the Head designation still doesn't.)
 Role baselines retain their independent operational capabilities; a Catalog-only GSS fixture does
 not gain StudentAffiliation, Responsibilities, Accounts or global Audit management.
 

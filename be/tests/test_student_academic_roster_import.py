@@ -142,7 +142,7 @@ def test_import_capability_policy_definition_grants_and_dependencies():
         "Validate and apply approved CSV College placements for existing Student accounts."
     )
     assert len(CAPABILITY_DEFINITIONS) == 104
-    assert sum(len(grants) for grants in ROLE_CAPABILITY_GRANTS.values()) == 124
+    assert sum(len(grants) for grants in ROLE_CAPABILITY_GRANTS.values()) == 125
     assert sum(len(grants) for grants in DESIGNATION_CAPABILITY_GRANTS.values()) == 24
 
     assert "student_academics.import" in ROLE_CAPABILITY_GRANTS["IT_ADMIN"]

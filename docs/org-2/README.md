@@ -10,7 +10,11 @@ history and aggregate retirement impact. Protected services enforce current dele
 server-established recent MFA, synchronous Audit and a cooperative PostgreSQL integrity gate.
 No code/parent edit, delete, transfer, merger, SAR, affiliation migration or management UI is added.
 
-No role or designation receives `organization.catalog.manage` automatically. The technical eligible
+No role or designation receives `organization.catalog.manage` automatically.
+
+**Update 2026-11-10 (owner decision):** IT Administrators now receive `organization.catalog.manage`
+by default through their role. Counselors and Guidance Office Assistants still need an explicit
+grant; other roles stay ineligible. The technical eligible
 role fence is IT_ADMIN / COUNSELOR / GUIDANCE_SERVICES_STAFF; it does not approve institutional
 appointment or delegation. Existing `organization.manage` keeps its operational relationship meaning.
 
