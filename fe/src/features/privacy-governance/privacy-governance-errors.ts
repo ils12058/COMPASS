@@ -1,7 +1,6 @@
 import {
   CompassApiError,
   readApiErrorCode,
-  readApiErrorMessage,
 } from "@/lib/api/errors";
 
 // Stable backend conflict codes; each maps to a distinct recovery in the workspace.
@@ -21,13 +20,13 @@ export type PrivacyConflictCode = (typeof PrivacyConflictCode)[keyof typeof Priv
 const conflictCopy: Record<PrivacyConflictCode, string> = {
   [PrivacyConflictCode.codeInUse]: "This code is already in use. Use a different code.",
   [PrivacyConflictCode.noticeRetired]:
-    "This Privacy Notice is retired, so it and its revisions can no longer be changed.",
+    "You can't change a retired Privacy Notice or its revisions.",
   [PrivacyConflictCode.noticeDraftExists]:
-    "This Privacy Notice already has a draft revision. Open the existing draft instead.",
+    "This Privacy Notice already has a draft revision. Open it to continue.",
   [PrivacyConflictCode.noticeRevisionImmutable]:
-    "Published and historical revisions cannot be edited. Create a new revision instead.",
+    "You can't edit published or historical revisions. Create a new revision.",
   [PrivacyConflictCode.noticeNotYetEffective]:
-    "This revision cannot be published before its effective date. Set an effective date of today or earlier to publish it.",
+    "Set an effective date of today or earlier before publishing this revision.",
   [PrivacyConflictCode.noticeRevisionNotCurrent]:
     "This notice was updated while you were viewing it. The current version is now shown.",
   [PrivacyConflictCode.noticeRevisionChanged]:
@@ -41,12 +40,43 @@ function isPrivacyConflictCode(code: string | undefined): code is PrivacyConflic
 }
 
 const inputCopy: Record<string, string> = {
-  "code must contain only uppercase letters, digits, dot, underscore, or hyphen":
-    "Code must be 2–64 characters, start with a letter or digit, and use only letters, digits, dots, underscores, or hyphens.",
-  "audiences must be a nonempty bounded list": "Select at least one audience.",
-  "estimated_affected_subjects must be a nonnegative integer":
-    "Estimated affected people must be a whole number of zero or more.",
+  page_invalid: "Choose a page number between 1 and 100,000.",
+  page_size_invalid: "Choose between 1 and 50 results per page.",
+  code_invalid: "Use 2–64 letters, digits, dots, underscores or hyphens, starting with a letter or digit.",
+  record_invalid: "Review the privacy record details and try again.",
+  audiences_required: "Choose at least one audience and no more than three.",
+  audiences_invalid: "Choose Public, Students or Staff as the audience.",
+  audiences_duplicate: "Choose each audience only once.",
+  acknowledgment_invalid: "Choose whether this notice requires acknowledgment.",
+  effective_date_invalid: "Enter a valid effective date.",
+  unsupported_revision_fields: "Review the notice revision details and try again.",
+  code_required: "Enter a code.",
+  code_too_long: "Keep the code to 64 characters or fewer.",
+  code_text_required: "Enter the code as text.",
+  name_required: "Enter a name.",
+  name_too_long: "Keep the name to 160 characters or fewer.",
+  name_text_required: "Enter the name as text.",
+  title_required: "Enter a title.",
+  title_too_long: "Keep the title to 200 characters or fewer.",
+  title_text_required: "Enter the title as text.",
+  summary_required: "Enter a summary.",
+  summary_too_long: "Keep the summary to 2,000 characters or fewer.",
+  summary_text_required: "Enter the summary as text.",
+  body_required: "Enter body text.",
+  body_too_long: "Keep the body to 20,000 characters or fewer.",
+  body_text_required: "Enter the body as text.",
 };
+
+function issueIdentifier(body: unknown): string | undefined {
+  if (!body || typeof body !== "object" || !("error" in body)) return undefined;
+  const error = body.error;
+  if (!error || typeof error !== "object" || !("details" in error)) return undefined;
+  const details = error.details;
+  if (!Array.isArray(details) || details.length === 0) return undefined;
+  const issue: unknown = details[0];
+  if (!issue || typeof issue !== "object" || !("type" in issue)) return undefined;
+  return typeof issue.type === "string" ? issue.type : undefined;
+}
 
 export type PrivacyFieldLabels = Record<string, string>;
 
@@ -65,7 +95,9 @@ function validationField(body: unknown): string | undefined {
   if (!error || typeof error !== "object" || !("details" in error)) return undefined;
   const details = (error as { details: unknown }).details;
   if (!Array.isArray(details) || details.length === 0) return undefined;
-  const location = (details[0] as { loc?: unknown }).loc;
+  const issue: unknown = details[0];
+  if (!issue || typeof issue !== "object" || !("loc" in issue)) return undefined;
+  const location = issue.loc;
   if (!Array.isArray(location) || location.length === 0) return undefined;
   const field = location[location.length - 1];
   return typeof field === "string" ? field : undefined;
@@ -78,26 +110,32 @@ export function privacyErrorMessage(
 ): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
-  const message = readApiErrorMessage(error.body) ?? "";
+  const identifier = issueIdentifier(error.body);
 
   if (isPrivacyConflictCode(code)) return conflictCopy[code];
   switch (code) {
     case "permission_denied":
-      return "You can't perform this privacy action.";
+      return "You don't have permission to perform this privacy action.";
     case "privacy_record_not_found":
-      return "This privacy record is no longer available. Refresh and try again.";
+      return "Couldn't find this privacy record. Refresh and try again.";
     case "privacy_governance_conflict":
-      return "This privacy record changed before the action completed. Refresh it and review its current state.";
+      return "Refresh this privacy record and review its details before continuing.";
     case "invalid_privacy_governance_input":
-      return Object.hasOwn(inputCopy, message)
-        ? inputCopy[message]
-        : "Some privacy record details were not accepted. Review them and try again.";
+      return identifier && Object.hasOwn(inputCopy, identifier)
+        ? inputCopy[identifier]
+        : "Review the privacy record details and try again.";
     case "validation_error": {
       const field = validationField(error.body);
-      const label = field ? labels[field] ?? baseFieldLabels[field] : undefined;
+      const label = field
+        ? Object.hasOwn(labels, field)
+          ? labels[field]
+          : Object.hasOwn(baseFieldLabels, field)
+            ? baseFieldLabels[field]
+            : undefined
+        : undefined;
       return label
-        ? `“${label}” was not accepted. Check it and try again.`
-        : "Some values were not accepted. Review the form and try again.";
+        ? `“${label}” needs attention. Check it and try again.`
+        : "Review the form values and try again.";
     }
     default:
       return fallback;

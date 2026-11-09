@@ -36,6 +36,7 @@ from .services import (
     publish_announcement,
     update_announcement,
 )
+from .validation import VALIDATION_OPENAPI
 
 router = Router(tags=["announcements"])
 public_router = Router(tags=["announcements"])
@@ -130,7 +131,9 @@ def _context(request) -> AuditContext:
 def _require_manager(request) -> None:
     user = request.auth_user
     if not user.is_active or not user.has_capability("announcements.manage"):
-        raise APIError(403, "permission_denied", "The announcements.manage capability is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to manage Announcements."
+        )
 
 
 def _raise(exc: AnnouncementError) -> NoReturn:
@@ -144,11 +147,11 @@ def _raise(exc: AnnouncementError) -> NoReturn:
             details={"fields": list(exc.fields)},
         ) from exc
     if isinstance(exc, AnnouncementConflict):
-        raise APIError(409, "announcement_not_editable", str(exc)) from exc
+        raise APIError(409, "announcement_not_editable", str(exc), details=exc.details) from exc
     if isinstance(exc, InvalidAnnouncementInput):
-        raise APIError(422, "invalid_announcement_input", str(exc)) from exc
+        raise APIError(422, "invalid_announcement_input", str(exc), details=exc.details) from exc
     raise APIError(
-        500, "internal_error", "The Announcement operation could not be completed."
+        500, "internal_error", "Couldn't complete this Announcement action. Try again."
     ) from exc
 
 
@@ -235,6 +238,7 @@ def announcements_list_managed(
     ),
     auth=session_auth,
     operation_id="announcementsCreateDraft",
+    openapi_extra=VALIDATION_OPENAPI,
 )
 def announcements_create_draft(request, payload: AnnouncementCreateRequest):
     _require_manager(request)

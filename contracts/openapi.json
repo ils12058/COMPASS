@@ -35224,7 +35224,91 @@
         "summary": "Announcements Create Draft",
         "tags": [
           "announcements"
-        ]
+        ],
+        "x-domain-validation-issues": {
+          "announcement_already_archived": {
+            "loc": []
+          },
+          "announcement_archived": {
+            "loc": []
+          },
+          "audience_invalid": {
+            "loc": [
+              "audience"
+            ]
+          },
+          "body_required": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "body_text_required": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "body_too_large": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "expiry_invalid": {
+            "loc": [
+              "expires_at"
+            ]
+          },
+          "expiry_not_future": {
+            "loc": [
+              "expires_at"
+            ]
+          },
+          "ordering_invalid": {
+            "loc": [
+              "ordering"
+            ]
+          },
+          "page_invalid": {
+            "loc": [
+              "page"
+            ]
+          },
+          "page_size_invalid": {
+            "loc": [
+              "page_size"
+            ]
+          },
+          "pin_invalid": {
+            "loc": [
+              "is_pinned"
+            ]
+          },
+          "publication_requires_draft": {
+            "loc": []
+          },
+          "status_invalid": {
+            "loc": [
+              "status"
+            ]
+          },
+          "title_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_text_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_too_long": {
+            "loc": [
+              "title"
+            ]
+          },
+          "unsupported_fields": {
+            "loc": []
+          }
+        }
       }
     },
     "/api/v1/announcements/management/{announcement_id}": {
@@ -65726,7 +65810,130 @@
         "summary": "Notice Create",
         "tags": [
           "privacy-governance"
-        ]
+        ],
+        "x-domain-validation-issues": {
+          "acknowledgment_invalid": {
+            "loc": [
+              "requires_acknowledgment"
+            ]
+          },
+          "audiences_duplicate": {
+            "loc": [
+              "audiences"
+            ]
+          },
+          "audiences_invalid": {
+            "loc": [
+              "audiences"
+            ]
+          },
+          "audiences_required": {
+            "loc": [
+              "audiences"
+            ]
+          },
+          "body_required": {
+            "loc": [
+              "body"
+            ]
+          },
+          "body_text_required": {
+            "loc": [
+              "body"
+            ]
+          },
+          "body_too_long": {
+            "loc": [
+              "body"
+            ]
+          },
+          "code_invalid": {
+            "loc": [
+              "code"
+            ]
+          },
+          "code_required": {
+            "loc": [
+              "code"
+            ]
+          },
+          "code_text_required": {
+            "loc": [
+              "code"
+            ]
+          },
+          "code_too_long": {
+            "loc": [
+              "code"
+            ]
+          },
+          "effective_date_invalid": {
+            "loc": [
+              "effective_on"
+            ]
+          },
+          "name_required": {
+            "loc": [
+              "name"
+            ]
+          },
+          "name_text_required": {
+            "loc": [
+              "name"
+            ]
+          },
+          "name_too_long": {
+            "loc": [
+              "name"
+            ]
+          },
+          "page_invalid": {
+            "loc": [
+              "page"
+            ]
+          },
+          "page_size_invalid": {
+            "loc": [
+              "page_size"
+            ]
+          },
+          "record_invalid": {
+            "loc": []
+          },
+          "summary_required": {
+            "loc": [
+              "summary"
+            ]
+          },
+          "summary_text_required": {
+            "loc": [
+              "summary"
+            ]
+          },
+          "summary_too_long": {
+            "loc": [
+              "summary"
+            ]
+          },
+          "title_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_text_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_too_long": {
+            "loc": [
+              "title"
+            ]
+          },
+          "unsupported_revision_fields": {
+            "loc": []
+          }
+        }
       }
     },
     "/api/v1/privacy/notices/{notice_id}": {
@@ -69256,7 +69463,211 @@
         "summary": "Resources Create Draft",
         "tags": [
           "resources"
-        ]
+        ],
+        "x-domain-validation-issues": {
+          "article_attachment_not_allowed": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "attached_file_kind_immutable": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "audience_invalid": {
+            "loc": [
+              "audience"
+            ]
+          },
+          "body_required": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "body_text_required": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "body_too_large": {
+            "loc": [
+              "body_markdown"
+            ]
+          },
+          "category_invalid": {
+            "loc": [
+              "category"
+            ]
+          },
+          "display_order_integer_required": {
+            "loc": [
+              "display_order"
+            ]
+          },
+          "display_order_out_of_range": {
+            "loc": [
+              "display_order"
+            ]
+          },
+          "download_file_missing": {
+            "loc": [
+              "file"
+            ]
+          },
+          "external_link_file_not_allowed": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "external_url_credentials": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "external_url_invalid": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "external_url_not_allowed": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "external_url_required": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "external_url_text_required": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "external_url_too_long": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "file_attachment_changed": {
+            "loc": [
+              "file"
+            ]
+          },
+          "file_attachment_requires_draft": {
+            "loc": [
+              "file"
+            ]
+          },
+          "file_attachment_requires_file_kind": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "file_external_url_not_allowed": {
+            "loc": [
+              "external_url"
+            ]
+          },
+          "file_removal_requires_draft_file": {
+            "loc": [
+              "file"
+            ]
+          },
+          "kind_invalid": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "management_file_missing": {
+            "loc": [
+              "file"
+            ]
+          },
+          "ordering_invalid": {
+            "loc": [
+              "ordering"
+            ]
+          },
+          "page_invalid": {
+            "loc": [
+              "page"
+            ]
+          },
+          "page_size_invalid": {
+            "loc": [
+              "page_size"
+            ]
+          },
+          "pdf_content_type_invalid": {
+            "loc": [
+              "file"
+            ]
+          },
+          "pdf_empty": {
+            "loc": [
+              "file"
+            ]
+          },
+          "pdf_required": {
+            "loc": [
+              "file"
+            ]
+          },
+          "pdf_required_for_publication": {
+            "loc": [
+              "file"
+            ]
+          },
+          "pdf_signature_invalid": {
+            "loc": [
+              "file"
+            ]
+          },
+          "pdf_too_large": {
+            "loc": [
+              "file"
+            ]
+          },
+          "publication_requires_draft": {
+            "loc": []
+          },
+          "published_kind_immutable": {
+            "loc": [
+              "kind"
+            ]
+          },
+          "resource_already_archived": {
+            "loc": []
+          },
+          "resource_archived": {
+            "loc": []
+          },
+          "status_invalid": {
+            "loc": [
+              "status"
+            ]
+          },
+          "title_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_text_required": {
+            "loc": [
+              "title"
+            ]
+          },
+          "title_too_long": {
+            "loc": [
+              "title"
+            ]
+          },
+          "unsupported_fields": {
+            "loc": []
+          }
+        }
       }
     },
     "/api/v1/resources/management/{resource_id}": {

@@ -34,6 +34,7 @@ from compass.integrations.storage import ObjectStorage
 from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
 
 from .models import Resource, ResourceCategory, ResourceKind
+from .validation import ISSUES, issue_details
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -54,12 +55,16 @@ class ResourceNotFound(ResourceError):
 
 
 class ResourceConflict(ResourceError):
-    pass
+    def __init__(self, identifier: str) -> None:
+        super().__init__(ISSUES[identifier][1])
+        self.details = issue_details(identifier)
 
 
 class ResourcePublicationConsequenceReviewRequired(ResourceConflict):
     def __init__(self, fields: tuple[str, ...]) -> None:
-        super().__init__("Review the publication consequences before saving these changes.")
+        ResourceError.__init__(
+            self, "Review how these changes affect the published Resource before saving."
+        )
         self.fields = fields
 
 
@@ -68,7 +73,14 @@ class ResourceStorageError(ResourceError):
 
 
 class InvalidResourceInput(ResourceError):
-    pass
+    def __init__(self, identifier: str) -> None:
+        super().__init__(ISSUES[identifier][1])
+        self.details = issue_details(identifier)
+
+
+class ResourceOrderingInputError(InvalidResourceInput):
+    def __init__(self, message: str) -> None:
+        super().__init__("ordering_invalid")
 
 
 class ResourceOrdering(StrEnum):
@@ -131,7 +143,10 @@ _MANAGEMENT_ORDER_BY: dict[ResourceManagementOrdering, tuple] = {
 
 def _reader_ordering(value: str | ResourceOrdering | None) -> ResourceOrdering:
     return parse_ordering(
-        value, ResourceOrdering, default=ResourceOrdering.RECOMMENDED, error=InvalidResourceInput
+        value,
+        ResourceOrdering,
+        default=ResourceOrdering.RECOMMENDED,
+        error=ResourceOrderingInputError,
     )
 
 
@@ -152,29 +167,29 @@ class ResourceDownload:
 
 def _clean_title(value: str, *, require_nonblank: bool = False) -> str:
     if not isinstance(value, str):
-        raise InvalidResourceInput("title must be a string")
+        raise InvalidResourceInput("title_text_required")
     normalized = value.strip()
     if require_nonblank and not normalized:
-        raise InvalidResourceInput("title is required before publication")
+        raise InvalidResourceInput("title_required")
     if len(normalized) > MAX_TITLE_LENGTH:
-        raise InvalidResourceInput("title is too long")
+        raise InvalidResourceInput("title_too_long")
     return normalized
 
 
 def _clean_body(value: str, *, require_nonblank: bool = False) -> str:
     if not isinstance(value, str):
-        raise InvalidResourceInput("body_markdown must be a string")
+        raise InvalidResourceInput("body_text_required")
     if require_nonblank and not value.strip():
-        raise InvalidResourceInput("body_markdown is required before publication")
+        raise InvalidResourceInput("body_required")
     if len(value.encode("utf-8")) > MAX_BODY_BYTES:
-        raise InvalidResourceInput("body_markdown is too large")
+        raise InvalidResourceInput("body_too_large")
     return value
 
 
 def _choice(value, choices, field: str) -> str:
     normalized = value.value if hasattr(value, "value") else value
     if normalized not in choices.values:
-        raise InvalidResourceInput(f"{field} is invalid")
+        raise InvalidResourceInput(f"{field}_invalid")
     return normalized
 
 
@@ -184,34 +199,34 @@ def _clean_external_url(value: str | None, *, required: bool = False) -> str:
     elif isinstance(value, str):
         normalized = value.strip()
     else:
-        raise InvalidResourceInput("external_url must be a string or null")
+        raise InvalidResourceInput("external_url_text_required")
     if not normalized:
         if required:
-            raise InvalidResourceInput("external_url is required for EXTERNAL_LINK Resources")
+            raise InvalidResourceInput("external_url_required")
         return ""
     if len(normalized) > 2048:
-        raise InvalidResourceInput("external_url is too long")
+        raise InvalidResourceInput("external_url_too_long")
     parsed = urlparse(normalized)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise InvalidResourceInput("external_url must use http or https")
+        raise InvalidResourceInput("external_url_invalid")
     if parsed.username or parsed.password:
-        raise InvalidResourceInput("external_url must not contain embedded credentials")
+        raise InvalidResourceInput("external_url_credentials")
     return normalized
 
 
 def _clean_display_order(value: int) -> int:
     if type(value) is not int:
-        raise InvalidResourceInput("display_order must be an integer")
+        raise InvalidResourceInput("display_order_integer_required")
     if not -(2**31) <= value <= 2**31 - 1:
-        raise InvalidResourceInput("display_order is outside the supported range")
+        raise InvalidResourceInput("display_order_out_of_range")
     return value
 
 
 def _clean_page(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
-        raise InvalidResourceInput("page must be at least 1")
+        raise InvalidResourceInput("page_invalid")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidResourceInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+        raise InvalidResourceInput("page_size_invalid")
     return page, page_size
 
 
@@ -291,7 +306,7 @@ def list_public_resources(
 def get_public_resource(*, resource_id: UUID) -> Resource:
     item = _public_queryset().filter(pk=resource_id).first()
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     return item
 
 
@@ -323,7 +338,7 @@ def list_visible_resources(
 def get_visible_resource(*, actor: User, resource_id: UUID) -> Resource:
     item = _visible_queryset(actor).filter(pk=resource_id).first()
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     return item
 
 
@@ -342,7 +357,7 @@ def list_managed_resources(
         ordering,
         ResourceManagementOrdering,
         default=ResourceManagementOrdering.RECENTLY_UPDATED,
-        error=InvalidResourceInput,
+        error=ResourceOrderingInputError,
     )
     queryset = Resource.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
@@ -369,30 +384,30 @@ def get_managed_resource(*, resource_id: UUID) -> Resource:
         .first()
     )
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     return item
 
 
 def _validate_channel_state(item: Resource, *, for_publish: bool) -> None:
     if item.kind == ResourceKind.ARTICLE:
         if item.external_url or item.storage_key:
-            raise InvalidResourceInput("ARTICLE Resources cannot have a URL or file")
+            raise InvalidResourceInput("article_attachment_not_allowed")
     elif item.kind == ResourceKind.EXTERNAL_LINK:
         if item.storage_key:
-            raise InvalidResourceInput("EXTERNAL_LINK Resources cannot have a file")
+            raise InvalidResourceInput("external_link_file_not_allowed")
         item.external_url = _clean_external_url(item.external_url, required=for_publish)
     elif item.kind == ResourceKind.FILE:
         if item.external_url:
-            raise InvalidResourceInput("FILE Resources cannot have an external URL")
+            raise InvalidResourceInput("file_external_url_not_allowed")
         if for_publish and (
             not item.storage_key
             or not item.original_filename
             or item.content_type != PDF_CONTENT_TYPE
             or item.size_bytes <= 0
         ):
-            raise InvalidResourceInput("A validated PDF file is required before publication")
+            raise InvalidResourceInput("pdf_required_for_publication")
     else:
-        raise InvalidResourceInput("kind is invalid")
+        raise InvalidResourceInput("kind_invalid")
 
 
 def _validate_published_resource_state(item: Resource) -> None:
@@ -420,7 +435,7 @@ def create_resource(
     normalized_kind = _choice(kind, ResourceKind, "kind")
     normalized_external_url = _clean_external_url(external_url)
     if normalized_kind != ResourceKind.EXTERNAL_LINK and normalized_external_url:
-        raise InvalidResourceInput("external_url is only valid for EXTERNAL_LINK Resources")
+        raise InvalidResourceInput("external_url_not_allowed")
     item = Resource(
         title=_clean_title(title),
         body_markdown=_clean_body(body_markdown),
@@ -461,9 +476,9 @@ def update_resource(
 ) -> Resource:
     item = Resource.objects.select_for_update().filter(pk=resource_id).first()
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     if item.status == PublicationStatus.ARCHIVED:
-        raise ResourceConflict("Archived Resources cannot be edited.")
+        raise ResourceConflict("resource_archived")
 
     before_audience = item.audience
     before_external_url = item.external_url
@@ -479,16 +494,14 @@ def update_resource(
     }
     unknown = set(values) - allowed
     if unknown:
-        raise InvalidResourceInput(f"unsupported Resource fields: {sorted(unknown)}")
+        raise InvalidResourceInput("unsupported_fields")
 
     if "kind" in values:
         new_kind = _choice(values["kind"], ResourceKind, "kind")
         if item.status == PublicationStatus.PUBLISHED and new_kind != item.kind:
-            raise ResourceConflict("A published Resource kind cannot be changed.")
+            raise ResourceConflict("published_kind_immutable")
         if item.storage_key and new_kind != ResourceKind.FILE:
-            raise ResourceConflict(
-                "Remove or replace the draft FILE Resource instead of changing kind."
-            )
+            raise ResourceConflict("attached_file_kind_immutable")
         item.kind = new_kind
 
     if "title" in values:
@@ -505,7 +518,7 @@ def update_resource(
         item.display_order = _clean_display_order(values["display_order"])  # type: ignore[arg-type]
 
     if item.kind != ResourceKind.EXTERNAL_LINK and item.external_url:
-        raise InvalidResourceInput("external_url is only valid for EXTERNAL_LINK Resources")
+        raise InvalidResourceInput("external_url_not_allowed")
 
     publication_consequences: dict[str, object] = {}
     if item.status == PublicationStatus.PUBLISHED:
@@ -591,46 +604,44 @@ def attach_resource_file(
     storage: ObjectStorage | None = None,
 ) -> Resource:
     if uploaded_file is None:
-        raise InvalidResourceInput("A PDF file is required.")
+        raise InvalidResourceInput("pdf_required")
     content_type = str(getattr(uploaded_file, "content_type", "") or "").lower()
     if content_type != PDF_CONTENT_TYPE:
-        raise InvalidResourceInput("Only application/pdf files are supported.")
+        raise InvalidResourceInput("pdf_content_type_invalid")
 
     data = uploaded_file.read(MAX_FILE_BYTES + 1)
     if not isinstance(data, bytes):
         data = bytes(data)
     if len(data) == 0:
-        raise InvalidResourceInput("The PDF file is empty.")
+        raise InvalidResourceInput("pdf_empty")
     if len(data) > MAX_FILE_BYTES:
-        raise InvalidResourceInput("The PDF file exceeds the 10 MiB limit.")
+        raise InvalidResourceInput("pdf_too_large")
     if not data.startswith(b"%PDF-"):
-        raise InvalidResourceInput("The uploaded file is not a valid PDF signature.")
+        raise InvalidResourceInput("pdf_signature_invalid")
 
     current = Resource.objects.filter(pk=resource_id).only("status", "kind").first()
     if current is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     if current.status != PublicationStatus.DRAFT:
-        raise ResourceConflict("Files can only be attached or replaced while Resource is DRAFT.")
+        raise ResourceConflict("file_attachment_requires_draft")
     if current.kind != ResourceKind.FILE:
-        raise ResourceConflict("A file can only be attached to a FILE Resource.")
+        raise ResourceConflict("file_attachment_requires_file_kind")
 
     object_storage = storage or ObjectStorage()
     requested_key = f"resources/{resource_id}/{uuid.uuid4().hex}.pdf"
     try:
         saved_key = object_storage.save(requested_key, BytesIO(data))
     except Exception as exc:
-        raise ResourceStorageError("The Resource file could not be stored.") from exc
+        raise ResourceStorageError("Couldn't store the Resource file. Try again.") from exc
 
     old_key = ""
     try:
         with transaction.atomic():
             item = Resource.objects.select_for_update().filter(pk=resource_id).first()
             if item is None:
-                raise ResourceNotFound("The requested Resource was not found.")
+                raise ResourceNotFound("Couldn't find this Resource.")
             if item.status != PublicationStatus.DRAFT or item.kind != ResourceKind.FILE:
-                raise ResourceConflict(
-                    "The Resource changed and no longer accepts a draft file attachment."
-                )
+                raise ResourceConflict("file_attachment_changed")
             old_key = item.storage_key
             item.storage_key = saved_key
             item.original_filename = _safe_filename(getattr(uploaded_file, "name", None))
@@ -680,14 +691,14 @@ def create_managed_resource_download(
 ) -> ResourceDownload:
     item = get_managed_resource(resource_id=resource_id)
     if item.kind != ResourceKind.FILE or not item.storage_key:
-        raise ResourceConflict("The requested Resource does not have an attached management file.")
+        raise ResourceConflict("management_file_missing")
     object_storage = storage or ObjectStorage()
     ttl = settings.RESOURCE_DOWNLOAD_URL_TTL_SECONDS
     try:
         url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
     except Exception as exc:
         raise ResourceStorageError(
-            "Private Resource management download access is unavailable."
+            "Couldn't prepare the Resource file download. Try again."
         ) from exc
     return ResourceDownload(url=url, expires_in_seconds=ttl)
 
@@ -704,9 +715,9 @@ def remove_draft_resource_file(
     with transaction.atomic():
         item = Resource.objects.select_for_update().filter(pk=resource_id).first()
         if item is None:
-            raise ResourceNotFound("The requested Resource was not found.")
+            raise ResourceNotFound("Couldn't find this Resource.")
         if item.status != PublicationStatus.DRAFT or item.kind != ResourceKind.FILE:
-            raise ResourceConflict("Only a DRAFT FILE Resource attachment may be removed.")
+            raise ResourceConflict("file_removal_requires_draft_file")
 
         old_key = item.storage_key
         if not any(
@@ -764,9 +775,9 @@ def publish_resource(
 ) -> Resource:
     item = Resource.objects.select_for_update().filter(pk=resource_id).first()
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     if item.status != PublicationStatus.DRAFT:
-        raise ResourceConflict("Only a draft Resource can be published.")
+        raise ResourceConflict("publication_requires_draft")
 
     _validate_published_resource_state(item)
 
@@ -801,9 +812,9 @@ def archive_resource(
 ) -> Resource:
     item = Resource.objects.select_for_update().filter(pk=resource_id).first()
     if item is None:
-        raise ResourceNotFound("The requested Resource was not found.")
+        raise ResourceNotFound("Couldn't find this Resource.")
     if item.status == PublicationStatus.ARCHIVED:
-        raise ResourceConflict("The Resource is already archived.")
+        raise ResourceConflict("resource_already_archived")
 
     previous = item.status
     item.status = PublicationStatus.ARCHIVED
@@ -833,13 +844,15 @@ def create_public_resource_download(
 ) -> ResourceDownload:
     item = get_public_resource(resource_id=resource_id)
     if item.kind != ResourceKind.FILE or not item.storage_key:
-        raise ResourceConflict("The requested Resource does not have a downloadable file.")
+        raise ResourceConflict("download_file_missing")
     object_storage = storage or ObjectStorage()
     ttl = settings.RESOURCE_DOWNLOAD_URL_TTL_SECONDS
     try:
         url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
     except Exception as exc:
-        raise ResourceStorageError("Private Resource download access is unavailable.") from exc
+        raise ResourceStorageError(
+            "Couldn't prepare the Resource file download. Try again."
+        ) from exc
     return ResourceDownload(url=url, expires_in_seconds=ttl)
 
 
@@ -851,13 +864,15 @@ def create_resource_download(
 ) -> ResourceDownload:
     item = get_visible_resource(actor=actor, resource_id=resource_id)
     if item.kind != ResourceKind.FILE or not item.storage_key:
-        raise ResourceConflict("The requested Resource does not have a downloadable file.")
+        raise ResourceConflict("download_file_missing")
     object_storage = storage or ObjectStorage()
     ttl = settings.RESOURCE_DOWNLOAD_URL_TTL_SECONDS
     try:
         url = object_storage.private_url(item.storage_key, expires_seconds=ttl)
     except Exception as exc:
-        raise ResourceStorageError("Private Resource download access is unavailable.") from exc
+        raise ResourceStorageError(
+            "Couldn't prepare the Resource file download. Try again."
+        ) from exc
     return ResourceDownload(url=url, expires_in_seconds=ttl)
 
 

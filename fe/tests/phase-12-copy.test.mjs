@@ -71,6 +71,6 @@ test("prototype property names cannot become product error copy", () => {
   assert.equal(announcementErrorMessage(apiError("invalid_announcement_input", "__proto__"), fallback), fallback);
   assert.equal(
     privacyErrorMessage(apiError("invalid_privacy_governance_input", "__proto__"), fallback),
-    "Some privacy record details were not accepted. Review them and try again.",
+    "Review the privacy record details and try again.",
   );
 });

@@ -18,6 +18,7 @@ from .api import _context, _raise, _require
 from .expansion import NoticePublishBlocker
 from .models import PrivacyNoticeAcknowledgment
 from .services import PrivacyGovernanceError
+from .validation import VALIDATION_OPENAPI
 
 router = Router(tags=["privacy-governance"])
 public_router = Router(tags=["privacy-governance"])
@@ -207,6 +208,7 @@ def notice_list(
     response=response_with_errors(NoticeResponse, 401, 403, 409, 422, success_status=201),
     auth=session_auth,
     operation_id="privacyGovernanceCreateNotice",
+    openapi_extra=VALIDATION_OPENAPI,
 )
 def notice_create(request, payload: NoticeCreate):
     _require(request, "privacy_governance.manage")
@@ -461,7 +463,7 @@ def my_notices(
 
     actor = request.auth_user
     if not actor.is_active:
-        raise APIError(403, "permission_denied", "An active account is required.")
+        raise APIError(403, "permission_denied", "Use an active account to continue.")
     revisions = (
         service.pending_acknowledgment_revisions(actor)
         if pending_acknowledgment
@@ -497,7 +499,7 @@ def my_notices(
 def my_notice_acknowledge(request, revision_id: UUID, payload: EmptyRequest):
     actor = request.auth_user
     if not actor.is_active:
-        raise APIError(403, "permission_denied", "An active account is required.")
+        raise APIError(403, "permission_denied", "Use an active account to continue.")
     try:
         acknowledgment = service.acknowledge_revision(
             revision_id=revision_id, actor=actor, context=_context(request)

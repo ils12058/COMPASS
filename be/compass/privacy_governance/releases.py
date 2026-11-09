@@ -53,7 +53,7 @@ def _record_release(
             },
         )
         raise ReleaseAuditUnavailable(
-            "the required privacy release audit could not be recorded"
+            "Couldn't record this download for privacy review. Try again."
         ) from exc
 
 

@@ -71,7 +71,9 @@ class PrivacyActivityPageResponse(StrictSchema):
 def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     actor = request.auth_user
     if not actor.is_active or not actor.has_capability(capability):
-        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+        raise APIError(
+            403, "permission_denied", "You don't have permission to perform this privacy action."
+        )
     if recent_mfa:
         require_recent_mfa_for_request(request)
 
@@ -86,8 +88,12 @@ def _raise(exc: PrivacyGovernanceError) -> NoReturn:
     if isinstance(exc, PrivacyConflict):
         raise APIError(409, exc.code.value, str(exc)) from exc
     if isinstance(exc, PrivacyInputError):
-        raise APIError(422, "invalid_privacy_governance_input", str(exc)) from exc
-    raise APIError(500, "internal_error", "The privacy governance operation failed.") from exc
+        raise APIError(
+            422, "invalid_privacy_governance_input", str(exc), details=exc.details
+        ) from exc
+    raise APIError(
+        500, "internal_error", "Couldn't complete this privacy action. Try again."
+    ) from exc
 
 
 @router.get(
@@ -120,7 +126,9 @@ def privacy_activity(
             date_to=date_to,
         )
     except PrivacyActivityPaginationError as exc:
-        raise APIError(422, "invalid_privacy_activity_request", str(exc)) from exc
+        raise APIError(
+            422, "invalid_privacy_activity_request", "Review the activity filters and try again."
+        ) from exc
     return {
         "items": [
             {
@@ -187,12 +195,14 @@ def privacy_activity_export(
     except PrivacyActivityExportTooLarge as exc:
         raise APIError(422, "privacy_activity_export_too_large", str(exc)) from exc
     except ActivityRetrievalError as exc:
-        raise APIError(422, "invalid_privacy_activity_request", str(exc)) from exc
+        raise APIError(
+            422, "invalid_privacy_activity_request", "Review the activity filters and try again."
+        ) from exc
     except ReleaseAuditUnavailable as exc:
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The required export audit could not be recorded. Try again.",
+            "Couldn't record this export for privacy review. Try again.",
         ) from exc
     response = HttpResponse(result.content, content_type=CSV_CONTENT_TYPE)
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'

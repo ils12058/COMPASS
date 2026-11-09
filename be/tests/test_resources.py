@@ -834,14 +834,16 @@ def test_published_resource_audience_and_publish_validity_remain_protected():
     )
     assert item.audience == PublicationAudience.PUBLIC
 
-    with pytest.raises(InvalidResourceInput, match="body_markdown is required"):
+    with pytest.raises(InvalidResourceInput, match="Add body text before publishing"):
         update_resource(
             actor=actor,
             resource_id=item.pk,
             values={"body_markdown": "   "},
             context=context(actor),
         )
-    with pytest.raises(InvalidResourceInput, match="external_url must use http or https"):
+    with pytest.raises(
+        InvalidResourceInput, match="Start the link address with https:// or http://"
+    ):
         update_resource(
             actor=actor,
             resource_id=item.pk,
@@ -849,7 +851,7 @@ def test_published_resource_audience_and_publish_validity_remain_protected():
             context=context(actor),
             acknowledge_publication_consequences=True,
         )
-    with pytest.raises(ResourceConflict, match="kind cannot be changed"):
+    with pytest.raises(ResourceConflict, match="change the type of a published Resource"):
         update_resource(
             actor=actor,
             resource_id=item.pk,

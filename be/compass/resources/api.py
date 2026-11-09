@@ -43,6 +43,7 @@ from .services import (
     remove_draft_resource_file,
     update_resource,
 )
+from .validation import VALIDATION_OPENAPI
 
 router = Router(tags=["resources"])
 public_router = Router(tags=["resources"])
@@ -170,7 +171,7 @@ def _context(request) -> AuditContext:
 def _require_manager(request) -> None:
     user = request.auth_user
     if not user.is_active or not user.has_capability("resources.manage"):
-        raise APIError(403, "permission_denied", "The resources.manage capability is required.")
+        raise APIError(403, "permission_denied", "You don't have permission to manage Resources.")
 
 
 def _raise(exc: ResourceError) -> NoReturn:
@@ -184,12 +185,14 @@ def _raise(exc: ResourceError) -> NoReturn:
             details={"fields": list(exc.fields)},
         ) from exc
     if isinstance(exc, ResourceConflict):
-        raise APIError(409, "resource_conflict", str(exc)) from exc
+        raise APIError(409, "resource_conflict", str(exc), details=exc.details) from exc
     if isinstance(exc, InvalidResourceInput):
-        raise APIError(422, "invalid_resource_input", str(exc)) from exc
+        raise APIError(422, "invalid_resource_input", str(exc), details=exc.details) from exc
     if isinstance(exc, ResourceStorageError):
         raise APIError(503, "resource_storage_unavailable", str(exc)) from exc
-    raise APIError(500, "internal_error", "The Resource operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "Couldn't complete this Resource action. Try again."
+    ) from exc
 
 
 def _person(user) -> PersonSummary:
@@ -286,6 +289,7 @@ def resources_list_managed(
     ),
     auth=session_auth,
     operation_id="resourcesCreateDraft",
+    openapi_extra=VALIDATION_OPENAPI,
 )
 def resources_create_draft(request, payload: ResourceCreateRequest):
     _require_manager(request)

@@ -9,7 +9,13 @@ from uuid import UUID
 
 from django.db.models import Q
 
-from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
+from compass.accounts.policy import (
+    CAPABILITY_CODES,
+    DESIGNATION_CODES,
+    DESIGNATION_DEFINITIONS,
+    ROLE_CODES,
+    ROLE_DEFINITIONS,
+)
 from compass.activity.retrieval import (
     ActivityCriteria,
     ActivityRetrievalError,
@@ -62,6 +68,9 @@ from .releases import (
     GRADUATE_TRACER_TARGET_TYPE,
     STUDENT_PROFILING_TARGET_TYPE,
 )
+
+_ROLE_NAMES = {definition.code: definition.name for definition in ROLE_DEFINITIONS}
+_DESIGNATION_NAMES = {definition.code: definition.name for definition in DESIGNATION_DEFINITIONS}
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -187,7 +196,7 @@ def _graduate_tracer_report_release(event: AuditEvent) -> PrivacyActivityItem | 
         if submitted_from > submitted_to:
             return None
 
-    scope_parts = [f"Schema version {schema_version}"]
+    scope_parts = [f"Survey version {schema_version}"]
     if metadata.get("college_code"):
         scope_parts.append(f"College {metadata['college_code']}")
     if metadata.get("program_code"):
@@ -202,9 +211,7 @@ def _graduate_tracer_report_release(event: AuditEvent) -> PrivacyActivityItem | 
         event,
         category=PrivacyActivityCategory.DATA_RELEASE,
         title="Graduate Tracer XLSX released",
-        description=(
-            "COMPASS authorized and prepared an aggregate Graduate Tracer report response."
-        ),
+        description=("Prepared an aggregate report for download."),
         artifact_type=PrivacyActivityArtifactType.GRADUATE_TRACER,
         artifact_format=PrivacyActivityArtifactFormat.XLSX,
         scope="; ".join(scope_parts),
@@ -251,7 +258,7 @@ def _report_release(event: AuditEvent) -> PrivacyActivityItem | None:
         event,
         category=PrivacyActivityCategory.DATA_RELEASE,
         title=f"Student Profiling {artifact_format} released",
-        description=("COMPASS authorized and prepared a Student Profiling artifact response."),
+        description=("Prepared the report for download."),
         artifact_type=PrivacyActivityArtifactType.STUDENT_PROFILING,
         artifact_format=PrivacyActivityArtifactFormat(artifact_format),
         scope="; ".join(scope_parts),
@@ -277,11 +284,22 @@ def _document_release(event: AuditEvent) -> PrivacyActivityItem | None:
     return _base(
         event,
         category=PrivacyActivityCategory.DATA_RELEASE,
-        title="Good Moral certificate released",
-        description="COMPASS authorized and prepared a Good Moral certificate response.",
+        title="Good Moral Certificate released",
+        description="Prepared the certificate for download.",
         artifact_type=PrivacyActivityArtifactType.GOOD_MORAL_CERTIFICATE,
         artifact_format=PrivacyActivityArtifactFormat.PDF,
-        scope=f"Access {access_mode}; Variant {variant}",
+        scope=(
+            (
+                "Access through the Guidance Office"
+                if access_mode == "GCO"
+                else "Access through your account"
+            )
+            + "; "
+            + {
+                "CURRENT_STUDENT": "Good Moral Certificate for current Students (F4)",
+                "GRADUATE": "Good Moral Certificate for UCN Bachelor's graduates (F6)",
+            }.get(variant, "Good Moral Certificate")
+        ),
         resource_reference=resource,
     )
 
@@ -301,7 +319,7 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
     elif event.action == ACCOUNT_MFA_RESET:
         title, description = (
             "Account MFA reset",
-            "Administrative MFA state was reset for an account.",
+            "The account needs to set up MFA again.",
         )
     elif event.action == ACCOUNT_ROLE_CHANGED:
         from_role = metadata.get("from_role")
@@ -309,7 +327,7 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
         if from_role not in ROLE_CODES or to_role not in ROLE_CODES:
             return None
         title = "Account role changed"
-        description = f"Account role changed from {from_role} to {to_role}."
+        description = f"Changed from {_ROLE_NAMES[from_role]} to {_ROLE_NAMES[to_role]}."
     elif event.action in {ACCOUNT_DESIGNATION_ASSIGNED, ACCOUNT_DESIGNATION_REMOVED}:
         designation = metadata.get("designation")
         if designation not in DESIGNATION_CODES:
@@ -321,7 +339,7 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
             else "Institutional designation removed"
         )
         verb = "assigned to" if assigned else "removed from"
-        description = f"{designation} was {verb} an account."
+        description = f"{_DESIGNATION_NAMES[designation]} was {verb} an account."
     elif event.action in {
         ACCOUNT_CAPABILITY_OVERRIDE_SET,
         ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
@@ -333,11 +351,13 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
             effect = metadata.get("effect")
             if effect not in {"GRANT", "REVOKE"}:
                 return None
-            title = "Capability override set"
-            description = f"{effect} override set for {capability}."
+            title = "Permission changed"
+            description = (
+                "Extra access was granted." if effect == "GRANT" else "Access was removed."
+            )
         else:
-            title = "Capability override removed"
-            description = f"Capability override removed for {capability}."
+            title = "Permission change removed"
+            description = "The account’s extra access change was removed."
     else:
         return None
 
@@ -384,7 +404,7 @@ def _account_security(event: AuditEvent) -> PrivacyActivityItem | None:
             event,
             category=PrivacyActivityCategory.ACCOUNT_SECURITY,
             title="MFA disabled",
-            description="TOTP MFA was disabled for an account.",
+            description="Authenticator verification was turned off for an account.",
         )
 
     if event.action == AUTH_MFA_RECOVERY_CODE_USED:
@@ -416,37 +436,37 @@ def _account_security(event: AuditEvent) -> PrivacyActivityItem | None:
 _GOVERNANCE_PRESENTATION = {
     PRIVACY_ACTIVITY_EXPORTED: (
         "Privacy activity exported",
-        "A curated Privacy & Security Activity CSV was prepared for download.",
+        "Prepared the selected privacy activity for download.",
         "privacy.activityexport",
     ),
     PRIVACY_RETENTION_CREATED: (
         "Retention policy created",
-        "A retention policy governance record was created.",
+        "Added the policy details.",
         "privacy.retention",
     ),
     PRIVACY_RETENTION_UPDATED: (
         "Retention policy updated",
-        "A retention policy governance record was updated.",
+        "Saved changes to the policy details.",
         "privacy.retention",
     ),
     PRIVACY_RETENTION_RETIRED: (
         "Retention policy retired",
-        "A retention policy governance record was retired.",
+        "Retired the policy record.",
         "privacy.retention",
     ),
     PRIVACY_NOTICE_CREATED: (
         "Privacy notice created",
-        "A privacy notice family and draft were created.",
+        "Added the notice and its first draft.",
         "privacy.notice",
     ),
     PRIVACY_NOTICE_UPDATED: (
         "Privacy notice updated",
-        "A privacy notice family was updated.",
+        "Saved changes to the notice.",
         "privacy.notice",
     ),
     PRIVACY_NOTICE_RETIRED: (
         "Privacy notice retired",
-        "A privacy notice family was retired.",
+        "Stopped showing the notice to readers.",
         "privacy.notice",
     ),
     PRIVACY_NOTICE_REVISION_CREATED: (
@@ -490,23 +510,23 @@ _GOVERNANCE_PRESENTATION = {
         "privacy.review",
     ),
     PRIVACY_REVIEW_RESOLVED: (
-        "Privacy review resolved",
-        "A privacy review record was resolved.",
+        "Privacy review completed",
+        "Completed the review.",
         "privacy.review",
     ),
     PRIVACY_INCIDENT_CREATED: (
         "Privacy incident recorded",
-        "A privacy incident governance record was created.",
+        "Recorded the incident details.",
         "privacy.incident",
     ),
     PRIVACY_INCIDENT_UPDATED: (
         "Privacy incident updated",
-        "A privacy incident governance record was updated.",
+        "Saved changes to the incident details.",
         "privacy.incident",
     ),
     PRIVACY_INCIDENT_RESOLVED: (
-        "Privacy incident resolved",
-        "A privacy incident governance record was resolved.",
+        "Privacy incident review completed",
+        "Completed the incident review.",
         "privacy.incident",
     ),
 }

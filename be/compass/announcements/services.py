@@ -26,6 +26,7 @@ from compass.common.ordering import parse_ordering
 from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
 
 from .models import Announcement
+from .validation import ISSUES, issue_details
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -42,17 +43,28 @@ class AnnouncementNotFound(AnnouncementError):
 
 
 class AnnouncementConflict(AnnouncementError):
-    pass
+    def __init__(self, identifier: str) -> None:
+        super().__init__(ISSUES[identifier][1])
+        self.details = issue_details(identifier)
 
 
 class AnnouncementPublicationConsequenceReviewRequired(AnnouncementConflict):
     def __init__(self, fields: tuple[str, ...]) -> None:
-        super().__init__("Review the publication consequences before saving these changes.")
+        AnnouncementError.__init__(
+            self, "Review how these changes affect the published Announcement before saving."
+        )
         self.fields = fields
 
 
 class InvalidAnnouncementInput(AnnouncementError):
-    pass
+    def __init__(self, identifier: str) -> None:
+        super().__init__(ISSUES[identifier][1])
+        self.details = issue_details(identifier)
+
+
+class AnnouncementOrderingInputError(InvalidAnnouncementInput):
+    def __init__(self, message: str) -> None:
+        super().__init__("ordering_invalid")
 
 
 class AnnouncementOrdering(StrEnum):
@@ -112,7 +124,7 @@ def _reader_ordering(value: str | AnnouncementOrdering | None) -> AnnouncementOr
         value,
         AnnouncementOrdering,
         default=AnnouncementOrdering.RECOMMENDED,
-        error=InvalidAnnouncementInput,
+        error=AnnouncementOrderingInputError,
     )
 
 
@@ -127,29 +139,29 @@ class AnnouncementPage:
 
 def _clean_title(value: str, *, require_nonblank: bool = False) -> str:
     if not isinstance(value, str):
-        raise InvalidAnnouncementInput("title must be a string")
+        raise InvalidAnnouncementInput("title_text_required")
     normalized = value.strip()
     if require_nonblank and not normalized:
-        raise InvalidAnnouncementInput("title is required before publication")
+        raise InvalidAnnouncementInput("title_required")
     if len(normalized) > MAX_TITLE_LENGTH:
-        raise InvalidAnnouncementInput("title is too long")
+        raise InvalidAnnouncementInput("title_too_long")
     return normalized
 
 
 def _clean_body(value: str, *, require_nonblank: bool = False) -> str:
     if not isinstance(value, str):
-        raise InvalidAnnouncementInput("body_markdown must be a string")
+        raise InvalidAnnouncementInput("body_text_required")
     if require_nonblank and not value.strip():
-        raise InvalidAnnouncementInput("body_markdown is required before publication")
+        raise InvalidAnnouncementInput("body_required")
     if len(value.encode("utf-8")) > MAX_BODY_BYTES:
-        raise InvalidAnnouncementInput("body_markdown is too large")
+        raise InvalidAnnouncementInput("body_too_large")
     return value
 
 
 def _clean_audience(value: str | PublicationAudience) -> str:
     normalized = value.value if isinstance(value, PublicationAudience) else value
     if normalized not in PublicationAudience.values:
-        raise InvalidAnnouncementInput("audience is invalid")
+        raise InvalidAnnouncementInput("audience_invalid")
     return normalized
 
 
@@ -157,7 +169,7 @@ def _clean_expiry(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if not isinstance(value, datetime) or timezone.is_naive(value):
-        raise InvalidAnnouncementInput("expires_at must be a timezone-aware datetime or null")
+        raise InvalidAnnouncementInput("expiry_invalid")
     return value
 
 
@@ -171,16 +183,14 @@ def _validate_published_announcement_state(
     item.audience = _clean_audience(item.audience)
     item.expires_at = _clean_expiry(item.expires_at)
     if item.expires_at is not None and item.expires_at <= now:
-        raise InvalidAnnouncementInput(
-            "expires_at must be in the future while the Announcement is published"
-        )
+        raise InvalidAnnouncementInput("expiry_not_future")
 
 
 def _clean_page(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
-        raise InvalidAnnouncementInput("page must be at least 1")
+        raise InvalidAnnouncementInput("page_invalid")
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidAnnouncementInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+        raise InvalidAnnouncementInput("page_size_invalid")
     return page, page_size
 
 
@@ -264,7 +274,7 @@ def get_public_announcement(
 ) -> Announcement:
     item = _public_queryset(now=now).filter(pk=announcement_id).first()
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     return item
 
 
@@ -295,7 +305,7 @@ def get_visible_announcement(
 ) -> Announcement:
     item = _visible_queryset(actor, now=now).filter(pk=announcement_id).first()
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     return item
 
 
@@ -312,12 +322,12 @@ def list_managed_announcements(
         ordering,
         AnnouncementManagementOrdering,
         default=AnnouncementManagementOrdering.RECENTLY_UPDATED,
-        error=InvalidAnnouncementInput,
+        error=AnnouncementOrderingInputError,
     )
     queryset = Announcement.objects.select_related("created_by", "updated_by", "published_by").all()
     if status is not None:
         if status not in PublicationStatus.values:
-            raise InvalidAnnouncementInput("status is invalid")
+            raise InvalidAnnouncementInput("status_invalid")
         queryset = queryset.filter(status=status)
     if audience is not None:
         queryset = queryset.filter(audience=_clean_audience(audience))
@@ -337,7 +347,7 @@ def get_managed_announcement(*, announcement_id: UUID) -> Announcement:
         .first()
     )
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     return item
 
 
@@ -353,7 +363,7 @@ def create_announcement(
     context: AuditContext,
 ) -> Announcement:
     if type(is_pinned) is not bool:
-        raise InvalidAnnouncementInput("is_pinned must be a boolean")
+        raise InvalidAnnouncementInput("pin_invalid")
     item = Announcement.objects.create(
         title=_clean_title(title),
         body_markdown=_clean_body(body_markdown),
@@ -390,9 +400,9 @@ def update_announcement(
 ) -> Announcement:
     item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     if item.status == PublicationStatus.ARCHIVED:
-        raise AnnouncementConflict("Archived Announcements cannot be edited.")
+        raise AnnouncementConflict("announcement_archived")
 
     before_audience = item.audience
     before_expiry = item.expires_at
@@ -400,7 +410,7 @@ def update_announcement(
     allowed = {"title", "body_markdown", "audience", "is_pinned", "expires_at"}
     unknown = set(values) - allowed
     if unknown:
-        raise InvalidAnnouncementInput(f"unsupported Announcement fields: {sorted(unknown)}")
+        raise InvalidAnnouncementInput("unsupported_fields")
 
     if "title" in values:
         item.title = _clean_title(values["title"])  # type: ignore[arg-type]
@@ -410,7 +420,7 @@ def update_announcement(
         item.audience = _clean_audience(values["audience"])  # type: ignore[arg-type]
     if "is_pinned" in values:
         if type(values["is_pinned"]) is not bool:
-            raise InvalidAnnouncementInput("is_pinned must be a boolean")
+            raise InvalidAnnouncementInput("pin_invalid")
         item.is_pinned = values["is_pinned"]  # type: ignore[assignment]
     if "expires_at" in values:
         item.expires_at = _clean_expiry(values["expires_at"])  # type: ignore[arg-type]
@@ -464,9 +474,9 @@ def publish_announcement(
 ) -> Announcement:
     item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     if item.status != PublicationStatus.DRAFT:
-        raise AnnouncementConflict("Only a draft Announcement can be published.")
+        raise AnnouncementConflict("publication_requires_draft")
 
     current = now or timezone.now()
     _validate_published_announcement_state(item, now=current)
@@ -501,9 +511,9 @@ def archive_announcement(
 ) -> Announcement:
     item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
     if item is None:
-        raise AnnouncementNotFound("The requested Announcement was not found.")
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
     if item.status == PublicationStatus.ARCHIVED:
-        raise AnnouncementConflict("The Announcement is already archived.")
+        raise AnnouncementConflict("announcement_already_archived")
 
     previous = item.status
     item.status = PublicationStatus.ARCHIVED

@@ -668,9 +668,7 @@ def test_published_announcement_expiry_review_and_validity_invariants():
     )
     assert item.expires_at is None
 
-    with pytest.raises(
-        InvalidAnnouncementInput, match="future while the Announcement is published"
-    ):
+    with pytest.raises(InvalidAnnouncementInput, match="Choose a future expiry time"):
         update_announcement(
             actor=actor,
             announcement_id=item.pk,
@@ -682,7 +680,7 @@ def test_published_announcement_expiry_review_and_validity_invariants():
     item.refresh_from_db()
     assert item.expires_at is None
 
-    with pytest.raises(InvalidAnnouncementInput, match="body_markdown is required"):
+    with pytest.raises(InvalidAnnouncementInput, match="Add body text before publishing"):
         update_announcement(
             actor=actor,
             announcement_id=item.pk,
@@ -694,7 +692,7 @@ def test_published_announcement_expiry_review_and_validity_invariants():
     assert item.body_markdown == "Published body."
 
     archive_announcement(actor=actor, announcement_id=item.pk, context=context(actor))
-    with pytest.raises(AnnouncementConflict, match="Archived Announcements cannot be edited"):
+    with pytest.raises(AnnouncementConflict, match="edit an archived Announcement"):
         update_announcement(
             actor=actor,
             announcement_id=item.pk,

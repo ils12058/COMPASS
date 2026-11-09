@@ -82,15 +82,15 @@ for (const [produce, code] of [[referralErrorMessage, 'referral_not_permitted'],
 test('Routine forbidden and not-found records preserve identical concealment', () => assert.equal(routineErrorMessage(api('routine_interview_not_found', 404), fallback), routineErrorMessage(api('routine_interview_not_permitted', 403), fallback)));
 test('Privacy keeps useful structured visible field guidance and hides unknown paths', () => {
     const issue = (field) => api('validation_error', 422, [{ loc: ['body', field], msg: privateMessage }]);
-    assert.equal(privacyErrorMessage(issue('effective_on'), fallback), '“Effective date” was not accepted. Check it and try again.');
+    assert.equal(privacyErrorMessage(issue('effective_on'), fallback), '“Effective date” needs attention. Check it and try again.');
     assert.match(privacyErrorMessage(issue('duration_days'), fallback, { duration_days: 'Whole elapsed days' }), /Whole elapsed days/);
-    assert.equal(privacyErrorMessage(issue('internal_key_material'), fallback), 'Some values were not accepted. Review the form and try again.');
+    assert.equal(privacyErrorMessage(issue('internal_key_material'), fallback), 'Review the form values and try again.');
 });
-test('Existing bounded translations honor stable codes and reject unfamiliar messages', () => {
-    assert.equal(announcementErrorMessage(api('invalid_announcement_input', 422, undefined, 'title is too long'), fallback), 'The title must be 200 characters or fewer.');
+test('Field issue identifiers honor stable codes and ignore message wording', () => {
+    assert.equal(announcementErrorMessage(api('invalid_announcement_input', 422, [{ loc: ['title'], type: 'title_too_long', message: privateMessage }], 'rewritten backend message'), fallback), 'Keep the title to 200 characters or fewer.');
     assert.equal(resourceErrorMessage(api('invalid_resource_input'), fallback), fallback);
     assert.equal(announcementErrorMessage(api('unknown', 422, undefined, 'title is too long'), fallback), fallback);
-    assert.equal(privacyErrorMessage(api('invalid_privacy_governance_input'), fallback), 'Some privacy record details were not accepted. Review them and try again.');
+    assert.equal(privacyErrorMessage(api('invalid_privacy_governance_input'), fallback), 'Review the privacy record details and try again.');
 });
 for (const status of [408, 500, 502, 503, 504])
     test(`Booking ${status}: unconfirmed with original intent retained`, () => assert.deepEqual(classifyBookingFailure(api('internal_error', status)), { step: 'review', message: BOOKING_UNCONFIRMED, uncertain: true, keepIntent: true }));

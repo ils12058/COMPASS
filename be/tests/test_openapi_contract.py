@@ -3661,3 +3661,32 @@ def test_counseling_documentation_review_contract_is_a_read_only_projection() ->
         "student_session_summary",
     ):
         assert forbidden not in serialized
+
+
+@pytest.mark.parametrize(
+    ("operation_id", "module"),
+    [
+        ("resourcesCreateDraft", "resources"),
+        ("announcementsCreateDraft", "announcements"),
+        ("privacyGovernanceCreateNotice", "privacy_governance"),
+    ],
+)
+def test_content_validation_identifier_vocabulary_is_documented(operation_id, module):
+    from importlib import import_module
+
+    issues = import_module(f"compass.{module}.validation").ISSUES
+    schema = api.get_openapi_schema()
+    operation = next(
+        operation
+        for path in schema["paths"].values()
+        for operation in path.values()
+        if isinstance(operation, dict) and operation.get("operationId") == operation_id
+    )
+    documented = operation["x-domain-validation-issues"]
+    assert set(documented) == set(issues)
+    for identifier, (field, _) in issues.items():
+        assert re.fullmatch(r"[a-z][a-z0-9_]*", identifier)
+        assert documented[identifier]["loc"] == ([field] if field else [])
+    assert operation["responses"][422]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/APIErrorResponse"
+    )

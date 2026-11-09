@@ -8,6 +8,8 @@ from enum import StrEnum
 
 from django.core.exceptions import ValidationError
 
+from .validation import ISSUES, issue_details
+
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
@@ -49,23 +51,25 @@ class PrivacyConflict(PrivacyGovernanceError):
 
 
 class PrivacyInputError(PrivacyGovernanceError):
-    pass
+    def __init__(self, identifier: str) -> None:
+        super().__init__(ISSUES[identifier][1])
+        self.details = issue_details(identifier)
 
 
 def _validate_page(*, page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1 or page > MAX_PAGE_NUMBER:
-        raise PrivacyInputError(f"page must be between 1 and {MAX_PAGE_NUMBER}")
+        raise PrivacyInputError("page_invalid")
     if type(page_size) is not int or page_size < 1 or page_size > MAX_PAGE_SIZE:
-        raise PrivacyInputError(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+        raise PrivacyInputError("page_size_invalid")
     return page, page_size
 
 
 def _clean_required(value: object, *, label: str, maximum: int) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise PrivacyInputError(f"{label} is required")
+        raise PrivacyInputError(f"{label}_required")
     cleaned = value.strip()
     if len(cleaned) > maximum:
-        raise PrivacyInputError(f"{label} must be at most {maximum} characters")
+        raise PrivacyInputError(f"{label}_too_long")
     return cleaned
 
 
@@ -73,19 +77,17 @@ def _clean_optional(value: object, *, label: str, maximum: int) -> str:
     if value is None:
         return ""
     if not isinstance(value, str):
-        raise PrivacyInputError(f"{label} must be text")
+        raise PrivacyInputError(f"{label}_text_required")
     cleaned = value.strip()
     if len(cleaned) > maximum:
-        raise PrivacyInputError(f"{label} must be at most {maximum} characters")
+        raise PrivacyInputError(f"{label}_too_long")
     return cleaned
 
 
 def _clean_code(value: object) -> str:
     code = _clean_required(value, label="code", maximum=64).upper()
     if not _CODE_RE.fullmatch(code):
-        raise PrivacyInputError(
-            "code must contain only uppercase letters, digits, dot, underscore, or hyphen"
-        )
+        raise PrivacyInputError("code_invalid")
     return code
 
 
@@ -93,7 +95,7 @@ def _validate_model(item) -> None:
     try:
         item.full_clean()
     except ValidationError as exc:
-        raise PrivacyInputError("privacy governance record is invalid") from exc
+        raise PrivacyInputError("record_invalid") from exc
 
 
 def _changed_fields(changes: Mapping[str, object]) -> list[str]:
