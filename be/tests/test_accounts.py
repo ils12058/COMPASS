@@ -365,6 +365,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "good_moral.initiate",
         "good_moral.prepare",
         "good_moral.issue",
+        "good_moral.verify_receipt",
         "announcements.manage",
         "resources.manage",
         "feedback.view_customer_feedback",

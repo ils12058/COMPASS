@@ -8,7 +8,6 @@ class Migration(migrations.Migration):
     dependencies = [
         ("appointments", "0002_appointment_reminders"),
         ("counseling", "0006_case_communication_scope"),
-        ("service_catalog", "0004_serviceappointmentslot_withdrawn_at_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

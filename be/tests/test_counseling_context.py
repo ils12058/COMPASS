@@ -4,6 +4,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 
@@ -1112,24 +1113,25 @@ def test_detail_projects_whether_the_appointment_encounter_is_recorded(world):
     assert appointment_encounter_recorded(actor=world["b"], appointment=appointment) is True
     assert detail_json(world["b"], appointment)["counseling_encounter_recorded"] is True
 
-    # 7. A linked WALK_IN Encounter is not an Appointment-origin record.
+    # 7. The database refuses a WALK_IN Encounter linked to an Appointment.
     walk_in = make_appointment(
         student=world["anna"],
         counselor=world["b"],
         service=world["service"],
         starts_at=base + timedelta(days=1),
     )
-    CounselingEncounter.objects.create(
-        student=world["anna"],
-        counselor=world["b"],
-        service=world["service"],
-        appointment=walk_in,
-        entry_mode=CounselingEntryMode.WALK_IN,
-        delivery_mode=walk_in.delivery_mode,
-        started_at=base,
-        ended_at=base + timedelta(minutes=50),
-        created_by=world["b"],
-    )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CounselingEncounter.objects.create(
+            student=world["anna"],
+            counselor=world["b"],
+            service=world["service"],
+            appointment=walk_in,
+            entry_mode=CounselingEntryMode.WALK_IN,
+            delivery_mode=walk_in.delivery_mode,
+            started_at=base,
+            ended_at=base + timedelta(minutes=50),
+            created_by=world["b"],
+        )
     assert appointment_encounter_recorded(actor=world["b"], appointment=walk_in) is False
     assert detail_json(world["b"], walk_in)["counseling_encounter_recorded"] is False
 

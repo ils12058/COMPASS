@@ -36,7 +36,8 @@ def seed_demo_coverage(session: SeedSession):
     )
     if source is None:
         raise ValueError("Demo coverage needs the completed Counseling story")
-    now = timezone.now()
+    # The policy's 30-day maximum keeps the demonstration active through Evaluation.
+    starts_at = timezone.now() - timedelta(minutes=1)
     grant = request_coverage(
         actor=original,
         student_id=student.pk,
@@ -44,8 +45,8 @@ def seed_demo_coverage(session: SeedSession):
         receiving_counselor_id=session.user(COUNSELOR_B.key).pk,
         coverage_kind="PLANNED_HANDOFF",
         reason_category="PLANNED_ABSENCE",
-        starts_at=now - timedelta(minutes=1),
-        expires_at=now + timedelta(days=7),
+        starts_at=starts_at,
+        expires_at=starts_at + timedelta(days=30),
         scopes=[SelectedSource("ROUTINE_EVALUATION", source.pk, "FINALIZED_EVALUATION_V1")],
         communication_purpose="CASE_COORDINATION",
         request_id=DEMO_REQUEST_ID,

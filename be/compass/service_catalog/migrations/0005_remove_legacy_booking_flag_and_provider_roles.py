@@ -4,25 +4,24 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('service_catalog', '0004_serviceappointmentslot_withdrawn_at_and_more'),
+        ("service_catalog", "0004_serviceappointmentslot_withdrawn_at_and_more"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='serviceproviderrole',
-            name='service_catalog_service_provider_role_uniq',
+            model_name="serviceproviderrole",
+            name="service_catalog_service_provider_role_uniq",
         ),
         migrations.RemoveConstraint(
-            model_name='service',
-            name='service_catalog_booking_settings_require_booking',
+            model_name="service",
+            name="service_catalog_booking_settings_require_booking",
         ),
         migrations.RemoveField(
-            model_name='service',
-            name='appointment_booking_enabled',
+            model_name="service",
+            name="appointment_booking_enabled",
         ),
         migrations.DeleteModel(
-            name='ServiceProviderRole',
+            name="ServiceProviderRole",
         ),
     ]

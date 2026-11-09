@@ -581,6 +581,7 @@ def test_graduate_tracer_and_csm_responses_read_newest_submitted_first():
 # Inventory roster: a Student directory ------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("inventory_psgc")
 def test_inventory_roster_is_a_student_directory_with_recent_submission_alternative():
     sync_policy()
     counselor = person("roster-order-counselor@example.edu", "COUNSELOR")

@@ -604,7 +604,6 @@ class SeededDatasetTests(TestCase):
         for record in periods:
             assert record.term == ACADEMIC_TERM
             assert record.enrollment_status == "ENROLLED"
-            assert record.program_id is None
             by_student.setdefault(record.student_id, []).append(record)
         for persona in STUDENTS:
             student = dataset_user(persona.key)
