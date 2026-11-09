@@ -178,7 +178,7 @@ await check("expired-confirmation-requires-deliberate-reconfirmation", root + "/
 });
 await check("pagination-keeps-previous-on-empty-later-page", root, { handler: fixture({ pages: true }).handler }, async page => {
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await shown(page.getByText("No referrals on this page. Go back to the previous page.", { exact: true }));
+  await shown(page.getByText("No Referrals on this page. Go back to the previous page.", { exact: true }));
   assert.equal(await page.getByRole("button", { name: "Previous", exact: true }).isDisabled(), false);
   await page.getByRole("button", { name: "Previous", exact: true }).click();
   await shown(page.getByRole("link", { name: `View Referral ${record.reference_code}` }));
@@ -211,7 +211,7 @@ await check("own-list-policy-denial-hides-protected-results", root, { handler: f
   assert.equal(await page.getByText(longName, { exact: true }).count(), 0);
 });
 await check("empty-own-list-is-not-a-fabricated-total", root, { handler: fixture({ empty: true }).handler }, async page => {
-  await shown(page.getByText("You have no submitted referrals.", { exact: true }));
+  await shown(page.getByText("You have no submitted Referrals.", { exact: true }));
   assert.equal(await page.getByRole("button", { name: "Next", exact: true }).count(), 0);
 });
 await check("uniform-negative-confirmation-never-advances-to-review", root + "/new", { handler: fixture({ negative: true }).handler }, async page => {
@@ -249,7 +249,7 @@ const retryFixture = fixture({ beforeList: () => pendingList, listError: 503 });
 await check("initial-loading-then-retry-never-claims-empty", root, { handler: retryFixture.handler }, async page => {
   try {
     await shown(page.getByText("Loading Faculty Referrals…", { exact: true }));
-    assert.equal(await page.getByText("You have no submitted referrals.", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("You have no submitted Referrals.", { exact: true }).count(), 0);
   } finally { releaseList(); }
   await shown(page.getByRole("button", { name: "Retry", exact: true }));
   retryFixture.state.listError = null;
@@ -260,7 +260,7 @@ const roleChange = fixture({ submitError: 403, changeRole: true });
 await check("stale-role-revalidation-unmounts-faculty-form-without-replay", root + "/new", { handler: roleChange.handler }, async page => {
   await fill(page); await review(page);
   await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
-  await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
+  await shown(page.getByRole("heading", { name: "Workspace access" }));
   assert.equal(await page.getByText("Synthetic confidential concern", { exact: true }).count(), 0);
   assert.equal(roleChange.calls.length, 1);
 });
@@ -274,12 +274,12 @@ await check("ended-session-uses-existing-sign-in-boundary-without-replay", root 
 });
 for (const role of ["STUDENT", "COUNSELOR", "IT_ADMIN"]) {
   await check(`non-faculty-${role}-direct-route`, root + "/new", { handler: fixture({ account: { ...user(role), capabilities: [...user(role).capabilities, ...faculty.capabilities] } }).handler }, async (page, observed) => {
-    await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
+    await shown(page.getByRole("heading", { name: "Workspace access" }));
     assert.equal(observed.requests.some(r => r.pathname.startsWith(api)), false);
   });
 }
 await check("faculty-gco-route-denies-before-protected-components-mount", "/portal/referrals/new", { handler: fixture().handler }, async (page, observed) => {
-  await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
+  await shown(page.getByRole("heading", { name: "Workspace access" }));
   assert.equal(observed.requests.some(r => r.pathname.startsWith("/api/v1/referrals")), false);
 });
 await finish();

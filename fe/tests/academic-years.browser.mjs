@@ -47,7 +47,7 @@ const head = {
 
     await shown(page.getByText(`${label} was added. Set it as current separately when appropriate.`, { exact: true }));
     await shown(page.getByText(label, { exact: true }));
-    await shown(page.getByText("The current academic year has not been set.", { exact: true }));
+    await shown(page.getByText("The current Academic Year has not been set.", { exact: true }));
     assert.equal(years.find((year) => year.label === label)?.is_current, false);
     const createRequest = requests.find((request) => request.method === "POST" && request.pathname === "/api/v1/academic-years");
     assert.deepEqual(JSON.parse(createRequest.body), { label });

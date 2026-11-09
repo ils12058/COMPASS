@@ -862,7 +862,7 @@ def password_request(request, payload: PasswordAccessRequest):
         raise APIError(
             403,
             "security_verification_failed",
-            "The security verification could not be completed.",
+            "Couldn't complete the security verification. Try again.",
         ) from exc
     except Exception as exc:
         _raise_security_unavailable(exc)

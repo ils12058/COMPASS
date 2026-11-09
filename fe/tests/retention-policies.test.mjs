@@ -92,7 +92,7 @@ test("loading, unauthorized and unavailable states fail safely", () => {
     const html = render(createElement(RetentionPoliciesPage), { error });
     assert.match(html, /role="alert"/);
     assert.match(html, />Retry</);
-    assert.match(html, status === 403 ? /You can&#x27;t perform this privacy action\.|You can't perform this privacy action\./ : /Couldn&#x27;t load retention policies\./);
+    assert.match(html, status === 403 ? /You don&#x27;t have permission to perform this privacy action\./ : /Couldn&#x27;t load retention policies\./);
     assert.doesNotMatch(html, /PRIVATE DIAGNOSTIC|Not adopted/);
   }
 });

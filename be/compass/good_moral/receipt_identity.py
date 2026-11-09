@@ -178,7 +178,8 @@ def append_revision(*, item, actor, normalized, intent, context):
             or not previous.is_current
         ):
             raise ReceiptConflict(
-                "Official Receipt number already recorded. Check the number or ask GCO for review."
+                "Official Receipt number already recorded. Check the number or ask the Guidance "
+                "Office to review it."
             )
     elif key:
         try:
@@ -194,7 +195,8 @@ def append_revision(*, item, actor, normalized, intent, context):
             if _constraint(exc) != "gm_receipt_identity_key_uniq":
                 raise
             raise ReceiptConflict(
-                "Official Receipt number already recorded. Check the number or ask GCO for review."
+                "Official Receipt number already recorded. Check the number or ask the Guidance "
+                "Office to review it."
             ) from exc
     if previous:
         from .receipt_verification import invalidate

@@ -11,6 +11,7 @@ from django.db.models import Q
 
 from compass.accounts.policy import (
     CAPABILITY_CODES,
+    CAPABILITY_DEFINITIONS,
     DESIGNATION_CODES,
     DESIGNATION_DEFINITIONS,
     ROLE_CODES,
@@ -71,6 +72,7 @@ from .releases import (
 
 _ROLE_NAMES = {definition.code: definition.name for definition in ROLE_DEFINITIONS}
 _DESIGNATION_NAMES = {definition.code: definition.name for definition in DESIGNATION_DEFINITIONS}
+_PERMISSION_NAMES = {definition.code: definition.name for definition in CAPABILITY_DEFINITIONS}
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -352,12 +354,15 @@ def _access_control(event: AuditEvent) -> PrivacyActivityItem | None:
             if effect not in {"GRANT", "REVOKE"}:
                 return None
             title = "Permission changed"
+            permission = _PERMISSION_NAMES[capability]
             description = (
-                "Extra access was granted." if effect == "GRANT" else "Access was removed."
+                f"Granted the “{permission}” permission."
+                if effect == "GRANT"
+                else f"Removed the “{permission}” permission."
             )
         else:
             title = "Permission change removed"
-            description = "The account’s extra access change was removed."
+            description = f"Removed the change to the “{_PERMISSION_NAMES[capability]}” permission."
     else:
         return None
 

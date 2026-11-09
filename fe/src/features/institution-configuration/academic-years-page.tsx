@@ -173,7 +173,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         </Notice>
       ) : (
         <Panel aria-labelledby="academic-year-list-heading">
-          <PanelHeader title="Academic Years" titleId="academic-year-list-heading" />
+          <PanelHeader title="All Academic Years" titleId="academic-year-list-heading" />
           <section
             aria-labelledby="current-academic-year-heading"
             className="border-b border-brand-line bg-brand-wash px-4 py-4 sm:px-5"

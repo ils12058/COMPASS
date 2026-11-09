@@ -723,14 +723,8 @@ def test_counselor_workspace_recorded_is_this_appointments_own_counseling_match(
     assert recorded["provider_readiness"] == before["provider_readiness"]
     matching.delete()
 
-    # A linked Encounter from another origin keeps its id for review but is not this record.
-    for entry_mode in (CounselingEntryMode.WALK_IN, CounselingEntryMode.REFERRED):
-        linked = _link_encounter(appointment, counselor=counselor, entry_mode=entry_mode)
-        body = _counselor_workspace(counselor, appointment)
-        assert body["counseling_encounter"] == {"id": linked.pk, "recorded": False}, entry_mode
-        assert set(body) == field_names
-        linked.delete()
-
+    # A linked Encounter that doesn't match keeps its id for review but is not this record.
+    # (A linked Encounter is always Appointment-origin: counseling_appointment_link_requires_mode.)
     for label, overrides in (
         ("delivery mode", {"delivery_mode": "IN_PERSON"}),
         ("student", {"student": other_student}),
@@ -787,8 +781,8 @@ def test_appointment_detail_and_ecounseling_workspace_agree_on_the_documentation
     assert detail_recorded(appointment) is True
     assert workspace_recorded() is True
 
-    matching.entry_mode = CounselingEntryMode.CALLED_IN
-    matching.save(update_fields=["entry_mode", "updated_at"])
+    matching.delivery_mode = "IN_PERSON"
+    matching.save(update_fields=["delivery_mode", "updated_at"])
     assert detail_recorded(appointment) is False
     assert workspace_recorded() is False
     matching.delete()
@@ -825,7 +819,8 @@ def test_linked_non_matching_encounter_is_never_mistaken_for_a_finished_session(
     linked = _link_encounter(
         appointment,
         counselor=counselor,
-        entry_mode=CounselingEntryMode.WALK_IN,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+        delivery_mode="IN_PERSON",
     )
     client = auth_client(counselor)
 

@@ -349,7 +349,7 @@ def platform_worker_smoke(request):
         raise APIError(
             500,
             "worker_smoke_failed",
-            "The background worker diagnostic could not be completed.",
+            "Couldn't complete the background worker check. Try again.",
         ) from exc
     return HealthCheckResponse(
         code=result.code,

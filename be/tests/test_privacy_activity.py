@@ -141,7 +141,7 @@ def test_privacy_activity_data_release_presenters_are_content_free():
     assert "Academic Year 2026-2027" in items[0]["scope"]
     assert "CCMS" in items[0]["scope"]
     assert "BSIS" in items[0]["scope"]
-    assert items[1]["title"] == "Good Moral certificate released"
+    assert items[1]["title"] == "Good Moral Certificate released"
     assert items[1]["resource_reference"] == str(good_moral_id)
 
     serialized = response.content.decode()
@@ -209,10 +209,10 @@ def test_access_control_projection_allowlists_only_safe_authority_facts():
         str(override_event.pk),
     ]
     assert items[0]["actor_display_name"] == "Privacy Observer"
-    assert "COUNSELOR" in items[0]["description"]
-    assert "INSTITUTIONAL_OFFICER" in items[0]["description"]
-    assert "DPO" in items[1]["description"]
-    assert "privacy_governance.view" in items[2]["description"]
+    assert items[0]["description"] == "Changed from Counselor to Institutional Officer."
+    assert items[1]["description"] == "Data Protection Officer was assigned to an account."
+    assert "View privacy governance" in items[2]["description"]
+    assert "privacy_governance.view" not in items[2]["description"]
     assert "SENTINEL_PRIVATE_EMAIL" not in response.content.decode()
 
 
@@ -323,7 +323,7 @@ def test_historical_removed_workflow_audit_event_remains_safely_presentable():
 
     assert response.status_code == 200
     item = next(row for row in response.json()["items"] if row["id"] == str(event.pk))
-    assert item["title"] == "Privacy review resolved"
+    assert item["title"] == "Privacy review completed"
     assert item["resource_reference"] == str(review_id)
     serialized = response.content.decode()
     assert "SENTINEL LEGACY REVIEW NARRATIVE" not in serialized
@@ -512,7 +512,7 @@ def test_privacy_activity_projects_graduate_tracer_release_without_report_conten
     assert item["artifact_type"] == "graduate_tracer"
     assert item["artifact_format"] == "XLSX"
     assert item["resource_reference"] == "schema-v1"
-    assert "Schema version 1" in item["scope"]
+    assert "Survey version 1" in item["scope"]
     assert "Submitted from 2026-01-01" in item["scope"]
     assert "Submitted to 2026-12-31" in item["scope"]
 

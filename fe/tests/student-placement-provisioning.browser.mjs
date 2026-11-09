@@ -152,7 +152,7 @@ await check("csv-import-documents-and-previews-placement-code-columns", "/portal
 
 await check("placement-authorization-failure-uses-placement-message", "/portal/accounts/new", { handler: handler({
   onCreate: async (_body, reply) => {
-    await reply({ error: { code: "academic_placement_permission_denied", message: "The student_academics.manage capability is required to assign an initial Student placement." } }, 403);
+    await reply({ error: { code: "academic_placement_permission_denied", message: "You don't have permission to assign a Student's first academic placement." } }, 403);
   },
 }) }, async (page) => {
   await shown(page.getByRole("heading", { name: "Create account", exact: true }));

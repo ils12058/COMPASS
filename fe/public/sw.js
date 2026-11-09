@@ -4,8 +4,11 @@ const DESTINATION = "/portal/notifications";
 const SAFE_BODIES = new Set([
   "You have a new Call Slip.",
   "You have a Call Slip update.",
-  "You have an appointment update.",
-  "Your Good Moral request has an update.",
+  "You have an Appointment update.",
+  "You have an upcoming Appointment.",
+  "You have a Group Session update.",
+  "You have a Guidance Follow-Up update.",
+  "Your Good Moral Certificate request has an update.",
   "You have a new request to review in COMPASS.",
   "Your COMPASS account security changed.",
 ]);

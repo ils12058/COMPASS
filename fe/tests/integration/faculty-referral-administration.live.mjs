@@ -84,17 +84,17 @@ await check("real-committed-response-loss-replays-identical-request", root + "/n
   await page.screenshot({ path: join(artifacts, "real-replay-phone.png"), fullPage: true });
 });
 await check("real-own-list-shows-canonical-records-only", root, options(sessions.faculty_cookie), async page => {
-  await shown(page.getByRole("heading", { name: "Submitted referrals", exact: true }));
+  await shown(page.getByRole("heading", { name: "Submitted Referrals", exact: true }));
   await shown(page.getByRole("link", { name: /^View referral REF-/ }).first());
   await page.screenshot({ path: join(artifacts, "real-own-list.png"), fullPage: true });
 });
 await check("real-foreign-owner-retains-safe-404", `${root}/${firstId}`, options(sessions.other_faculty_cookie), async page => {
-  await shown(page.getByText("This referral is not available. Return to My Referrals.", { exact: true }));
+  await shown(page.getByText("This Referral is not available. Return to My Referrals.", { exact: true }));
   assert.equal(await page.getByText("Synthetic student", { exact: true }).count(), 0);
 });
 const beforeOtherRole = requests.length;
 await check("real-other-role-does-not-mount-faculty-query", root + "/new", options(sessions.student_cookie), async page => {
-  await shown(page.getByRole("heading", { name: "Workspace unavailable", exact: true }));
+  await shown(page.getByRole("heading", { name: "Workspace access", exact: true }));
   assert.equal(await page.getByLabel("Student institutional ID").count(), 0);
   assert.equal(requests.slice(beforeOtherRole).some(request => request.pathname.startsWith(api)), false);
 });
@@ -119,7 +119,7 @@ await check("real-gco-explicit-acknowledgment-and-administrative-closure", `/por
 });
 await check("real-faculty-canonical-closed-projection-hides-gco-actors-and-source", `${root}/${firstId}`, options(sessions.faculty_cookie, { viewport: { width: 320, height: 1000 } }), async page => {
   await shown(page.getByText("Administratively Closed", { exact: true }));
-  await shown(page.getByText("Received by GCO · Philippine Time", { exact: true }));
+  await shown(page.getByText("Received by the Guidance Office · Philippine Time", { exact: true }));
   await shown(page.getByText("Administratively closed · Philippine Time", { exact: true }));
   assert.equal(await page.getByText("Synthetic ccms-counselor", { exact: true }).count(), 0);
   assert.equal(await page.getByText("Synthetic confidential cross-College reason", { exact: true }).count(), 0);

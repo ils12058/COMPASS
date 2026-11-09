@@ -72,7 +72,7 @@ function academicFixture({years=true}={}){
   await confirmation.getByRole("button",{name:"Record graduation",exact:true}).click();
   await h.shown(confirmation.getByRole("heading",{name:"Graduation recorded.",exact:true}));
   await h.shown(confirmation.getByText(/Maria Santos is recorded as graduated from College of Computing on Jun 30, 2027\./));
-  await h.shown(confirmation.getByText("The current placement is cleared and the Student lifecycle is Graduated. Exit Interview and Good Moral were not checked or changed.",{exact:true}));
+  await h.shown(confirmation.getByText("The current placement is cleared and the Student's status is Graduated. Exit Interview and Good Moral Certificate requirements were not checked or changed.",{exact:true}));
   assert.deepEqual(f.state.writes[0].data,{graduated_college_id:ids.college,graduation_date:"2027-06-30",verification_source:"Registrar confirmation 2027"});
   await confirmation.getByRole("button",{name:"Done",exact:true}).click();
   await h.hidden(confirmation);

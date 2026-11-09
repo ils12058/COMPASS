@@ -378,7 +378,7 @@ def test_email_supersession_does_not_hide_in_app_or_change_push(case, settings):
     assert resolve_notification_email_presentation(old).suppress
     assert notification_is_current(old)
     assert old.pk in {row.pk for row in list_my_notifications(actor=case[0]).items}
-    assert push_body_for(old.event_code) == "You have an appointment update."
+    assert push_body_for(old.event_code) == "You have an Appointment update."
 
 
 @pytest.mark.django_db(transaction=True)

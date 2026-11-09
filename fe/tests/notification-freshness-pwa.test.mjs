@@ -114,9 +114,9 @@ test("PWA opens at a public entry and the worker keeps only an offline shell", a
   listeners.push({ data: { json: () => ({ body: "Private counseling details", path: "https://evil.example" }) }, waitUntil: (promise) => pending.push(promise) });
   await Promise.all(pending);
   assert.deepEqual({ title: shown[0].title, body: shown[0].options.body }, { title: "COMPASS", body: "You have a new notification." });
-  listeners.push({ data: { json: () => ({ body: "You have an appointment update." }) }, waitUntil: (promise) => pending.push(promise) });
+  listeners.push({ data: { json: () => ({ body: "You have an Appointment update." }) }, waitUntil: (promise) => pending.push(promise) });
   await Promise.all(pending);
-  assert.equal(shown[1].options.body, "You have an appointment update.");
+  assert.equal(shown[1].options.body, "You have an Appointment update.");
   const clickPromises = [];
   listeners.notificationclick({ notification: { close() {}, data: { path: "https://evil.example" } }, waitUntil: (promise) => clickPromises.push(promise) });
   await Promise.all(clickPromises);

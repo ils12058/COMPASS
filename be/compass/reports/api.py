@@ -228,7 +228,7 @@ def student_profile_pdf(
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The report could not be released because its required privacy audit is unavailable.",
+            "Couldn't record the required privacy audit for this download. Try again.",
         ) from exc
 
     response = HttpResponse(result.pdf_bytes, content_type="application/pdf")
@@ -274,7 +274,7 @@ def student_profile_xlsx(
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The report could not be released because its required privacy audit is unavailable.",
+            "Couldn't record the required privacy audit for this download. Try again.",
         ) from exc
 
     response = HttpResponse(result.xlsx_bytes, content_type=XLSX_CONTENT_TYPE)
@@ -345,7 +345,7 @@ def graduate_tracer_xlsx(
         raise APIError(
             503,
             "release_audit_unavailable",
-            "The report could not be released because its required privacy audit is unavailable.",
+            "Couldn't record the required privacy audit for this download. Try again.",
         ) from exc
 
     response = HttpResponse(result.xlsx_bytes, content_type=XLSX_CONTENT_TYPE)

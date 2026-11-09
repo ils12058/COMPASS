@@ -33,7 +33,7 @@ for (const width of [320, 1440]) {
         await hidden(page.getByRole('button', { name: 'Start Exit Interview', exact: true }));
     });
     await check(`retention-unavailable-${width}`, '/portal/privacy/retention', { viewport, overrides: { '/api/v1/auth/session': session({ ...user('INSTITUTIONAL_OFFICER'), capabilities: ['privacy_governance.retention.view'] }), '/api/v1/privacy/retention/policies': error('permission_denied', 403) } }, async (page) => {
-        await oneAlert(page, "You can't perform this privacy action.");
+        await oneAlert(page, "You don't have permission to perform this privacy action.");
         await shown(page.getByRole('button', { name: 'Retry', exact: true }));
         await hidden(page.getByText('Not adopted', { exact: true }));
     });

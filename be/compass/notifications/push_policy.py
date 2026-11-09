@@ -25,7 +25,7 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     },
     NotificationEvent.CALL_SLIP_ISSUED: (PushDecision.PUSH, "You have a new Call Slip."),
     NotificationEvent.CALL_SLIP_VOIDED: (PushDecision.PUSH, "You have a Call Slip update."),
-    NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an appointment update."),
+    NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an Appointment update."),
     NotificationEvent.APPOINTMENT_REMINDER_24H: (
         PushDecision.PUSH,
         "You have an upcoming Appointment.",
@@ -38,14 +38,14 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
         PushDecision.PUSH,
         "You have an upcoming Appointment.",
     ),
-    NotificationEvent.APPOINTMENT_CANCELLED: (PushDecision.PUSH, "You have an appointment update."),
+    NotificationEvent.APPOINTMENT_CANCELLED: (PushDecision.PUSH, "You have an Appointment update."),
     NotificationEvent.APPOINTMENT_RESCHEDULED: (
         PushDecision.PUSH,
-        "You have an appointment update.",
+        "You have an Appointment update.",
     ),
     NotificationEvent.APPOINTMENT_REASSIGNED: (
         PushDecision.PUSH,
-        "You have an appointment update.",
+        "You have an Appointment update.",
     ),
     NotificationEvent.GROUP_SESSION_REGISTERED: (
         PushDecision.PUSH,
@@ -66,7 +66,7 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GOOD_MORAL_ISSUED: (
         PushDecision.PUSH,
-        "Your Good Moral request has an update.",
+        "Your Good Moral Certificate request has an update.",
     ),
     NotificationEvent.ECOUNSELING_CONSENT_REQUESTED: (
         PushDecision.PUSH,

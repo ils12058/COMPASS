@@ -713,8 +713,7 @@ def test_csv_placement_rejects_manager_without_student_academics_manage():
     assert dry.status_code == 403
     assert dry.json()["error"]["code"] == "academic_placement_permission_denied"
     assert dry.json()["error"]["message"] == (
-        "The student_academics.manage capability is required to assign an initial Student "
-        "placement."
+        "You don't have permission to assign a Student's first academic placement."
     )
 
     committed = upload(client, placed_csv, dry_run=False)

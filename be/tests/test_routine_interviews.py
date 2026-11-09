@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 
@@ -628,35 +628,20 @@ def test_finalization_rejects_direct_entry_mode_mismatch_and_appointment_nonappo
             context=context(counselor),
         )
 
+    # An Appointment-linked Encounter is always Appointment-origin, so the scheduled-Routine
+    # mismatch can't be stored (counseling_appointment_link_requires_mode).
     appointment = make_appointment(student=student, counselor=counselor, service=service)
-    scheduled = ensure_for_appointment(
-        student=student,
-        appointment_id=appointment.pk,
-        context=context(student),
-    )
-    replace_my_intake(
-        student=student,
-        routine_interview_id=scheduled.pk,
-        values={"career_goals": "Submitted career goal"},
-    )
-    submit_my_intake(student=student, routine_interview_id=scheduled.pk, context=context(student))
-    CounselingEncounter.objects.create(
-        student=student,
-        counselor=counselor,
-        service=service,
-        appointment=appointment,
-        entry_mode="WALK_IN",
-        delivery_mode="IN_PERSON",
-        started_at=end - timedelta(minutes=30),
-        ended_at=end,
-        created_by=counselor,
-    )
-    with pytest.raises(RoutineInterviewEncounterMismatch, match="APPOINTMENT Encounter"):
-        finalize_assigned_evaluation(
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CounselingEncounter.objects.create(
+            student=student,
             counselor=counselor,
-            routine_interview_id=scheduled.pk,
-            encounter_id=None,
-            context=context(counselor),
+            service=service,
+            appointment=appointment,
+            entry_mode="WALK_IN",
+            delivery_mode="IN_PERSON",
+            started_at=end - timedelta(minutes=30),
+            ended_at=end,
+            created_by=counselor,
         )
 
 

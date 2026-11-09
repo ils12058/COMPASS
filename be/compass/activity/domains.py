@@ -153,7 +153,7 @@ DOMAIN_ACTIVITY_POLICIES = {
     ),
     actions.GOOD_MORAL_ISSUED: DomainActivityPolicy(
         "goodmoral.request",
-        "Good Moral certificate issued",
+        "Good Moral Certificate issued",
         student_affected="Your Good Moral Certificate was issued.",
         staff_self="You issued a Good Moral Certificate.",
         staff_roles=frozenset({COUNSELOR}),

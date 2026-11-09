@@ -37,7 +37,7 @@ for (const [width, scale] of [[1440, 100], [390, 100], [320, 200]]) {
 }
 for (const path of ["/portal/referrals/new", "/portal/appointments/book", "/portal/accounts", "/portal/counseling", "/portal/follow-ups"]) {
   await check(`faculty-deep-link-${path.split("/").slice(2).join("-")}`, path, { handler: facultyHandler }, async (page, fixture) => {
-    await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
+    await shown(page.getByRole("heading", { name: "Workspace access" }));
     assert.equal(fixture.requests.some(protectedRead), false, "Blocked workspace must never mount protected queries");
     await page.getByRole("link", { name: "Return to Overview" }).click();
     await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));

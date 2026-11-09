@@ -38,8 +38,8 @@ Push eligibility and wording are code-owned in `push_policy.py`. The service wor
 | --- | --- | --- |
 | `call_slip.issued` | PUSH | You have a new Call Slip. |
 | `call_slip.voided` | PUSH | You have a Call Slip update. |
-| `appointment.scheduled`, `appointment.cancelled`, `appointment.rescheduled`, `appointment.reassigned` | PUSH | You have an appointment update. |
-| `good_moral.issued` | PUSH | Your Good Moral request has an update. |
+| `appointment.scheduled`, `appointment.cancelled`, `appointment.rescheduled`, `appointment.reassigned` | PUSH | You have an Appointment update. |
+| `good_moral.issued` | PUSH | Your Good Moral Certificate request has an update. |
 | `ecounseling.consent.requested` | PUSH | You have a new request to review in COMPASS. |
 | `security.password.reset`, `security.password.changed`, `security.mfa.disabled`, `security.recovery_codes.regenerated`, `security.mfa.admin_reset`, `security.account_access.changed` | PUSH | Your COMPASS account security changed. |
 | `exit_interview.reopened`, `inventory.reopened`, `counseling.shared_summary.published`, `routine_interview.intake_ready` | IN_APP_ONLY | Sensitive or non-urgent context stays in authenticated COMPASS. |

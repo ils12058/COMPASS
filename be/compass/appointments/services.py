@@ -1073,8 +1073,8 @@ def cancel_appointment(
         access_window = _ecounseling_access_window(item, now=current)
         if access_window is not None and access_window.state != ECounselingJoinState.TOO_EARLY:
             raise AppointmentECounselingAccessStarted(
-                "This Appointment can no longer be cancelled because its online "
-                "counseling access period has begun."
+                "You can no longer cancel this Appointment because the E-Counseling session has "
+                "started."
             )
         if ECounselingRoom.objects.filter(appointment_id=item.pk).exists():
             raise AppointmentECounselingRoomLinked(

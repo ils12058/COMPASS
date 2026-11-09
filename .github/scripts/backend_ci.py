@@ -372,6 +372,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_privacy_governance.py",
             "test_privacy_governance_contract.py",
             "test_privacy_governance_expansion.py",
+            "test_privacy_governance_validation.py",
             "test_privacy_pending_acknowledgment.py",
             "test_privacy_release_audit.py",
             "test_privacy_activity.py",
@@ -428,7 +429,13 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "content": (
         "Announcements, Resources, publication audiences, and object storage.",
-        ("test_announcements.py", "test_resources.py", "test_storage.py"),
+        (
+            "test_announcements.py",
+            "test_announcements_validation.py",
+            "test_resources.py",
+            "test_resources_validation.py",
+            "test_storage.py",
+        ),
     ),
     "reference-data": (
         "PSGC reference data and its integration client.",

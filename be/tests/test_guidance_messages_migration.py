@@ -500,6 +500,7 @@ def seed_referral_source(db, apps):
         confidential_content_ciphertext="preservation-sentinel",
         referred_on=date(2026, 11, 6),
         form_revision_id=revision.pk,
+        submission_channel="GCO_RECORDED",
     )
     return requester.pk, student.pk, college.pk, referral.pk
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import json
+import re
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -340,3 +342,13 @@ def test_push_setup_error_cannot_roll_back_durable_notification(monkeypatch):
         item = event(account)
     assert Notification.objects.filter(pk=item.pk).exists()
     assert PushDelivery.objects.filter(notification=item).count() == 0
+
+
+def test_service_worker_allowlist_matches_every_push_body():
+    # The service worker shows only allowlisted bodies; anything else becomes generic.
+    source = (Path(__file__).resolve().parents[2] / "fe/public/sw.js").read_text()
+    block = re.search(r"SAFE_BODIES = new Set\(\[(.*?)\]\);", source, re.S)
+    assert block is not None
+    allowlisted = set(re.findall(r'"([^"]+)"', block.group(1)))
+    push_bodies = {body for decision, body in PUSH_POLICY.values() if decision == PushDecision.PUSH}
+    assert allowlisted == push_bodies

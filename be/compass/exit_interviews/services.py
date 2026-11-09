@@ -594,8 +594,7 @@ def _require_draft_admission(item: ExitInterview) -> None:
         return
     if opportunity.status != ExitInterviewOpportunityStatus.OPEN:
         raise ExitInterviewOpportunityNotOpen(
-            "Your Exit Interview access is no longer open. Contact the Guidance and "
-            "Counseling Office."
+            "Your Exit Interview access is no longer open. Contact the Guidance Office."
         )
 
 
@@ -683,12 +682,11 @@ def ensure_my_current(
         )
         if opportunity is None:
             raise ExitInterviewOpportunityRequired(
-                "The Guidance and Counseling Office needs to open an Exit Interview for you first."
+                "The Guidance Office needs to open an Exit Interview for you first."
             )
         if opportunity.status != ExitInterviewOpportunityStatus.OPEN:
             raise ExitInterviewOpportunityNotOpen(
-                "Your Exit Interview access is no longer open. Contact the Guidance and "
-                "Counseling Office."
+                "Your Exit Interview access is no longer open. Contact the Guidance Office."
             )
 
         try:
