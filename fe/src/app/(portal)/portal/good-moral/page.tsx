@@ -22,7 +22,7 @@ function pageNumber(value: string): number {
   return positiveInteger(value) ?? 1;
 }
 
-export const metadata: Metadata = { title: "Good Moral" };
+export const metadata: Metadata = { title: "Good Moral Certificates" };
 
 export default async function Page({
   searchParams,

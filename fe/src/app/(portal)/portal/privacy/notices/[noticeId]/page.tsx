@@ -5,7 +5,7 @@ import { pageSheetWidth } from "@/components/ui/page-width";
 import { PrivacyDetailSkeleton } from "@/features/privacy-governance/privacy-governance-shared";
 import { NoticeDetailPage } from "@/features/privacy-governance/notices/notice-detail-page";
 
-export const metadata: Metadata = { title: "Privacy Notice" };
+export const metadata: Metadata = { title: "Privacy notice" };
 
 export default function Page() {
   return (

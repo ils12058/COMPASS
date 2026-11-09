@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Good Moral Request" };
+export const metadata: Metadata = { title: "Good Moral Certificate request" };
 
 import { Suspense } from "react";
 

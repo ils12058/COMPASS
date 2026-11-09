@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Service Details" };
+export const metadata: Metadata = { title: "Service details" };
 
 import { Suspense } from "react";
 

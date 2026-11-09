@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Feedback" };
 export default function Page() {
   return (
     <div className={pageSheetWidth}>
-      <Suspense fallback={<FeedbackListSkeleton label="Loading Feedback…" />}>
+      <Suspense fallback={<FeedbackListSkeleton label="Loading feedback…" />}>
         <FeedbackEntryPage />
       </Suspense>
     </div>

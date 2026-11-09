@@ -7,7 +7,7 @@ type InstitutionalFormsRouteProps = {
   searchParams: Promise<{ family?: string | string[] }>;
 };
 
-export const metadata: Metadata = { title: "Institutional Forms" };
+export const metadata: Metadata = { title: "Institutional forms" };
 
 export default async function Page({
   searchParams,

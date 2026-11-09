@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "E-Counseling Session" };
+export const metadata: Metadata = { title: "E-Counseling session" };
 
 import { ECounselingWorkspace } from "@/features/ecounseling/ecounseling-workspace";
 

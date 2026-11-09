@@ -5,7 +5,7 @@ import { PrivacyGovernanceGate } from "@/features/privacy-governance/privacy-gov
 import { PrivacyGovernanceNavigation } from "@/features/privacy-governance/privacy-governance-navigation";
 
 export const metadata: Metadata = {
-  title: { default: "Privacy Governance", template: "%s | COMPASS" },
+  title: { default: "Privacy governance", template: "%s | COMPASS" },
 };
 
 export default function PrivacyGovernanceLayout({

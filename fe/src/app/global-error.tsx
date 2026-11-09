@@ -20,21 +20,14 @@ export default function GlobalError({
   return (
     <html lang="en" className={fontVariables}>
       <body>
-        <title>COMPASS could not load</title>
+        <title>Couldn&apos;t load COMPASS</title>
         <main className="mx-auto flex min-h-dvh max-w-2xl items-center px-6 py-12">
           <section>
-            <p
-              aria-hidden="true"
-              className="font-heading text-8xl font-bold leading-none tracking-tight text-brand sm:text-9xl"
-            >
-              !
-            </p>
             <h1 className="mt-6 font-heading text-3xl font-bold text-ink">
-              COMPASS could not load
+              Couldn&apos;t load COMPASS
             </h1>
             <p className="mt-3 leading-7 text-muted">
-              Try the request again. If the problem continues, contact COMPASS
-              support.
+              Try again. If this keeps happening, contact the Guidance Office.
             </p>
             <Button className="mt-6" onClick={reset}>
               Try again

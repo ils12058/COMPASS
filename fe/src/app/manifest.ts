@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "COMPASS — UCN Guidance and Counseling Office",
+    name: "COMPASS — UCN Guidance Office",
     short_name: "COMPASS",
-    description: "Guidance and Counseling Office services at the University of Camarines Norte.",
+    description: "Guidance Office Services at the University of Camarines Norte.",
     id: "/",
     start_url: "/",
     scope: "/",

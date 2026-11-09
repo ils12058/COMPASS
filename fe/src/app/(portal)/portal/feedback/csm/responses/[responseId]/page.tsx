@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "CSM Response Details" };
+export const metadata: Metadata = { title: "Client Satisfaction Measurement response" };
 
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { CsmResponseDetail } from "@/features/feedback/feedback-response-details";

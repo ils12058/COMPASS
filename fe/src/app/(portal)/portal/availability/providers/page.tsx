@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Provider Availability" };
+export const metadata: Metadata = { title: "Counselor Availability" };
 
 import { Suspense } from "react";
 
@@ -9,7 +9,7 @@ import { ProviderAvailabilityPage } from "@/features/availability/availability-p
 
 export default function Page() {
   return (
-    <Suspense fallback={<AvailabilitySectionSkeleton label="Loading counselors…" />}>
+    <Suspense fallback={<AvailabilitySectionSkeleton label="Loading Counselors…" />}>
       <ProviderAvailabilityPage />
     </Suspense>
   );

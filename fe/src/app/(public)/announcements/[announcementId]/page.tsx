@@ -10,7 +10,7 @@ import {
   resolveAnnouncementReader,
 } from "@/features/public/shared/server-reader";
 
-const description = "Announcement from the UCN Guidance and Counseling Office.";
+const description = "Announcement from the UCN Guidance Office.";
 
 export async function generateMetadata({
   params,

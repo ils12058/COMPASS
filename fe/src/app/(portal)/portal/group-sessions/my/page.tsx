@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { GroupSessionsHistoryPage } from "@/features/group-sessions/group-sessions-history-page";
 
-export const metadata: Metadata = { title: "My group sessions" };
+export const metadata: Metadata = { title: "My Group Sessions" };
 
 export default function Page() {
   return (

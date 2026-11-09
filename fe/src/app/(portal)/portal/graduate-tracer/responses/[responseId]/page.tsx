@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Graduate Tracer Response" };
+export const metadata: Metadata = { title: "Graduate Tracer response" };
 
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { GraduateTracerDetailPage } from "@/features/graduate-tracer/graduate-tracer-detail-page";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Customer Satisfaction Measurement" };
+export const metadata: Metadata = { title: "Client Satisfaction Measurement" };
 
 import { Suspense } from "react";
 
@@ -11,7 +11,7 @@ import { CsmForm } from "@/features/feedback/csm-form";
 export default function Page() {
   return (
     <div className={pageSheetWidth}>
-      <Suspense fallback={<FeedbackFormSkeleton label="Loading Feedback service…" />}><CsmForm /></Suspense>
+      <Suspense fallback={<FeedbackFormSkeleton label="Loading Client Satisfaction Measurement…" />}><CsmForm /></Suspense>
     </div>
   );
 }

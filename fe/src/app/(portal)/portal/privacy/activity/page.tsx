@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PrivacyListSkeleton } from "@/features/privacy-governance/privacy-governance-shared";
 import { PrivacyActivityPage } from "@/features/privacy-governance/activity/privacy-activity-page";
 
-export const metadata: Metadata = { title: "Privacy & Security Activity" };
+export const metadata: Metadata = { title: "Privacy & security activity" };
 
 export default function Page() {
   return (

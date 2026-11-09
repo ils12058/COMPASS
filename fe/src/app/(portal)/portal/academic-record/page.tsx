@@ -1,7 +1,7 @@
 import { MyAcademicRecordGate } from "@/features/organization/components/organization-gate";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Academic Record" };
+export const metadata: Metadata = { title: "Academic record" };
 
 import { Suspense } from "react";
 

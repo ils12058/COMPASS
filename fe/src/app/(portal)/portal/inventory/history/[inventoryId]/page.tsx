@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Inventory History" };
+export const metadata: Metadata = { title: "Individual Inventory history" };
 
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { InventoryHistoryDetail } from "@/features/inventory/student/inventory-history-detail";

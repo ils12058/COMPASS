@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Create Account" };
+export const metadata: Metadata = { title: "Create account" };
 
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { CreateAccount } from "@/features/accounts/create/create-account";

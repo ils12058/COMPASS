@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Account Details" };
+export const metadata: Metadata = { title: "Account details" };
 
 import { AccountOverview } from "@/features/accounts/detail/overview/account-overview";
 

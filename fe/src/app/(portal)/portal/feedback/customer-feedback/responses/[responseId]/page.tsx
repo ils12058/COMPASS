@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Feedback Response Details" };
+export const metadata: Metadata = { title: "Feedback response details" };
 
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { CustomerFeedbackResponseDetail } from "@/features/feedback/feedback-response-details";

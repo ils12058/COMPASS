@@ -4,7 +4,7 @@ import { pageSheetWidth } from "@/components/ui/page-width";
 import { StudentAcademicRosterImportGate } from "@/features/organization/components/organization-gate";
 import { RosterImportPage } from "@/features/student-academics/roster-import/roster-import";
 
-export const metadata: Metadata = { title: "Import Academic Roster" };
+export const metadata: Metadata = { title: "Import academic roster" };
 
 export default function Page() {
   return (

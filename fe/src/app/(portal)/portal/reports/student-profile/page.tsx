@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Student Profile Report" };
+export const metadata: Metadata = { title: "Student profile report" };
 
 import { Suspense } from "react";
 
@@ -9,7 +9,7 @@ import { StudentProfileReportPage } from "@/features/reports/student-profile-rep
 
 export default function StudentProfilePage() {
   return (
-    <Suspense fallback={<ReportsLoading title="Student Profiling" />}>
+    <Suspense fallback={<ReportsLoading title="Student profile" />}>
       <StudentProfileReportPage />
     </Suspense>
   );

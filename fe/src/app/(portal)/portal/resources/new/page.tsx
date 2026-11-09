@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { ResourceCreatePage } from "@/features/resources/resource-create-page";
 
-export const metadata: Metadata = { title: "Create Resource" };
+export const metadata: Metadata = { title: "Create resource" };
 
 export default function Page() {
   return (

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { PlatformActivityPage } from "@/features/platform/activity/platform-activity-page";
 
-export const metadata: Metadata = { title: "Platform Activity" };
+export const metadata: Metadata = { title: "Platform activity" };
 
 export default function Page() {
   return (

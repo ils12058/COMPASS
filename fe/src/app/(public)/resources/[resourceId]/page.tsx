@@ -10,7 +10,7 @@ import {
   resolveResourceReader,
 } from "@/features/public/shared/server-reader";
 
-const description = "Resource from the UCN Guidance and Counseling Office.";
+const description = "Resource from the UCN Guidance Office.";
 
 export async function generateMetadata({
   params,

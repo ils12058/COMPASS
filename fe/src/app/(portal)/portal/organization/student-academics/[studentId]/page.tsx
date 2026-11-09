@@ -6,7 +6,7 @@ import { StudentAcademicRecordsGate } from "@/features/organization/components/o
 import { TableSkeleton } from "@/features/organization/components/organization-shared";
 import { StudentAcademicRecordPage } from "@/features/student-academics/student-academic-record/student-academic-record-page";
 
-export const metadata: Metadata = { title: "Student Academic Record" };
+export const metadata: Metadata = { title: "Student academic record" };
 
 export default async function Page({
   params,

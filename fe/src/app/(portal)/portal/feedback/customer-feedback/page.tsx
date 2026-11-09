@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Customer Feedback" };
+export const metadata: Metadata = { title: "Customer feedback" };
 
 import { Suspense } from "react";
 
@@ -11,7 +11,7 @@ import { CustomerFeedbackForm } from "@/features/feedback/customer-feedback-form
 export default function Page() {
   return (
     <div className={pageSheetWidth}>
-      <Suspense fallback={<FeedbackFormSkeleton label="Loading Feedback service…" />}><CustomerFeedbackForm /></Suspense>
+      <Suspense fallback={<FeedbackFormSkeleton label="Loading customer feedback…" />}><CustomerFeedbackForm /></Suspense>
     </div>
   );
 }
