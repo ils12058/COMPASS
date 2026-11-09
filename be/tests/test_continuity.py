@@ -1053,15 +1053,13 @@ def test_timezone_equivalent_snapshots_and_request_replay(case):
     assert decide(case, g)["effective_status"] == "ACTIVE"
 
 
-@pytest.mark.parametrize("mutation", ["deactivate", "override"])
-def test_postgresql_real_account_management_race(case, mutation):
+def managed_head_mutation(case, mutation):
     from compass.account_management.services import set_account_active, set_capability_override
     from compass.audit.context import AuditContext
 
     manager = case.user("manager", "IT_ADMIN")
     verified_at = timezone.now()
     session = create_auth_session(manager, now=verified_at, mfa_verified_at=verified_at).session
-    g = request(case)
     context = AuditContext.user(manager)
 
     def mutate():
@@ -1083,16 +1081,53 @@ def test_postgresql_real_account_management_race(case, mutation):
             reason="Concurrent synthetic revoke",
         ).changed
 
+    return mutate
+
+
+def assert_managed_approval_state(case, grant, *, approved):
+    stored = Grant.objects.get(pk=grant["id"])
+    assert stored.decision == ("APPROVED" if approved else "REQUESTED")
+    assert stored.version == (2 if approved else 1)
+    assert stored.decision_by_id == (case.head.pk if approved else None)
+    assert AuditEvent.objects.filter(
+        action="counseling.continuity.approved", target_id=str(stored.pk)
+    ).count() == int(approved)
+    # The current provisional policy preserves completed approvals after Head turnover.
+    # A mutation that wins the lock prevents approval and leaves the request pending.
+    metadata = svc.get_grant_metadata(actor=case.receiver, grant_id=stored.pk)
+    assert metadata["effective_status"] == ("ACTIVE" if approved else "PENDING")
+
+
+@pytest.mark.parametrize("mutation", ["deactivate", "override"])
+def test_postgresql_real_account_management_race(case, mutation):
+    mutate = managed_head_mutation(case, mutation)
+    g = request(case)
     outcomes = race(lambda: decide(case, g), mutate)
     assert outcomes[1] == ("ok", True)
-    assert outcomes[0][0] == "ok" or outcomes[0][1] in {
-        "continuity_invalid_role",
-        "continuity_missing_capability",
-    }
-    assert svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])["effective_status"] in {
-        "PENDING",
-        "UNAVAILABLE",
-    }
+    approved = outcomes[0][0] == "ok"
+    if not approved:
+        assert outcomes[0] == (
+            "error",
+            "continuity_invalid_role"
+            if mutation == "deactivate"
+            else "continuity_missing_capability",
+        )
+    assert_managed_approval_state(case, g, approved=approved)
+
+
+@pytest.mark.parametrize("mutation", ["deactivate", "override"])
+@pytest.mark.parametrize("order", ["approval_first", "mutation_first"])
+def test_real_account_management_approval_order(case, mutation, order):
+    mutate = managed_head_mutation(case, mutation)
+    g = request(case)
+    if order == "approval_first":
+        assert decide(case, g)["effective_status"] == "ACTIVE"
+        assert mutate() is True
+    else:
+        assert mutate() is True
+        with expect("invalid_role" if mutation == "deactivate" else "missing_capability"):
+            decide(case, g)
+    assert_managed_approval_state(case, g, approved=order == "approval_first")
 
 
 def test_default_policy_http_denial_has_no_store(case, monkeypatch):
