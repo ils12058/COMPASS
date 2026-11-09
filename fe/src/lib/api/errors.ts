@@ -20,7 +20,7 @@ export class CompassApiError extends Error {
     method: string;
     url: string;
   }) {
-    super(readApiErrorMessage(body) ?? `Request failed with status ${status}.`);
+    super(readApiErrorMessage(body) ?? "Something went wrong. Try again.");
     this.name = "CompassApiError";
     this.status = status;
     this.body = body;

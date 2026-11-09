@@ -11,7 +11,7 @@ async function requestCsrfToken(): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error("Request security could not be initialized.");
+    throw new Error("Something went wrong. Refresh the page and try again.");
   }
 
   const body: unknown = await response.json();
@@ -22,7 +22,7 @@ async function requestCsrfToken(): Promise<string> {
     typeof body.csrf_token !== "string" ||
     body.csrf_token.length === 0
   ) {
-    throw new Error("The server did not return a request security token.");
+    throw new Error("Something went wrong. Refresh the page and try again.");
   }
 
   cachedToken = body.csrf_token;
