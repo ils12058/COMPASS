@@ -16,8 +16,8 @@ Empty adoption requires the additional explicit `--allow-empty-adoption`. No act
 another after failure. References are bounded to 160 plain-text characters.
 
 With a compatible schema and existing receipt, all actions return existing state unchanged. The
-old `sync_organization_catalog` command/function is seed-only, with the same populated-data refusal.
-It cannot reconcile names/statuses/policy. A receipt on empty tables prevents automatic reseeding.
+explicit `initialize_organization_catalog` command/function is the only bootstrap entry point; no
+legacy alias or reconciliation path remains. A receipt on empty tables prevents automatic reseeding.
 The singleton plus transaction advisory lock ensures concurrent seed/seed or adopt/adopt calls
 produce exactly one receipt and Audit; repeated invocations produce none.
 
@@ -37,7 +37,7 @@ not a live catalog whitelist. Report College names resolve the persisted parent-
 College; static narrative/codes remain explicitly synthetic scenario facts, never authority.
 
 Tests execute the actual initializer commands extracted from deployment source against synthetic
-PostgreSQL, rename/retire/change policy/add rows, repeat all actions/legacy alias and compare stored
+PostgreSQL, rename/retire/change policy/add rows, repeat all explicit actions and compare stored
 values. Full dataset replay refuses a retired fixture and leaves the changed catalog untouched.
 Seed prerequisites repeated separately also preserve edits/additions. Verify's read-only transaction
 and full seeder external-boundary prohibitions remain covered. Nothing deploys or invokes real SSH.

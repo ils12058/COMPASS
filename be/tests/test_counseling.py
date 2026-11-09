@@ -428,6 +428,15 @@ def test_appointment_link_validation_rejects_missing_cancelled_wrong_provider_an
         )
 
     usable = make_appointment(student=student, provider=counselor, service=service)
+    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+        create_encounter(
+            counselor=counselor,
+            entry_mode="CALLED_IN",
+            appointment_id=usable.pk,
+            started_at=started_at,
+            ended_at=ended_at,
+            context=context(counselor),
+        )
     create_encounter(
         counselor=counselor,
         entry_mode="APPOINTMENT",
@@ -439,7 +448,7 @@ def test_appointment_link_validation_rejects_missing_cancelled_wrong_provider_an
     with pytest.raises(CounselingAppointmentAlreadyUsed):
         create_encounter(
             counselor=counselor,
-            entry_mode="CALLED_IN",
+            entry_mode="APPOINTMENT",
             appointment_id=usable.pk,
             started_at=started_at,
             ended_at=ended_at,
@@ -791,7 +800,7 @@ def test_historical_correction_survives_service_deactivation():
 
 
 @pytest.mark.django_db
-def test_entry_mode_is_not_link_type_and_relink_validates_immutable_identity():
+def test_relink_requires_appointment_entry_mode_and_preserves_the_rule_on_correction():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
@@ -809,22 +818,33 @@ def test_entry_mode_is_not_link_type_and_relink_validates_immutable_identity():
         context=context(counselor),
     )
 
+    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+        update_encounter(
+            encounter_id=item.pk,
+            counselor=counselor,
+            changes={"appointment_id": appointment.pk},
+            context=context(counselor),
+        )
+
     linked = update_encounter(
         encounter_id=item.pk,
         counselor=counselor,
-        changes={"appointment_id": appointment.pk},
+        changes={"appointment_id": appointment.pk, "entry_mode": "APPOINTMENT"},
         context=context(counselor),
     )
-    assert linked.entry_mode == "REFERRED"
+    assert linked.entry_mode == "APPOINTMENT"
     assert linked.appointment_id == appointment.pk
 
-    retained = update_encounter(
-        encounter_id=item.pk,
-        counselor=counselor,
-        changes={"entry_mode": "CALLED_IN"},
-        context=context(counselor),
-    )
-    assert retained.appointment_id == appointment.pk
+    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+        update_encounter(
+            encounter_id=item.pk,
+            counselor=counselor,
+            changes={"entry_mode": "CALLED_IN"},
+            context=context(counselor),
+        )
+    item.refresh_from_db()
+    assert item.entry_mode == "APPOINTMENT"
+    assert item.appointment_id == appointment.pk
 
 
 @pytest.mark.django_db
@@ -834,6 +854,7 @@ def test_database_constraints_enforce_time_order_and_appointment_mode_link():
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     student = make_user("student@example.edu", "STUDENT")
     service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, provider=counselor, service=service)
     now = timezone.now()
 
     with pytest.raises(IntegrityError):
@@ -855,6 +876,19 @@ def test_database_constraints_enforce_time_order_and_appointment_mode_link():
                 counselor=counselor,
                 service=service,
                 entry_mode="APPOINTMENT",
+                delivery_mode="IN_PERSON",
+                started_at=now - timedelta(minutes=30),
+                ended_at=now - timedelta(minutes=1),
+                created_by=counselor,
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            CounselingEncounter.objects.create(
+                student=student,
+                counselor=counselor,
+                service=service,
+                appointment=appointment,
+                entry_mode="REFERRED",
                 delivery_mode="IN_PERSON",
                 started_at=now - timedelta(minutes=30),
                 ended_at=now - timedelta(minutes=1),

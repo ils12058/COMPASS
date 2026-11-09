@@ -25044,26 +25044,14 @@
           },
           "student": {
             "$ref": "#/components/schemas/OrganizationPersonSummary"
-          },
-          "verification_status": {
-            "$ref": "#/components/schemas/PlacementVerificationStatus"
           }
         },
         "required": [
           "student",
-          "college",
-          "verification_status"
+          "college"
         ],
         "title": "PlacementResponse",
         "type": "object"
-      },
-      "PlacementVerificationStatus": {
-        "enum": [
-          "UNVERIFIED",
-          "VERIFIED"
-        ],
-        "title": "PlacementVerificationStatus",
-        "type": "string"
       },
       "PlatformEnvironmentResponse": {
         "additionalProperties": false,

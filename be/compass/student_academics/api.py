@@ -24,11 +24,7 @@ from compass.organization.api import (
     _person,
     _require,
 )
-from compass.student_academics.models import (
-    AcademicTerm,
-    EnrollmentStatus,
-    PlacementVerificationStatus,
-)
+from compass.student_academics.models import AcademicTerm, EnrollmentStatus
 from compass.student_academics.roster_import import (
     MAX_CSV_BYTES,
     RosterImportConflict,
@@ -63,7 +59,6 @@ class PlacementRequest(StrictSchema):
 class PlacementResponse(StrictSchema):
     student: OrganizationPersonSummary
     college: CollegeSummary
-    verification_status: PlacementVerificationStatus
 
 
 class PlacementListResponse(StrictSchema):
@@ -156,7 +151,6 @@ def _placement(profile) -> dict[str, object]:
     return {
         "student": _person(profile.student),
         "college": _college(profile.current_college),
-        "verification_status": profile.placement_verification_status,
     }
 
 

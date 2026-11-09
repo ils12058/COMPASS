@@ -1397,7 +1397,7 @@ def test_last_manager_check_only_evaluates_accounts_that_can_hold_manage_authori
 
 
 @pytest.mark.django_db
-def test_account_creation_with_student_placement_is_transactional_and_unverified():
+def test_account_creation_with_student_placement_is_transactional():
     sync_policy()
     client, admin, _session = make_admin_client()
     campus, college = make_campus_with_college()
@@ -1421,9 +1421,6 @@ def test_account_creation_with_student_placement_is_transactional_and_unverified
     created = User.objects.get(email="placed.student@example.edu")
     profile = StudentAcademicProfile.objects.get(student=created)
     assert profile.current_college_id == college.pk
-    assert profile.current_program_id is None
-    assert profile.placement_verification_status == "UNVERIFIED"
-    assert profile.placement_effective_at is None
     assert profile.updated_by == admin
     assert AuditEvent.objects.filter(action="account.created", target_id=str(created.pk)).exists()
     placement_event = AuditEvent.objects.get(
@@ -1644,7 +1641,6 @@ def test_disabled_student_account_can_receive_initial_placement():
     assert created.is_active is False
     profile = StudentAcademicProfile.objects.get(student=created)
     assert profile.current_college_id == college.pk
-    assert profile.placement_verification_status == "UNVERIFIED"
 
 
 @pytest.mark.django_db

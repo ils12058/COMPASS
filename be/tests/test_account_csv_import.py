@@ -497,9 +497,6 @@ def test_csv_commit_creates_student_placement_and_reimport_is_skip():
     student = User.objects.get(email="committed.placed@example.edu")
     profile = StudentAcademicProfile.objects.get(student=student)
     assert profile.current_college_id == college.pk
-    assert profile.current_program_id is None
-    assert profile.placement_verification_status == "UNVERIFIED"
-    assert profile.placement_effective_at is None
     assert profile.updated_by == admin
     placement_event = AuditEvent.objects.get(
         action="student_academics.placement.set", target_id=str(student.pk)

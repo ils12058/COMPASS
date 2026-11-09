@@ -24,10 +24,6 @@ class CatalogInitializationError(RuntimeError):
     pass
 
 
-# Compatibility for old importers, without the old reconciliation implementation.
-CanonicalOrganizationSyncError = CatalogInitializationError
-
-
 @dataclass(frozen=True, slots=True)
 class CatalogInitializationResult:
     receipt: CatalogInitialization
@@ -160,8 +156,3 @@ def initialize_organization_catalog(
             "Catalog initialization failed atomically; inspect the synthetic/reviewed environment "
             "before retrying. No reconciliation fallback is available."
         ) from exc
-
-
-def sync_organization_catalog() -> CatalogInitializationResult:
-    """Deprecated seed-only fixture/CLI alias. Populated catalogs require explicit adoption."""
-    return initialize_organization_catalog(action="seed")

@@ -17,7 +17,7 @@ pending-F4 acknowledgment is superseded by ORG-2's fail-closed policy-change ref
 | Owner | Exact implementation files / responsibility |
 |---|---|
 | Organization schema | `be/compass/organization/models.py`; `migrations/0001_canonical_baseline.py`, `0002_program_policy_and_catalog_initialization.py`, `0003_catalog_resource_versions.py` in that domain |
-| Organization initialization | `be/compass/organization/bootstrap.py`; `management/commands/initialize_organization_catalog.py`, `management/commands/sync_organization_catalog.py`; `canonical.py` is frozen seed input only |
+| Organization initialization | `be/compass/organization/bootstrap.py`; `management/commands/initialize_organization_catalog.py`; `canonical.py` is frozen seed input only |
 | Organization academic policy | `be/compass/organization/program_policy.py`, `selection.py`; database array function is owned by migration 0002 |
 | Protected Catalog administration | `be/compass/organization/catalog_services.py`, `api.py`, `integrity.py`; no generic PATCH, move or delete |
 | Relationship/routing ownership | `be/compass/organization/services.py`, `access_scope.py`; StudentAffiliation, CounselorResponsibility, StaffSupervision remain separate |

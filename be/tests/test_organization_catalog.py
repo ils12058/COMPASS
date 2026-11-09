@@ -7,8 +7,8 @@ from compass.accounts.models import Role, User
 from compass.audit.actions import ORGANIZATION_CATALOG_INITIALIZED
 from compass.audit.models import AuditEvent
 from compass.organization.bootstrap import (
-    CanonicalOrganizationSyncError,
-    sync_organization_catalog,
+    CatalogInitializationError,
+    initialize_organization_catalog,
 )
 from compass.organization.canonical import (
     CANONICAL_CAMPUSES,
@@ -116,7 +116,7 @@ def test_canonical_registry_pins_current_ucn_catalog_and_program_major_boundary(
 def test_seed_is_exact_and_repeat_never_reconciles_managed_values():
     from compass.organization.models import CatalogInitialization
 
-    first = sync_organization_catalog()
+    first = initialize_organization_catalog(action="seed")
     assert (first.campuses_created, first.colleges_created, first.programs_created) == (6, 10, 38)
     before = list(Program.objects.values_list("id", flat=True))
     Campus.objects.filter(code="ABANO").update(name="Official campus rename", is_active=False)
@@ -131,7 +131,6 @@ def test_seed_is_exact_and_repeat_never_reconciles_managed_values():
         year_level_policy_status="CONFIGURED",
         applicable_year_levels=[1, 3, 5],
     )
-    call_command("sync_organization_catalog")
     call_command("initialize_organization_catalog", "--seed")
     call_command("initialize_organization_catalog", "--check")
     assert Campus.objects.get(code="ABANO").name == "Official campus rename"
@@ -151,8 +150,8 @@ def test_nonempty_catalog_requires_explicit_adoption_without_top_up():
 
     campus = Campus.objects.create(code="CUSTOM", name="Official", is_active=False)
     before = Campus.objects.values().get()
-    with pytest.raises(CanonicalOrganizationSyncError, match="Refusing seed"):
-        sync_organization_catalog()
+    with pytest.raises(CatalogInitializationError, match="Refusing seed"):
+        initialize_organization_catalog(action="seed")
     assert not CatalogInitialization.objects.exists()
     result = initialize_organization_catalog(action="adopt", reference="Synthetic approval")
     assert result.changed and result.receipt.source == "ADOPTED"
@@ -160,7 +159,7 @@ def test_nonempty_catalog_requires_explicit_adoption_without_top_up():
     assert Campus.objects.get().pk == campus.pk
     assert not College.objects.exists() and not Program.objects.exists()
     assert not initialize_organization_catalog(action="adopt").changed
-    assert not sync_organization_catalog().changed
+    assert not initialize_organization_catalog(action="seed").changed
     assert AuditEvent.objects.filter(action="organization.catalog_adopted").count() == 1
 
 
@@ -169,10 +168,10 @@ def test_empty_adoption_is_deliberate_and_receipt_is_not_a_reseed_switch():
     from compass.organization.bootstrap import initialize_organization_catalog
     from compass.organization.models import CatalogInitialization
 
-    with pytest.raises(CanonicalOrganizationSyncError, match="allow-empty"):
+    with pytest.raises(CatalogInitializationError, match="allow-empty"):
         initialize_organization_catalog(action="adopt")
     initialize_organization_catalog(action="adopt", allow_empty_adoption=True)
-    assert not sync_organization_catalog().changed
+    assert not initialize_organization_catalog(action="seed").changed
     assert Campus.objects.count() == 0
     receipt = CatalogInitialization.objects.get()
     for operation in (
@@ -196,8 +195,8 @@ def test_failed_audit_rolls_back_seed_and_receipt(monkeypatch):
         raise DatabaseError("Synthetic failure")
 
     monkeypatch.setattr(bootstrap, "record_event", fail)
-    with pytest.raises(CanonicalOrganizationSyncError, match="atomically"):
-        sync_organization_catalog()
+    with pytest.raises(CatalogInitializationError, match="atomically"):
+        initialize_organization_catalog(action="seed")
     assert not Campus.objects.exists()
     assert not CatalogInitialization.objects.exists()
 
@@ -247,7 +246,7 @@ def test_deployment_bootstrap_commands_preserve_adopted_catalog_and_policy():
     commands = re.findall(
         r"python manage.py (initialize_organization_catalog.*?)\s*</dev/null", script
     )
-    assert len(commands) == 2 and "sync_organization_catalog" not in script
+    assert len(commands) == 2
 
     def bootstrap(action):
         for command in commands:
@@ -270,7 +269,7 @@ def test_deployment_bootstrap_commands_preserve_adopted_catalog_and_policy():
     }
     bootstrap("check")
     bootstrap("adopt")
-    call_command("sync_organization_catalog")
+    call_command("initialize_organization_catalog", "--seed")
     assert extra.pk in Program.objects.values_list("id", flat=True)
     for model, rows in before.items():
         assert list(model.objects.order_by("pk").values()) == rows
@@ -285,7 +284,7 @@ def test_seeder_prerequisites_do_not_initialize_or_reconcile_catalog():
     with pytest.raises(StagingSeedError, match="not initialized"):
         sync_prerequisites()
     assert not Campus.objects.exists() and not CatalogInitialization.objects.exists()
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
     Program.objects.filter(code="BSIS").update(
         name="Official renamed degree", is_active=False, applicable_year_levels=[1, 4, 5]
     )
@@ -305,9 +304,9 @@ def test_initializer_refuses_an_unapplied_schema_even_with_a_receipt():
 
     from compass.organization.bootstrap import initialize_organization_catalog
 
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
     MigrationRecorder.Migration.objects.filter(
         app="organization", name="0002_program_policy_and_catalog_initialization"
     ).delete()
-    with pytest.raises(CanonicalOrganizationSyncError, match="schema is incompatible"):
+    with pytest.raises(CatalogInitializationError, match="schema is incompatible"):
         initialize_organization_catalog(action="check")

@@ -9,7 +9,6 @@ import {
   TableSkeleton,
 } from "@/features/organization/components/organization-shared";
 import { useStudentAcademicsGetMyRecord } from "@/lib/api/generated/student-academics/student-academics";
-import type { PlacementVerificationStatus } from "@/lib/api/generated/model";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   academicTermLabel,
@@ -32,18 +31,6 @@ function RecordFact({
       </dt>
       <dd className="mt-1 text-sm text-ink">{children}</dd>
     </div>
-  );
-}
-
-function VerificationBadge({
-  status,
-}: {
-  status: PlacementVerificationStatus;
-}) {
-  return (
-    <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
-      {status === "VERIFIED" ? "Verified" : "Unverified"}
-    </span>
   );
 }
 
@@ -93,9 +80,6 @@ export function MyAcademicRecordPage() {
                 {data.placement.college.campus.name} ·{" "}
                 {data.placement.college.name}
               </span>
-              <VerificationBadge
-                status={data.placement.verification_status}
-              />
             </p>
             <p className="mt-2 text-sm leading-6 text-muted">
               This placement is recorded by the institution. It does not by

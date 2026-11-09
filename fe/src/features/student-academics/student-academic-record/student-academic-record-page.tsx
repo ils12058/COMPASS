@@ -49,7 +49,6 @@ import {
 import type {
   AcademicPeriodRecordResponse,
   CollegeSummary,
-  PlacementVerificationStatus,
   StudentLifecycleStatus,
 } from "@/lib/api/generated/model";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -98,18 +97,6 @@ function LifecycleBadge({ status }: { status: StudentLifecycleStatus | null }) {
   return (
     <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
       {lifecycleStatusLabel(status)}
-    </span>
-  );
-}
-
-function VerificationBadge({
-  status,
-}: {
-  status: PlacementVerificationStatus;
-}) {
-  return (
-    <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
-      {status === "VERIFIED" ? "Verified" : "Unverified"}
     </span>
   );
 }
@@ -371,14 +358,6 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
               </RecordFact>
               <RecordFact label="Campus">
                 {data.placement.college.campus.name}
-              </RecordFact>
-              <RecordFact label="Verification">
-                <VerificationBadge
-                  status={data.placement.verification_status}
-                />
-              </RecordFact>
-              <RecordFact label="Program">
-                No Program is recorded. Placement is College-only.
               </RecordFact>
             </dl>
             <p className="mt-4 text-sm leading-6 text-muted">

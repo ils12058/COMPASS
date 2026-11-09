@@ -33,7 +33,7 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
-from compass.organization.bootstrap import sync_organization_catalog
+from compass.organization.bootstrap import initialize_organization_catalog
 from compass.organization.models import Campus, College, Program
 from compass.service_catalog.services import set_service_active
 from tests.canonical_service_helpers import legacy_counseling_service
@@ -91,7 +91,7 @@ def test_configured_bachelors_year_levels_and_pending_postgraduate_compatibility
     student = make_user("classification-student@example.edu", "STUDENT")
     configure_year(actor)
     item = ensure_current_inventory(student=student, context=context(student))
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
 
     bachelors = Program.objects.get(
         college__campus__code="MAIN",
@@ -135,7 +135,7 @@ def test_submission_rejects_unsupported_bachelors_year_level_saved_in_a_draft():
     actor = make_user("classification-submit-admin@example.edu", "IT_ADMIN")
     configure_year(actor)
     item = ensure_current_inventory(student=student, context=context(student))
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
     bachelors = Program.objects.get(
         college__campus__code="MAIN",
         college__code="CCMS",
@@ -166,7 +166,7 @@ def test_unmodified_or_inactive_program_draft_values_remain_editable():
     student = make_user("classification-draft-student@example.edu", "STUDENT")
     configure_year(actor)
     item = ensure_current_inventory(student=student, context=context(student))
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
     bachelors = Program.objects.get(
         college__campus__code="MAIN",
         college__code="CCMS",

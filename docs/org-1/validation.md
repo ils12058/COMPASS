@@ -125,14 +125,13 @@ Using the application prefix above, the following ran on the disposable `compass
 manage.py migrate --noinput --settings=tests.settings
 manage.py initialize_organization_catalog --seed --reference synthetic-ORG-1-fresh-rehearsal --settings=tests.settings
 manage.py initialize_organization_catalog --check --settings=tests.settings
-manage.py sync_organization_catalog --settings=tests.settings
 manage.py check --database default --settings=tests.settings
 manage.py makemigrations --check --dry-run --settings=tests.settings
 manage.py export_openapi --check --settings=tests.settings
 ```
 
-Fresh migration succeeded; seed reported SEEDED/changed=True; check and legacy replay reported
-changed=False. System check found no issues, model drift found no changes, and OpenAPI was current.
+Fresh migration succeeded; seed reported SEEDED/changed=True and check reported changed=False.
+System check found no issues, model drift found no changes, and OpenAPI was current.
 No generated API or frontend contract change was necessary.
 
 Other checks, from worktree root:

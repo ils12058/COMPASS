@@ -8,7 +8,7 @@ from django.db.migrations.exceptions import IrreversibleError
 from django.db.migrations.executor import MigrationExecutor
 
 from tests.faculty_referral_helpers import make_world, submit
-from tests.test_organization_policy_migration import upgrade_database  # noqa: F401
+from tests.organization_migration_helpers import upgrade_database  # noqa: F401
 
 TARGET = ("referrals", "0002_referral_faculty_home_college_and_more")
 

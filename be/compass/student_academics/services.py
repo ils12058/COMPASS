@@ -25,7 +25,6 @@ from compass.organization.models import AcademicYear, College
 from compass.student_academics.models import (
     AcademicTerm,
     EnrollmentStatus,
-    PlacementVerificationStatus,
     StudentAcademicPeriodRecord,
     StudentAcademicProfile,
     StudentGraduationRecord,
@@ -116,12 +115,7 @@ def _lock_active_college(college_id: UUID) -> College:
 
 
 def _has_placement_facts(profile: StudentAcademicProfile) -> bool:
-    return (
-        profile.current_college_id is not None
-        or profile.current_program_id is not None
-        or profile.placement_verification_status != PlacementVerificationStatus.UNVERIFIED
-        or profile.placement_effective_at is not None
-    )
+    return profile.current_college_id is not None
 
 
 def _clear_placement_facts(
@@ -137,9 +131,6 @@ def _clear_placement_facts(
         return False
     previous = str(profile.current_college_id) if profile.current_college_id is not None else None
     profile.current_college = None
-    profile.current_program = None
-    profile.placement_verification_status = PlacementVerificationStatus.UNVERIFIED
-    profile.placement_effective_at = None
     profile.updated_by = _actor(context)
     profile.save()
     metadata: dict[str, object] = {"previous_college_id": previous}
@@ -173,13 +164,7 @@ def set_current_placement(
         profile = (
             StudentAcademicProfile.objects.select_for_update().filter(student_id=student.pk).first()
         )
-        if (
-            profile is not None
-            and profile.current_college_id == college.pk
-            and profile.current_program_id is None
-            and profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-            and profile.placement_effective_at is None
-        ):
+        if profile is not None and profile.current_college_id == college.pk:
             return profile
         previous = (
             str(profile.current_college_id)
@@ -189,9 +174,6 @@ def set_current_placement(
         if profile is None:
             profile = StudentAcademicProfile(student=student)
         profile.current_college = college
-        profile.current_program = None
-        profile.placement_verification_status = PlacementVerificationStatus.UNVERIFIED
-        profile.placement_effective_at = None
         profile.updated_by = _actor(context)
         profile.save()
         record_event(
@@ -264,7 +246,6 @@ def record_academic_period(
         )
         if record is not None and (
             record.college_id == college.pk
-            and record.program_id is None
             and record.year_level == year_level
             and record.enrollment_status == enrollment_status
         ):
@@ -284,7 +265,6 @@ def record_academic_period(
                 created_by=actor,
             )
         record.college = college
-        record.program = None
         record.year_level = year_level
         record.enrollment_status = enrollment_status
         record.updated_by = actor
@@ -294,7 +274,6 @@ def record_academic_period(
             record.save(
                 update_fields=[
                     "college",
-                    "program",
                     "year_level",
                     "enrollment_status",
                     "updated_by",

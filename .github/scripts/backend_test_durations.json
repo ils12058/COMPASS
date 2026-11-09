@@ -165,7 +165,6 @@
  "test_student_profiling_xlsx.py": 9.9,
  "test_student_session_summaries.py": 11.7,
  "test_student_session_summary_contract.py": 1.2,
- "test_student_session_summary_cutover.py": 52.9,
  "test_student_session_summary_encryption.py": 16.5,
  "test_student_support.py": 11.4,
  "test_transactional_email.py": 9.1,

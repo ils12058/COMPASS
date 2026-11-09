@@ -16,7 +16,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import Campus, College, normalize_code
-from compass.student_academics.models import PlacementVerificationStatus, StudentAcademicProfile
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_academics.services import set_current_placement
 
 MAX_CSV_BYTES = 1_048_576
@@ -383,50 +383,6 @@ def _classify(
                     action="CONFLICT",
                     message=(
                         "college_code does not resolve to an active College beneath that Campus"
-                    ),
-                    user=user,
-                    profile=profile,
-                )
-            )
-            continue
-        if profile is not None and (
-            profile.current_program_id is not None or profile.placement_effective_at is not None
-        ):
-            results.append(
-                _result(
-                    row,
-                    action="CONFLICT",
-                    message=(
-                        "the current placement contains facts this import cannot safely replace"
-                    ),
-                    user=user,
-                    profile=profile,
-                )
-            )
-            continue
-        verified = (
-            profile is not None
-            and profile.placement_verification_status == PlacementVerificationStatus.VERIFIED
-        )
-        if verified and profile.current_college_id == college.pk:
-            results.append(
-                _result(
-                    row,
-                    action="NOOP",
-                    message="the placement already matches; verified placement unchanged",
-                    user=user,
-                    profile=profile,
-                )
-            )
-            continue
-        if verified:
-            results.append(
-                _result(
-                    row,
-                    action="CONFLICT",
-                    message=(
-                        "the current placement is verified and cannot be overwritten "
-                        "by roster import"
                     ),
                     user=user,
                     profile=profile,

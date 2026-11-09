@@ -397,25 +397,21 @@ def test_finish_replays_an_administratively_completed_appointment_with_identical
 
 
 @pytest.mark.django_db
-def test_finish_rejects_a_non_appointment_encounter_without_completing():
+def test_non_appointment_link_is_rejected_before_finish_without_completing():
     _, counselor, student, service = setup_domain("entry-mode")
     appointment = make_appointment(student=student, provider=counselor, service=service)
     start, end = actual_times()
-    create_encounter(
-        counselor=counselor,
-        entry_mode="REFERRED",
-        appointment_id=appointment.pk,
-        started_at=start,
-        ended_at=end,
-        context=context(counselor),
-    )
+    with pytest.raises(CounselingAppointmentInvalid, match="entry_mode APPOINTMENT"):
+        create_encounter(
+            counselor=counselor,
+            entry_mode="REFERRED",
+            appointment_id=appointment.pk,
+            started_at=start,
+            ended_at=end,
+            context=context(counselor),
+        )
 
-    with pytest.raises(CounselingFinishConflict):
-        finish_direct(counselor, appointment, start=start, end=end)
-
-    response = finish_via_api(auth_client(counselor), appointment, start=start, end=end)
-    assert response.status_code == 409
-    assert error_code(response) == "counseling_finish_conflict"
+    assert not CounselingEncounter.objects.filter(appointment=appointment).exists()
     appointment.refresh_from_db()
     assert appointment.status == AppointmentStatus.SCHEDULED
     assert audit_count("appointment.completed", appointment.pk) == 0

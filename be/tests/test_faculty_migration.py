@@ -3,7 +3,7 @@
 import pytest
 from django.db.migrations.executor import MigrationExecutor
 
-from tests.test_organization_policy_migration import upgrade_database  # noqa: F401
+from tests.organization_migration_helpers import upgrade_database  # noqa: F401
 
 
 @pytest.mark.django_db(transaction=True)

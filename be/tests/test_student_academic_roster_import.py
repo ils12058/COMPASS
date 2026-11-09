@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -31,11 +30,8 @@ from compass.accounts.services import effective_capabilities
 from compass.audit.models import AuditEvent
 from compass.authentication.models import TOTPFactor
 from compass.authentication.sessions import create_auth_session
-from compass.organization.models import Campus, College, Program
-from compass.student_academics.models import (
-    PlacementVerificationStatus,
-    StudentAcademicProfile,
-)
+from compass.organization.models import Campus, College
+from compass.student_academics.models import StudentAcademicProfile
 
 BASE = "/api/v1/student-academics"
 HEADER = "institutional_id,campus_code,college_code"
@@ -131,20 +127,10 @@ def academic_audits():
     return AuditEvent.objects.filter(action__startswith="student_academics.")
 
 
-def place(
-    student: User,
-    college: College,
-    *,
-    verification: str = PlacementVerificationStatus.UNVERIFIED,
-    program: Program | None = None,
-    effective_at=None,
-) -> StudentAcademicProfile:
+def place(student: User, college: College) -> StudentAcademicProfile:
     return StudentAcademicProfile.objects.create(
         student=student,
         current_college=college,
-        current_program=program,
-        placement_verification_status=verification,
-        placement_effective_at=effective_at,
     )
 
 
@@ -469,10 +455,6 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     make_user("UCN-CLASS-NEW", first_name="New", last_name="Student")
     same = make_user("UCN-CLASS-SAME", first_name="Same", last_name="Student")
     different = make_user("UCN-CLASS-DIFF", first_name="Different", last_name="Student")
-    verified_same = make_user("UCN-CLASS-VSAME", first_name="Verified", last_name="Same")
-    verified_different = make_user("UCN-CLASS-VDIFF", first_name="Verified", last_name="Different")
-    program_student = make_user("UCN-CLASS-PROG", first_name="Program", last_name="Student")
-    effective_student = make_user("UCN-CLASS-EFF", first_name="Effective", last_name="Student")
     make_user("UCN-CLASS-NONSTUDENT", role="COUNSELOR")
     make_user("UCN-CLASS-INACTIVE", active=False)
     for institutional_id in (
@@ -487,21 +469,12 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     unrelated = make_user("UCN-CLASS-UNRELATED")
     place(same, ccms)
     place(different, ccms)
-    place(verified_same, cea, verification=PlacementVerificationStatus.VERIFIED)
-    place(verified_different, ccms, verification=PlacementVerificationStatus.VERIFIED)
-    program = Program.objects.create(college=ccms, code="BSIS", name="BS IS")
-    place(program_student, ccms, program=program)
-    place(effective_student, ccms, effective_at=timezone.now() - timedelta(days=3))
     place(unrelated, ccms)
 
     content = roster_csv(
         "UCN-CLASS-NEW,MAIN,CCMS",
         "UCN-CLASS-SAME,MAIN,CCMS",
         "UCN-CLASS-DIFF,NORTH,CEA",
-        "UCN-CLASS-VSAME,NORTH,CEA",
-        "UCN-CLASS-VDIFF,NORTH,CEA",
-        "UCN-CLASS-PROG,NORTH,CEA",
-        "UCN-CLASS-EFF,NORTH,CEA",
         "UCN-CLASS-MISSING,MAIN,CCMS",
         "UCN-CLASS-NONSTUDENT,MAIN,CCMS",
         "UCN-CLASS-INACTIVE,MAIN,CCMS",
@@ -515,9 +488,6 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     before_profiles = {
         profile.student.institutional_id: (
             profile.current_college_id,
-            profile.current_program_id,
-            profile.placement_verification_status,
-            profile.placement_effective_at,
             profile.updated_at,
         )
         for profile in StudentAcademicProfile.objects.select_related("student", "current_college")
@@ -531,10 +501,10 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     body = response.json()
     assert body["valid"] is False
     assert body["committed"] is False
-    assert body["total_rows"] == 16
+    assert body["total_rows"] == 12
     assert body["set_count"] == 2
-    assert body["noop_count"] == 2
-    assert body["conflict_count"] == 10
+    assert body["noop_count"] == 1
+    assert body["conflict_count"] == 7
     assert body["invalid_count"] == 2
     rows = {row["institutional_id"]: row for row in body["rows"]}
     assert rows["UCN-CLASS-NEW"]["action"] == "SET"
@@ -547,21 +517,6 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     assert rows["UCN-CLASS-DIFF"]["action"] == "SET"
     assert rows["UCN-CLASS-DIFF"]["message"] == "the placement will be updated"
     assert rows["UCN-CLASS-DIFF"]["current_college_code"] == "CCMS"
-    assert rows["UCN-CLASS-VSAME"]["action"] == "NOOP"
-    assert rows["UCN-CLASS-VSAME"]["message"] == (
-        "the placement already matches; verified placement unchanged"
-    )
-    assert rows["UCN-CLASS-VSAME"]["current_college_code"] == "CEA"
-    assert rows["UCN-CLASS-VDIFF"]["action"] == "CONFLICT"
-    assert rows["UCN-CLASS-VDIFF"]["message"] == (
-        "the current placement is verified and cannot be overwritten by roster import"
-    )
-    for institutional_id in ("UCN-CLASS-PROG", "UCN-CLASS-EFF"):
-        assert rows[institutional_id]["action"] == "CONFLICT"
-        assert rows[institutional_id]["message"] == (
-            "the current placement contains facts this import cannot safely replace"
-        )
-        assert rows[institutional_id]["current_college_code"] == "CCMS"
     assert rows["UCN-CLASS-MISSING"]["action"] == "CONFLICT"
     assert rows["UCN-CLASS-MISSING"]["message"] == (
         "institutional_id does not resolve to an existing account"
@@ -594,9 +549,6 @@ def test_dry_run_classifies_every_row_and_writes_nothing():
     after_profiles = {
         profile.student.institutional_id: (
             profile.current_college_id,
-            profile.current_program_id,
-            profile.placement_verification_status,
-            profile.placement_effective_at,
             profile.updated_at,
         )
         for profile in StudentAcademicProfile.objects.select_related("student", "current_college")
@@ -673,15 +625,9 @@ def test_commit_sets_placement_audits_each_set_row_and_one_summary():
 
     created = StudentAcademicProfile.objects.get(student=new)
     assert created.current_college_id == ccms.pk
-    assert created.current_program_id is None
-    assert created.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert created.placement_effective_at is None
     assert created.updated_by == admin
     moved = StudentAcademicProfile.objects.get(student=moving)
     assert moved.current_college_id == cea.pk
-    assert moved.current_program_id is None
-    assert moved.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert moved.placement_effective_at is None
     assert moved.updated_by == admin
     assert StudentAcademicProfile.objects.get(student=same).current_college_id == ccms.pk
     assert StudentAcademicProfile.objects.get(student=unrelated).current_college_id == ccms.pk
@@ -781,14 +727,11 @@ def test_all_noop_commit_is_committed_without_a_summary_event():
 def test_commit_conflict_rolls_back_every_row_and_reports_minimal_details():
     sync_policy()
     _campus, ccms = make_campus_with_college("MAIN", "CCMS")
-    _other_campus, cea = make_campus_with_college("NORTH", "CEA")
     would_set = make_user("UCN-ROLLBACK-SET")
-    verified = make_user("UCN-ROLLBACK-VERIFIED")
-    place(verified, ccms, verification=PlacementVerificationStatus.VERIFIED)
     client, _admin = admin_client()
     content = roster_csv(
         "UCN-ROLLBACK-SET,MAIN,CCMS",
-        "UCN-ROLLBACK-VERIFIED,NORTH,CEA",
+        "UCN-ROLLBACK-MISSING,MAIN,CCMS",
     )
 
     response = upload(client, content, dry_run=False)
@@ -799,18 +742,13 @@ def test_commit_conflict_rolls_back_every_row_and_reports_minimal_details():
     assert error["details"] == [
         {
             "row_number": 3,
-            "institutional_id": "UCN-ROLLBACK-VERIFIED",
-            "message": (
-                "the current placement is verified and cannot be overwritten by roster import"
-            ),
+            "institutional_id": "UCN-ROLLBACK-MISSING",
+            "message": "institutional_id does not resolve to an existing account",
         }
     ]
     assert set(error["details"][0]) == {"row_number", "institutional_id", "message"}
     assert "UCN-ROLLBACK-SET" not in str(error["details"])
     assert not StudentAcademicProfile.objects.filter(student=would_set).exists()
-    unchanged = StudentAcademicProfile.objects.get(student=verified)
-    assert unchanged.current_college_id == ccms.pk
-    assert unchanged.placement_verification_status == PlacementVerificationStatus.VERIFIED
     assert not academic_audits().exists()
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -19,11 +19,10 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.organization.models import AcademicYear, Campus, College
 from compass.student_academics.models import (
     AcademicTerm,
     EnrollmentStatus,
-    PlacementVerificationStatus,
     StudentAcademicPeriodRecord,
     StudentAcademicProfile,
     StudentGraduationRecord,
@@ -104,15 +103,12 @@ def csrf(client: Client) -> dict[str, str]:
 
 
 @pytest.mark.django_db
-def test_model_defaults_one_to_one_status_and_permissions():
+def test_model_defaults_one_to_one_and_permissions():
     sync_policy()
     student = make_user("model.student@example.edu")
     profile = StudentAcademicProfile.objects.create(student=student)
 
     assert profile.current_college is None
-    assert profile.current_program is None
-    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert profile.placement_effective_at is None
     assert profile.updated_by is None
     assert profile.created_at is not None
     assert profile.updated_at is not None
@@ -139,9 +135,6 @@ def test_set_creates_canonical_placement_and_audit():
 
     assert profile.student_id == student.pk
     assert profile.current_college_id == college.pk
-    assert profile.current_program_id is None
-    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert profile.placement_effective_at is None
     assert profile.updated_by == actor
     event = AuditEvent.objects.get(action="student_academics.placement.set")
     assert event.target_type == "student_academics.studentacademicprofile"
@@ -153,19 +146,15 @@ def test_set_creates_canonical_placement_and_audit():
 
 
 @pytest.mark.django_db
-def test_overwrite_resets_deferred_academic_fields_and_audits_previous_college():
+def test_overwrite_replaces_college_and_audits_previous_college():
     sync_policy()
     actor = make_user("overwrite.actor@example.edu", "IT_ADMIN")
     student = make_user("overwrite.student@example.edu")
     old_college = make_college("OLD")
     new_college = make_college("NEW", campus_code="OTHER")
-    program = Program.objects.create(college=old_college, code="BSIS", name="BS IS")
     profile = StudentAcademicProfile.objects.create(
         student=student,
         current_college=old_college,
-        current_program=program,
-        placement_verification_status=PlacementVerificationStatus.VERIFIED,
-        placement_effective_at=timezone.now() - timedelta(days=2),
     )
     updated = set_current_placement(
         student_id=student.pk,
@@ -175,9 +164,6 @@ def test_overwrite_resets_deferred_academic_fields_and_audits_previous_college()
 
     assert updated.pk == profile.pk
     assert updated.current_college_id == new_college.pk
-    assert updated.current_program_id is None
-    assert updated.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert updated.placement_effective_at is None
     assert updated.updated_by == actor
     event = AuditEvent.objects.get(action="student_academics.placement.set")
     assert event.metadata == {
@@ -218,13 +204,9 @@ def test_clear_keeps_profile_row_and_resets_placement():
     actor = make_user("clear.actor@example.edu", "IT_ADMIN")
     student = make_user("clear.student@example.edu")
     college = make_college()
-    program = Program.objects.create(college=college, code="BSIS", name="BS IS")
     profile = StudentAcademicProfile.objects.create(
         student=student,
         current_college=college,
-        current_program=program,
-        placement_verification_status=PlacementVerificationStatus.VERIFIED,
-        placement_effective_at=timezone.now(),
     )
 
     removed = clear_current_placement(student_id=student.pk, context=context(actor))
@@ -232,9 +214,6 @@ def test_clear_keeps_profile_row_and_resets_placement():
     assert removed is True
     profile.refresh_from_db()
     assert profile.current_college_id is None
-    assert profile.current_program_id is None
-    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert profile.placement_effective_at is None
     assert profile.updated_by == actor
     event = AuditEvent.objects.get(action="student_academics.placement.cleared")
     assert event.target_type == "student_academics.studentacademicprofile"
@@ -319,7 +298,6 @@ def test_set_allows_inactive_student_only_when_explicitly_allowed():
     )
 
     assert profile.current_college_id == college.pk
-    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
     assert AuditEvent.objects.filter(action="student_academics.placement.set").count() == 1
 
 
@@ -445,7 +423,7 @@ def test_list_excludes_cleared_and_unplaced_students_with_filters_search_and_pag
 
 
 @pytest.mark.django_db
-def test_list_requires_student_academics_view_and_returns_unverified_projection():
+def test_list_requires_student_academics_view_and_returns_placement_projection():
     sync_policy()
     admin = make_user("list.admin@example.edu", "IT_ADMIN")
     student = make_user("list.student@example.edu")
@@ -493,7 +471,6 @@ def test_list_requires_student_academics_view_and_returns_unverified_projection(
                 "is_active": True,
                 "resource_version": 1,
             },
-            "verification_status": "UNVERIFIED",
         }
     ]
 
@@ -625,7 +602,7 @@ def test_writes_require_recent_mfa_and_manage():
         **csrf(fresh),
     )
     assert created.status_code == 200
-    assert created.json()["verification_status"] == "UNVERIFIED"
+    assert created.json()["college"]["id"] == str(college.pk)
 
     stale_delete = auth_client(admin, recent_mfa=False)
     assert (
@@ -773,7 +750,6 @@ def test_period_and_graduation_models_defaults_constraints_and_permissions():
     )
     assert period.enrollment_status == EnrollmentStatus.UNKNOWN
     assert period.year_level is None
-    assert period.program_id is None
     assert period.created_by is None
     assert period.updated_by is None
     assert period.created_at is not None
@@ -869,7 +845,6 @@ def test_record_period_creates_updates_and_audits_flat_metadata():
     assert record.term == AcademicTerm.FIRST_SEMESTER
     assert record.year_level == 2
     assert record.enrollment_status == EnrollmentStatus.ENROLLED
-    assert record.program_id is None
     assert record.created_by == actor
     assert record.updated_by == actor
     event = AuditEvent.objects.get(action="student_academics.period.recorded")
@@ -902,7 +877,6 @@ def test_record_period_creates_updates_and_audits_flat_metadata():
     assert updated.college_id == other_college.pk
     assert updated.year_level == 3
     assert updated.enrollment_status == EnrollmentStatus.NOT_ENROLLED
-    assert updated.program_id is None
     assert updated.created_by == actor
     assert updated.updated_by == other_actor
     update_event = AuditEvent.objects.filter(
@@ -1036,13 +1010,9 @@ def test_record_graduation_clears_placement_and_transitions_lifecycle():
     actor = make_user("graduation.actor@example.edu", "IT_ADMIN")
     student = make_user("graduation.student@example.edu")
     college = make_college()
-    program = Program.objects.create(college=college, code="BSIS", name="BS IS")
     profile = StudentAcademicProfile.objects.create(
         student=student,
         current_college=college,
-        current_program=program,
-        placement_verification_status=PlacementVerificationStatus.VERIFIED,
-        placement_effective_at=timezone.now(),
     )
     before = timezone.now()
 
@@ -1063,9 +1033,6 @@ def test_record_graduation_clears_placement_and_transitions_lifecycle():
     assert record.verified_at >= before
     profile.refresh_from_db()
     assert profile.current_college_id is None
-    assert profile.current_program_id is None
-    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
-    assert profile.placement_effective_at is None
     assert profile.updated_by == actor
     student.refresh_from_db()
     assert student.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
@@ -1365,7 +1332,6 @@ def test_my_record_requires_student_self_view_and_returns_own_record():
     payload = response.json()
     assert payload["student"]["id"] == str(student.pk)
     assert payload["placement"]["college"]["id"] == str(college.pk)
-    assert payload["placement"]["verification_status"] == "UNVERIFIED"
     assert len(payload["periods"]) == 1
     assert payload["graduation"] is None
 

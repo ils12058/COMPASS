@@ -7,12 +7,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from compass.organization.models import College, Program
-
-
-class PlacementVerificationStatus(models.TextChoices):
-    UNVERIFIED = "UNVERIFIED", "Unverified"
-    VERIFIED = "VERIFIED", "Verified"
+from compass.organization.models import College
 
 
 class StudentAcademicProfile(models.Model):
@@ -29,19 +24,6 @@ class StudentAcademicProfile(models.Model):
         null=True,
         blank=True,
     )
-    current_program = models.ForeignKey(
-        Program,
-        on_delete=models.PROTECT,
-        related_name="student_academic_programs",
-        null=True,
-        blank=True,
-    )
-    placement_verification_status = models.CharField(
-        max_length=16,
-        choices=PlacementVerificationStatus.choices,
-        default=PlacementVerificationStatus.UNVERIFIED,
-    )
-    placement_effective_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -55,14 +37,6 @@ class StudentAcademicProfile(models.Model):
     class Meta:
         default_permissions = ()
         ordering = ("student_id",)
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(
-                    placement_verification_status__in=PlacementVerificationStatus.values
-                ),
-                name="student_academics_verification_status_valid",
-            ),
-        ]
 
     def __str__(self) -> str:
         return f"StudentAcademicProfile({self.student_id})"
@@ -96,14 +70,6 @@ class StudentAcademicPeriodRecord(models.Model):
         "organization.College",
         on_delete=models.PROTECT,
         related_name="student_academic_period_records",
-    )
-    # Present for proposal shape, never written in this slice (D-SAR-01 remains College-only).
-    program = models.ForeignKey(
-        "organization.Program",
-        on_delete=models.PROTECT,
-        related_name="student_academic_period_records",
-        null=True,
-        blank=True,
     )
     year_level = models.PositiveSmallIntegerField(null=True, blank=True)
     enrollment_status = models.CharField(

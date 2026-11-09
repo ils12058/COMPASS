@@ -22,7 +22,7 @@ from compass.organization.access_scope import (
     resolve_general_guidance_college_scope,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.bootstrap import sync_organization_catalog
+from compass.organization.bootstrap import initialize_organization_catalog
 from compass.organization.models import (
     Campus,
     College,
@@ -145,7 +145,7 @@ def test_structural_reads_are_available_without_organization_management():
 @pytest.mark.django_db
 def test_program_read_exposes_exact_academic_classification_and_pending_policy():
     sync_policy()
-    sync_organization_catalog()
+    initialize_organization_catalog(action="seed")
     student = make_user("program-metadata@example.edu", "STUDENT")
     response = auth_client(student).get("/api/v1/organization/programs", {"is_active": True})
     assert response.status_code == 200

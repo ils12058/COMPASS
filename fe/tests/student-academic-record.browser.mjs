@@ -22,7 +22,7 @@ function academicFixture({years=true}={}){
   await h.shown(page.getByRole("heading",{name:"Maria Santos",exact:true}));
   await h.shown(page.getByText("Current placement",{exact:true}));
   await h.shown(page.getByText("College of Computing",{exact:true}));
-  await h.shown(page.getByText("No Program is recorded. Placement is College-only.",{exact:true}));
+  await h.shown(page.getByText("Main Campus",{exact:true}));
   await h.shown(page.getByText("No academic periods recorded.",{exact:true}));
   await h.shown(page.getByText("No graduation recorded.",{exact:true}));
   assert.ok(f.state.recordReads>=1);

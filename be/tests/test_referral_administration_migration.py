@@ -7,7 +7,7 @@ import pytest
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
-from tests.test_organization_policy_migration import upgrade_database  # noqa: F401
+from tests.organization_migration_helpers import upgrade_database  # noqa: F401
 
 BASE = ("referrals", "0002_referral_faculty_home_college_and_more")
 TARGET = ("referrals", "0003_referral_acknowledged_by_and_more")

@@ -594,6 +594,11 @@ def create_encounter(
     normalized_start, normalized_end = _normalize_actual_times(started_at, ended_at, now=now)
     routine_context = routine_interview_id is not None
 
+    if appointment_id is not None and normalized_entry != CounselingEntryMode.APPOINTMENT:
+        raise CounselingAppointmentInvalid(
+            "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+        )
+
     if appointment_id is not None:
         with _routine_link_errors(), transaction.atomic():
             routine = lock_routine_for_encounter_recording(
@@ -1160,6 +1165,10 @@ def update_encounter(
                     "The COUNSELING Service does not support the corrected delivery mode."
                 )
         else:
+            if next_entry != CounselingEntryMode.APPOINTMENT:
+                raise CounselingAppointmentInvalid(
+                    "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+                )
             _validate_appointment_link(
                 appointment=proposed_appointment,
                 counselor_id=item.counselor_id,

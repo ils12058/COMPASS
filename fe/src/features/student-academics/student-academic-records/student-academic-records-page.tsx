@@ -52,20 +52,11 @@ import {
 import type {
   CollegeSummary,
   OrganizationPersonSummary,
-  PlacementVerificationStatus,
 } from "@/lib/api/generated/model";
 
 function parsePage(value: string | null): number {
   const page = Number(value);
   return value && Number.isSafeInteger(page) && page > 0 ? page : 1;
-}
-
-function VerificationBadge({ status }: { status: PlacementVerificationStatus }) {
-  return (
-    <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
-      {status === "VERIFIED" ? "Verified" : "Unverified"}
-    </span>
-  );
 }
 
 export function StudentAcademicRecordsPage() {
@@ -450,9 +441,6 @@ export function StudentAcademicRecordsPage() {
                   <th scope="col" className={dataTable.headerCell}>
                     Campus
                   </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Verification
-                  </th>
                   <th scope="col" className={`${dataTable.headerCell} text-right`}>
                     {canManage ? "Action" : ""}
                   </th>
@@ -480,9 +468,6 @@ export function StudentAcademicRecordsPage() {
                     </td>
                     <td className={dataTable.cell}>{item.college.name}</td>
                     <td className={dataTable.cell}>{item.college.campus.name}</td>
-                    <td className={dataTable.cell}>
-                      <VerificationBadge status={item.verification_status} />
-                    </td>
                     <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
                         {canManage && structureReady ? (

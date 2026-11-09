@@ -31,7 +31,7 @@ const student = {
 const record = {
   student,
   lifecycle_status: "CURRENT",
-  placement: { student, college, verification_status: "UNVERIFIED" },
+  placement: { student, college },
   periods: [
     {
       id: "period-1",
@@ -79,7 +79,6 @@ function selfFixture({ capabilities = ["student_academics.view_self"], role = "S
   await h.check("01 Student sees their own placement and periods read-only", path, { handler: f.handler }, async (page) => {
     await h.shown(page.getByRole("heading", { name: "Academic record", exact: true }));
     await h.shown(page.getByText("Main Campus · College of Computing", { exact: true }));
-    await h.shown(page.getByText("Unverified", { exact: true }));
     await h.shown(page.getByText("This placement is recorded by the institution. It does not by itself confirm enrollment.", { exact: true }));
     await h.shown(page.getByRole("rowheader", { name: "2026-2027", exact: true }));
     await h.shown(page.getByRole("cell", { name: "First Semester", exact: true }));

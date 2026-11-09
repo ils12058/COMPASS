@@ -124,10 +124,9 @@ export function RosterImportPage() {
         <PanelBody className="py-5">
           <div className="space-y-3 text-sm leading-6 text-muted">
             <p>
-              A Student missing from the CSV keeps the current placement. Verified
-              placements are not overwritten, and conflicting rows must be resolved
-              manually. Imported placements are recorded as unverified and do not
-              confirm enrollment.
+              A Student missing from the CSV keeps the current placement.
+              Conflicting rows must be resolved manually. Imported placements do
+              not confirm enrollment.
             </p>
             <p>
               Required headers:{" "}
@@ -366,9 +365,8 @@ export function RosterImportPage() {
               ))}
             </dl>
             <p>
-              Imported placements are recorded as unverified and do not confirm
-              enrollment. Verified placements are not overwritten. Server checks
-              remain authoritative at commit time.
+              Imported placements do not confirm enrollment. Server checks remain
+              authoritative at commit time.
             </p>
           </>
         ) : null}

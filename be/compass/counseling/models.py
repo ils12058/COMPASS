@@ -87,6 +87,13 @@ class CounselingEncounter(models.Model):
                 ),
                 name="counseling_appointment_mode_requires_link",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(appointment__isnull=True)
+                    | models.Q(entry_mode=CounselingEntryMode.APPOINTMENT)
+                ),
+                name="counseling_appointment_link_requires_mode",
+            ),
         ]
 
 
