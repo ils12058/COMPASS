@@ -10,7 +10,7 @@ import { getAuthGetSessionQueryOptions } from "@/lib/api/generated/auth/auth";
 const CONTINUATION_LIFETIME_MS = 5 * 60 * 1000;
 const EXPIRED_MESSAGE = "This action expired. Review and confirm it again.";
 const SESSION_CHANGED_MESSAGE = "Your sign-in changed. Review the action and try again.";
-const SESSION_UNAVAILABLE_MESSAGE = "Your sign-in could not be confirmed. Review the action and try again.";
+const SESSION_UNAVAILABLE_MESSAGE = "Couldn't confirm your sign-in. Review the action and try again.";
 
 type PendingContinuation = {
   actorSession: string;

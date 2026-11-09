@@ -35,7 +35,7 @@ export function PreferencesPage() {
       queryClient.setQueryData(getNotificationsGetPreferencesQueryKey(), response);
       setSaved(true);
     } catch (caught) {
-      setError(accountErrorMessage(caught, "The email preference could not be saved. Please try again."));
+      setError(accountErrorMessage(caught, "Couldn't save the email preference. Try again."));
     }
   }
 
@@ -49,7 +49,7 @@ export function PreferencesPage() {
           tone="danger"
           action={<Button variant="secondary" onClick={() => void preferences.refetch()}>Retry</Button>}
         >
-          Your preferences could not be loaded.
+          Couldn&apos;t load your preferences. Try again.
         </Notice>
       ) : null}
       {preferences.isSuccess ? (
@@ -67,7 +67,7 @@ export function PreferencesPage() {
             <span>
               <span className="block font-semibold text-ink">Optional informational email</span>
               <span className="mt-1 block text-sm leading-6 text-muted">Receive optional informational COMPASS emails.</span>
-              <span className="mt-1 block text-sm leading-6 text-muted">Security and required operational emails are not disabled by this setting.</span>
+              <span className="mt-1 block text-sm leading-6 text-muted">You&apos;ll still receive security emails and emails required for Guidance Office work.</span>
             </span>
           </label>
           {update.isPending ? <p role="status" className="mt-4 text-sm text-muted">Saving preference…</p> : null}

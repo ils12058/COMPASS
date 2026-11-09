@@ -52,7 +52,7 @@ export function RosterImportPage() {
     const response = await action.run(
       () =>
         importCsv.mutateAsync({ data: { file }, params: { dry_run: true } }),
-      "The CSV could not be validated.",
+      "Couldn't validate the CSV. Try again.",
       undefined,
       (error) => setIssues(rosterIssues(error)),
     );
@@ -77,7 +77,7 @@ export function RosterImportPage() {
           data: { file: reviewed.file },
           params: { dry_run: false },
         }),
-      "The academic roster import could not be completed.",
+      "Couldn't complete the academic roster import. Try again.",
       () => setCommitReview(null),
       (error) => {
         setConflict(true);
@@ -125,7 +125,7 @@ export function RosterImportPage() {
           <div className="space-y-3 text-sm leading-6 text-muted">
             <p>
               A Student missing from the CSV keeps the current placement.
-              Conflicting rows must be resolved manually. Imported placements do
+              Review and correct conflicting rows. Imported placements do
               not confirm enrollment.
             </p>
             <p>
@@ -365,8 +365,7 @@ export function RosterImportPage() {
               ))}
             </dl>
             <p>
-              Imported placements do not confirm enrollment. Server checks remain
-              authoritative at commit time.
+              Imported placements don&apos;t confirm enrollment. COMPASS will check the CSV again before saving.
             </p>
           </>
         ) : null}

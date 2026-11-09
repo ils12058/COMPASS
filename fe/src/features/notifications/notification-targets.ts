@@ -41,7 +41,7 @@ export function notificationDestination(
     return { href: "/portal/e-counseling/" + notification.target_id, label: "Open E-Counseling" };
   }
   if (notification.target_type === NotificationTargetType.GUIDANCE_FOLLOW_UP && notification.target_id) {
-    return { href: "/portal/follow-ups/" + notification.target_id, label: "Open follow-up" };
+    return { href: "/portal/follow-ups/" + notification.target_id, label: "Open Follow-Up" };
   }
   if (notification.target_type === NotificationTargetType.APPOINTMENT && notification.target_id) {
     // Scheduling, rescheduling, and reassignment notify each participant; the detail page
@@ -55,10 +55,10 @@ export function notificationDestination(
     return { href: "/portal/call-slips/" + notification.target_id, label: "Open Call Slip" };
   }
   if (notification.target_type === NotificationTargetType.GOOD_MORAL && notification.target_id) {
-    return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral request" };
+    return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral Certificate request" };
   }
   if (notification.target_type === NotificationTargetType.GROUP_SESSION) {
-    if (!notification.target_id) return { href: "/portal/group-sessions/my", label: "My group sessions" };
+    if (!notification.target_id) return { href: "/portal/group-sessions/my", label: "My Group Sessions" };
     return {
       href: "/portal/group-sessions/" + notification.target_id,
       label: notification.is_current ? "Open Group Session" : "Review current event",

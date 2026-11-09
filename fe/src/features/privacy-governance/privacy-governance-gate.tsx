@@ -12,7 +12,7 @@ export function PrivacyGovernanceGate({ children }: { children: ReactNode }) {
   if (hasPrivacyGovernanceWorkspace(user)) return children;
 
   return (
-    <WorkspaceUnavailable title="Privacy Governance unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to Privacy Governance.
     </WorkspaceUnavailable>
   );

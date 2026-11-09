@@ -85,7 +85,7 @@ export function ActivityPage() {
         {scoped ? <button type="button" aria-pressed={view === "supervised"} onClick={() => setView("supervised")} className={workspaceTabClass(view === "supervised")}>Supervised staff</button> : null}
       </div>
       {view === "supervised" ? (
-        scoped ? <SupervisedStaffActivity staffQuery={staffQuery} /> : staffQuery.isPending ? <RowsSkeleton label="Loading supervised staff…" rows={4} /> : staffQuery.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void staffQuery.refetch()}>Retry</Button>}>Supervised staff could not be loaded.</PanelMessage> : <PanelMessage>No currently supervised staff.</PanelMessage>
+        scoped ? <SupervisedStaffActivity staffQuery={staffQuery} /> : staffQuery.isPending ? <RowsSkeleton label="Loading supervised staff…" rows={4} /> : staffQuery.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void staffQuery.refetch()}>Retry</Button>}>Couldn&apos;t load supervised staff. Try again.</PanelMessage> : <PanelMessage>No currently supervised staff.</PanelMessage>
       ) : <div aria-label={view === "my" ? "My activity" : "Security activity"}>
         {current.isPending ? <RowsSkeleton label="Loading activity…" rows={4} /> : null}
         {current.isError && result ? <RefreshFailureNotice onRetry={() => void current.refetch()} retrying={current.isFetching} /> : null}
@@ -95,7 +95,7 @@ export function ActivityPage() {
             tone="danger"
             action={<Button variant="secondary" onClick={() => void current.refetch()}>Retry</Button>}
           >
-            {view === "my" ? "My activity" : "Security activity"} could not be loaded.
+            Couldn&apos;t load {view === "my" ? "your activity" : "security activity"}. Try again.
           </PanelMessage>
         ) : null}
         {result ? (

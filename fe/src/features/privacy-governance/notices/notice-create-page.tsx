@@ -54,7 +54,7 @@ export function NoticeCreatePage() {
 
   if (!canManage) {
     return (
-      <WorkspaceUnavailable title="Privacy notice creation unavailable">
+      <WorkspaceUnavailable title="Access restricted">
         You cannot manage privacy notices with this account.
       </WorkspaceUnavailable>
     );
@@ -72,7 +72,7 @@ export function NoticeCreatePage() {
         create.mutateAsync({
           data: { code, name, ...noticeRevisionCreateRequest(revision) },
         }),
-      "The privacy notice could not be created.",
+      "Couldn't create the privacy notice. Try again.",
     );
     if (!result) return;
     void queryClient.invalidateQueries({
@@ -86,8 +86,8 @@ export function NoticeCreatePage() {
       <PrivacyPageHeader
         title="Create privacy notice"
         backHref="/portal/privacy/notices"
-        backLabel="Privacy Notices"
-        description="Creating a notice also creates revision 1 as a draft. People see a notice only after a revision is published."
+        backLabel="Privacy notices"
+        description="This creates revision 1 as a draft. Publish it when you're ready for people to see the notice."
       />
       <Panel as="div" className="max-w-3xl">
       <form onSubmit={(event) => void submit(event)}>
@@ -95,9 +95,7 @@ export function NoticeCreatePage() {
           <div className="grid gap-2">
             <Label htmlFor="notice-code">Internal code</Label>
             <FieldHint id="notice-code-hint">
-              Use a stable internal code of letters, digits, dots, underscores, or
-              hyphens. COMPASS stores it in uppercase. The code cannot be changed
-              later.
+              Use letters, digits, dots, underscores or hyphens for the code; COMPASS stores it in uppercase. You can&apos;t change it later.
             </FieldHint>
             <Input
               id="notice-code"

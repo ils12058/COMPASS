@@ -43,7 +43,7 @@ export function NoticesPage() {
   return (
     <section>
       <PrivacyPageHeader
-        title="Privacy Notices"
+        title="Privacy notices"
         action={createLink}
       />
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
@@ -51,7 +51,7 @@ export function NoticesPage() {
       {query.isError && !result ? (
         <PrivacyQueryError
           error={query.error}
-          fallback="Privacy notices could not be loaded."
+          fallback="Couldn't load privacy notices. Try again."
           onRetry={() => void query.refetch()}
         />
       ) : (
@@ -87,7 +87,7 @@ export function NoticesPage() {
           ) : result ? (
             <div className={dataTable.scroll}>
               <table className={`${dataTable.table} min-w-[36rem]`}>
-                <caption className="sr-only">Privacy Notices</caption>
+                <caption className="sr-only">Privacy notices</caption>
                 <thead className={dataTable.head}>
                   <tr>
                     <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>

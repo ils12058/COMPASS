@@ -43,25 +43,25 @@ test("retention authority is read-only and separate from notice authority", () =
 
 test("navigation and landing name the oversight page Retention Policies", () => {
   const nav = render(createElement(PrivacyGovernanceNavigation));
-  assert.match(nav, /Retention Policies/);
+  assert.match(nav, /Retention policies/);
   assert.match(nav, /aria-current="page"/);
-  assert.doesNotMatch(nav, /Retention &amp; Disposition|Privacy Notices/);
+  assert.doesNotMatch(nav, /Retention &amp; Disposition|Privacy notices/);
   const noticesOnly = render(createElement(PrivacyGovernanceNavigation), { capabilities: ["privacy_governance.view"] });
   assert.doesNotMatch(noticesOnly, /Retention/);
   const landing = render(createElement(PrivacyLanding), { pathname: "/portal/privacy" });
-  assert.match(landing, /Retention Policies/);
+  assert.match(landing, /Retention policies/);
   assert.match(landing, /Retention policy status recorded in COMPASS\./);
   assert.doesNotMatch(landing, /disposition cases|holds/i);
 });
 
 test("each category is read-only and states that no policy is recorded without implying deletion", () => {
   const html = render(createElement(RetentionPoliciesPage), { data: { items: register.items.map((item) => ({ ...item, source_id: "SECRET-SOURCE", student_name: "SECRET PERSON" })) } });
-  assert.match(html, /<h1[^>]*>Retention Policies<\/h1>/);
+  assert.match(html, /<h1[^>]*>Retention policies<\/h1>/);
   assert.match(html, /View the retention policy status recorded in COMPASS\. Policy changes need institutional approval\./);
   for (const label of ["Graduate Tracer responses", "E-Counseling recordings"]) assert.match(html, new RegExp(`<h3[^>]*>${label}</h3>`));
   assert.equal(html.split(">Not adopted<").length - 1, 2);
   assert.equal(html.split(NOT_ADOPTED_COPY).length - 1, 2);
-  assert.match(html, /COMPASS doesn’t delete or anonymize records under these policies\. Records disposition goes through the University’s authorized process outside COMPASS\./);
+  assert.match(html, /COMPASS doesn’t delete or anonymize records under these policies\. Follow the University’s records disposition process outside COMPASS\./);
   assert.doesNotMatch(html, /Retention period|Policy reference|Effective date/);
   assert.doesNotMatch(html, retired);
   assert.doesNotMatch(html, /SECRET/);
@@ -85,14 +85,14 @@ test("loading, unauthorized and unavailable states fail safely", () => {
   assert.match(loading, /Loading retention policies…/);
   assert.doesNotMatch(loading, /Not adopted/);
   const unavailable = render(createElement(RetentionPoliciesPage), { capabilities: ["privacy_governance.view"] });
-  assert.match(unavailable, /Retention Policies unavailable/);
+  assert.match(unavailable, /Access restricted/);
   assert.doesNotMatch(unavailable, /Record categories/);
   for (const status of [403, 503]) {
     const error = new CompassApiError({ status, body: { error: { code: status === 403 ? "permission_denied" : "unavailable", message: "PRIVATE DIAGNOSTIC" } }, headers: {}, method: "GET", url: "/api/v1/privacy/retention/policies" });
     const html = render(createElement(RetentionPoliciesPage), { error });
     assert.match(html, /role="alert"/);
     assert.match(html, />Retry</);
-    assert.match(html, status === 403 ? /You can&#x27;t perform this privacy action\.|You can't perform this privacy action\./ : /Retention policies could not be loaded\./);
+    assert.match(html, status === 403 ? /You can&#x27;t perform this privacy action\.|You can't perform this privacy action\./ : /Couldn&#x27;t load retention policies\./);
     assert.doesNotMatch(html, /PRIVATE DIAGNOSTIC|Not adopted/);
   }
 });

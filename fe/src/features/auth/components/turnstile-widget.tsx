@@ -92,7 +92,7 @@ export function TurnstileWidget({
       <div ref={containerRef} className="min-h-[65px] max-w-full overflow-hidden" />
       {widgetError ? (
         <p role="alert" className="mt-2 text-sm text-danger">
-          Security verification could not load. Refresh the page and try again.
+          Couldn&apos;t load the security check. Refresh the page and try again.
         </p>
       ) : null}
     </div>

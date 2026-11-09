@@ -4,11 +4,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   authentication_failed: "Invalid email or password.",
   csrf_failed: "The security check expired. Submit the form again.",
   mfa_enrollment_challenge_invalid: "Authenticator setup is no longer available. Restart sign in.",
-  mfa_failed: "The verification code could not be verified.",
-  password_challenge_invalid: "The security code could not be verified or is no longer valid.",
+  mfa_failed: "Couldn't verify the code. Check it and try again.",
+  password_challenge_invalid: "Couldn't verify the security code. Check it or request a new code.",
   rate_limited: "Too many attempts. Try again later.",
-  security_unavailable: "Account verification is temporarily unavailable. Try again.",
-  security_verification_failed: "The security verification could not be completed.",
+  security_unavailable: "Couldn't verify your account. Try again.",
+  security_verification_failed: "Couldn't complete the security verification. Try again.",
 };
 
 export function authErrorMessage(error: unknown, fallback: string): string {

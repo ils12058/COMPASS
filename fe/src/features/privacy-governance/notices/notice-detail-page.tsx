@@ -82,7 +82,7 @@ function RenameNoticeForm({
     }
     const result = await action.run(
       () => update.mutateAsync({ noticeId: notice.id, data: { name } }),
-      "The notice name could not be saved.",
+      "Couldn't save the notice name. Try again.",
     );
     if (!result) return;
     await invalidatePrivacyRecords(queryClient, privacyPaths.notices);
@@ -167,7 +167,7 @@ function CreateRevisionForm({
           noticeId: notice.id,
           data: noticeRevisionCreateRequest(values),
         }),
-      "The new revision could not be created.",
+      "Couldn't create the new revision. Try again.",
       {
         onError: (caught) => {
           if (hasPrivacyConflictCode(caught, PrivacyConflictCode.noticeDraftExists)) {
@@ -293,11 +293,11 @@ export function NoticeDetailPage() {
   if (!noticeData) {
     return (
       <PrivacyRecordUnavailable
-        title="Privacy notice unavailable"
+        title="Couldn't load privacy notice"
         error={notice.error}
-        fallback="The privacy notice could not be loaded."
+        fallback="Couldn't load the privacy notice. Try again."
         backHref="/portal/privacy/notices"
-        backLabel="Privacy Notices"
+        backLabel="Privacy notices"
         onRetry={() => void notice.refetch()}
       />
     );
@@ -313,7 +313,7 @@ export function NoticeDetailPage() {
   async function confirmRetire() {
     const done = await action.run(
       () => retire.mutateAsync({ noticeId }),
-      "The privacy notice could not be retired.",
+      "Couldn't retire the privacy notice. Try again.",
       { onStepUpRequired: () => setRetireOpen(false) },
     );
     if (!done) return;
@@ -333,7 +333,7 @@ export function NoticeDetailPage() {
       <PrivacyPageHeader
         title={family.name}
         backHref="/portal/privacy/notices"
-        backLabel="Privacy Notices"
+        backLabel="Privacy notices"
         meta={
           <>
             <span className="break-all font-mono text-ink">{family.code}</span>
@@ -397,7 +397,7 @@ export function NoticeDetailPage() {
         <div className="mb-5 max-w-4xl">
           <PrivacyQueryError
             error={source.error}
-            fallback="The current revision could not be loaded to start a new draft."
+            fallback="Couldn't load the current revision to start a new draft. Try again."
             onRetry={() => void source.refetch()}
           />
         </div>
@@ -454,7 +454,7 @@ export function NoticeDetailPage() {
             tone="danger"
             action={<Button variant="secondary" onClick={() => void revisions.refetch()}>Retry</Button>}
           >
-            {privacyErrorMessage(revisions.error, "Revisions could not be loaded.")}
+            {privacyErrorMessage(revisions.error, "Couldn't load revisions. Try again.")}
           </PanelMessage>
         ) : result && result.items.length === 0 ? (
           <PanelMessage>No revisions on this page.</PanelMessage>

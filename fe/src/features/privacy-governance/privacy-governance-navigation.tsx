@@ -16,11 +16,11 @@ import {
 const links: { href: string; label: string; related?: string }[] = [
   {
     href: "/portal/privacy/notices",
-    label: "Privacy Notices",
+    label: "Privacy notices",
     related: "/portal/privacy/notice-revisions",
   },
-  { href: "/portal/privacy/retention", label: "Retention Policies" },
-  { href: "/portal/privacy/activity", label: "Privacy & Security Activity" },
+  { href: "/portal/privacy/retention", label: "Retention policies" },
+  { href: "/portal/privacy/activity", label: "Privacy and security activity" },
 ];
 
 function isWithin(pathname: string, href: string): boolean {

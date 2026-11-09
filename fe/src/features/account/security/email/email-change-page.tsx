@@ -71,7 +71,7 @@ export function EmailChangePage() {
   function handleTerminalError(caught: unknown) {
     const code = accountErrorCode(caught);
     if (code === "totp_step_up_required") setSetupRequired(true);
-    setError(accountErrorMessage(caught, "The email change could not be completed. Please try again."));
+    setError(accountErrorMessage(caught, "Couldn't change your sign-in email. Try again."));
   }
 
   async function requestCurrentProof() {
@@ -125,7 +125,7 @@ export function EmailChangePage() {
     );
     if (!response) return;
     if (!response.data.changed || !response.data.reauthentication_required) {
-      setError("The email change could not be confirmed. Please try again.");
+      setError("Couldn't confirm your email change. Try again.");
       return;
     }
     setNewCode("");
@@ -152,7 +152,7 @@ export function EmailChangePage() {
           className="mb-4"
           action={<Button variant="secondary" onClick={() => void emailChangeStatus.refetch()}>Retry</Button>}
         >
-          Email verification status could not be loaded. Try again before requesting a new code.
+          Couldn&apos;t load email verification status. Try again before requesting a new code.
         </Notice>
       ) : null}
       {emailChangeStatus.isSuccess && serverRequest && ["expired", "cancelled", "verification_unavailable"].includes(serverRequest.status) ? (
@@ -161,7 +161,7 @@ export function EmailChangePage() {
         </Notice>
       ) : null}
       {mfa.isPending ? <RowsSkeleton label="Checking security requirements…" rows={2} framed /> : null}
-      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Security requirements could not be loaded.</Notice> : null}
+      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Couldn&apos;t load security requirements. Try again.</Notice> : null}
       {mfa.isSuccess && emailChangeStatus.isSuccess && !emailChangeStatus.isFetching && !pending && !usesMfa && !currentChallengeId ? (
         <Panel as="div">
           <PanelHeader title="Verify your current email" description="First, request a code at your current sign-in email. You will verify the new email separately." />

@@ -35,7 +35,7 @@ export function PlatformEnvironmentPage() {
       {environment.isPending ? <PlatformRowsSkeleton label="Loading environment details…" rows={5} /> : null}
       {environment.isError && !result ? (
         <PlatformQueryError
-          message="Resolved environment diagnostics could not be loaded."
+          message="Couldn't load environment settings. Try again."
           onRetry={() => void environment.refetch()}
         />
       ) : null}
@@ -45,11 +45,11 @@ export function PlatformEnvironmentPage() {
         <>
           <Panel className="mt-5" aria-labelledby="environment-values-heading">
             <PanelHeader
-              title="Resolved configuration"
+              title="Current configuration"
               titleId="environment-values-heading"
               description={
                 <>
-                  Resolved{" "}
+                  Current{" "}
                   <PlatformTimestamp value={result.timestamp} />.
                 </>
               }

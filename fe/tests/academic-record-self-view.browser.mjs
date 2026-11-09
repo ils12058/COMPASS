@@ -107,7 +107,7 @@ function selfFixture({ capabilities = ["student_academics.view_self"], role = "S
 {
   const f = selfFixture({ capabilities: [] });
   await h.check("03 Student without self-view capability is blocked and gets no navigation entry", path, { handler: f.handler }, async (page) => {
-    await h.shown(page.getByRole("heading", { name: "Academic record unavailable", exact: true }));
+    await h.shown(page.getByRole("heading", { name: "Access restricted", exact: true }));
     assert.equal(await page.getByRole("link", { name: "Academic Record", exact: true }).count(), 0);
     assert.deepEqual(f.requests, []);
   });
@@ -116,7 +116,7 @@ function selfFixture({ capabilities = ["student_academics.view_self"], role = "S
 {
   const f = selfFixture({ capabilities: [], role: "COUNSELOR" });
   await h.check("04 Non-Student accounts cannot open the self-view", path, { handler: f.handler }, async (page) => {
-    await h.shown(page.getByRole("heading", { name: "Academic record unavailable", exact: true }));
+    await h.shown(page.getByRole("heading", { name: "Access restricted", exact: true }));
     assert.deepEqual(f.requests, []);
   });
 }

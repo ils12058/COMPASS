@@ -49,7 +49,7 @@ export function AccountSecurity() {
     if (kind === "reset") {
       const result = await action.run(
         () => reset.mutateAsync({ userId: account.id }),
-        "Multi-factor authentication could not be reset.",
+        "Couldn't reset multi-factor authentication. Try again.",
         () => setConfirm(null),
         undefined,
       );
@@ -64,7 +64,7 @@ export function AccountSecurity() {
     if (kind === "sessions") {
       const result = await action.run(
         () => revokeSessions.mutateAsync({ userId: account.id }),
-        "Sessions could not be signed out.",
+        "Couldn't sign out sessions. Try again.",
         () => setConfirm(null),
         undefined,
       );
@@ -77,7 +77,7 @@ export function AccountSecurity() {
     }
     const result = await action.run(
       () => revokeTrusted.mutateAsync({ userId: account.id }),
-      "Trusted-browser authorizations could not be removed.",
+      "Couldn't remove trusted-browser authorizations. Try again.",
       () => setConfirm(null),
       undefined,
     );
@@ -97,10 +97,10 @@ export function AccountSecurity() {
         : `Remove all of ${name}'s trusted browsers?`;
   const description =
     confirm === "reset"
-      ? "This removes the account's current authenticator setup and recovery codes, revokes active COMPASS sessions, and removes saved trusted-browser authorization. The account will need to authenticate again and configure MFA again when required by current policy."
+      ? "This removes the account's authenticator setup and recovery codes, signs them out everywhere and removes trust from their browsers. They will need to sign in again and set up an authenticator when required."
       : confirm === "sessions"
-        ? "This signs the account out of all active COMPASS sessions. Trusted-browser authorizations are separate."
-        : "This removes trusted-browser authorization for this account. Future sign-ins may require multi-factor verification again. Authentication sessions are separate.";
+        ? "This signs the account out everywhere. Their browsers stay trusted for future sign-ins."
+        : "Their browsers will no longer be trusted, so future sign-ins may ask for multi-factor verification. This keeps their current sessions signed in.";
   const submitLabel =
     confirm === "reset"
       ? "Reset MFA"

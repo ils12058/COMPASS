@@ -21,7 +21,7 @@ export function AuthFailure({
 }) {
   return (
     <div role="alert">
-      <h1 className="font-heading text-2xl font-bold text-ink">Session verification unavailable</h1>
+      <h1 className="font-heading text-2xl font-bold text-ink">Couldn&apos;t check your sign-in</h1>
       <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
       <Button className="mt-5" variant="secondary" onClick={onRetry}>Retry</Button>
     </div>

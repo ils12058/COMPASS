@@ -108,7 +108,7 @@ export function CreateAccount() {
     const reviewed = review;
     const response = await action.run(
       () => create.mutateAsync({ data: reviewed }),
-      "The account could not be created.",
+      "Couldn't create the account. Try again.",
       () => setReview(null),
       undefined,
     );
@@ -220,12 +220,12 @@ export function CreateAccount() {
           <fieldset className="grid gap-4 rounded-md border border-border p-4">
             <legend className="px-1 text-sm font-semibold text-ink">Initial academic placement (optional)</legend>
             <p className="text-sm text-muted">
-              Recorded as unverified. This does not confirm enrollment. Changing placement later requires the Student Academic Records workspace.
+              This placement is unverified and doesn&apos;t confirm enrollment. Make later changes in Student academic records.
             </p>
             {collegeChoices.isPending ? <p role="status" className="text-sm text-muted">Loading Campus and College choices…</p> : null}
             {collegeChoices.isError ? (
               <p role="alert" className="text-sm text-danger">
-                Campus and College choices could not be loaded.{" "}
+                Couldn&apos;t load campus and College choices. Try again.{" "}
                 <Button variant="quiet" onClick={() => void collegeChoices.refetch()}>Retry</Button>
               </p>
             ) : null}
@@ -355,7 +355,7 @@ export function CreateAccount() {
             </p>
             {review.role === RoleCode.FACULTY ? <p>Faculty home College: {selectedFacultyCollege ? `${selectedFacultyCollege.campus_name} · ${selectedFacultyCollege.name}` : review.faculty_college_id ? "Selected College is no longer available" : "Not assigned"}. Digital Referrals are not available.</p> : null}
             {review.role === RoleCode.STUDENT ? (
-              <p>New student accounts start with current student status.</p>
+              <p>New Student accounts start with current Student status.</p>
             ) : null}
             {review.role === RoleCode.STUDENT && review.student_college_id ? (
               <p>Initial academic placement is recorded as unverified and does not confirm enrollment.</p>

@@ -516,7 +516,7 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
   );
   assert.deepEqual(noTargetDest, {
     href: "/portal/group-sessions/my",
-    label: "My group sessions",
+    label: "My Group Sessions",
   });
 
   const studentWithSchedulingView = {

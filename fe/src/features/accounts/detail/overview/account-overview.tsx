@@ -104,7 +104,7 @@ export function AccountOverview() {
     event.preventDefault();
     const response = await action.run(
       () => updateIdentity.mutateAsync({ userId: account.id, data: identity }),
-      "Identity changes could not be saved.",
+      "Couldn't save identity changes. Try again.",
       () => setIdentityOpen(false),
     );
     if (!response) return;
@@ -125,7 +125,7 @@ export function AccountOverview() {
             ...(isTurnstileConfigured ? { turnstile_token: token } : {}),
           },
         }),
-      "Verification could not be sent to the proposed email.",
+      "Couldn't send verification to the proposed email. Try again.",
       () => setEmailOpen(false),
     );
     setToken(null);
@@ -147,15 +147,15 @@ export function AccountOverview() {
         if (kind === "enable")
           return enable.mutateAsync({ userId: account.id });
         if (!selectedLifecycle)
-          throw new Error("Select a student status.");
+          throw new Error("Select a Student status.");
         return updateLifecycle.mutateAsync({
           userId: account.id,
           data: { status: selectedLifecycle },
         });
       },
       kind === "lifecycle"
-        ? "Student status could not be updated."
-        : "Account status could not be changed.",
+        ? "Couldn't update Student status. Try again."
+        : "Couldn't change account status. Try again.",
       () => setConfirm(null),
       undefined,
     );
@@ -240,7 +240,7 @@ export function AccountOverview() {
         ) : null}
         {emailChangeStatus.isError ? (
           <Notice role="alert" tone="danger" className="mt-4" action={<Button variant="secondary" onClick={() => void emailChangeStatus.refetch()}>Retry</Button>}>
-            Email verification status could not be loaded.
+            Couldn&apos;t load email verification status. Try again.
           </Notice>
         ) : null}
         {!account.is_active ? (
@@ -332,7 +332,7 @@ export function AccountOverview() {
           <PanelBody>
           {self ? (
             <p className="text-sm text-muted">
-              You cannot change your own student status here.
+              You cannot change your own Student status here.
             </p>
           ) : (
             <div className="flex flex-wrap items-end gap-3">
@@ -366,7 +366,7 @@ export function AccountOverview() {
                 }
                 onClick={() => setConfirm("lifecycle")}
               >
-                Update student status
+                Update Student status
               </Button>
             </div>
           )}
@@ -379,8 +379,7 @@ export function AccountOverview() {
         <DialogContent dismissible={!updateIdentity.isPending}>
           <DialogTitle>Edit identity</DialogTitle>
           <DialogDescription>
-            Update the managed account&apos;s institutional identity. Sign-in
-            email is changed separately.
+            Update this account&apos;s name and institutional ID. Change the sign-in email separately.
           </DialogDescription>
           <form
             className="mt-6 space-y-4"
@@ -492,21 +491,21 @@ export function AccountOverview() {
             ? `Disable ${accountName(account)}'s account?`
             : confirm === "enable"
               ? `Enable ${accountName(account)}'s account?`
-              : `Update ${accountName(account)}'s student status?`
+              : `Update ${accountName(account)}'s Student status?`
         }
         confirmLabel={
           confirm === "disable"
             ? "Disable account"
             : confirm === "enable"
               ? "Enable account"
-              : "Update student status"
+              : "Update Student status"
         }
         pendingLabel={
           confirm === "disable"
             ? "Disabling…"
             : confirm === "enable"
               ? "Enabling…"
-              : "Updating student status…"
+              : "Updating Student status…"
         }
         pending={busy}
         error={action.error}
@@ -518,12 +517,12 @@ export function AccountOverview() {
       >
         <p>
           {confirm === "disable"
-            ? "The account will no longer be able to sign in. Existing authentication state will be invalidated."
+            ? "They will be signed out everywhere and won't be able to sign in until you enable the account again."
             : confirm === "enable"
-              ? "This restores account access. Password, email verification, and MFA states remain separate."
+              ? "They can sign in again once their password, email verification and authenticator requirements are met."
               : lifecycle === StudentLifecycleCode.CURRENT
-                ? "Change this student’s status to current. They can start or update Individual Inventory, appointment booking, and Routine Interviews again. Sign-in and existing records are unaffected."
-                : `Change this student’s status to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. They will no longer be able to start or update Individual Inventory, appointment booking, Routine Interviews, or Exit Interviews. Sign-in and historical records remain available.`}
+                ? "Change this Student’s status to current. They can start or update Individual Inventory, Appointment booking, and Routine Interviews again. Sign-in and existing records are unaffected."
+                : `Change this Student’s status to ${lifecycle ? lifecycleLabels[lifecycle] : "the selected status"}. They will no longer be able to start or update Individual Inventory, Appointment booking, Routine Interviews, or Exit Interviews. Sign-in and historical records remain available.`}
         </p>
       </ConsequentialActionDialog>
     </div>

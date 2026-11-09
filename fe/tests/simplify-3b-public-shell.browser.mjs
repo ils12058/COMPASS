@@ -47,7 +47,7 @@ for (const audience of ['public', 'account']) for (const width of [320, 390, 768
 await h.check('public-maintenance-accessibility', '/privacy', { viewport: { width: 320, height: 900 }, overrides: {
   '/api/v1/platform/status': { status: 'maintenance_active', message: null, starts_at: null, ends_at: null },
 } }, async page => {
-  await h.shown(page.getByRole('heading', { name: 'COMPASS is temporarily unavailable' }));
+  await h.shown(page.getByRole('heading', { name: 'COMPASS is under maintenance' }));
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await h.noHorizontalOverflow(page);
   await page.getByRole('button', { name: 'Accessibility settings' }).click();

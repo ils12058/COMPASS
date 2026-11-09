@@ -44,7 +44,7 @@ export function SupervisedStaffActivity({ staffQuery }: { staffQuery: ReturnType
       <PanelHeader title="Supervised staff" context={activity.isFetching && !activity.isPending ? "Refreshing activity…" : result && !activity.isError ? describeResultPage({ count: result.items.length, page: result.page, hasNext: result.has_next, noun: { one: "event", other: "events" }, filtered }) : null} />
       {activity.isError && result ? <RefreshFailureNotice onRetry={() => void activity.refetch()} retrying={activity.isFetching} /> : null}
       {activity.isPending ? <RowsSkeleton label="Loading supervised staff activity…" rows={4} /> : null}
-      {activity.isError && !result ? <PanelMessage tone="danger" role="alert" action={<Button variant="secondary" onClick={() => void activity.refetch()}>Retry</Button>}>{activityErrorMessage(activity.error, "Supervised staff activity could not be loaded.")}</PanelMessage> : null}
+      {activity.isError && !result ? <PanelMessage tone="danger" role="alert" action={<Button variant="secondary" onClick={() => void activity.refetch()}>Retry</Button>}>{activityErrorMessage(activity.error, "Couldn't load supervised staff activity. Try again.")}</PanelMessage> : null}
       {result?.items.length ? (
         <ol className="divide-y divide-border">
           {result.items.map((item) => (
@@ -66,7 +66,7 @@ export function SupervisedStaffActivity({ staffQuery }: { staffQuery: ReturnType
         { name: "date_from", label: "Date from", type: "date" }, { name: "date_to", label: "Date to", type: "date" },
       ]} extra={<>
         {staffQuery.hasNextPage ? <Button variant="secondary" disabled={staffQuery.isFetchingNextPage} onClick={() => void staffQuery.fetchNextPage()}>{staffQuery.isFetchingNextPage ? "Loading staff…" : "Load more staff"}</Button> : null}
-        {staffQuery.isError ? <p role="alert" className="text-sm text-danger">Staff choices could not be refreshed. <Button variant="quiet" onClick={() => void staffQuery.refetch()}>Retry</Button></p> : null}
+        {staffQuery.isError ? <p role="alert" className="text-sm text-danger">Couldn&apos;t refresh staff choices. Try again. <Button variant="quiet" onClick={() => void staffQuery.refetch()}>Retry</Button></p> : null}
       </>} />
     </div>
   );

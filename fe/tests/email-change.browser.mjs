@@ -173,7 +173,7 @@ function fixtures({
     const rejected = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/email-change/confirm") && response.status() === 422);
     await verifyButton.click();
     await rejected;
-    await shown(page.getByText("The verification details could not be confirmed. Check the code or start again.", { exact: true }));
+    await shown(page.getByText("Couldn't confirm the verification details. Check the code or start again.", { exact: true }));
     assert.equal(f.state.confirmations[0].request_id, requestId);
     assert.equal(f.state.confirmations[0].challenge_id, challengeId);
     assert.equal(f.state.confirmations[0].code, "000000");
@@ -251,7 +251,7 @@ for (const kind of ["permission", "network", "repeat-stepup"]) {
     await dialog.waitFor({ state: "hidden" });
     const message = kind === "repeat-stepup"
       ? "Your security check needs to be repeated. Review the action before trying again."
-      : "The email change could not be completed. Please try again.";
+      : "Couldn't change your sign-in email. Try again.";
     await shown(page.getByText(message, { exact: true }));
     assert.equal(f.state.confirmations.length, 2);
     assert.equal(f.state.stepUps.length, 1);

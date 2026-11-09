@@ -80,7 +80,7 @@ await check("backend-unavailable-retry", "/portal/account/activity", {
     return reply({ items: domain, page: 1, page_size: 20, has_next: false });
   } },
 }, async (page) => {
-  await shown(page.getByRole("alert").filter({ hasText: "My activity could not be loaded." }));
+  await shown(page.getByRole("alert").filter({ hasText: "Couldn't load your activity. Try again." }));
   await hidden(page.getByText("No activity is available yet.", { exact: true }));
   await hidden(page.getByText("SECRET DIAGNOSTIC", { exact: true }));
   recovered = true;

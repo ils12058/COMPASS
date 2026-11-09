@@ -133,7 +133,7 @@ export function AccountAccess() {
   const grantDependencyBlocked = missingGrantRequirements.length > 0;
 
   function capabilityName(code: CapabilityCode): string {
-    return capabilities.find((capability) => capability.code === code)?.name ?? code;
+    return capabilities.find((capability) => capability.code === code)?.name ?? "Permission details not loaded";
   }
 
   function reviewOverride(event: FormEvent<HTMLFormElement>) {
@@ -179,7 +179,7 @@ export function AccountAccess() {
                   userId: account.id,
                   data: { role: item.role },
                 }),
-              "Role could not be changed.",
+              "Couldn't change role. Try again.",
               () => setConfirm(null),
               undefined,
             ),
@@ -192,7 +192,7 @@ export function AccountAccess() {
                   userId: account.id,
                   designationCode: item.designation,
                 }),
-              "Designation could not be assigned.",
+              "Couldn't assign designation. Try again.",
               () => setConfirm(null),
               undefined,
             ),
@@ -205,7 +205,7 @@ export function AccountAccess() {
                   userId: account.id,
                   designationCode: item.designation,
                 }),
-              "Designation could not be removed.",
+              "Couldn't remove designation. Try again.",
               () => setConfirm(null),
               undefined,
             ),
@@ -223,7 +223,7 @@ export function AccountAccess() {
                     expires_at: item.expires_at,
                   },
                 }),
-              "Override could not be set.",
+              "Couldn't set override. Try again.",
               () => setConfirm(null),
               undefined,
             ),
@@ -236,7 +236,7 @@ export function AccountAccess() {
                   userId: account.id,
                   capabilityCode: item.capability,
                 }),
-              "Override could not be removed.",
+              "Couldn't remove override. Try again.",
               () => setConfirm(null),
               undefined,
             ),
@@ -255,7 +255,7 @@ export function AccountAccess() {
     await invalidate();
     action.setNotice(
       item.kind === "removeOverride"
-        ? "Override removed. Effective access has been refreshed."
+        ? "Override removed. Access updated."
         : "Access change saved.",
     );
   }
@@ -267,21 +267,21 @@ export function AccountAccess() {
     if (item.kind === "role")
       return [
         `Change ${name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
-        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${account.role === "FACULTY" ? " The Faculty home College will be cleared; its assignment history remains in the activity record." : ""}${item.role === "FACULTY" ? " Digital Referrals remain unavailable. Assign the Faculty home College separately on the account overview." : ""}${item.role === "STUDENT" && !account.student_lifecycle_status ? " The account will also begin with current student status." : ""}`,
+        `${name} will be signed out everywhere and will need to sign in again on every device.${account.role === "FACULTY" ? " The Faculty home College will be cleared; its history stays in the activity record." : ""}${item.role === "FACULTY" ? " Digital Referrals are not offered; assign the Faculty home College on the account overview." : ""}${item.role === "STUDENT" && !account.student_lifecycle_status ? " The account will begin with current Student status." : ""}`,
         "Change role",
         "Changing role…",
       ];
     if (item.kind === "assign")
       return [
         `Assign ${designationLabels[item.designation]} to ${name}?`,
-        `This designation changes the account's institutional authority. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
+        `${name}'s access will change with this designation. They will be signed out everywhere and will need to sign in again on every device.`,
         "Assign designation",
         "Assigning…",
       ];
     if (item.kind === "removeDesignation")
       return [
         `Remove ${designationLabels[item.designation]} from ${name}?`,
-        `This removes designation-based access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
+        `${name} will lose the access this designation grants. They will be signed out everywhere and will need to sign in again on every device.`,
         "Remove designation",
         "Removing…",
       ];
@@ -297,7 +297,7 @@ export function AccountAccess() {
       const dependencyConsequence = affectedDependents.length
         ? ` This will also make ${affectedDependents
             .map((capability) => capability.name)
-            .join(", ")} ineffective while this capability remains unavailable. Their underlying grants or overrides remain recorded.`
+            .join(", ")} unusable until the required permission is restored; their grants and overrides stay recorded.`
         : "";
       return [
         `${item.effect === Effect.GRANT ? "Grant" : "Revoke"} ${capabilityName(item.capability)} for ${name}?`,
@@ -305,14 +305,14 @@ export function AccountAccess() {
           item.expires_at
             ? `. Expires: ${formatInstitutionalDateTime(item.expires_at)} ${INSTITUTION_TIME_ZONE_LABEL}.`
             : ". No expiry set."
-        }${dependencyConsequence} If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
+        }${dependencyConsequence} ${name} will be signed out everywhere and will need to sign in again on every device.`,
         "Set override",
         "Setting override…",
       ];
     }
     return [
       `Remove ${name}'s ${capabilityName(item.capability)} override?`,
-      `Effective access will be recalculated from the account's role, designations, remaining overrides, and capability requirements. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.`,
+      `${name}'s access will go back to what their role, designations and remaining overrides allow, with required permissions still applying. They will be signed out everywhere and will need to sign in again on every device.`,
       "Remove override",
       "Removing override…",
     ];
@@ -380,7 +380,7 @@ export function AccountAccess() {
           <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               assigned.error,
-              "Designations could not be loaded.",
+              "Couldn't load designations. Try again.",
             )}{" "}
             <button
               type="button"
@@ -459,7 +459,7 @@ export function AccountAccess() {
           <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               effective.error,
-              "Effective access could not be loaded.",
+              "Couldn't load effective access. Try again.",
             )}{" "}
             <button
               type="button"
@@ -476,7 +476,7 @@ export function AccountAccess() {
               <thead className={`${dataTable.head} sticky top-0 z-10`}>
                 <tr>
                   <th scope="col" className={dataTable.headerCell}>
-                    Capability
+                    Permission
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Effective
@@ -510,14 +510,14 @@ export function AccountAccess() {
                       ) : null}
                       {capability.missing_required_capabilities.length ? (
                         <span className="mt-1 block font-normal text-warning">
-                          Unavailable because:{" "}
+                          Access blocked because:{" "}
                           {capability.missing_required_capabilities
                             .map(capabilityName)
                             .join(", ")}{" "}
                           {capability.missing_required_capabilities.length === 1
                             ? "is"
                             : "are"}{" "}
-                          not currently effective.
+                          not granted.
                         </span>
                       ) : null}
                     </th>
@@ -533,7 +533,7 @@ export function AccountAccess() {
                                 : source.type === "DESIGNATION" &&
                                     isDesignationCode(source.code)
                                   ? `Designation: ${designationLabels[source.code]}`
-                                  : `${source.type}: ${source.code}`,
+                                  : "Other account assignment",
                             )
                             .join(", ")
                         : "—"}
@@ -554,7 +554,7 @@ export function AccountAccess() {
       {overrides.isError && overridesData ? <RefreshFailureNotice onRetry={() => void overrides.refetch()} retrying={overrides.isFetching} /> : null}
       <Panel aria-labelledby="overrides-heading">
         <PanelHeader
-          title="Capability overrides"
+          title="Permission overrides"
           titleId="overrides-heading"
           description="Overrides are exceptional changes to role and designation access."
           actions={
@@ -574,16 +574,16 @@ export function AccountAccess() {
         />
         {self ? (
           <p className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">
-            You cannot change your own capability overrides here.
+            You cannot change your own permission overrides here.
           </p>
         ) : null}
         {overrides.isPending ? (
-          <RowsSkeleton label="Loading capability overrides…" rows={2} />
+          <RowsSkeleton label="Loading permission overrides…" rows={2} />
         ) : !overridesData ? (
           <div role="alert" className="px-4 py-5 text-sm text-danger sm:px-5">
             {managedAccountError(
               overrides.error,
-              "Overrides could not be loaded.",
+              "Couldn't load overrides. Try again.",
             )}{" "}
             <button
               type="button"
@@ -594,7 +594,7 @@ export function AccountAccess() {
             </button>
           </div>
         ) : overridesData.overrides.length === 0 ? (
-          <PanelMessage>No capability overrides are recorded.</PanelMessage>
+          <PanelMessage>No permission overrides are recorded.</PanelMessage>
         ) : (
           <div className="divide-y divide-border">
             {overridesData.overrides.map((override) => {
@@ -609,13 +609,13 @@ export function AccountAccess() {
                 >
                   <div>
                     <p className="font-semibold text-ink">
-                      {capability?.name ?? override.capability} ·{" "}
+                      {capability?.name ?? "Permission details not loaded"} ·{" "}
                       {override.effect === Effect.GRANT ? "Grant" : "Revoke"} ·{" "}
                       {active === true
                         ? "Active"
                         : active === false
                           ? "Expired"
-                          : "Status unavailable"}
+                          : "Status not confirmed"}
                     </p>
                     <p className="mt-1 text-muted">Reason: {override.reason}</p>
                     <p className="mt-1 text-muted">
@@ -655,14 +655,13 @@ export function AccountAccess() {
       <ManagedActionFeedback action={action} showMessages={confirm === null} />
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
         <DialogContent dismissible={!busy}>
-          <DialogTitle>Set capability override</DialogTitle>
+          <DialogTitle>Set permission override</DialogTitle>
           <DialogDescription>
-            Choose one exception to this account&apos;s baseline access. A
-            reason is required.
+            Choose a permission to grant or revoke, and enter a reason.
           </DialogDescription>
           <form className="mt-6 space-y-4" onSubmit={reviewOverride}>
             <div className="grid gap-2">
-              <Label htmlFor="override-capability">Capability</Label>
+              <Label htmlFor="override-capability">Permission</Label>
               <Select
                 id="override-capability"
                 required
@@ -675,7 +674,7 @@ export function AccountAccess() {
                   setOverrideCapability(code ?? "");
                 }}
               >
-                <option value="">Select capability</option>
+                <option value="">Select permission</option>
                 {effectiveData?.capabilities.map((capability) => (
                   <option key={capability.code} value={capability.code}>
                     {capability.name}
@@ -704,14 +703,14 @@ export function AccountAccess() {
             {selectedOverrideCapability?.required_capabilities.length ? (
               <div className="rounded-sm bg-surface-subtle px-3 py-2.5 text-sm leading-6 text-muted">
                 <p>
-                  This capability requires:{" "}
+                  This permission requires:{" "}
                   {selectedOverrideCapability.required_capabilities
                     .map(capabilityName)
                     .join(", ")}.
                 </p>
                 {grantDependencyBlocked ? (
                   <p className="mt-1 text-warning">
-                    Grant the required capability first.
+                    Grant the required permission first.
                   </p>
                 ) : null}
               </div>

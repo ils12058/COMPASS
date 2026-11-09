@@ -38,8 +38,8 @@ import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function supervisionScopeConsequence(supervisor: OrganizationPersonSummary): string {
   return supervisor.responsibility_scope === "ASSIGNED_AND_FALLBACK_COLLEGES"
-    ? "This staff member will handle the counselor's assigned colleges and colleges routed to them as the unique active Head."
-    : "This staff member will share the counselor's assigned-college responsibilities in COMPASS.";
+    ? "This staff member will handle the Counselor's assigned Colleges and Colleges routed to them as the Head Guidance Counselor."
+    : "This staff member will handle the Counselor's assigned Colleges in COMPASS.";
 }
 
 export function ResponsibilitiesPage() {
@@ -152,7 +152,7 @@ export function ResponsibilitiesPage() {
           collegeId: target.collegeId,
           data: { counselor_id: target.newCounselor.id },
         }),
-      "The responsible Counselor could not be assigned.",
+      "Couldn't assign the responsible Counselor. Try again.",
       {
         onStepUpRequired: () => setCollegeReview(null),
       },
@@ -168,7 +168,7 @@ export function ResponsibilitiesPage() {
     const target = collegeRemoval;
     const response = await action.run(
       () => removeCollege.mutateAsync({ collegeId: target.collegeId }),
-      "The responsible Counselor could not be removed.",
+      "Couldn't remove the responsible Counselor. Try again.",
       {
         onStepUpRequired: () => setCollegeRemoval(null),
       },
@@ -217,7 +217,7 @@ export function ResponsibilitiesPage() {
           staffId: target.staff.id,
           data: { supervisor_id: target.newSupervisor.id },
         }),
-      "The Staff supervisor could not be assigned.",
+      "Couldn't assign the Staff supervisor. Try again.",
       {
         onStepUpRequired: () => setStaffReview(null),
       },
@@ -235,7 +235,7 @@ export function ResponsibilitiesPage() {
     const target = staffRemoval;
     const response = await action.run(
       () => removeSupervisor.mutateAsync({ staffId: target.staff.id }),
-      "The Staff supervisor could not be removed.",
+      "Couldn't remove the Staff supervisor. Try again.",
       {
         onStepUpRequired: () => setStaffRemoval(null),
       },
@@ -280,7 +280,7 @@ export function ResponsibilitiesPage() {
 
       <Panel className="mt-5" aria-labelledby="college-counselors-heading">
         <PanelHeader
-          title="College counselors"
+          title="College Counselors"
           titleId="college-counselors-heading"
         />
 
@@ -290,23 +290,23 @@ export function ResponsibilitiesPage() {
         ) : responsibilities.isError ? (
           <PanelQueryError
             error={responsibilities.error}
-            fallback="College Counselor responsibilities could not be loaded."
+            fallback="Couldn't load college Counselor responsibilities. Try again."
             onRetry={() => void responsibilities.refetch()}
           />
         ) : canViewStructure && colleges.isError ? (
           <PanelQueryError
             error={colleges.error}
-            fallback="College structure could not be loaded."
+            fallback="Couldn't load college structure. Try again."
             onRetry={() => void colleges.refetch()}
           />
         ) : collegeRows.length === 0 ? (
           <PanelMessage>
-            No college counselor responsibilities have been assigned.
+            No college Counselor responsibilities have been assigned.
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
             <table className={`${dataTable.table} min-w-[42rem]`}>
-              <caption className="sr-only">College counselors</caption>
+              <caption className="sr-only">College Counselors</caption>
               <thead className={dataTable.head}>
                 <tr>
                   <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
@@ -386,7 +386,7 @@ export function ResponsibilitiesPage() {
 
         {!canViewStructure ? (
           <p className="border-t border-brand-line px-4 py-3 text-xs leading-5 text-muted sm:px-5">
-            Only Colleges with an assigned Counselor are shown. College structure is unavailable.
+            Only Colleges with an assigned Counselor are shown because you don&apos;t have access to the College structure.
           </p>
         ) : null}
       </Panel>
@@ -403,7 +403,7 @@ export function ResponsibilitiesPage() {
         ) : supervisions.isError ? (
           <PanelQueryError
             error={supervisions.error}
-            fallback="Staff supervision relationships could not be loaded."
+            fallback="Couldn't load staff supervision relationships. Try again."
             onRetry={() => void supervisions.refetch()}
           />
         ) : supervisions.data.data.items.length === 0 ? (
@@ -581,7 +581,7 @@ export function ResponsibilitiesPage() {
                 <dd className="font-semibold text-ink">{collegeReview.newCounselor.full_name}</dd>
               </div>
             </dl>
-            <p>This changes the College&apos;s counselor for default routing. It does not grant blanket confidential-record access.</p>
+            <p>This changes the College&apos;s Counselor for default routing. It does not grant blanket confidential-record access.</p>
           </>
         ) : null}
       </ConsequentialActionDialog>

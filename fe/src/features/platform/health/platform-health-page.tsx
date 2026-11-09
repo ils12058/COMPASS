@@ -47,7 +47,7 @@ export function PlatformHealthPage() {
       setWorkerError(
         platformErrorMessage(
           error,
-          "The background worker diagnostic could not be completed.",
+          "Couldn't complete the background worker diagnostic. Try again.",
         ),
       );
     }
@@ -78,7 +78,7 @@ export function PlatformHealthPage() {
           {health.isPending ? <PlatformRowsSkeleton label="Loading platform health…" rows={5} /> : null}
           {health.isError && !result ? (
             <PlatformQueryError
-              message="Platform health diagnostics could not be loaded."
+              message="Couldn't load platform health diagnostics. Try again."
               onRetry={() => void health.refetch()}
             />
           ) : null}

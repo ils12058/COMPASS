@@ -56,10 +56,10 @@ export function rosterIssues(error: unknown): RosterIssue[] {
 export function rosterError(error: unknown, fallback: string): string {
   const detail = errorDetail(errorBody(error));
   if (detail?.code === "permission_denied") {
-    return "The student_academics.import capability is required to import an academic roster.";
+    return "You don't have permission to import an academic roster.";
   }
   if (detail?.code === "identity_policy_unavailable") {
-    return "Academic policy is temporarily unavailable. Try again later.";
+    return "Couldn't check academic requirements. Try again later.";
   }
   return typeof detail?.message === "string" && detail.message ? detail.message : fallback;
 }

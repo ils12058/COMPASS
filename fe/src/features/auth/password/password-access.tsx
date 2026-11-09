@@ -55,7 +55,7 @@ export function PasswordAccess() {
         message: response.data.message,
       });
     } catch (caught) {
-      setError(authErrorMessage(caught, "The password access request could not be completed."));
+      setError(authErrorMessage(caught, "Couldn't request a password code. Try again."));
     } finally {
       if (isTurnstileConfigured) {
         setTurnstileToken(null);
@@ -85,7 +85,7 @@ export function PasswordAccess() {
       });
 
       if (!response.data.password_set) {
-        setError("The password could not be updated.");
+        setError("Couldn't update the password. Try again.");
         return;
       }
 
@@ -99,7 +99,7 @@ export function PasswordAccess() {
       setError(
         issues.length > 0
           ? "The new password does not meet the password policy."
-          : authErrorMessage(caught, "The password could not be updated. Please try again."),
+          : authErrorMessage(caught, "Couldn't update the password. Try again."),
       );
     }
   }

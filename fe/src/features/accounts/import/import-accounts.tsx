@@ -114,7 +114,7 @@ export function ImportAccounts() {
     const response = await action.run(
       () =>
         importCsv.mutateAsync({ data: { file }, params: { dry_run: true } }),
-      "The CSV could not be validated.",
+      "Couldn't validate the CSV. Try again.",
       undefined,
       (error) => setIssues(csvIssues(error)),
     );
@@ -139,7 +139,7 @@ export function ImportAccounts() {
           data: { file: reviewed.file },
           params: { dry_run: false },
         }),
-      "The CSV import could not be completed.",
+      "Couldn't complete the CSV import. Try again.",
       () => setCommitReview(null),
       (error) => {
         setConflict(true);
@@ -392,7 +392,7 @@ export function ImportAccounts() {
                 </div>
               ))}
             </dl>
-            <p>The import will use the CSV that produced this validation report. Server checks remain authoritative at commit time.</p>
+            <p>You&apos;ll import the CSV you just validated. COMPASS will check it again before saving.</p>
           </>
         ) : null}
       </ConsequentialActionDialog>

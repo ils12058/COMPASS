@@ -49,7 +49,7 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
       await navigator.clipboard.writeText(codes.join("\n"));
       setCopied(true);
     } catch {
-      setCopyError("The codes could not be copied. Save them manually before leaving this page.");
+      setCopyError("Couldn't copy the codes. Save them manually before leaving this page.");
     }
   }
 
@@ -109,7 +109,7 @@ export function AuthenticatorPage() {
       const response = await start.mutateAsync({ data: { current_password: currentPassword } });
       setSetup(response.data);
     } catch (caught) {
-      setError(accountErrorMessage(caught, "Authenticator setup could not be started. Please try again."));
+      setError(accountErrorMessage(caught, "Couldn't start authenticator setup. Try again."));
     }
   }
 
@@ -119,7 +119,7 @@ export function AuthenticatorPage() {
     try {
       const response = await confirm.mutateAsync({ data: { code, current_password: currentPassword } });
       if (!response.data.enabled) {
-        setError("Authenticator setup could not be confirmed. Please try again.");
+        setError("Couldn't confirm authenticator setup. Try again.");
         return;
       }
       setCurrentPassword("");
@@ -132,10 +132,10 @@ export function AuthenticatorPage() {
         setCurrentPassword("");
         setSetup(null);
         setCode("");
-        setError("Your current password could not be verified. Start authenticator setup again.");
+        setError("Couldn't verify your current password. Start authenticator setup again.");
         return;
       }
-      setError(accountErrorMessage(caught, "The authenticator code could not be verified."));
+      setError(accountErrorMessage(caught, "Couldn't verify the authenticator code. Check it and try again."));
     }
   }
 
@@ -152,7 +152,7 @@ export function AuthenticatorPage() {
       return { action } as const;
     }, {
       onStepUpRequired: () => setConfirmAction(null),
-      onFailure: (caught) => setError(accountErrorMessage(caught, "The authenticator action could not be completed. Please try again.")),
+      onFailure: (caught) => setError(accountErrorMessage(caught, "Couldn't complete the authenticator action. Try again.")),
     });
     if (!result) return;
     if (result.action === "regenerate") {
@@ -173,7 +173,7 @@ export function AuthenticatorPage() {
       <SecurityBackLink />
       <PageHeader title="Authenticator app" headingId="authenticator-heading" />
       {mfa.isPending ? <RowsSkeleton label="Checking authenticator status…" rows={2} framed /> : null}
-      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Authenticator status could not be loaded.</Notice> : null}
+      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Couldn&apos;t load authenticator status. Try again.</Notice> : null}
       {mfa.isSuccess && codes ? <RecoveryCodes codes={codes} onDone={() => { setCodes(null); setError(null); }} /> : null}
       {mfa.isSuccess && !codes && !mfa.data.data.enabled && !setup ? (
         <Panel as="div">
@@ -256,7 +256,7 @@ export function AuthenticatorPage() {
       >
         <p>
           {confirmAction === "disable"
-            ? "You will no longer use this authenticator for sign-in. Existing recovery codes will no longer be usable, and trusted-browser state may be revoked."
+            ? "You'll no longer use this authenticator or its recovery codes for sign-in. Your browsers may no longer be trusted."
             : "Generating new recovery codes invalidates the previous recovery codes. Save the new codes when they appear."}
         </p>
       </ConsequentialActionDialog>

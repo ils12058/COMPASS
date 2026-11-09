@@ -53,9 +53,9 @@ const summaryCell = "min-w-0 bg-surface-raised px-4 py-3.5 sm:px-5";
 const EMAIL_STATUSES = Object.values(EmailDeliveryStatusValue);
 
 const failureLabels: Record<EmailDeliveryFailureCode, string> = {
-  [EmailDeliveryFailureCode.transport_error]: "Mail server could not be reached",
+  [EmailDeliveryFailureCode.transport_error]: "Couldn't reach mail server",
   [EmailDeliveryFailureCode.send_returned_zero]: "Mail server did not accept the message",
-  [EmailDeliveryFailureCode.template_error]: "Email content could not be prepared",
+  [EmailDeliveryFailureCode.template_error]: "Couldn't prepare email content",
   [EmailDeliveryFailureCode.recipient_inactive]: "Recipient account is inactive",
   [EmailDeliveryFailureCode.unknown_failure]: "Unclassified failure",
 };
@@ -154,7 +154,7 @@ export function PlatformEmailDeliveryPage() {
           throw caught;
         }
       },
-      "The retry request could not be completed.",
+      "Couldn't complete the retry request. Try again.",
     );
     if (!success) {
       // Eligibility can change between reading the list and retrying; show current state.
@@ -196,12 +196,12 @@ export function PlatformEmailDeliveryPage() {
             tone="danger"
             action={<Button variant="secondary" onClick={() => void summary.refetch()}>Try again</Button>}
           >
-            The email delivery summary could not be loaded.
+            Couldn&apos;t load the email delivery summary. Try again.
           </PanelMessage>
         ) : null}
         {summary.isError && summaryData ? (
           <div className="px-4 sm:px-5">
-            <RefreshFailureNotice message="Latest delivery summary could not be refreshed. Showing the last confirmed summary." onRetry={() => void summary.refetch()} retrying={summary.isFetching} />
+            <RefreshFailureNotice message="Couldn't refresh latest delivery summary. Showing the last confirmed summary." onRetry={() => void summary.refetch()} retrying={summary.isFetching} />
           </div>
         ) : null}
         {summaryData ? (
@@ -283,7 +283,7 @@ export function PlatformEmailDeliveryPage() {
           {action.notice}
         </p>
       ) : null}
-      {rowsStale ? <RefreshFailureNotice message="Latest delivery rows could not be refreshed. Showing the last confirmed rows. Retry eligibility must be checked again." onRetry={() => void deliveries.refetch()} retrying={deliveries.isFetching} /> : null}
+      {rowsStale ? <RefreshFailureNotice message="Couldn't refresh email deliveries. You're viewing the last confirmed records; refresh them before retrying a delivery." onRetry={() => void deliveries.refetch()} retrying={deliveries.isFetching} /> : null}
 
       <Panel className={rowsStale ? undefined : "mt-5"} aria-labelledby="email-list-heading">
         <PanelHeader
@@ -318,7 +318,7 @@ export function PlatformEmailDeliveryPage() {
             tone="danger"
             action={<Button variant="secondary" onClick={() => void deliveries.refetch()}>Try again</Button>}
           >
-            Email delivery records could not be loaded.
+            Couldn&apos;t load email delivery records. Try again.
           </PanelMessage>
         ) : null}
 

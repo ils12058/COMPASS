@@ -115,7 +115,7 @@ export function MandatoryTotpSetup({ restartDestination = "/portal" }: { restart
       const response = await start.mutateAsync();
       setSetup(response.data);
     } catch (caught) {
-      setError(authErrorMessage(caught, "Authenticator setup could not be started. Please try again."));
+      setError(authErrorMessage(caught, "Couldn't start authenticator setup. Try again."));
     }
   }
 
@@ -127,7 +127,7 @@ export function MandatoryTotpSetup({ restartDestination = "/portal" }: { restart
       setRecoveryCodes(response.data.recovery_codes);
       setCode("");
     } catch (caught) {
-      setError(authErrorMessage(caught, "The authenticator code could not be verified."));
+      setError(authErrorMessage(caught, "Couldn't verify the authenticator code. Check it and try again."));
     }
   }
 
@@ -138,7 +138,7 @@ export function MandatoryTotpSetup({ restartDestination = "/portal" }: { restart
           Set up an authenticator app
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted">
-          Additional account security is required before this account can sign in to COMPASS.
+          Set up an authenticator app before you sign in to COMPASS.
         </p>
         <FormError id="setup-start-error" message={error} />
         <Button className="mt-5 w-full" disabled={start.isPending} onClick={() => void startSetup()}>

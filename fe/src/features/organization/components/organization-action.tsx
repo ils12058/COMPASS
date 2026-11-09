@@ -11,12 +11,12 @@ import {
 
 const knownErrors: Record<string, string> = {
   permission_denied: "You can't manage organization records.",
-  organization_not_found: "This organization record is unavailable.",
+  organization_not_found: "Couldn't find this organization record. Reload the page.",
   organization_conflict:
     "This change conflicts with an existing assignment or active organization structure. Review the details and try again.",
   invalid_organization_request:
     "The selected organization record cannot be used for this action. Review your selection and try again.",
-  student_academic_not_found: "This Student academic record is unavailable.",
+  student_academic_not_found: "Couldn't find this Student academic record. Reload the page.",
   student_academic_conflict:
     "This change conflicts with the recorded academic history. Review the details and try again.",
   invalid_student_academic_request:

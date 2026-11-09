@@ -72,7 +72,7 @@ function ProfileIdentity({
       updatePhoto(response.data);
       onSaved("Profile photo updated.");
     } catch (caught) {
-      setError(accountErrorMessage(caught, "The profile photo could not be updated. Please try again."));
+      setError(accountErrorMessage(caught, "Couldn't update the profile photo. Try again."));
     } finally {
       if (fileInput.current) fileInput.current.value = "";
     }
@@ -86,7 +86,7 @@ function ProfileIdentity({
       updatePhoto(response.data);
       onSaved("Profile photo removed.");
     } catch (caught) {
-      setError(accountErrorMessage(caught, "The profile photo could not be removed. Please try again."));
+      setError(accountErrorMessage(caught, "Couldn't remove the profile photo. Try again."));
     }
   }
 
@@ -170,7 +170,7 @@ function ProfileEditor({
       setSaved(next);
       onSaved("Profile changes saved.");
     } catch (caught) {
-      setError(accountErrorMessage(caught, "Your profile could not be saved. Please try again."));
+      setError(accountErrorMessage(caught, "Couldn't save your profile. Try again."));
     }
   }
 
@@ -230,7 +230,7 @@ export function ProfilePage() {
           tone="danger"
           action={<Button variant="secondary" onClick={() => void profile.refetch()}>Retry</Button>}
         >
-          Your profile could not be loaded.
+          Couldn&apos;t load your profile. Try again.
         </Notice>
       ) : null}
       {profile.isSuccess ? (

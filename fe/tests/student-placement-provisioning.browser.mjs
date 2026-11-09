@@ -166,7 +166,7 @@ await check("placement-authorization-failure-uses-placement-message", "/portal/a
   const dialog = page.getByRole("alertdialog");
   await shown(dialog);
   await dialog.getByRole("button", { name: "Create account", exact: true }).click();
-  await shown(dialog.getByText("The student_academics.manage capability is required to assign an initial Student placement."));
+  await shown(dialog.getByText("You don't have permission to assign a Student placement."));
 });
 
 await finish();

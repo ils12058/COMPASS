@@ -7,8 +7,8 @@ export function InstitutionWorkspaceUnavailable({
   workspace: string;
 }) {
   return (
-    <WorkspaceUnavailable title={`${workspace} unavailable`}>
-      {workspace} is unavailable to this account.
+    <WorkspaceUnavailable title="Access restricted">
+      You don&apos;t have access to {workspace}.
     </WorkspaceUnavailable>
   );
 }

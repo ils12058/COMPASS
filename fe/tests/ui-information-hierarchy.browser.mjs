@@ -94,21 +94,21 @@ await check("service-detail-help", `/portal/services/${serviceId}`, {}, async (p
 });
 
 await check("responsibilities-help", "/portal/organization/responsibilities", {}, async (page) => {
-  await page.getByRole("button", { name: "Help: About Responsibilities", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "About Responsibilities", exact: true });
+  await page.getByRole("button", { name: "Help: About responsibilities", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "About responsibilities", exact: true });
   assert.match(await dialog.innerText(), /exactly one active Head Guidance Counselor/);
-  assert.match(await dialog.innerText(), /does not automatically grant blanket access/);
-  assert.match(await dialog.innerText(), /Guidance Office Assistant handle/);
-  assert.match(await dialog.innerText(), /Staff do not inherit Head oversight authority/);
+  assert.match(await dialog.innerText(), /don't grant access to every confidential record/);
+  assert.match(await dialog.innerText(), /Guidance Office Assistants handle/);
+  assert.match(await dialog.innerText(), /do not gain the Head Guidance Counselor's oversight permissions/);
   await page.keyboard.press("Escape");
   await screenshot(page, "organization-responsibilities");
 });
 
 await check("institutional-forms-warning-help", "/portal/institutional-forms", {}, async (page) => {
   await shown(page.getByRole("alert").filter({ hasText: "A current supported revision is required" }));
-  await page.getByRole("button", { name: "Help: About Institutional Forms", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "About Institutional Forms", exact: true });
-  assert.match(await dialog.innerText(), /does not grant institutional approval/);
+  await page.getByRole("button", { name: "Help: About institutional forms", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "About institutional forms", exact: true });
+  assert.match(await dialog.innerText(), /institutional approval is still required/);
   assert.match(await dialog.innerText(), /CNSC\/GTA/);
   await page.keyboard.press("Escape");
   await screenshot(page, "institutional-forms");
@@ -144,7 +144,7 @@ await check("platform-help", "/portal/platform/health", {}, async (page) => {
   await shown(page.getByRole("button", { name: "Check worker", exact: true }));
   await page.getByRole("button", { name: "Help: About Platform diagnostics", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "About Platform diagnostics", exact: true });
-  assert.match(await dialog.innerText(), /does not establish worker, scheduler, Daily.co, or Turnstile/);
+  assert.match(await dialog.innerText(), /doesn't check the worker, scheduler, Daily.co or Turnstile/);
   await page.keyboard.press("Escape");
   await screenshot(page, "platform-health");
 });
@@ -192,8 +192,8 @@ const retentionAuth = {
 };
 for (const device of ["desktop", "phone"]) {
   await check(`retention-policies-read-only-${device}`, "/portal/privacy/retention", { role: "INSTITUTIONAL_OFFICER", device, overrides: retentionAuth }, async (page, { requests }) => {
-    await shown(page.getByRole("heading", { level: 1, name: "Retention Policies", exact: true }));
-    await shown(page.getByRole("link", { name: "Retention Policies", exact: true }));
+    await shown(page.getByRole("heading", { level: 1, name: "Retention policies", exact: true }));
+    await shown(page.getByRole("link", { name: "Retention policies", exact: true }));
     for (const name of ["Graduate Tracer responses", "E-Counseling recordings", "E-Counseling transcripts"]) await shown(page.getByRole("heading", { name, exact: true }));
     assert.equal(await page.getByText("Not adopted", { exact: true }).count(), 3);
     assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 3);
@@ -201,12 +201,12 @@ for (const device of ["desktop", "phone"]) {
     assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
     const buttons = page.locator("main").getByRole("button");
     assert.equal(await buttons.count(), 1, "Read-only oversight has only contextual Help");
-    assert.equal(await buttons.getAttribute("aria-label"), "Help: About Retention Policies");
+    assert.equal(await buttons.getAttribute("aria-label"), "Help: About Retention policies");
     const helpTarget = await buttons.boundingBox();
     assert.ok(helpTarget && helpTarget.width >= 44 && helpTarget.height >= 44);
-    await page.getByRole("button", { name: "Help: About Retention Policies", exact: true }).click();
-    const help = page.getByRole("dialog", { name: "About Retention Policies", exact: true });
-    assert.match(await help.innerText(), /version-controlled COMPASS code[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
+    await page.getByRole("button", { name: "Help: About Retention policies", exact: true }).click();
+    const help = page.getByRole("dialog", { name: "About Retention policies", exact: true });
+    assert.match(await help.innerText(), /Policy changes need University approval and a reviewed COMPASS update[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
     await page.keyboard.press("Escape");
     await hidden(help);
     const privacy = requests.filter((item) => item.pathname.startsWith("/api/v1/privacy/"));

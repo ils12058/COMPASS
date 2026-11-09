@@ -65,7 +65,7 @@ export function AccountDetailFrame({
     return (
       <section className="max-w-2xl">
         <PageHeader
-          title={missing ? "Account not found" : "Account unavailable"}
+          title={missing ? "Account not found" : "Couldn't load account"}
         />
         <Notice
           role="alert"
@@ -87,10 +87,10 @@ export function AccountDetailFrame({
           }
         >
           {missing
-            ? "This managed account could not be found."
+            ? "Couldn't find this account. Return to Accounts."
             : managedAccountError(
                 account.error,
-                "The managed account could not be loaded.",
+                "Couldn't load the managed account. Try again.",
               )}
         </Notice>
       </section>

@@ -50,7 +50,7 @@ const mappings = [
     [activityErrorMessage, 'invalid_supervised_activity_request', /Check the activity filters/],
     [activityErrorMessage, 'invalid_pagination', /previous page or adjust the filters/],
     [activityErrorMessage, 'privacy_activity_export_too_large', /More than 10,000.*Narrow/],
-    [activityErrorMessage, 'release_audit_unavailable', /cannot be released.*privacy audit/],
+    [activityErrorMessage, 'release_audit_unavailable', /Couldn't prepare the activity export right now/],
     [exitInterviewErrorMessage, 'exit_interview_opportunity_required', /Office needs to open an Exit Interview for you first/],
     [exitInterviewErrorMessage, 'exit_interview_opportunity_not_open', /no longer open.*Contact/],
     [exitInterviewErrorMessage, 'exit_interview_opportunity_conflict', /Review the access record or contact/],

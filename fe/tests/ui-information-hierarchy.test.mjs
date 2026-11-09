@@ -73,25 +73,25 @@ test("Service Help explains coverage, saved appointments and separate video sett
 
 test("Institutional Form Help distinguishes Current, software support and approval", () => {
   const html = help(institutionalFormsHelpSections);
-  assert.match(html, /Current means the revision selected for new records/);
-  assert.match(html, /does not grant institutional approval/);
+  assert.match(html, /Current means the revision used for new records/);
+  assert.match(html, /institutional approval is still required/);
   assert.match(html, /CNSC\/GTA/);
 });
 
 test("Responsibilities Help includes safe fallback, confidential access and GOA inheritance", () => {
   const html = help(responsibilitiesHelpSections);
   assert.match(html, /exactly one active Head Guidance Counselor/);
-  assert.match(html, /does not automatically grant blanket access/);
-  assert.match(html, /Guidance Office Assistant handle/);
-  assert.match(html, /unique active Head when no valid Counselor is assigned/);
-  assert.match(html, /Staff do not inherit Head oversight authority/);
+  assert.match(html, /don&#x27;t grant access to every confidential record/);
+  assert.match(html, /Guidance Office Assistants handle/);
+  assert.match(html, /Head Guidance Counselor when no valid Counselor is assigned/);
+  assert.match(html, /do not gain the Head Guidance Counselor&#x27;s oversight permissions/);
 });
 
 test("operator Help retains diagnostic limitations and the retention oversight boundary", () => {
-  assert.match(help(platformHelpSections), /does not establish worker, scheduler, Daily.co, or Turnstile/);
-  assert.match(help(retentionHelpSections), /version-controlled COMPASS code/);
+  assert.match(help(platformHelpSections), /doesn&#x27;t check the worker, scheduler, Daily.co or Turnstile/);
+  assert.match(help(retentionHelpSections), /Policy changes need University approval and a reviewed COMPASS update/);
   assert.match(help(retentionHelpSections), /can’t be created or edited in COMPASS/);
-  assert.match(help(retentionHelpSections), /doesn’t schedule, approve, or carry out deletion or anonymization/);
+  assert.match(help(retentionHelpSections), /doesn’t schedule, approve or carry out deletion or anonymization/);
   assert.doesNotMatch(help(retentionHelpSections), /Eligibility|holds?\b|retry/i);
 });
 

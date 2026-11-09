@@ -34,7 +34,7 @@ import { getPrivacyGovernanceListActivityQueryKey, privacyGovernanceExportActivi
 const artifactLabels: Record<string, string> = {
   graduate_tracer: "Graduate Tracer",
   student_profiling: "Student Profiling",
-  good_moral_certificate: "Good Moral certificate",
+  good_moral_certificate: "Good Moral Certificate",
 };
 
 function artifactLabel(value: string): string {
@@ -82,7 +82,7 @@ function ActivityItem({ item }: { item: PrivacyActivityItemResponse }) {
         ) : null}
         {item.scope ? (
           <div className="max-w-full">
-            <dt className="inline">Scope: </dt>
+            <dt className="inline">Area: </dt>
             <dd className="inline break-words">{item.scope}</dd>
           </div>
         ) : null}
@@ -129,19 +129,19 @@ export function PrivacyActivityPage() {
   return (
     <section>
       <PrivacyPageHeader
-        title="Privacy & Security Activity"
+        title="Privacy and security activity"
         description="Privacy and security events."
         action={canExport ? <PageAction icon={FileDown} variant="secondary" disabled={exportCsv.isPending || query.isFetching || query.isError || query.isPlaceholderData || !result} aria-busy={exportCsv.isPending} onClick={() => exportCsv.mutate(criteria)} label={exportCsv.isPending ? "Exporting CSV…" : "Export CSV"} /> : undefined}
       />
 
-      {exportCsv.isError ? <PanelMessage tone="danger" role="alert">{activityErrorMessage(exportCsv.error, "Activity CSV could not be exported.")}</PanelMessage> : null}
+      {exportCsv.isError ? <PanelMessage tone="danger" role="alert">{activityErrorMessage(exportCsv.error, "Couldn't export activity CSV. Try again.")}</PanelMessage> : null}
       {query.isError && result ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
 
       {query.isError && !result ? (
         <div>
           <PrivacyQueryError
             error={query.error}
-            fallback={activityErrorMessage(query.error, "Privacy and security activity could not be loaded.")}
+            fallback={activityErrorMessage(query.error, "Couldn't load privacy and security activity. Try again.")}
             onRetry={() => void query.refetch()}
           />
         </div>

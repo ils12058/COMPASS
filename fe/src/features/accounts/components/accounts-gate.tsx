@@ -9,7 +9,7 @@ export function AccountsGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   if (!user.capabilities.includes("accounts.manage")) {
     return (
-      <WorkspaceUnavailable title="Accounts unavailable">
+      <WorkspaceUnavailable title="Access restricted">
         You don’t have access to manage accounts.
       </WorkspaceUnavailable>
     );

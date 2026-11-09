@@ -31,7 +31,7 @@ type PendingAction =
 
 function formatDate(value: string): string {
   const formatted = formatInstitutionalDateTime(value);
-  return formatted === value ? "Date unavailable" : formatted;
+  return formatted === value ? "Date not shown" : formatted;
 }
 
 function SessionRow({ session, onRevoke }: { session: SessionSummary; onRevoke: (id: string) => void }) {
@@ -93,7 +93,7 @@ export function SessionsPage() {
       let message: string;
       if (action.kind === "session") {
         await revokeSession.mutateAsync({ sessionId: action.id });
-        message = "The session was signed out.";
+        message = "Session signed out.";
       } else if (action.kind === "other-sessions") {
         const response = await revokeOthers.mutateAsync();
         message = `${response.data.revoked_count} other ${response.data.revoked_count === 1 ? "session was" : "sessions were"} signed out.`;
@@ -111,7 +111,7 @@ export function SessionsPage() {
       setNotice(message);
       await queryClient.invalidateQueries({ queryKey });
     } catch (caught) {
-      setActionError(accountErrorMessage(caught, "This security action could not be completed. Please try again."));
+      setActionError(accountErrorMessage(caught, "Couldn't complete this security action. Try again."));
     }
   }
 
@@ -119,9 +119,9 @@ export function SessionsPage() {
     : action?.kind === "other-sessions" ? "Sign out other sessions?"
       : action?.kind === "trusted" ? "Remove trust from this browser?"
         : action?.currentExists ? "Remove trust from other browsers?" : "Remove all trusted browsers?";
-  const description = action?.kind === "session" ? "This session will need to authenticate again. The physical device is not removed or blocked."
+  const description = action?.kind === "session" ? "You'll need to sign in again in this session. The device won't be removed or blocked."
     : action?.kind === "other-sessions" ? "This keeps your current session signed in and signs out your other active COMPASS sessions. Trusted-browser permissions are managed separately."
-      : action?.kind === "trusted" ? "This browser will no longer be trusted for future sign-ins. Your active authentication session remains signed in."
+      : action?.kind === "trusted" ? "This browser will no longer be trusted for future sign-ins. You'll stay signed in to your current session."
         : action?.currentExists ? "This removes trusted-browser permissions from your other browsers and keeps this browser's trust. It does not sign out active sessions."
           : "This removes all listed trusted-browser permissions. It does not sign out active sessions.";
   const actionLabel = action?.kind === "session" ? "Sign out session"
@@ -150,8 +150,8 @@ export function SessionsPage() {
           actions={sessions.isSuccess && otherSessionExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-sessions" })}>Sign out other sessions</Button> : null}
         />
         {sessions.isPending ? <RowsSkeleton label="Loading signed-in sessions…" rows={2} /> : null}
-        {sessions.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void sessions.refetch()}>Retry</Button>}>Signed-in sessions could not be loaded.</PanelMessage> : null}
-        {sessions.isSuccess && signedIn.length === 0 ? <PanelMessage>No signed-in sessions are available to display.</PanelMessage> : null}
+        {sessions.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void sessions.refetch()}>Retry</Button>}>Couldn&apos;t load signed-in sessions. Try again.</PanelMessage> : null}
+        {sessions.isSuccess && signedIn.length === 0 ? <PanelMessage>No signed-in sessions to show.</PanelMessage> : null}
         {sessions.isSuccess && signedIn.length > 0 ? <ul className="divide-y divide-border">{signedIn.map((item) => <SessionRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "session", id })} />)}</ul> : null}
       </Panel>
 
@@ -163,8 +163,8 @@ export function SessionsPage() {
           actions={trusted.isSuccess && otherTrustedExists ? <Button variant="secondary" onClick={() => chooseAction({ kind: "other-trusted", currentExists: currentTrustedExists })}>{currentTrustedExists ? "Remove trust from other browsers" : "Remove all trusted browsers"}</Button> : null}
         />
         {trusted.isPending ? <RowsSkeleton label="Loading trusted browsers…" rows={2} /> : null}
-        {trusted.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void trusted.refetch()}>Retry</Button>}>Trusted browsers could not be loaded.</PanelMessage> : null}
-        {trusted.isSuccess && browsers.length === 0 ? <PanelMessage>No trusted browsers are currently listed.</PanelMessage> : null}
+        {trusted.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void trusted.refetch()}>Retry</Button>}>Couldn&apos;t load trusted browsers. Try again.</PanelMessage> : null}
+        {trusted.isSuccess && browsers.length === 0 ? <PanelMessage>No trusted browsers.</PanelMessage> : null}
         {trusted.isSuccess && browsers.length > 0 ? <ul className="divide-y divide-border">{browsers.map((item) => <TrustedRow key={item.id} session={item} onRevoke={(id) => chooseAction({ kind: "trusted", id })} />)}</ul> : null}
       </Panel>
 

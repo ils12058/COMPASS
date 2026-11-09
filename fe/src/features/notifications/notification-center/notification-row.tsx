@@ -34,7 +34,7 @@ export function NotificationRow({ notification, currentUserId }: { notification:
       cacheConfirmedRead(queryClient, response.data, currentUserId);
     } catch (caught) {
       reconcileNotificationAuth(caught, queryClient);
-      setError("This notification could not be marked as read. Please try again.");
+      setError("Couldn't mark this notification as read. Try again.");
       return;
     }
     await Promise.allSettled([

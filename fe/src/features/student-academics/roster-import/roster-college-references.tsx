@@ -31,7 +31,7 @@ export function RosterCollegeReferences() {
       ) : null}
       {open && failed ? (
         <p role="alert">
-          Campus and College references could not be loaded.{" "}
+          Couldn&apos;t load campus and College references. Try again.{" "}
           <Button
             variant="secondary"
             onClick={() => {

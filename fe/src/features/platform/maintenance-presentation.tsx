@@ -50,7 +50,7 @@ export function MaintenanceNotice({ surface = "page" }: { surface?: "page" | "au
     return (
       <section role="status" aria-labelledby="active-maintenance-heading" className="mb-4 rounded-sm border border-warning/40 bg-surface-raised px-4 py-3">
         <h2 id="active-maintenance-heading" className="text-sm font-semibold text-ink">COMPASS is under maintenance</h2>
-        <p className="mt-0.5 text-sm text-muted">Most workspaces are temporarily unavailable.</p>
+        <p className="mt-0.5 text-sm text-muted">Most workspaces will reopen when maintenance ends.</p>
       </section>
     );
   }
@@ -97,7 +97,7 @@ export function MaintenanceScreen({
         <section aria-labelledby="maintenance-heading" className="mx-auto w-full max-w-lg rounded-sm border border-brand-line bg-surface-raised px-5 py-6 sm:px-8 sm:py-7">
           <div className="border-b border-border pb-5">
             <MaintenanceBrand />
-            <p className="mt-2 text-sm font-medium text-muted">Guidance and Counseling Office</p>
+            <p className="mt-2 text-sm font-medium text-muted">Guidance Office</p>
           </div>
           <h1 id="maintenance-heading" className="mt-5 font-heading text-2xl font-bold leading-tight text-ink [overflow-wrap:anywhere]">{heading}</h1>
           <MaintenanceMessage message={status.message} className="mt-3 text-base leading-7 text-ink" />
@@ -129,7 +129,7 @@ export function PublicMaintenanceGate({ children }: { children: ReactNode }) {
   return (
     <MaintenanceScreen
       status={status}
-      heading="COMPASS is temporarily unavailable"
+      heading="COMPASS is under maintenance"
       checking={checking}
       checkedAt={checkedAt}
       onCheck={() => void check()}
@@ -255,7 +255,7 @@ export function PlatformRecoveryFrame({ controls, children }: { controls: ReactN
       </header>
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-[96rem] px-4 py-5 focus:outline-none sm:px-6 lg:px-8 lg:py-6">
         <p role="status" className="mb-5 rounded-sm border border-warning/40 bg-surface-raised px-4 py-3 text-sm text-ink sm:px-5">
-          <span className="font-semibold">Maintenance Mode is active.</span> Other workspaces are unavailable until it ends.
+          <span className="font-semibold">Maintenance Mode is active.</span> Other workspaces will reopen when maintenance ends.
         </p>
         {children}
       </main>

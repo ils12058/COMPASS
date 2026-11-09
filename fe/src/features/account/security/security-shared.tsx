@@ -108,7 +108,7 @@ function AuthenticatorCodeDialog({
     try {
       await verify.mutateAsync({ data: { code } });
     } catch (caught) {
-      setError(accountErrorMessage(caught, "The authenticator code could not be verified."));
+      setError(accountErrorMessage(caught, "Couldn't verify the authenticator code. Check it and try again."));
       verificationRunning.current = false;
       return;
     }
@@ -122,7 +122,7 @@ function AuthenticatorCodeDialog({
       await onVerified?.();
       onOpenChange(false);
     } catch {
-      setError("Verification succeeded, but the action could not be completed. Review its status before trying again.");
+      setError("Authenticator verified, but couldn't complete the action. Check its status before trying again.");
     } finally {
       setCompleting(false);
       verificationRunning.current = false;

@@ -30,7 +30,7 @@ export function InstitutionalFormsPage({
   const { user } = usePortalSession();
 
   if (!canViewInstitutionalForms(user)) {
-    return <InstitutionWorkspaceUnavailable workspace="Institutional Forms" />;
+    return <InstitutionWorkspaceUnavailable workspace="Institutional forms" />;
   }
 
   return <InstitutionalFormsWorkspace requestedFamily={requestedFamily} />;
@@ -79,12 +79,12 @@ function InstitutionalFormsWorkspace({
   return (
     <>
       <PageHeader
-        title="Institutional Forms"
+        title="Institutional forms"
         description="Controlled forms recognized by COMPASS."
         help={<InstitutionalFormsHelp />}
       >
       </PageHeader>
-      {invalidFamilyNotice ? <Notice role="status" tone="warning" className="mb-5">The requested Form Family is unavailable. Choose an available family below.</Notice> : null}
+      {invalidFamilyNotice ? <Notice role="status" tone="warning" className="mb-5">Couldn&apos;t find the requested form family. Choose one below.</Notice> : null}
 
       {families.isError && !families.data ? (
         <Notice
@@ -98,7 +98,7 @@ function InstitutionalFormsWorkspace({
         >
           {institutionConfigurationErrorMessage(
             families.error,
-            "Institutional Form Families could not be loaded.",
+            "Couldn't load institutional form families. Try again.",
           )}
         </Notice>
       ) : families.isPending && !families.data ? (
@@ -158,7 +158,7 @@ function InstitutionalFormsWorkspace({
             {selectedFamily.configuration_state === FormFamilyConfigurationState.MISSING_REQUIRED_REVISION ? <p role="alert" className="border-b border-brand-line px-4 py-3 text-sm leading-6 text-danger sm:px-5">A current supported revision is required for this form family.</p> : null}
 
             <h3 className="px-4 pb-3 pt-4 font-heading text-base font-semibold text-ink sm:px-5">
-              Form Revisions
+              Form revisions
             </h3>
             {revisions.isError && !revisions.data ? (
               <PanelMessage
@@ -173,7 +173,7 @@ function InstitutionalFormsWorkspace({
               >
                 {institutionConfigurationErrorMessage(
                   revisions.error,
-                  "Form Revisions for this family could not be loaded.",
+                  "Couldn't load revisions for this form family. Try again.",
                 )}
               </PanelMessage>
             ) : revisions.isPending && !revisions.data ? (
@@ -188,8 +188,7 @@ function InstitutionalFormsWorkspace({
               <>
                 {revisions.isError ? (
                   <p role="alert" className="px-4 pb-3 text-sm leading-6 text-danger sm:px-5">
-                    The revision list could not be refreshed. The displayed data may be out
-                    of date.
+                    Couldn&apos;t refresh the revision list. The displayed data may be out of date.
                   </p>
                 ) : null}
                 <FormRevisionList
@@ -204,7 +203,7 @@ function InstitutionalFormsWorkspace({
 
       {families.isError && families.data ? (
         <p role="alert" className="mt-4 text-sm leading-6 text-danger">
-          The Form Family list could not be refreshed. The displayed data may be out of date.
+          Couldn&apos;t refresh the Form Family list. The displayed data may be out of date.
         </p>
       ) : null}
     </>

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const WARNING = [
-  "%cSTOP!%c",
+  "%cSTOP%c",
   "",
   "This browser feature is intended for developers.",
   "",
@@ -13,7 +13,7 @@ const WARNING = [
   "COMPASS will never ask you to paste code into Developer Tools.",
   "",
   "University of Camarines Norte",
-  "Guidance and Counseling Office",
+  "Guidance Office",
   "COMPASS",
   "",
   "Opened this intentionally? Hello, developer.",

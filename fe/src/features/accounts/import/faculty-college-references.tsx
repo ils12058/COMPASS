@@ -12,7 +12,7 @@ export function FacultyCollegeReferences() {
     <details className="mt-4 text-sm" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="min-h-11 cursor-pointer py-3 font-semibold text-brand">College references for CSV</summary>
       {open && query.isPending ? <p role="status">Loading College references…</p> : null}
-      {open && query.isError ? <p role="alert">College references could not be loaded. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
+      {open && query.isError ? <p role="alert">Couldn&apos;t load college references. Try again. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
       {open && query.isSuccess ? query.data.data.length ? (
         <div className={dataTable.scroll}>
           <table className={dataTable.table}>

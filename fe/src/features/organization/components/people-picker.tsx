@@ -105,7 +105,7 @@ export function PeoplePicker({
           <p>
             {organizationErrorMessage(
               people.error,
-              "People could not be loaded.",
+              "Couldn't load people. Try again.",
             )}
           </p>
           <Button

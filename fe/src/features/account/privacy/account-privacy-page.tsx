@@ -153,7 +153,7 @@ export function AccountPrivacyPage() {
               </Button>
             }
           >
-            {privacyErrorMessage(notices.error, "Privacy notices could not be loaded.")}
+            {privacyErrorMessage(notices.error, "Couldn't load privacy notices. Try again.")}
           </PanelMessage>
         ) : result && result.items.length === 0 ? (
           <PanelMessage>

@@ -58,7 +58,7 @@ export function PlatformActivityPage() {
 
       {activity.isError && !result ? (
         <PlatformQueryError
-          message={activityErrorMessage(activity.error, "Technical activity could not be loaded.")}
+          message={activityErrorMessage(activity.error, "Couldn't load technical activity. Try again.")}
           onRetry={() => void activity.refetch()}
         />
       ) : (

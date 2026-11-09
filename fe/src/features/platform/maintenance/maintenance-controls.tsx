@@ -44,7 +44,7 @@ export function ManualMaintenanceForm({
         title="Enable Maintenance Mode"
         titleId="manual-maintenance-heading"
         level={3}
-        description="The public message may be shown to COMPASS users. Do not include internal or sensitive information. Manual Maintenance Mode remains active until explicitly disabled."
+        description="People may see this message, so keep out internal or sensitive information. Manual Maintenance Mode ends only when you turn it off."
       />
       <form onSubmit={onSubmit}>
         <PanelBody className="max-w-2xl space-y-5">
@@ -164,8 +164,7 @@ export function MaintenanceScheduleForm({
             aria-describedby="scheduled-maintenance-message-help"
           />
           <p id="scheduled-maintenance-message-help" className="text-xs leading-5 text-muted">
-            Do not include internal or sensitive information. The message is
-            rendered as plain text.
+            Keep out internal or sensitive information. People will see the message as plain text.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

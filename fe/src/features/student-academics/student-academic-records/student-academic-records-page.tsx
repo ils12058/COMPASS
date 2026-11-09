@@ -215,7 +215,7 @@ export function StudentAcademicRecordsPage() {
           studentId: target.student.id,
           data: { college_id: target.newCollege.id },
         }),
-      "The Student placement could not be saved.",
+      "Couldn't save the Student placement. Try again.",
       {
         onStepUpRequired: () => setReview(null),
       },
@@ -231,7 +231,7 @@ export function StudentAcademicRecordsPage() {
     const target = removal;
     const response = await action.run(
       () => clearPlacement.mutateAsync({ studentId: target.student.id }),
-      "The Student placement could not be cleared.",
+      "Couldn't clear the Student placement. Try again.",
       {
         onStepUpRequired: () => setRemoval(null),
       },
@@ -290,11 +290,11 @@ export function StudentAcademicRecordsPage() {
   return (
     <section aria-labelledby="student-academic-records-heading">
       <PageHeading
-        title="Student Academic Records"
+        title="Student academic records"
         headingId="student-academic-records-heading"
         description={
           !canViewStructure
-            ? "Organization structure is unavailable to this account, so College choices for new or changed placements are unavailable. Current placements are still listed."
+            ? "You don't have access to organization structure. You can view current placements, but adding or changing placements requires access to College choices."
             : undefined
         }
         action={
@@ -378,15 +378,14 @@ export function StudentAcademicRecordsPage() {
         <ListSearchField
           id="organization-search" maxLength={200} value={searchValue}
           onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))}
-          label="Search student placements"
-          placeholder="Search by student name or institutional ID"
+          label="Search Student placements"
+          placeholder="Search by Student name or institutional ID"
         />
       </FloatingListTools>
 
       {canViewStructure && (campuses.isError || colleges.isError) ? (
         <Notice role="alert" tone="warning" className="mb-5">
-          Structure choices could not be loaded. The placement list remains
-          available, but assign/update controls are unavailable.
+          Couldn&apos;t load Campus, College and Program choices. You can view placements; retry loading the choices before adding or changing a placement.
         </Notice>
       ) : null}
       {action.notice && !dialog && !removal ? action.messages : null}
@@ -410,18 +409,18 @@ export function StudentAcademicRecordsPage() {
           }
         />
         {list.isPending ? (
-          <TableSkeleton label="Loading student placements…" />
+          <TableSkeleton label="Loading Student placements…" />
         ) : list.isError ? (
           <PanelQueryError
             error={list.error}
-            fallback="Student placements could not be loaded."
+            fallback="Couldn't load Student placements. Try again."
             onRetry={() => void list.refetch()}
           />
         ) : list.data.data.items.length === 0 ? (
           <PanelMessage>
             {hasFilters
-              ? "No student placements match the current filters."
-              : "No student placements have been recorded."}
+              ? "No Student placements match the current filters."
+              : "No Student placements have been recorded."}
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
@@ -574,7 +573,7 @@ export function StudentAcademicRecordsPage() {
           </div>
           {selectedPlacement.isError ? (
             <p role="alert" className="mt-4 text-sm text-danger">
-              The Student&apos;s current placement could not be verified. Refresh and try again.
+              Couldn&apos;t verify the Student&apos;s current placement. Refresh and try again.
             </p>
           ) : null}
           {action.messages}
@@ -667,7 +666,7 @@ export function StudentAcademicRecordsPage() {
               <div><dt className="text-muted">New College</dt><dd className="font-semibold text-ink">{review.newCollege.name}</dd></div>
             </dl>
             {review.currentCollege ? <p>Updating this placement replaces the current College relationship.</p> : null}
-            <p>The College placement affects default institutional Counselor and routing behavior. Historical records are not rewritten by this change.</p>
+            <p>This College placement changes which Counselor handles new work. Past records stay as they are.</p>
           </>
         ) : null}
       </ConsequentialActionDialog>

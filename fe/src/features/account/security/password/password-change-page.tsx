@@ -57,13 +57,13 @@ export function PasswordChangePage() {
         onFailure: (caught) => {
       const issues = passwordPolicyMessages(caught);
       setPolicyIssues(issues);
-      setError(issues.length ? "The new password does not meet the password policy." : accountErrorMessage(caught, "The password could not be changed. Please try again."));
+      setError(issues.length ? "The new password does not meet the password policy." : accountErrorMessage(caught, "Couldn't change the password. Try again."));
         },
       },
     );
     if (!response) return;
     if (!response.data.changed) {
-      setError("The password could not be changed. Please try again.");
+      setError("Couldn't change the password. Try again.");
       return;
     }
     setCurrentPassword("");
@@ -82,7 +82,7 @@ export function PasswordChangePage() {
       <SecurityBackLink />
       <PageHeader title="Change password" headingId="password-heading" />
       {mfa.isPending ? <RowsSkeleton label="Checking security requirements…" rows={2} framed /> : null}
-      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Security requirements could not be loaded.</Notice> : null}
+      {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Couldn&apos;t load security requirements. Try again.</Notice> : null}
       {mfa.isSuccess ? (
         <Panel as="div">
         <form onSubmit={submit}>

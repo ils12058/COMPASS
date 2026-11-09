@@ -8,5 +8,5 @@ const formatter = new Intl.DateTimeFormat("en-PH", {
 
 export function notificationTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : formatter.format(date);
+  return Number.isNaN(date.getTime()) ? "Date not shown" : formatter.format(date);
 }

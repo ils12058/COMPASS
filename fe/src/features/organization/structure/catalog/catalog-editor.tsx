@@ -116,7 +116,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
         setNotice("This information was updated. Your input is preserved. Compare the latest saved values below, then review again."); return;
       }
       if (retiring && (!preview?.can_deactivate || preview.resource_version !== fresh?.record.resource_version)) {
-        setError("Deactivation is unavailable. Review the latest impact and resolve its blockers."); return;
+        setError("Review the linked records and address the blockers before deactivating this record."); return;
       }
       const invalidFresh = draftError(intent, draft, intent.mode === "create" ? undefined : fresh);
       if (invalidFresh) { setError(invalidFresh); return; }
@@ -178,14 +178,14 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
         const code = catalogErrorCode(caught);
         if (code === "catalog_duplicate_code") setCodeError(catalogErrorMessage(caught));
         if (code === "permission_denied" || code === "invalid_session") { setDenied(true); void queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryOptions().queryKey }); }
-        else { try { await reload(); } catch { setError(`${catalogErrorMessage(caught)} The latest details could not be loaded. Refresh before reviewing again.`); } }
+        else { try { await reload(); } catch { setError(`${catalogErrorMessage(caught)} Couldn't load the latest details. Refresh them before reviewing again.`); } }
       }
     } finally { if (mounted.current) setSaving(false); }
   }
   async function afterVerification() {
     setReading(true);
     try { await authority(); await reload(); setNotice(intent.mode === "rename" ? "Authenticator verified. Check the saved information and select Save changes when ready." : "Authenticator verified. Review the latest saved values and your proposed change, then confirm again."); }
-    catch { setError("Verification succeeded, but the latest details could not be loaded. Refresh before reviewing again."); }
+    catch { setError("Authenticator verified, but couldn't load the latest details. Refresh them before reviewing again."); }
     finally { setReading(false); }
     // No retained command and no mutation call after MFA.
   }
@@ -195,11 +195,11 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
       {saved ? <Notice tone={refreshFailed ? "warning" : "success"} role="status" action={<>
         {refreshFailed ? <Button variant="secondary" disabled={busy} onClick={() => { setReading(true); void finishSave(saved).finally(() => setReading(false)); }}>Retry refresh</Button> : null}
         <Button variant="secondary" disabled={busy} onClick={onClose}>Done</Button>
-      </>}>{refreshFailed ? "The change was saved, but the latest details could not be loaded." : "Changes saved."}</Notice> : <>
+      </>}>{refreshFailed ? "Changes saved, but couldn't load the latest details. Refresh them." : "Changes saved."}</Notice> : <>
         {notice ? <Notice className="mb-4" role="status">{notice}</Notice> : null}
         {error ? <Notice className="mb-4" tone="danger" role="alert">{error}</Notice> : null}
-        {denied ? <Notice tone="warning" action={<Button variant="secondary" onClick={onClose}>Close editor</Button>}>Catalog management access or your sign-in changed. This editor is unavailable.</Notice> : <>
-          {context && target.isPending ? <TableSkeleton label="Loading current Catalog record…" /> : context && target.isError ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void target.refetch()}>Refresh record</Button>}>The latest record could not be loaded. Your input is retained; review is unavailable until refresh succeeds.</Notice> : null}
+        {denied ? <Notice tone="warning" action={<Button variant="secondary" onClick={onClose}>Close editor</Button>}>Your catalog access or sign-in changed. Close this editor and sign in again.</Notice> : <>
+          {context && target.isPending ? <TableSkeleton label="Loading current Catalog record…" /> : context && target.isError ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void target.refetch()}>Refresh record</Button>}>Couldn&apos;t load the latest record. Your input is kept; refresh the record before reviewing it.</Notice> : null}
           {confirmedTarget ? <div className="mb-5 space-y-1 break-words text-sm" aria-label="Latest saved record">
             <h3 className="font-semibold">{intent.mode === "create" ? "Fixed parent" : target.isError ? "Last confirmed record" : "Latest saved record"}</h3>
             <p>{confirmedTarget.record.name} · <span className="font-mono">{confirmedTarget.record.code}</span></p>
@@ -215,7 +215,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
                 <Label htmlFor="catalog-code">{kind === "campus" ? "Campus" : kind === "college" ? "College" : "Program"} code</Label>
                 <Input id="catalog-code" required maxLength={32} value={draft.code} aria-invalid={Boolean(codeError)} aria-describedby={codeError ? "catalog-code-help catalog-code-error" : "catalog-code-help"} onChange={(event) => { setCodeError(null); setDraft({ ...draft, code: event.target.value }); }} />
                 {codeError ? <p id="catalog-code-error" className="text-sm text-danger">{codeError}</p> : null}
-                <p id="catalog-code-help" className="text-sm text-muted">Use the official identifier. Code and parent cannot be changed through ordinary editing after creation.</p>
+                <p id="catalog-code-help" className="text-sm text-muted">Use the official code. You can&apos;t change its code, Campus or College after creating the record.</p>
               </div> : null}
               {intent.mode === "create" || intent.mode === "rename" ? <div className="grid gap-2">
                 <Label htmlFor="catalog-name">{intent.mode === "rename" ? "New official name" : "Official name"}</Label>
@@ -226,10 +226,10 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
               </Select></div> : null}
               {intent.mode === "policy" || (intent.mode === "create" && kind === "program") ? <CatalogPolicyFields draft={draft} onChange={setDraft} disabled={busy} /> : null}
               {intent.mode === "rename" ? <p className="text-sm text-muted">The new official name may appear in current linked views. Finalized historical records keep their saved facts; documents are not regenerated.</p> : null}
-              {intent.mode === "status" && draft.active === "active" ? <p className="text-sm text-muted">Parent records must be active. Programs need a classification and year levels. Descendants are not activated automatically, and historical assignments are not restored automatically.</p> : null}
+              {intent.mode === "status" && draft.active === "active" ? <p className="text-sm text-muted">Any parent Campus or College must be active, and Programs need a classification and year levels. Linked Colleges and Programs aren&apos;t activated automatically, and past assignments aren&apos;t restored automatically.</p> : null}
               <div className="grid gap-2"><Label htmlFor="catalog-basis">Change note</Label><Input id="catalog-basis" required maxLength={160} placeholder={intent.mode === "rename" ? `Corrected the ${kind} name.` : intent.mode === "status" ? `${draft.active === "active" ? "Activated" : "Deactivated"} the ${kind}.` : intent.mode === "policy" ? "Updated Program settings." : `Added a ${kind}.`} value={draft.basis} aria-describedby="catalog-basis-help" onChange={(event) => setDraft({ ...draft, basis: event.target.value })} /><p id="catalog-basis-help" className="text-sm text-muted">A short note about this change, up to 160 characters. It will appear in the change history.</p></div>
             </fieldset>
-            {retiring ? impact.isPending ? <TableSkeleton label="Loading deactivation impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>The current impact could not be confirmed. Deactivation is unavailable.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} canManageRelationships={canManageRelationships} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
+            {retiring ? impact.isPending ? <TableSkeleton label="Loading deactivation impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>Couldn&apos;t check the linked records. Refresh the impact before deactivating this record.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} canManageRelationships={canManageRelationships} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
             {unconfirmed ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void reconcile(unconfirmed)}>Check saved state</Button>}>The save is still unconfirmed. Check saved state before making another change.</Notice> : null}
             <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || renameChanged || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data?.can_deactivate || impact.isError || impact.isFetching))}>{saving ? "Saving…" : reading ? "Loading latest details…" : intent.mode === "rename" ? "Save changes" : "Review change"}</Button></div>
           </form>

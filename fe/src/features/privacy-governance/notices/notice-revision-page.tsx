@@ -128,7 +128,7 @@ function DraftEditor({
           revisionId: revision.id,
           data: { ...changes, expected_updated_at: baseUpdatedAt },
         }),
-      "The draft could not be saved.",
+      "Couldn't save the draft. Try again.",
       {
         onError: (caught) => {
           if (
@@ -276,11 +276,11 @@ export function NoticeRevisionPage() {
   if ((detail.isError && !canShowLastKnownData(detail)) || !detail.data) {
     return (
       <PrivacyRecordUnavailable
-        title="Notice revision unavailable"
+        title="Couldn't load notice revision"
         error={detail.error}
-        fallback="The notice revision could not be loaded."
+        fallback="Couldn't load the notice revision. Try again."
         backHref="/portal/privacy/notices"
-        backLabel="Privacy Notices"
+        backLabel="Privacy notices"
         onRetry={() => void detail.refetch()}
       />
     );
@@ -296,7 +296,7 @@ export function NoticeRevisionPage() {
   async function confirmPublish() {
     const result = await action.run(
       () => publish.mutateAsync({ revisionId }),
-      "The revision could not be published.",
+      "Couldn't publish the revision. Try again.",
       {
         onStepUpRequired: () => setPublishOpen(false),
         onError: (caught) => {
@@ -367,7 +367,7 @@ export function NoticeRevisionPage() {
           ) : null
         }
       />
-      {detail.isError ? <RefreshFailureNotice message="Latest revision state could not be checked. Showing the last confirmed revision; publishing is unavailable until a successful refresh." onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
+      {detail.isError ? <RefreshFailureNotice message="Couldn't check the latest revision. You're viewing the last confirmed version; refresh it before publishing." onRetry={() => void detail.refetch()} retrying={detail.isFetching} /> : null}
 
       {searchParams.get("created") === "1" && !editing ? (
         <p role="status" className="mb-4 text-sm text-success">

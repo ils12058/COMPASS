@@ -81,7 +81,7 @@ export function NotificationCenter({ page }: { page: number }) {
       cacheConfirmedAllRead(queryClient, user.id);
     } catch (caught) {
       reconcileNotificationAuth(caught, queryClient);
-      setActionError("Notifications could not be marked as read. Please try again.");
+      setActionError("Couldn't mark notifications as read. Try again.");
       setRefreshingAfterMarkAll(false);
       return;
     }
@@ -109,7 +109,7 @@ export function NotificationCenter({ page }: { page: number }) {
         ) : null}
       />
       {actionError ? <p role="alert" className="mb-4 text-sm text-danger">{actionError}</p> : null}
-      {data && notifications.isError ? <Notice role="alert" tone="warning" className="mb-4" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>Notifications could not be refreshed. Showing the last loaded page.</Notice> : null}
+      {data && notifications.isError ? <Notice role="alert" tone="warning" className="mb-4" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>Couldn&apos;t refresh notifications. Showing the last loaded page.</Notice> : null}
       <Panel aria-labelledby="notifications-list-heading">
         <PanelHeader
           title="Your notifications"
@@ -119,7 +119,7 @@ export function NotificationCenter({ page }: { page: number }) {
         {!data && notifications.isPending ? <NotificationSkeleton /> : null}
         {!data && notifications.isError ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void notifications.refetch()}>Retry</Button>}>
-            Notifications could not be loaded.
+            Couldn&apos;t load notifications. Try again.
           </PanelMessage>
         ) : null}
         {data ? (

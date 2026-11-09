@@ -20,7 +20,7 @@ export function OrganizationGate({ children }: { children: ReactNode }) {
   return canEnterOrganization(user) ? (
     children
   ) : (
-    <WorkspaceUnavailable title="Organization unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to the Organization workspace.
     </WorkspaceUnavailable>
   );
@@ -31,7 +31,7 @@ export function OrganizationStructureGate({ children }: { children: ReactNode })
   return canViewOrganizationStructure(user) ? (
     children
   ) : (
-    <WorkspaceUnavailable title="Organization structure unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to campus, college, and program information.
     </WorkspaceUnavailable>
   );
@@ -40,7 +40,7 @@ export function OrganizationStructureGate({ children }: { children: ReactNode })
 export function OrganizationRelationshipsGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   return canManageOrganization(user) ? children : (
-    <WorkspaceUnavailable title="Organization relationships unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to manage organization relationships.
     </WorkspaceUnavailable>
   );
@@ -49,7 +49,7 @@ export function OrganizationRelationshipsGate({ children }: { children: ReactNod
 export function StudentAcademicRecordsGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   return canViewStudentAcademics(user) ? children : (
-    <WorkspaceUnavailable title="Student Academic Records unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to Student academic records.
     </WorkspaceUnavailable>
   );
@@ -58,7 +58,7 @@ export function StudentAcademicRecordsGate({ children }: { children: ReactNode }
 export function StudentAcademicRosterImportGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   return canImportStudentAcademics(user) ? children : (
-    <WorkspaceUnavailable title="Academic roster import unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to import academic rosters.
     </WorkspaceUnavailable>
   );
@@ -67,7 +67,7 @@ export function StudentAcademicRosterImportGate({ children }: { children: ReactN
 export function MyAcademicRecordGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
   return canViewOwnAcademicRecord(user) ? children : (
-    <WorkspaceUnavailable title="Academic record unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to your academic record.
     </WorkspaceUnavailable>
   );

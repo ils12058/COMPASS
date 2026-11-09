@@ -16,20 +16,20 @@ import {
 import { CompassApiError } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
-  permission_denied: "You do not have permission to manage accounts.",
+  permission_denied: "You don't have access to manage accounts.",
   academic_placement_permission_denied:
-    "The student_academics.manage capability is required to assign an initial Student placement.",
+    "You don't have permission to assign a Student placement.",
   institutional_designation_permission_denied:
-    "You do not have permission to manage institutional designations.",
+    "You don't have access to manage institutional designations.",
   last_account_manager:
     "COMPASS must retain an active account manager. Assign another manager before making this change.",
   identity_policy_unavailable:
-    "Account policy is temporarily unavailable. Try again later.",
+    "Couldn't check account requirements. Try again later.",
   self_target_forbidden:
     "You cannot perform this administrative action on your own account.",
   rate_limited: "Too many attempts. Try again later.",
   security_unavailable:
-    "This security action is temporarily unavailable. Try again later.",
+    "Couldn't complete this security action. Try again later.",
 };
 
 export function managedAccountError(error: unknown, fallback: string): string {

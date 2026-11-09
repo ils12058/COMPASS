@@ -67,7 +67,7 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
         return;
       }
 
-      setError("Sign in could not be completed. Please try again.");
+      setError("Couldn't sign you in. Try again.");
     } catch (caught) {
       if (
         caught instanceof CompassApiError &&
@@ -79,7 +79,7 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
         return;
       }
 
-      setError(authErrorMessage(caught, "Sign in could not be completed. Please try again."));
+      setError(authErrorMessage(caught, "Couldn't sign you in. Try again."));
     } finally {
       if (isTurnstileConfigured) {
         setTurnstileToken(null);

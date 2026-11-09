@@ -20,7 +20,7 @@ export function PlatformGate({ children }: { children: ReactNode }) {
   if (hasPlatformView(user)) return children;
 
   return (
-    <WorkspaceUnavailable title="Platform Operations unavailable">
+    <WorkspaceUnavailable title="Access restricted">
       You don’t have access to Platform Operations.
     </WorkspaceUnavailable>
   );

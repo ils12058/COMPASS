@@ -33,5 +33,5 @@ export function acknowledgeErrorMessage(caught: unknown): string {
   ) {
     return "Your account cannot acknowledge notices right now.";
   }
-  return privacyErrorMessage(caught, "The notice could not be acknowledged.");
+  return privacyErrorMessage(caught, "Couldn't acknowledge the notice. Try again.");
 }

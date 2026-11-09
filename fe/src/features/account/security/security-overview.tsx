@@ -57,7 +57,7 @@ export function SecurityOverview() {
           className="mb-4"
           action={<Button variant="secondary" onClick={() => void emailChange.refetch()}>Retry</Button>}
         >
-          Email verification status could not be loaded.
+          Couldn&apos;t load email verification status. Try again.
         </Notice>
       ) : null}
       <Panel as="div" className="divide-y divide-border">
@@ -79,7 +79,7 @@ export function SecurityOverview() {
             <h2 className="font-heading text-base font-semibold text-ink">Authenticator app</h2>
             {mfa.isPending ? <p className="mt-1 text-sm text-muted">Checking status…</p> : null}
             {mfa.isSuccess ? <p className="mt-1 text-sm text-muted">{mfa.data.data.enabled ? "Enabled" : "Not enabled"}</p> : null}
-            {mfa.isError ? <p role="alert" className="mt-1 text-sm text-danger">Status unavailable. <Button variant="quiet" className="min-h-0 px-1 py-0" onClick={() => void mfa.refetch()}>Retry</Button></p> : null}
+            {mfa.isError ? <p role="alert" className="mt-1 text-sm text-danger">Couldn&apos;t check authenticator status. Try again. <Button variant="quiet" className="min-h-0 px-1 py-0" onClick={() => void mfa.refetch()}>Retry</Button></p> : null}
           </div>
           <SectionLink href="/portal/account/security/authenticator" label="Manage authenticator" icon={ShieldCheck} />
         </div>

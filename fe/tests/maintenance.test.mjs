@@ -72,7 +72,7 @@ test("scheduled maintenance keeps the public page and shows a compact notice", (
 test("active maintenance replaces the ordinary public page", () => {
   const html = render(clientWith(active), createElement(PublicMaintenanceGate, null, PAGE));
   assert.ok(!html.includes(PAGE));
-  assert.match(html, /<h1[^>]*>COMPASS is temporarily unavailable<\/h1>/);
+  assert.match(html, /<h1[^>]*>COMPASS is under maintenance<\/h1>/);
   assert.match(html, /Back after the upgrade\./);
   assert.match(html, /Expected back/);
   assert.match(html, /<button[^>]*>Check again<\/button>/);
@@ -96,7 +96,7 @@ test("sign-in stays usable during active maintenance, with a compact notice", ()
   const client = clientWith(active);
   const auth = render(client, createElement(MaintenanceNotice, { surface: "auth" }));
   assert.match(auth, /COMPASS is under maintenance/);
-  assert.match(auth, /Most workspaces are temporarily unavailable\./);
+  assert.match(auth, /Most workspaces will reopen when maintenance ends\./);
   assert.doesNotMatch(auth, /Check again|<h1/);
   // Ordinary pages show nothing here: the gate replaces them instead.
   assert.equal(render(client, createElement(MaintenanceNotice)), "");

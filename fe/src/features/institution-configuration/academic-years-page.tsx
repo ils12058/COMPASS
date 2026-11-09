@@ -79,7 +79,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
 
     const created = await action.run(
       () => createYear.mutateAsync({ data: { label: generatedLabel } }),
-      "The Academic Year could not be added.",
+      "Couldn't add the Academic Year. Try again.",
       {
         onStepUpRequired: () => setCreateOpen(false),
       },
@@ -101,7 +101,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
     const target = confirmYear;
     const updated = await action.run(
       () => setCurrentYear.mutateAsync({ academicYearId: target.id }),
-      "The current Academic Year could not be changed.",
+      "Couldn't change the current Academic Year. Try again.",
       {
         onStepUpRequired: () => setConfirmOpen(false),
       },
@@ -152,7 +152,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
       ) : null}
       {years.isError && years.data ? (
         <Notice role="alert" tone="warning" className="mb-4">
-          Academic Years could not be refreshed. The displayed data may be out of date.
+          Couldn&apos;t refresh Academic Years. The displayed data may be out of date.
         </Notice>
       ) : null}
 
@@ -168,12 +168,12 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         >
           {institutionConfigurationErrorMessage(
             years.error,
-            "Academic Years could not be loaded.",
+            "Couldn't load Academic Years. Try again.",
           )}
         </Notice>
       ) : (
         <Panel aria-labelledby="academic-year-list-heading">
-          <PanelHeader title="Academic years" titleId="academic-year-list-heading" />
+          <PanelHeader title="Academic Years" titleId="academic-year-list-heading" />
           <section
             aria-labelledby="current-academic-year-heading"
             className="border-b border-brand-line bg-brand-wash px-4 py-4 sm:px-5"
@@ -193,7 +193,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
             ) : (
               <>
                 <p className="mt-2 font-semibold text-ink">
-                  The current academic year has not been set.
+                  The current Academic Year has not been set.
                 </p>
                 {!canManage ? null : (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -205,10 +205,10 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
           </section>
 
             {years.isPending ? (
-              <RowsSkeleton label="Loading academic years…" rows={2} />
+              <RowsSkeleton label="Loading Academic Years…" rows={2} />
             ) : items.length === 0 ? (
               <PanelMessage>
-                No academic years have been added yet.
+                No Academic Years have been added yet.
               </PanelMessage>
             ) : (
               <ul className="divide-y divide-border">
@@ -324,10 +324,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
         onConfirm={() => void confirmSetCurrent()}
       >
         <p>
-          New annual workflows will resolve against this Academic Year.
-          Existing records remain associated with the Academic Year in which
-          they were created. Students may need to complete a new current-year
-          Individual Inventory before workflows that require it can continue.
+          New annual work will use this Academic Year; existing records keep their original Academic Year. Students may need to complete a new Individual Inventory for this Academic Year before continuing.
         </p>
       </ConsequentialActionDialog>
 

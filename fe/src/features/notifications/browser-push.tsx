@@ -111,7 +111,7 @@ export function BrowserPushControls({ children }: { children?: ReactNode }) {
       });
       setState(result === "enabled" ? "enabled" : result === "blocked" ? "blocked" : "available");
     } catch {
-      setError("Browser notifications could not be enabled. Please try again.");
+      setError("Couldn't enable browser notifications. Try again.");
     } finally {
       setBusy(false);
     }
@@ -124,7 +124,7 @@ export function BrowserPushControls({ children }: { children?: ReactNode }) {
       await disableBrowserPush({ registration: readyServiceWorker, remove: notificationsRemovePushSubscription });
       setState("available");
     } catch {
-      setError("Browser notifications could not be disabled. Please try again.");
+      setError("Couldn't disable browser notifications. Try again.");
     } finally {
       setBusy(false);
     }
@@ -138,8 +138,8 @@ export function BrowserPushControls({ children }: { children?: ReactNode }) {
         <h3 className="font-semibold text-ink">Browser notifications</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Get important COMPASS updates on this device. Your in-app notifications and email settings are separate.</p>
         {state === "loading" ? <p role="status" className="mt-3 text-sm text-muted">Checking this device…</p> : null}
-        {state === "unsupported" ? <p className="mt-3 text-sm text-muted">Browser notifications are unavailable in this browser or connection.</p> : null}
-        {state === "unavailable" ? <Notice tone="warning" className="mt-3">Browser notifications are currently unavailable. Your in-app notifications still work. <Button variant="secondary" className="mt-3" onClick={() => setCheckVersion((value) => value + 1)}>Check again</Button></Notice> : null}
+        {state === "unsupported" ? <p className="mt-3 text-sm text-muted">Browser notifications need a supported browser and a secure connection.</p> : null}
+        {state === "unavailable" ? <Notice tone="warning" className="mt-3">Browser notifications aren&apos;t enabled for COMPASS right now. Your in-app notifications still work. <Button variant="secondary" className="mt-3" onClick={() => setCheckVersion((value) => value + 1)}>Check again</Button></Notice> : null}
         {state === "install-required" ? (
           <div className="mt-3 text-sm leading-6 text-muted">
             <p>Install COMPASS to receive notifications on this iPhone or iPad.</p>

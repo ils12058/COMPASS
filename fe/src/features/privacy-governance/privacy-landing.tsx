@@ -23,7 +23,7 @@ export function PrivacyLanding() {
     ...(governance
       ? [{
           href: "/portal/privacy/notices",
-          title: "Privacy Notices",
+          title: "Privacy notices",
           description: "Privacy Notices and their revisions.",
           icon: FileText,
         }]
@@ -31,7 +31,7 @@ export function PrivacyLanding() {
     ...(canViewRetention(user)
       ? [{
           href: "/portal/privacy/retention",
-          title: "Retention Policies",
+          title: "Retention policies",
           description: "Retention policy status recorded in COMPASS.",
           icon: Archive,
         }]
@@ -39,7 +39,7 @@ export function PrivacyLanding() {
     ...(governance
       ? [{
           href: "/portal/privacy/activity",
-          title: "Privacy & Security Activity",
+          title: "Privacy and security activity",
           description: "Privacy and security events.",
           icon: ShieldCheck,
         }]
@@ -48,7 +48,7 @@ export function PrivacyLanding() {
 
   return (
     <section>
-      <PrivacyPageHeader title="Privacy Governance" />
+      <PrivacyPageHeader title="Privacy governance" />
       <ul className="grid max-w-5xl gap-4 md:grid-cols-2 xl:grid-cols-3">
         {workspaces.map(({ href, title, description, icon: Icon }) => (
           <li key={href} className="flex">

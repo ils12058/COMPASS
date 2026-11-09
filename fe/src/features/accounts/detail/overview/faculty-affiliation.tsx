@@ -35,7 +35,7 @@ export function ManagedFacultyAffiliation() {
     if (!review) return;
     const response = await action.run(
       () => save.mutateAsync({ userId: account.id, data: review }),
-      "The affiliation could not be saved. Check the current College selection and try again.",
+      "Couldn't save the affiliation. Check the current College selection and try again.",
       () => setReview(null),
       (error) => {
         if (error instanceof CompassApiError && error.status === 409) {

@@ -154,7 +154,7 @@ await check("accounts-older-submit-keeps-new-draft", "/portal/accounts", { overr
   const input = page.getByLabel("Search accounts", { exact: true }); const hold = await holdSearch(page, "/portal/accounts", "Mar");
   try { await input.fill("Mar"); await input.press("Enter"); await hold.waitUntilStarted(); await input.fill("Maria"); hold.release(); await page.waitForURL((u) => u.searchParams.get("search") === "Mar"); assert.equal(await input.inputValue(), "Maria"); await page.waitForTimeout(600); assert.equal(new URL(page.url()).searchParams.get("search"), "Mar"); } finally { hold.release(); }
 });
-for (const [name, path, label] of [["services", "/portal/services", "Search Services"], ["placements", "/portal/organization/student-academics", "Search student placements"]]) {
+for (const [name, path, label] of [["services", "/portal/services", "Search Services"], ["placements", "/portal/organization/student-academics", "Search Student placements"]]) {
   for (const inFlight of [false, true]) {
     await check(`clear-${name}-${inFlight ? "in-flight" : "timer"}`, `${path}?search=Old`, { overrides: worlds }, async (page) => {
       const input = page.getByLabel(label, { exact: true }); const hold = inFlight ? await holdSearch(page, path, "New") : null;
@@ -162,7 +162,7 @@ for (const [name, path, label] of [["services", "/portal/services", "Search Serv
     });
   }
 }
-for (const [name, path, label] of [["availability", "/portal/availability/providers", "Search Counselors"], ["services", "/portal/services", "Search Services"], ["placements", "/portal/organization/student-academics", "Search student placements"]]) {
+for (const [name, path, label] of [["availability", "/portal/availability/providers", "Search Counselors"], ["services", "/portal/services", "Search Services"], ["placements", "/portal/organization/student-academics", "Search Student placements"]]) {
   await check(`newest-intent-${name}`, path, { overrides: worlds }, async (page) => {
     const input = page.getByLabel(label, { exact: true }); const original = await input.elementHandle(); const hold = await holdSearch(page, path, "Mar");
     try {

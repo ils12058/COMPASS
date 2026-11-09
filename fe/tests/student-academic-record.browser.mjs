@@ -15,7 +15,7 @@ function academicFixture({years=true}={}){
 {
  const f=academicFixture();
  await h.check("01 Directory Student link opens the aggregate record",directoryPath,{handler:f.handler},async(page)=>{
-  await h.shown(page.getByRole("heading",{name:"Student Academic Records",exact:true}));
+  await h.shown(page.getByRole("heading",{name:"Student academic records",exact:true}));
   const link=page.getByRole("link",{name:"Maria Santos",exact:true});
   assert.equal(await link.getAttribute("href"),detailPath);
   await link.click();
@@ -36,7 +36,7 @@ function academicFixture({years=true}={}){
   await page.getByRole("button",{name:"Record period",exact:true}).click();
   const dialog=page.getByRole("dialog");
   await h.shown(dialog.getByRole("heading",{name:"Record academic period",exact:true}));
-  await dialog.getByLabel("Academic year",{exact:true}).selectOption(ids.academicYear);
+  await dialog.getByLabel("Academic Year",{exact:true}).selectOption(ids.academicYear);
   await dialog.getByLabel("Term",{exact:true}).selectOption("FIRST_SEMESTER");
   await dialog.getByLabel("College",{exact:true}).selectOption(ids.college);
   await dialog.getByLabel("Year level (optional)",{exact:true}).fill("2");
@@ -91,7 +91,7 @@ function academicFixture({years=true}={}){
  const f=academicFixture({years:false});
  f.studentRecord.periods=[{id:"period-existing",academic_year:f.state.academicYears[0],term:"SECOND_SEMESTER",college:f.college,year_level:3,enrollment_status:"ENROLLED",created_at:"2026-07-01T00:00:00Z",updated_at:"2026-07-01T00:00:00Z"}];
  await h.check("04 Missing Academic Years authority disables period recording but keeps facts visible",detailPath,{handler:f.handler},async(page)=>{
-  await h.shown(page.getByText("Academic Years are unavailable to this account, so academic periods cannot be recorded.",{exact:true}));
+  await h.shown(page.getByText("You don't have access to Academic Years. You need this access to record academic periods.",{exact:true}));
   assert.equal(await page.getByRole("button",{name:"Record period",exact:true}).isDisabled(),true);
   await h.shown(page.getByRole("rowheader",{name:"2026-2027",exact:true}));
   await h.shown(page.getByRole("cell",{name:"Second Semester",exact:true}));

@@ -3,9 +3,9 @@
 import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 export const platformHelpSections: readonly HelpSection[] = [
-  { heading: "Health checks", content: "Passive Health covers only the dependencies listed in its result. It does not establish worker, scheduler, Daily.co, or Turnstile runtime reachability." },
-  { heading: "Background worker", content: "The on-demand check runs a harmless queued task to verify that a worker can receive and complete it. Its result belongs to this page session." },
-  { heading: "Environment", content: "These are resolved non-secret settings, not raw environment variables. Configuration does not prove external service reachability. Startup-only settings need a restart before changes take effect." },
+  { heading: "Health checks", content: "The health check covers only the connections listed in its result. It doesn't check the worker, scheduler, Daily.co or Turnstile." },
+  { heading: "Background worker", content: "Run this check to see whether a worker can receive and complete a test task. The result stays on this page until you leave." },
+  { heading: "Environment", content: "These settings show the current configuration without secrets; they don't confirm whether external services can be reached. Restart COMPASS to apply changes to settings loaded at startup." },
 ];
 
 export function PlatformHelp({ startupLimitation }: { startupLimitation?: string }) {

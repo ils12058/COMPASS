@@ -211,7 +211,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
             enrollment_status: form.enrollmentStatus,
           },
         }),
-      "The academic period could not be recorded.",
+      "Couldn't record the academic period. Try again.",
     );
     if (!response) return;
     setPeriodForm(null);
@@ -251,7 +251,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
             verification_source: review.form.verificationSource.trim(),
           },
         }),
-      "The graduation record could not be saved.",
+      "Couldn't save the graduation record. Try again.",
     );
     if (!response) return;
     setGraduationCompleted({
@@ -263,8 +263,8 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
             {formatDateOnly(review.form.graduationDate)}.
           </p>
           <p>
-            The current placement is cleared and the Student lifecycle is
-            Graduated. Exit Interview and Good Moral were not checked or changed.
+            The current placement is cleared and the Student&apos;s status is
+            Graduated. Exit Interview and Good Moral Certificate requirements were not checked or changed.
           </p>
         </>
       ),
@@ -308,7 +308,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
         />
         <QueryError
           error={record.error}
-          fallback="The Student academic record could not be loaded."
+          fallback="Couldn't load the Student academic record. Try again."
           onRetry={() => void record.refetch()}
         />
       </section>
@@ -339,9 +339,9 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
 
       {canManage && structureUnavailable ? (
         <Notice role="status" tone="warning" className="mb-5">
-          Organization structure is unavailable to this account, so College choices
-          cannot be loaded. Period and graduation forms are unavailable; recorded
-          facts remain visible.
+          {!canViewStructure
+            ? "You don't have access to organization structure. Recording periods or graduation requires access to College choices."
+            : "Couldn't load College choices. Try again before recording periods or graduation; recorded facts stay visible."}
         </Notice>
       ) : null}
 
@@ -393,8 +393,9 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
         />
         {canManage && yearsUnavailable ? (
           <Notice role="status" tone="warning" className="mx-4 my-4 sm:mx-5">
-            Academic Years are unavailable to this account, so academic periods
-            cannot be recorded.
+            {!canViewAcademicYears
+              ? "You don't have access to Academic Years. You need this access to record academic periods."
+              : "Couldn't load Academic Years. Try again before recording an academic period."}
           </Notice>
         ) : null}
         {data.periods.length === 0 ? (
@@ -409,7 +410,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     scope="col"
                     className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
                   >
-                    Academic year
+                    Academic Year
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Term
@@ -547,7 +548,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
             <div className="mt-6 space-y-5">
               <div>
                 <Label htmlFor="record-period-academic-year">
-                  Academic year
+                  Academic Year
                 </Label>
                 <Select
                   id="record-period-academic-year"
@@ -561,7 +562,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     })
                   }
                 >
-                  <option value="">Select Academic year</option>
+                  <option value="">Select Academic Year</option>
                   {academicYearItems.map((year) => (
                     <option key={year.id} value={year.id}>
                       {year.label}
@@ -852,8 +853,8 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
             </dl>
             <p>
               {graduationReview.updating ? "Updating graduation" : "Recording graduation"}{" "}
-              clears the current placement and sets the Student lifecycle to
-              Graduated. Exit Interview and Good Moral are not checked or changed.
+              clears the current placement and sets the Student&apos;s status to
+              Graduated. Exit Interview and Good Moral Certificate requirements are not checked or changed.
             </p>
           </>
         ) : null}

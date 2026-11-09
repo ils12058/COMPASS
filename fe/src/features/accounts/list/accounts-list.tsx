@@ -291,7 +291,7 @@ export function AccountsList() {
               </Button>
             }
           >
-            {managedAccountError(list.error, "Accounts could not be loaded.")}
+            {managedAccountError(list.error, "Couldn't load accounts. Try again.")}
           </PanelMessage>
         ) : (
           <>

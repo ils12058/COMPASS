@@ -45,7 +45,7 @@ export function MyAcademicRecordPage() {
     return (
       <QueryError
         error={record.error}
-        fallback="Your academic record could not be loaded."
+        fallback="Couldn't load your academic record. Try again."
         onRetry={() => void record.refetch()}
       />
     );
@@ -113,7 +113,7 @@ export function MyAcademicRecordPage() {
                     scope="col"
                     className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
                   >
-                    Academic year
+                    Academic Year
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Term

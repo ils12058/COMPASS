@@ -36,7 +36,7 @@ export function AuthSurface({
             <Image src="/brand/compass-mark.svg" width={36} height={36} alt="" aria-hidden="true" />
             <span className="font-heading text-lg font-bold tracking-[0.08em]">COMPASS</span>
           </Link>
-          <p className="mt-2 text-sm font-medium text-muted">Guidance and Counseling Office</p>
+          <p className="mt-2 text-sm font-medium text-muted">Guidance Office</p>
         </div>
 
         {children}

@@ -44,7 +44,7 @@ test("Follow-Up work uses the queue's confirmed time for overdue language and it
   assert.match(presentWork(item, "2026-10-17T00:00:00Z").detail, /^Overdue/);
   assert.doesNotMatch(presentWork(item, "2026-09-17T00:00:00Z").detail, /^Overdue/);
   assert.equal(presentWork(item).href, "/portal/follow-ups/synthetic");
-  assert.deepEqual(notificationDestination({ target_type: "GUIDANCE_FOLLOW_UP", target_id: "synthetic" }, "staff"), { href: "/portal/follow-ups/synthetic", label: "Open follow-up" });
+  assert.deepEqual(notificationDestination({ target_type: "GUIDANCE_FOLLOW_UP", target_id: "synthetic" }, "staff"), { href: "/portal/follow-ups/synthetic", label: "Open Follow-Up" });
 });
 test("Work queue ranking preserves priority class and does not let non-urgent due dates jump the queue", () => {
   const timeSensitive = { id: "urgent", rank: { priority: AttentionPriority.TIME_SENSITIVE, dueAt: "2026-10-18T00:00:00Z", waitingSince: "2026-10-16T00:00:00Z", stableKey: "urgent" } };

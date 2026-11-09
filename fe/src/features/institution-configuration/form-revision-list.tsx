@@ -23,7 +23,7 @@ export function FormRevisionList({
             <th scope="col" className={dataTable.headerCell}>Official code</th>
             <th scope="col" className={dataTable.headerCell}>Official revision</th>
             <th scope="col" className={dataTable.headerCell}>Status</th>
-            <th scope="col" className={dataTable.headerCell}>COMPASS support</th>
+            <th scope="col" className={dataTable.headerCell}>Works with COMPASS</th>
           </tr>
         </thead>
         <tbody className={dataTable.body}>

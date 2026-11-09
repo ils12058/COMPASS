@@ -77,13 +77,13 @@ function StructureWorkspace() {
       className="[&>div]:flex-col [&>div>div:last-child]:max-w-full @[36rem]/structure-heading:[&>div]:flex-row"
       actions={canEdit ? <PageAction icon={Plus} label="Add campus" disabled={hasError || !loaded || editing} onClick={(event) => openEditor({ mode: "create", kind: "campus" }, event.currentTarget)} /> : undefined}
       help={<ContextHelp title="Organization structure" sections={[
-        { heading: "Catalog and relationships", content: <p>Campus, College and Program definitions belong here. Counselor Responsibilities and Student placements have separate authority and workflows.</p> },
-        { heading: "Academic policy and history", content: <p>Year Levels show the configured set. Pending policy is not approval to activate a Program. Current linked names can change; submitted records and issued certificates keep their saved facts.</p> },
-        { heading: "Browse context", content: <p>Search matches official codes and names. Parents stay visible when a descendant matches; context labels identify parents outside the selected status or search. All returned records, including inactive records, are searched.</p> },
+        { heading: "Catalog and relationships", content: <p>Manage Campuses, Colleges and Programs here. Manage Counselor assignments in Responsibilities and Student placements in Student academic records.</p> },
+        { heading: "Academic policy and history", content: <p>Year levels show the Program&apos;s settings; you need approved settings to activate it. Renaming can change names shown on linked pages, while submitted records and issued certificates keep their saved details.</p> },
+        { heading: "Browse context", content: <p>Search covers the listed codes and names, including inactive records. A matching College or Program keeps its Campus or College visible, even when that parent falls outside your filters.</p> },
       ]} />}
     /></div>
     {editing && editor ? <CatalogEditor key={editor.id} intent={editor.intent} knownIds={[...campusItems, ...collegeItems, ...programItems].map((item) => item.id)} canManageRelationships={canManageOrganization(user)} onClose={() => { setEditor(null); returnFocus(); }} onSaved={showSaved} /> : null}
-    {pending ? <TableSkeleton /> : hasError && !loaded ? <QueryError error={campuses.error ?? colleges.error ?? programs.error} fallback="Organization structure could not be loaded." onRetry={() => { void campuses.refetch(); void colleges.refetch(); void programs.refetch(); }} /> : <>
+    {pending ? <TableSkeleton /> : hasError && !loaded ? <QueryError error={campuses.error ?? colleges.error ?? programs.error} fallback="Couldn't load organization structure. Try again." onRetry={() => { void campuses.refetch(); void colleges.refetch(); void programs.refetch(); }} /> : <>
       {hasError ? <RefreshFailureNotice onRetry={() => { void campuses.refetch(); void colleges.refetch(); void programs.refetch(); }} /> : null}
       {loaded && !campusItems.length ? <Notice>No organization structure is available.</Notice> : !visible.length ? <Notice action={<Button variant="secondary" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); }}>Clear filters</Button>}>No records match the current search and filters.</Notice> : <ol className="space-y-5">
         {visible.map(({ campus, colleges: children, contextOnly }) => <li key={campus.id}>

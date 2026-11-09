@@ -30,7 +30,7 @@ export function RetentionPoliciesPage() {
 
   if (!canView)
     return (
-      <WorkspaceUnavailable title="Retention Policies unavailable">
+      <WorkspaceUnavailable title="Access restricted">
         This account can’t view retention policy oversight.
       </WorkspaceUnavailable>
     );
@@ -40,7 +40,7 @@ export function RetentionPoliciesPage() {
   return (
     <section>
       <PrivacyPageHeader
-        title="Retention Policies"
+        title="Retention policies"
         description="View the retention policy status recorded in COMPASS. Policy changes need institutional approval."
         help={<RetentionHelp />}
       />
@@ -50,7 +50,7 @@ export function RetentionPoliciesPage() {
       {query.isError && !items ? (
         <PrivacyQueryError
           error={query.error}
-          fallback="Retention policies could not be loaded."
+          fallback="Couldn't load retention policies. Try again."
           onRetry={() => void query.refetch()}
         />
       ) : (
@@ -66,8 +66,7 @@ export function RetentionPoliciesPage() {
             </ul>
           )}
           <p className="border-t border-brand-line px-4 py-3 text-sm leading-6 text-muted sm:px-5">
-            COMPASS doesn’t delete or anonymize records under these policies. Records disposition
-            goes through the University’s authorized process outside COMPASS.
+            COMPASS doesn’t delete or anonymize records under these policies. Follow the University’s records disposition process outside COMPASS.
           </p>
         </Panel>
       )}

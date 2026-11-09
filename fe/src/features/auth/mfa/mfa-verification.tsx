@@ -62,7 +62,7 @@ export function MfaVerification({ restartDestination = "/portal" }: { restartDes
       queryClient.removeQueries({ queryKey: getAuthGetSessionQueryKey() });
       router.replace(destination);
     } catch (caught) {
-      setError(authErrorMessage(caught, "Verification could not be completed. Please try again."));
+      setError(authErrorMessage(caught, "Couldn't complete verification. Try again."));
     }
   }
 

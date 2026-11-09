@@ -97,11 +97,11 @@ test("roster errors map known codes and otherwise keep the server message or fal
   const withBody = (code, message) => ({ body: { error: { code, message } } });
   assert.equal(
     rosterError(withBody("permission_denied", "The student_academics.import capability is required."), "fallback"),
-    "The student_academics.import capability is required to import an academic roster.",
+    "You don't have permission to import an academic roster.",
   );
   assert.equal(
     rosterError(withBody("identity_policy_unavailable", "Unavailable."), "fallback"),
-    "Academic policy is temporarily unavailable. Try again later.",
+    "Couldn't check academic requirements. Try again later.",
   );
   assert.equal(
     rosterError(withBody("csv_import_conflict", "one or more CSV rows conflict"), "fallback"),

@@ -219,7 +219,7 @@ try {
       const p = await login(actor);
       const catalog = actor === "both";
       const relationships = ["relationships", "both"].includes(actor);
-      await p.getByRole("heading", { name: actor === "student" ? "Organization unavailable" : "Organization structure", exact: true }).waitFor();
+      await p.getByRole("heading", { name: actor === "student" ? "Access restricted" : "Organization structure", exact: true }).waitFor();
       assert.equal(await p.getByRole("button", { name: "Add campus", exact: true }).count(), catalog ? 1 : 0);
       assert.equal(await p.getByRole("link", { name: "Responsibilities", exact: true }).count(), relationships ? 1 : 0);
       const id = row("program", "E2E_PROGRAM").id;

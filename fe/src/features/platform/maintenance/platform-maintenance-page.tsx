@@ -188,7 +188,7 @@ export function PlatformMaintenancePage() {
               ...(expectedEnd ? { expected_end_at: expectedEnd } : {}),
             },
           }),
-        "Maintenance Mode could not be enabled.",
+        "Couldn't enable Maintenance Mode. Try again.",
         () => setConfirmation(null),
       );
       if (!success) return;
@@ -202,7 +202,7 @@ export function PlatformMaintenancePage() {
     if (confirmation === "disable") {
       const success = await action.run(
         () => disable.mutateAsync(),
-        "Manual Maintenance Mode could not be ended.",
+        "Couldn't end manual Maintenance Mode. Try again.",
         () => setConfirmation(null),
       );
       if (!success) return;
@@ -238,7 +238,7 @@ export function PlatformMaintenancePage() {
               ends_at: endsAtIso,
             },
           }),
-        "The maintenance schedule could not be saved.",
+        "Couldn't save the maintenance schedule. Try again.",
         () => setConfirmation(null),
       );
       if (!success) return;
@@ -252,7 +252,7 @@ export function PlatformMaintenancePage() {
 
     const success = await action.run(
       () => cancelSchedule.mutateAsync(),
-      "The maintenance schedule could not be cancelled.",
+      "Couldn't cancel the maintenance schedule. Try again.",
       () => setConfirmation(null),
     );
     if (!success) return;
@@ -267,10 +267,7 @@ export function PlatformMaintenancePage() {
       return (
         <>
           <p>
-            Ordinary application features will be unavailable while Maintenance
-            Mode is active. Sign-in and platform controls remain available.
-            Manual Maintenance Mode remains active until explicitly
-            disabled; the expected end does not turn it off automatically.
+            Most workspaces will close during Maintenance Mode; sign-in and platform controls stay open. Manual Maintenance Mode ends only when you turn it off, even after the expected end time.
           </p>
           <p className="font-medium text-ink">Public message</p>
           <p className="whitespace-pre-wrap break-words">{manualDraft.message}</p>
@@ -352,11 +349,11 @@ export function PlatformMaintenancePage() {
       {maintenanceQuery.isPending ? <PlatformRowsSkeleton label="Loading maintenance status…" rows={3} /> : null}
       {maintenanceQuery.isError && !result ? (
         <PlatformQueryError
-          message="Maintenance status could not be loaded."
+          message="Couldn't load maintenance status. Try again."
           onRetry={() => void maintenanceQuery.refetch()}
         />
       ) : null}
-      {maintenanceStale && result ? <RefreshFailureNotice message="Maintenance status may have changed. Showing the last confirmed result; management controls are unavailable until status is verified." onRetry={() => void refreshStatus()} retrying={maintenanceQuery.isFetching} /> : null}
+      {maintenanceStale && result ? <RefreshFailureNotice message="Maintenance status may have changed. Refresh it before using the controls; you're viewing the last confirmed status." onRetry={() => void refreshStatus()} retrying={maintenanceQuery.isFetching} /> : null}
 
       {result ? (
         <>

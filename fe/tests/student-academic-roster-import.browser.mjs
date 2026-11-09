@@ -173,7 +173,7 @@ await h.check(
   staffPath,
   { handler: handler() },
   async (page) => {
-    await h.shown(page.getByRole("heading", { name: "Student Academic Records", exact: true }));
+    await h.shown(page.getByRole("heading", { name: "Student academic records", exact: true }));
     const link = page.getByRole("link", { name: "Import academic roster", exact: true });
     await h.shown(link);
     assert.equal(await link.getAttribute("href"), importPath);
@@ -185,7 +185,7 @@ await h.check(
   staffPath,
   { handler: handler({ session: viewer }) },
   async (page) => {
-    await h.shown(page.getByRole("heading", { name: "Student Academic Records", exact: true }));
+    await h.shown(page.getByRole("heading", { name: "Student academic records", exact: true }));
     assert.equal(
       await page.getByRole("link", { name: "Import academic roster", exact: true }).count(),
       0,
@@ -346,7 +346,7 @@ await h.check(
   importPath,
   { handler: handler({ session: viewer }) },
   async (page, fixture) => {
-    await h.shown(page.getByRole("heading", { name: "Academic roster import unavailable", exact: true }));
+    await h.shown(page.getByRole("heading", { name: "Access restricted", exact: true }));
     await h.shown(page.getByText("You don’t have access to import academic rosters.", { exact: true }));
     assert.equal(
       fixture.requests.filter((request) => request.pathname === "/api/v1/student-academics/imports/csv").length,
