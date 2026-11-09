@@ -240,11 +240,12 @@ def test_appointment_entry_mode_is_required_and_linked_routine_cannot_be_unlinke
     with pytest.raises(CounselingAppointmentInvalid) as caught:
         record(counselor, entry_mode="WALK_IN", appointment_id=appointment.pk)
     assert str(caught.value) == (
-        "An Encounter linked to an Appointment must use entry_mode APPOINTMENT."
+        "Choose Appointment as the Entry type for an Appointment-linked Counseling Encounter."
     )
     assert not CounselingEncounter.objects.filter(appointment=appointment).exists()
     routine.refresh_from_db()
     assert routine.counseling_encounter_id is None
+    assert link_events(routine) == []
 
     encounter = record(counselor, entry_mode="APPOINTMENT", appointment_id=appointment.pk)
     routine.refresh_from_db()
