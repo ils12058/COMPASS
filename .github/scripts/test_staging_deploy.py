@@ -552,11 +552,40 @@ class ResetInputTests(unittest.TestCase):
         )
 
     def test_old_runtime_fails_new_lineage_independently_of_database(self):
-        # Real local Git ancestry; no remote/provider request.
-        with self.assertRaises(subprocess.CalledProcessError):
-            runner.validate_runtime_lineage("0a843dae", runner.BASELINE)
-        runner.validate_runtime_lineage(runner.BASELINE, runner.BASELINE)
+        # Real Git ancestry in a throwaway repository, so the check does not depend on how
+        # much history the CI checkout fetched: old -> baseline -> new.
+        self.assertRegex(runner.BASELINE, "^[0-9a-f]{40}$")
         self.assertEqual(host.BASELINE, runner.BASELINE)
+        with tempfile.TemporaryDirectory() as directory:
+            git_env = {
+                "GIT_DIR": f"{directory}/.git",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_AUTHOR_NAME": "lineage",
+                "GIT_AUTHOR_EMAIL": "lineage@example.invalid",
+                "GIT_COMMITTER_NAME": "lineage",
+                "GIT_COMMITTER_EMAIL": "lineage@example.invalid",
+            }
+            with patch.dict(os.environ, git_env):
+                subprocess.run(["git", "init", "-q", directory], check=True)
+                commits = []
+                for name in ("old", "baseline", "new"):
+                    subprocess.run(
+                        ["git", "commit", "-q", "--allow-empty", "-m", name], check=True
+                    )
+                    commits.append(
+                        subprocess.run(
+                            ["git", "rev-parse", "HEAD"],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        ).stdout.strip()
+                    )
+                old, baseline, new = commits
+                with patch.object(runner, "BASELINE", baseline):
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        runner.validate_runtime_lineage(old, new)
+                    runner.validate_runtime_lineage(baseline, new)
+                    runner.validate_runtime_lineage(new, new)
 
 
 class ResetPreflightTests(unittest.TestCase):
