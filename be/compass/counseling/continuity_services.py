@@ -263,6 +263,36 @@ def _effective(grant, scopes, users, policy, now):
     return "ACTIVE"
 
 
+def display_people(ids):
+    """Names for identities a response already references; display only, never authority."""
+    rows = User.objects.filter(pk__in=set(ids) - {None}).only(
+        "id", "first_name", "middle_name", "last_name", "suffix", "institutional_id"
+    )
+    return {
+        user.pk: {
+            "id": user.pk,
+            "name": user.get_full_name() or "Name not recorded",
+            "institutional_id": user.institutional_id or None,
+        }
+        for user in rows
+    }
+
+
+def _people(grant):
+    # Lets Counselors and the Head recognize a coverage without reading raw identifiers.
+    people = display_people(
+        [
+            grant.student_id,
+            grant.original_counselor_id,
+            grant.receiving_counselor_id,
+            grant.requested_by_id,
+            grant.decision_by_id,
+            grant.revoked_by_id,
+        ]
+    )
+    return [people[key] for key in sorted(people, key=str)]
+
+
 def _metadata(grant, scopes, users, policy, now):
     _snapshot(grant, scopes, policy)
     return {
@@ -287,6 +317,7 @@ def _metadata(grant, scopes, users, policy, now):
         "version": grant.version,
         "policy_version": grant.policy_version,
         "policy_evidence": grant.policy_evidence,
+        "people": _people(grant),
         "scopes": [
             {
                 "id": s.pk,

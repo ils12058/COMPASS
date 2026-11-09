@@ -48,9 +48,19 @@ def _office_cases(actor, policy, workflow):
         .distinct()
         .order_by("student_id", "counselor_id")
     )
+    cases = list(cases[:200])
+    people = grants.display_people([person for case in cases for person in case])
     return [
-        {"student_id": student_id, "original_counselor_id": original_id}
-        for student_id, original_id in cases[:200]
+        {
+            "student_id": student_id,
+            "student_name": people.get(student_id, {}).get("name", "Name not available"),
+            "student_institutional_id": people.get(student_id, {}).get("institutional_id"),
+            "original_counselor_id": original_id,
+            "original_counselor_name": people.get(original_id, {}).get(
+                "name", "Name not available"
+            ),
+        }
+        for student_id, original_id in cases
     ]
 
 
@@ -201,7 +211,13 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                 },
             )
             _policies(actor)
+            people = grants.display_people([student_id, original_counselor_id])
             return {
+                "student_name": people.get(student_id, {}).get("name", "Name not available"),
+                "student_institutional_id": people.get(student_id, {}).get("institutional_id"),
+                "original_counselor_name": people.get(original_counselor_id, {}).get(
+                    "name", "Name not available"
+                ),
                 "items": items[:50],
                 "receivers": receivers,
                 "page": page,

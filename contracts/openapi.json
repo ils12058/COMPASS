@@ -6666,6 +6666,13 @@
             ],
             "title": "Original Counselor Id"
           },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityPerson"
+            },
+            "title": "People",
+            "type": "array"
+          },
           "policy_evidence": {
             "title": "Policy Evidence",
             "type": "string"
@@ -6770,6 +6777,7 @@
           "version",
           "policy_version",
           "policy_evidence",
+          "people",
           "scopes"
         ],
         "title": "ContinuityGrantMetadata",
@@ -6805,6 +6813,38 @@
           "has_next"
         ],
         "title": "ContinuityGrantPage",
+        "type": "object"
+      },
+      "ContinuityPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "institutional_id"
+        ],
+        "title": "ContinuityPerson",
         "type": "object"
       },
       "ContinuityProjection": {
@@ -9849,6 +9889,10 @@
             "title": "Items",
             "type": "array"
           },
+          "original_counselor_name": {
+            "title": "Original Counselor Name",
+            "type": "string"
+          },
           "page": {
             "title": "Page",
             "type": "integer"
@@ -9859,9 +9903,27 @@
             },
             "title": "Receivers",
             "type": "array"
+          },
+          "student_institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Institutional Id"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
           }
         },
         "required": [
+          "student_name",
+          "student_institutional_id",
+          "original_counselor_name",
           "items",
           "receivers",
           "page",
@@ -24254,15 +24316,37 @@
             "title": "Original Counselor Id",
             "type": "string"
           },
+          "original_counselor_name": {
+            "title": "Original Counselor Name",
+            "type": "string"
+          },
           "student_id": {
             "format": "uuid",
             "title": "Student Id",
+            "type": "string"
+          },
+          "student_institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Institutional Id"
+          },
+          "student_name": {
+            "title": "Student Name",
             "type": "string"
           }
         },
         "required": [
           "student_id",
-          "original_counselor_id"
+          "student_name",
+          "student_institutional_id",
+          "original_counselor_id",
+          "original_counselor_name"
         ],
         "title": "OfficeCaseReference",
         "type": "object"

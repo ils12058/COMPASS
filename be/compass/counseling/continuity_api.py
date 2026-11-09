@@ -87,6 +87,12 @@ class ContinuityScopeMetadata(ContinuityScopeInput):
     source_revision: str
 
 
+class ContinuityPerson(ContinuitySchema):
+    id: UUID
+    name: str
+    institutional_id: str | None
+
+
 class ContinuityGrantMetadata(ContinuitySchema):
     id: UUID
     student_id: UUID
@@ -109,6 +115,8 @@ class ContinuityGrantMetadata(ContinuitySchema):
     version: int
     policy_version: str
     policy_evidence: str
+    # Display names for the Student and staff referenced above.
+    people: list[ContinuityPerson]
     scopes: list[ContinuityScopeMetadata]
 
 

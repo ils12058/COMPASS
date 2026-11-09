@@ -11,6 +11,13 @@ export const statusLabels: Record<ContinuityStatus, string> = { PENDING: "Pendin
 export const reasonLabels: Record<ContinuityReason, string> = { PLANNED_ABSENCE: "Planned absence", UNEXPECTED_ABSENCE: "Unexpected absence", TEMPORARY_SUPPORT: "Temporary support" };
 export const communicationPurposeLabels: Record<ContinuityCommunicationPurpose, string> = { CASE_COORDINATION: "Case coordination" };
 export const referenceClass = "break-all font-mono text-xs text-muted";
+// Names come from the coverage response; staff show a name, the Student also their ID.
+export function personLabel(grant: ContinuityGrantMetadata, id: string | null | undefined, { withId = false, missing = "Not recorded" }: { withId?: boolean; missing?: string } = {}): string {
+    if (!id) return missing;
+    const person = grant.people?.find((item) => item.id === id);
+    if (!person) return "Name not available";
+    return withId && person.institutional_id ? `${person.name} (${person.institutional_id})` : person.name;
+}
 export function CoverageHeading({ title = "Case coverage", messagesTrigger }: {
     title?: string;
     messagesTrigger?: ReactNode;
@@ -34,6 +41,6 @@ export function CoverageError({ error, retry }: {
 export function CoverageFacts({ grant }: {
     grant: ContinuityGrantMetadata;
 }) {
-    const facts = [["Student reference", grant.student_id], ["Original Counselor", grant.original_counselor_id ?? "Not recorded"], ["Receiving Counselor", grant.receiving_counselor_id], ["Requester", grant.requested_by_id], ["Approver", grant.decision_by_id ?? "Pending"], ["Purpose", reasonLabels[grant.reason_category]], ...(grant.communication_purpose ? [["Communication purpose", communicationPurposeLabels[grant.communication_purpose]]] : []), ["Starts", formatCounselingDateTime(grant.starts_at)], ["Expires", formatCounselingDateTime(grant.expires_at)], ["Status", statusLabels[grant.effective_status]], ["Policy reference", grant.policy_evidence]];
+    const facts = [["Student", personLabel(grant, grant.student_id, { withId: true })], ["Original Counselor", personLabel(grant, grant.original_counselor_id)], ["Receiving Counselor", personLabel(grant, grant.receiving_counselor_id)], ["Requester", personLabel(grant, grant.requested_by_id)], ["Approver", personLabel(grant, grant.decision_by_id, { missing: "Pending" })], ["Purpose", reasonLabels[grant.reason_category]], ...(grant.communication_purpose ? [["Communication purpose", communicationPurposeLabels[grant.communication_purpose]]] : []), ["Starts", formatCounselingDateTime(grant.starts_at)], ["Expires", formatCounselingDateTime(grant.expires_at)], ["Status", statusLabels[grant.effective_status]], ["Policy reference", grant.policy_evidence]];
     return <dl className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">{facts.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm">{value}</dd></div>)}</dl>;
 }

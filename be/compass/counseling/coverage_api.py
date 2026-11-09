@@ -28,7 +28,10 @@ class StrictSchema(Schema):
 
 class OfficeCaseReference(StrictSchema):
     student_id: UUID
+    student_name: str
+    student_institutional_id: str | None
     original_counselor_id: UUID
+    original_counselor_name: str
 
 
 class CoverageConfiguration(StrictSchema):
@@ -57,6 +60,9 @@ class CoverageReceiverOption(StrictSchema):
 
 
 class CoverageSelectionPage(StrictSchema):
+    student_name: str
+    student_institutional_id: str | None
+    original_counselor_name: str
     items: list[CoverageSourceOption]
     receivers: list[CoverageReceiverOption]
     page: int
