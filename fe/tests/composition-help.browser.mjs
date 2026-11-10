@@ -22,6 +22,7 @@ for (const device of ["desktop", "phone"]) {
     await h.shown(dialog.getByRole("heading", { name: "Organization structure" }));
     await page.keyboard.press("Escape");
     await h.hidden(dialog);
+    await page.waitForFunction(node => node === document.activeElement, await button.elementHandle());
     assert.equal(await button.evaluate(node => node === document.activeElement), true, "Closing Help returns focus");
   });
 }
