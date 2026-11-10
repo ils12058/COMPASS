@@ -12,10 +12,10 @@ from compass.counseling.continuity_encounters import _lock_encounter
 from compass.counseling.continuity_locks import (
     lock_authority_relations,
 )
-from compass.counseling.continuity_models import ContinuityReason
 from compass.counseling.continuity_rules import (
     MAX_ADVANCE,
     MAX_DURATION,
+    REASON_CATEGORIES,
     SOURCE_KINDS,
     ContinuityError,
     active_college_ids,
@@ -76,7 +76,7 @@ def configuration(*, actor):
         "server_now": timezone.now(),
         "maximum_duration_seconds": int(MAX_DURATION.total_seconds()),
         "maximum_advance_seconds": int(MAX_ADVANCE.total_seconds()),
-        "reason_categories": sorted(ContinuityReason.values),
+        "reason_categories": sorted(REASON_CATEGORIES),
         "can_request": actor.has_capability("counseling.continuity.request"),
         "can_approve": is_head(actor) and actor.has_capability("counseling.continuity.approve"),
         "office_cases": _office_cases(actor) if office else [],

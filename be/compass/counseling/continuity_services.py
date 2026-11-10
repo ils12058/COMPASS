@@ -10,7 +10,6 @@ from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     CONTINUITY_APPROVED,
     CONTINUITY_CANCELLED,
@@ -23,7 +22,6 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.counseling.continuity_models import (
     ContinuityDecision,
-    ContinuityReason,
     ContinuityRevocationReason,
     CoverageKind,
 )
@@ -35,13 +33,26 @@ from compass.counseling.continuity_models import (
 )
 from compass.counseling.continuity_rules import (
     CASE_COORDINATION,
-    MAX_ADVANCE,
-    MAX_DURATION,
+    REASON_CATEGORIES,
     ContinuityError,
     active_college_ids,
-    is_head,
     overlapping_grants,
     require_unchanged_placement,
+)
+from compass.counseling.continuity_rules import (
+    require_actor as _actor,
+)
+from compass.counseling.continuity_rules import (
+    require_approver as _head,
+)
+from compass.counseling.continuity_rules import (
+    require_receiver as _receiver,
+)
+from compass.counseling.continuity_rules import (
+    student_placement_marker as _student,
+)
+from compass.counseling.continuity_rules import (
+    validate_interval as _interval,
 )
 from compass.counseling.continuity_sources import resolve_source, validate_selection
 from compass.student_academics.models import StudentAcademicProfile
@@ -58,69 +69,6 @@ def _users(*ids):
         .filter(pk__in=set(ids) - {None})
         .order_by("id")
     }
-
-
-def _actor(user, action, now):
-    roles = {"COUNSELOR"}
-    if action in {"view", "request"}:
-        roles.add("GUIDANCE_OFFICE_ASSISTANT")
-    if user is None or not user.is_active or user.role.code not in roles:
-        raise ContinuityError("invalid_role")
-    if not user.has_capability("counseling.continuity." + action, at=now):
-        raise ContinuityError("missing_capability")
-    return user
-
-
-def _head(actor, now):
-    _actor(actor, "approve", now)
-    if not is_head(actor):
-        # No Acting route: an override/supervision cannot establish formal delegation.
-        raise ContinuityError("approval_authority_missing")
-
-
-def _student(student):
-    if student is None or not is_current_student(student):
-        raise ContinuityError("ineligible_student", 422)
-    placement = (
-        StudentAcademicProfile.objects.filter(student_id=student.pk)
-        .values(
-            "current_college_id",
-            "updated_at",
-            "current_college__is_active",
-            "current_college__campus__is_active",
-        )
-        .first()
-    )
-    if (
-        not placement
-        or placement["current_college_id"] is None
-        or placement["current_college_id"] not in active_college_ids()
-        or not placement["current_college__is_active"]
-        or not placement["current_college__campus__is_active"]
-    ):
-        raise ContinuityError("ineligible_student", 422)
-    return str(placement["current_college_id"]) + ":" + placement["updated_at"].isoformat()
-
-
-def _receiver(receiver, now):
-    if receiver is None or not receiver.is_active or receiver.role.code != "COUNSELOR":
-        raise ContinuityError("ineligible_receiver", 422)
-    if not receiver.has_capability("counseling.continuity.read_selected", at=now):
-        raise ContinuityError("ineligible_receiver", 422)
-
-
-def _interval(starts_at, expires_at, now):
-    if (
-        not isinstance(starts_at, datetime)
-        or not isinstance(expires_at, datetime)
-        or timezone.is_naive(starts_at)
-        or timezone.is_naive(expires_at)
-        or starts_at >= expires_at
-        or expires_at <= now
-        or expires_at - starts_at > MAX_DURATION
-        or starts_at - now > MAX_ADVANCE
-    ):
-        raise ContinuityError("invalid_interval", 422)
 
 
 def _digest(grant, scopes):
@@ -372,7 +320,7 @@ def request_coverage(
     placement_marker = _student(users.get(student_id))
     _receiver(users.get(receiving_counselor_id), now)
     _interval(starts_at, expires_at, now)
-    if coverage_kind not in CoverageKind.values or reason_category not in ContinuityReason.values:
+    if coverage_kind not in CoverageKind.values or reason_category not in REASON_CATEGORIES:
         raise ContinuityError("invalid_purpose", 422)
     if original_counselor_id is not None:
         original = users.get(original_counselor_id)

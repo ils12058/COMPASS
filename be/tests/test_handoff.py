@@ -444,7 +444,7 @@ def test_stale_versions_relations_and_protected_references(workflow_case):
             op(c, g, "author_read")
 
 
-def test_api_csrf_cache_content_separation_and_default_unavailable(mutable_workflow_case):
+def test_api_csrf_cache_content_separation_and_inactive_receiver(mutable_workflow_case):
     c = mutable_workflow_case
     g = selected.approved(c)
     base = f"/api/v1/counseling/continuity-grants/{g['id']}/handoff"
@@ -478,7 +478,7 @@ def test_api_csrf_cache_content_separation_and_default_unavailable(mutable_workf
     selected.User.objects.filter(pk=c.receiver.pk).update(is_active=False)
     r = client(c.receiver).get(base + "/submitted", {"expected_grant_version": g["version"]})
     assert (
-        r.status_code == 403
+        r.status_code == 401
         and r["Cache-Control"] == "private, no-store"
         and TEXT not in r.content.decode()
     )

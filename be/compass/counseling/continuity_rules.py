@@ -1,8 +1,12 @@
 """Live Case coverage, Handoff and case-coordination rules."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+
+from django.utils import timezone
 
 from compass.accounts.models import UserDesignation
+from compass.accounts.services import is_current_student
+from compass.counseling.continuity_models import ContinuityReason
 from compass.organization.access_scope import resolve_operational_responsibility_scope
 from compass.organization.models import College
 from compass.student_academics.models import StudentAcademicProfile
@@ -11,6 +15,7 @@ MAX_DURATION = timedelta(days=30)
 MAX_ADVANCE = timedelta(days=14)
 SOURCE_KINDS = frozenset({"ENCOUNTER", "ROUTINE_EVALUATION"})
 CASE_COORDINATION = "CASE_COORDINATION"
+REASON_CATEGORIES = frozenset(ContinuityReason.values)
 PROJECTIONS = {
     "ENCOUNTER": "ENCOUNTER_METADATA_V1",
     "ROUTINE_EVALUATION": "FINALIZED_EVALUATION_V1",
@@ -108,3 +113,66 @@ def require_unchanged_placement(current_marker, recorded_marker):
     """A College placement change requires a new request."""
     if current_marker != recorded_marker:
         raise ContinuityError("student_changed", 409)
+
+
+def require_actor(user, action, now):
+    roles = {"COUNSELOR"}
+    if action in {"view", "request"}:
+        roles.add("GUIDANCE_OFFICE_ASSISTANT")
+    if user is None or not user.is_active or user.role.code not in roles:
+        raise ContinuityError("invalid_role")
+    if not user.has_capability("counseling.continuity." + action, at=now):
+        raise ContinuityError("missing_capability")
+    return user
+
+
+def require_approver(actor, now):
+    require_actor(actor, "approve", now)
+    if not is_head(actor):
+        # No Acting route: an override/supervision cannot establish formal delegation.
+        raise ContinuityError("approval_authority_missing")
+
+
+def student_placement_marker(student):
+    if student is None or not is_current_student(student):
+        raise ContinuityError("ineligible_student", 422)
+    placement = (
+        StudentAcademicProfile.objects.filter(student_id=student.pk)
+        .values(
+            "current_college_id",
+            "updated_at",
+            "current_college__is_active",
+            "current_college__campus__is_active",
+        )
+        .first()
+    )
+    if (
+        not placement
+        or placement["current_college_id"] is None
+        or placement["current_college_id"] not in active_college_ids()
+        or not placement["current_college__is_active"]
+        or not placement["current_college__campus__is_active"]
+    ):
+        raise ContinuityError("ineligible_student", 422)
+    return str(placement["current_college_id"]) + ":" + placement["updated_at"].isoformat()
+
+
+def require_receiver(receiver, now):
+    if receiver is None or not receiver.is_active or receiver.role.code != "COUNSELOR":
+        raise ContinuityError("ineligible_receiver", 422)
+    if not receiver.has_capability("counseling.continuity.read_selected", at=now):
+        raise ContinuityError("ineligible_receiver", 422)
+
+
+def validate_interval(starts_at, expires_at, now):
+    if (
+        not isinstance(starts_at, datetime)
+        or not isinstance(expires_at, datetime)
+        or timezone.is_naive(starts_at)
+        or timezone.is_naive(expires_at)
+        or starts_at >= expires_at
+        or expires_at <= now
+        or expires_at - starts_at > MAX_DURATION
+        or starts_at - now > MAX_ADVANCE
+    ):
+        raise ContinuityError("invalid_interval", 422)

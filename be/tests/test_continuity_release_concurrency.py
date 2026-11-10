@@ -172,9 +172,13 @@ def test_read_linearizes_before_real_supported_mutation(
     assert result[0] == "ok" and result[1]["evaluation"]["recommendations"] == SENTINEL
     assert change[0] == "ok", change
     assert reads().count() == 1
-    with pytest.raises(ContinuityError):
-        read(c, g)
-    assert reads().count() == 1
+    if mutation == "head_designation":
+        assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
+        assert reads().count() == 2
+    else:
+        with pytest.raises(ContinuityError):
+            read(c, g)
+        assert reads().count() == 1
 
 
 def authority_mutation(c, table):
