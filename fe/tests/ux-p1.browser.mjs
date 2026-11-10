@@ -48,7 +48,8 @@ function appointmentWorld({ role = "COUNSELOR", started = true, serviceCode = "C
 const counselorWorld = appointmentWorld();
 
 await check("Appointment desktop contextual rail and Messages dock", appointmentPath, counselorWorld.options({ device: "desktop" }), async (page) => {
-  await shown(page.getByRole("heading", { level: 1, name: "APT-CTX-0001", exact: true }));
+  await shown(page.getByRole("heading", { level: 1, name: "Counseling", exact: true }));
+  await shown(page.getByText("Reference APT-CTX-0001", { exact: true }));
   await shown(page.getByText("Scheduled", { exact: true }));
   const rail = page.getByRole("group", { name: "Appointment page actions", exact: true });
   await shown(rail);
@@ -194,7 +195,7 @@ await check("Referral mobile keeps its labeled download near the heading", "/por
 for (const width of [320, 768, 1024, 1280, 1440]) {
   const viewport = { width, height: 900 };
   await check(`Appointment action layout has no overflow at ${width}px`, appointmentPath, counselorWorld.options({ viewport }), async (page) => {
-    await shown(page.getByRole("heading", { level: 1, name: "APT-CTX-0001", exact: true }));
+    await shown(page.getByRole("heading", { level: 1, name: "Counseling", exact: true }));
     await noHorizontalOverflow(page);
   });
   await check(`Referral action layout has no overflow at ${width}px`, "/portal/referrals/long", { viewport, overrides: referralOverrides }, async (page) => {
@@ -205,7 +206,7 @@ for (const width of [320, 768, 1024, 1280, 1440]) {
 
 const nonCounselingWorld = appointmentWorld({ serviceCode: "GM-OTHER" });
 await check("non-Counseling Appointment hides contextual Messages and E-Counseling", appointmentPath, nonCounselingWorld.options({ device: "desktop" }), async (page) => {
-  await shown(page.getByRole("heading", { level: 1, name: "APT-CTX-0001", exact: true }));
+  await shown(page.getByRole("heading", { level: 1, name: "Career Guidance", exact: true }));
   const rail = page.getByRole("group", { name: "Appointment page actions", exact: true });
   await shown(rail);
   assert.equal(await rail.getByRole("button", { name: /^Messages/ }).count(), 0);

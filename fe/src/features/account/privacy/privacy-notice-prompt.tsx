@@ -112,9 +112,10 @@ export function PrivacyNoticePrompt() {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) notNow(); }}>
       <DialogContent
-        className="max-w-2xl"
+        className="flex h-[min(calc(100dvh-2rem),40rem)] max-h-[calc(100dvh-2rem)] max-w-2xl flex-col overflow-hidden p-0"
         dismissible={!busy}
         closeLabel="Not now"
+        closeClassName="hidden sm:inline-flex"
         onOpenAutoFocus={() => {
           focusedBeforeOpen.current = document.activeElement !== document.body;
         }}
@@ -126,41 +127,57 @@ export function PrivacyNoticePrompt() {
           main.focus();
         }}
       >
-        <DialogTitle>Privacy notice update</DialogTitle>
-        <DialogDescription>
-          <span className="font-semibold text-ink">{notice.title}</span>
-          {" · "}Effective {formatDateOnly(notice.effective_on)}
-        </DialogDescription>
-        {acknowledged ? (
-          <p role="status" className="mt-3 text-sm text-success">
-            “{acknowledged.title}” acknowledged. Another notice also asks for your acknowledgment.
-          </p>
-        ) : null}
-        <p className="mt-4 text-sm leading-6 text-muted">{notice.summary}</p>
-        <div className="mt-4 border-t border-border pt-4">
-          <PlainTextBlock text={notice.body} />
+        <div className="shrink-0 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-6">
+          <DialogTitle className="pr-0 text-lg leading-tight sm:pr-8 sm:text-xl">Privacy notice update</DialogTitle>
+          <DialogDescription className="text-xs leading-5 sm:text-sm sm:leading-6">
+            <span className="font-semibold text-ink">{notice.title}</span>
+            {" · "}Effective {formatDateOnly(notice.effective_on)}
+          </DialogDescription>
+          {acknowledged ? (
+            <p role="status" className="mt-3 text-sm text-success">
+              “{acknowledged.title}” acknowledged. Another notice also asks for your acknowledgment.
+            </p>
+          ) : null}
         </div>
-        <p id="privacy-prompt-acknowledgment-help" className="mt-5 text-xs leading-5 text-muted">
-          {ACKNOWLEDGMENT_HELP}
-        </p>
-        {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-          <GuardedPortalLink
-            href="/portal/account/privacy"
-            className="mr-auto text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        <div className="relative min-h-0 flex-1">
+          <div
+            data-privacy-notice-scroll=""
+            className="absolute inset-0 overflow-y-auto overscroll-contain border-y border-border px-6 py-4"
           >
-            All privacy notices
-          </GuardedPortalLink>
-          <Button variant="secondary" disabled={busy} onClick={notNow}>
-            Not now
-          </Button>
-          <Button
-            disabled={busy}
-            aria-describedby="privacy-prompt-acknowledgment-help"
-            onClick={() => void acknowledgeNotice()}
-          >
-            {busy ? "Acknowledging…" : "Acknowledge notice"}
-          </Button>
+            <p className="text-sm leading-6 text-muted">{notice.summary}</p>
+            <div className="mt-4">
+              <PlainTextBlock text={notice.body} />
+            </div>
+            <p id="privacy-prompt-acknowledgment-help" className="mt-5 text-xs leading-5 text-muted">
+              {ACKNOWLEDGMENT_HELP}
+            </p>
+          </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-px h-6 bg-gradient-to-t from-surface-raised to-transparent"
+          />
+        </div>
+        <div className="shrink-0 px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4">
+          {error ? <p role="alert" className="mb-3 text-sm text-danger">{error}</p> : null}
+          <div data-privacy-notice-actions="" className="flex flex-wrap items-center justify-end gap-2">
+            <GuardedPortalLink
+              href="/portal/account/privacy"
+              className="mr-auto text-xs font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:text-sm"
+            >
+              All privacy notices
+            </GuardedPortalLink>
+            <Button variant="secondary" disabled={busy} onClick={notNow} className="px-3 sm:px-4">
+              Not now
+            </Button>
+            <Button
+              disabled={busy}
+              aria-describedby="privacy-prompt-acknowledgment-help"
+              onClick={() => void acknowledgeNotice()}
+              className="px-3 sm:px-4"
+            >
+              {busy ? "Acknowledging…" : "Acknowledge notice"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -18,11 +18,11 @@ import { RetentionHelp } from "@/features/privacy-governance/retention/retention
 import { usePrivacyGovernanceListRetentionPolicies } from "@/lib/api/generated/privacy-governance/privacy-governance";
 import type { RetentionPolicyEntryResponse } from "@/lib/api/generated/model";
 
-export const NOT_ADOPTED_COPY = "No adopted retention policy has been recorded in COMPASS for this category.";
+export const NOT_ADOPTED_COPY = "No retention period is set in COMPASS for this category.";
 
 // Read-only oversight of the code-owned register (ADR-115). Nothing here creates, edits, approves,
-// or schedules anything: a policy changes only through institutional approval and a reviewed
-// release, and COMPASS performs no records disposition.
+// or schedules anything: a policy changes only through a reviewed release, and COMPASS performs no
+// records disposition.
 export function RetentionPoliciesPage() {
   const { user } = usePortalSession();
   const canView = canViewRetention(user);
@@ -41,7 +41,7 @@ export function RetentionPoliciesPage() {
     <section>
       <PrivacyPageHeader
         title="Retention policies"
-        description="View the retention policy status recorded in COMPASS. Policy changes need institutional approval."
+        description="Retention periods recorded in COMPASS for each record category."
         help={<RetentionHelp />}
       />
       {query.isError && items ? (
@@ -84,7 +84,7 @@ function RetentionPolicyRow({ item }: { item: RetentionPolicyEntryResponse }) {
           {item.category_label}
         </h3>
         <PrivacyBadge tone={adopted ? "success" : "neutral"}>
-          {adopted ? "Adopted" : "Not adopted"}
+          {adopted ? "Set" : "Not set"}
         </PrivacyBadge>
       </div>
       {adopted ? (

@@ -108,7 +108,8 @@ await check("institutional-forms-warning-help", "/portal/institutional-forms", {
   await shown(page.getByRole("alert").filter({ hasText: "A current supported revision is required" }));
   await page.getByRole("button", { name: "Help: About institutional forms", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "About institutional forms", exact: true });
-  assert.match(await dialog.innerText(), /institutional approval is still required/);
+  assert.match(await dialog.innerText(), /Supported means COMPASS can use that revision/);
+  assert.match(await dialog.innerText(), /Changes to a form need a COMPASS update/);
   assert.match(await dialog.innerText(), /CNSC\/GTA/);
   await page.keyboard.press("Escape");
   await screenshot(page, "institutional-forms");
@@ -194,8 +195,8 @@ for (const device of ["desktop", "phone"]) {
     await shown(page.getByRole("heading", { level: 1, name: "Retention policies", exact: true }));
     await shown(page.getByRole("link", { name: "Retention policies", exact: true }));
     for (const name of ["Graduate Tracer responses", "E-Counseling recordings"]) await shown(page.getByRole("heading", { name, exact: true }));
-    assert.equal(await page.getByText("Not adopted", { exact: true }).count(), 2, "Both current record categories show policy status");
-    assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 2, "Both current record categories explain the missing policy");
+    assert.equal(await page.getByText("Not set", { exact: true }).count(), 2, "Both current record categories show policy status");
+    assert.equal(await page.getByText("No retention period is set in COMPASS for this category.", { exact: true }).count(), 2, "Both current record categories explain the missing policy");
     assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
     const main = await page.locator("main").innerText();
     assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
@@ -206,7 +207,7 @@ for (const device of ["desktop", "phone"]) {
     assert.ok(helpTarget && helpTarget.width >= 44 && helpTarget.height >= 44);
     await page.getByRole("button", { name: "Help: About retention policies", exact: true }).click();
     const help = page.getByRole("dialog", { name: "About retention policies", exact: true });
-    assert.match(await help.innerText(), /Policy changes need University approval and a reviewed COMPASS update[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
+    assert.match(await help.innerText(), /Retention periods follow the University’s records retention schedule[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
     await page.keyboard.press("Escape");
     await hidden(help);
     const privacy = requests.filter((item) => item.pathname.startsWith("/api/v1/privacy/"));

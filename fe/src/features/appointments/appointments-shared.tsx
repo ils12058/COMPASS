@@ -233,7 +233,7 @@ export function AppointmentsPageHeading({
   headingId = "appointments-page-heading",
 }: {
   title: ReactNode;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
   help?: ReactNode;
   context?: ReactNode;

@@ -57,12 +57,12 @@ test("navigation and landing name the oversight page Retention Policies", () => 
 test("each category is read-only and states that no policy is recorded without implying deletion", () => {
   const html = render(createElement(RetentionPoliciesPage), { data: { items: register.items.map((item) => ({ ...item, source_id: "SECRET-SOURCE", student_name: "SECRET PERSON" })) } });
   assert.match(html, /<h1[^>]*>Retention policies<\/h1>/);
-  assert.match(html, /View the retention policy status recorded in COMPASS\. Policy changes need institutional approval\./);
+  assert.match(html, /Retention periods recorded in COMPASS for each record category\./);
   for (const label of ["Graduate Tracer responses", "E-Counseling recordings"]) assert.match(html, new RegExp(`<h3[^>]*>${label}</h3>`));
-  assert.equal(html.split(">Not adopted<").length - 1, 2);
+  assert.equal(html.split(">Not set<").length - 1, 2);
   assert.equal(html.split(NOT_ADOPTED_COPY).length - 1, 2);
   assert.match(html, /COMPASS doesn’t delete or anonymize records under these policies\. Follow the University’s records disposition process outside COMPASS\./);
-  assert.doesNotMatch(html, /Retention period|Policy reference|Effective date/);
+  assert.doesNotMatch(html, /<dt[^>]*>(?:Retention period|Policy reference|Effective date)<\/dt>/);
   assert.doesNotMatch(html, retired);
   assert.doesNotMatch(html, /SECRET/);
   assert.doesNotMatch(html, /<form|<input|<select|<textarea/);
@@ -73,17 +73,17 @@ test("each category is read-only and states that no policy is recorded without i
 test("an adopted entry shows its recorded terms verbatim with an institutional date", () => {
   const adopted = entry("GRADUATE_TRACER", "Graduate Tracer responses", { adoption_status: "ADOPTED", retention_period: "SYNTHETIC WORDING", policy_reference: "SYNTHETIC-REF", effective_date: "2030-01-02" });
   const html = render(createElement(RetentionPoliciesPage), { data: { items: [adopted, register.items[1]] } });
-  assert.match(html, />Adopted</);
+  assert.match(html, />Set</);
   assert.match(html, /Retention period[\s\S]*SYNTHETIC WORDING/);
   assert.match(html, /Policy reference[\s\S]*SYNTHETIC-REF/);
   assert.match(html, /Effective date[\s\S]*January 2, 2030/);
-  assert.equal(html.split(">Not adopted<").length - 1, 1);
+  assert.equal(html.split(">Not set<").length - 1, 1);
 });
 
 test("loading, unauthorized and unavailable states fail safely", () => {
   const loading = render(createElement(RetentionPoliciesPage));
   assert.match(loading, /Loading retention policies…/);
-  assert.doesNotMatch(loading, /Not adopted/);
+  assert.doesNotMatch(loading, /Not set/);
   const unavailable = render(createElement(RetentionPoliciesPage), { capabilities: ["privacy_governance.view"] });
   assert.match(unavailable, /Access restricted/);
   assert.doesNotMatch(unavailable, /Record categories/);
@@ -93,7 +93,7 @@ test("loading, unauthorized and unavailable states fail safely", () => {
     assert.match(html, /role="alert"/);
     assert.match(html, />Retry</);
     assert.match(html, status === 403 ? /You don&#x27;t have permission to perform this privacy action\./ : /Couldn&#x27;t load retention policies\./);
-    assert.doesNotMatch(html, /PRIVATE DIAGNOSTIC|Not adopted/);
+    assert.doesNotMatch(html, /PRIVATE DIAGNOSTIC|Not set/);
   }
 });
 

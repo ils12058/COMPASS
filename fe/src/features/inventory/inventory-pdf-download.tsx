@@ -38,7 +38,7 @@ export function InventoryPdfDownload({
     <div className="flex flex-col items-start gap-2">
       <Button variant="secondary" onClick={() => void download()} disabled={pending}>
         <Download aria-hidden="true" size={16} />
-        {pending ? "Preparing official PDF…" : "Download official PDF"}
+        {pending ? "Preparing PDF…" : "Download PDF"}
       </Button>
       {error ? <p role="alert" className="max-w-lg text-sm text-danger">{error}</p> : null}
     </div>

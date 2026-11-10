@@ -71,10 +71,11 @@ test("Service Help explains coverage, saved appointments and separate video sett
   assert.match(html, /Video calls also need the video calling to be set up/);
 });
 
-test("Institutional Form Help distinguishes Current, software support and approval", () => {
+test("Institutional Form Help distinguishes Current, software support and updates", () => {
   const html = help(institutionalFormsHelpSections);
   assert.match(html, /Current means the revision used for new records/);
-  assert.match(html, /institutional approval is still required/);
+  assert.match(html, /Supported means COMPASS can use that revision/);
+  assert.match(html, /Changes to a form need a COMPASS update/);
   assert.match(html, /CNSC\/GTA/);
 });
 
@@ -89,7 +90,7 @@ test("Responsibilities Help includes safe fallback, confidential access and GOA 
 
 test("operator Help retains diagnostic limitations and the retention oversight boundary", () => {
   assert.match(help(platformHelpSections), /doesn&#x27;t check the worker, scheduler, Daily.co or Turnstile/);
-  assert.match(help(retentionHelpSections), /Policy changes need University approval and a reviewed COMPASS update/);
+  assert.match(help(retentionHelpSections), /Retention periods follow the University’s records retention schedule/);
   assert.match(help(retentionHelpSections), /can’t be created or edited in COMPASS/);
   assert.match(help(retentionHelpSections), /doesn’t schedule, approve or carry out deletion or anonymization/);
   assert.doesNotMatch(help(retentionHelpSections), /Eligibility|holds?\b|retry/i);

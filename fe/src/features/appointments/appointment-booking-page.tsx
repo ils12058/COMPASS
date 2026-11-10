@@ -464,15 +464,19 @@ function BookingWorkspace() {
                 <Select
                   id="booking-counselor"
                   value={counselorId}
+                  title={selectedCounselor?.display_name}
                   onChange={(event) => changeCounselor(event.target.value)}
                 >
                   {!counselorId ? <option value="">Choose a Counselor</option> : null}
                   {counselorItems.map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>
-                      {candidate.display_name}{candidate.is_default ? " — Assigned Counselor" : ""}
+                      {candidate.display_name}
                     </option>
                   ))}
                 </Select>
+                {selectedCounselor?.is_default ? (
+                  <p className="text-xs leading-5 text-muted">Assigned Counselor</p>
+                ) : null}
               </div>
             )}
           </PanelSection>

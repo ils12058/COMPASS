@@ -182,7 +182,8 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
     assert.equal(detailsHref, `/portal/appointments/${baseAppointment.id}`);
     await calendarPanel.getByRole("link", { name: /Academic Advising.*Scheduled/ }).click();
     await page.waitForURL(`**/portal/appointments/${baseAppointment.id}`);
-    await shown(page.getByRole("heading", { name: "APT-TEST-1024", exact: true }));
+    await shown(page.getByRole("heading", { name: "Counseling", level: 1, exact: true }));
+    await shown(page.getByText("Reference APT-TEST-1024", { exact: true }));
   });
 
   await check("calendar-period-navigation-and-today", "/portal/appointments/my?status=ALL", {

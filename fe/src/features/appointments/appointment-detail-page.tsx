@@ -670,8 +670,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
-        title={<span className="break-all font-mono">{appointment.reference_code}</span>}
+        title={appointment.service.name}
         context="Appointment"
+        description={
+          <span className="inline-flex flex-wrap items-baseline gap-x-1">
+            <span>Reference</span>{" "}
+            <span className="break-all font-mono">{appointment.reference_code}</span>
+          </span>
+        }
         meta={<AppointmentStatusBadge status={appointment.status} />}
       />
 
@@ -757,7 +763,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             ) : null}
           </dl>
         </PanelSection>
-        <PanelSection title="Record dates" titleId="appointment-operational-dates-heading">
+        <PanelSection title="Dates" titleId="appointment-operational-dates-heading">
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
             {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}
