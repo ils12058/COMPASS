@@ -186,8 +186,6 @@ for (const width of [320, 1440]) {
         await screenshot(page, `csm-unconfirmed-${width}`);
     });
     await check(`auth-expired-security-${width}`, '/login', { viewport, overrides: { '/api/v1/auth/session': error('not_authenticated', 401), 'POST /api/v1/auth/login': error('csrf_failed', 403) } }, async (page, { requests }) => {
-        // Wait for the fonts used in the capture without blocking on unrelated document loads.
-        await page.waitForFunction(() => document.fonts.status === 'loaded');
         await page.getByLabel('Email', { exact: true }).fill('synthetic@example.test');
         await page.getByLabel('Password', { exact: true }).fill('synthetic-test-only');
         await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -197,19 +195,7 @@ for (const width of [320, 1440]) {
         await safe(page);
         assert.equal(await page.getByLabel('Email', { exact: true }).inputValue(), 'synthetic@example.test');
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/auth/login').length, 1);
-        try {
-            await screenshot(page, `auth-expired-security-${width}`);
-        } catch (error) {
-            // Keep the full Playwright call log and asset readiness for CI-only capture failures.
-            console.error(error.message);
-            console.error(JSON.stringify(await page.evaluate(() => ({
-                fonts: document.fonts.status,
-                images: [...document.images].map(image => ({
-                    src: image.currentSrc, complete: image.complete, width: image.naturalWidth,
-                })),
-            }))));
-            throw error;
-        }
+        await screenshot(page, `auth-expired-security-${width}`);
     });
     // Reviewer authority is capability-based: copy names the API-provided actor or authorized reviewers.
     const exitStudent = { ...currentStudent, exit_interview_workspace_available: true };
