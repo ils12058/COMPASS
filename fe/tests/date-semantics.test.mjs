@@ -166,9 +166,9 @@ test("a refused issuance names the certificate date that must be corrected", () 
 
 test("booking and rescheduling start their date picker at the institutional today", () => {
   const booking = readFileSync(new URL("../src/features/appointments/appointment-booking-page.tsx", import.meta.url), "utf8");
-  assert.match(booking, /id="booking-date" type="date" min=\{institutionalDateInputValue\(\)\}/);
+  assert.match(booking, /<AppointmentDateCalendar[^>]*min=\{institutionalDateInputValue\(\)\}/);
   const detail = readFileSync(new URL("../src/features/appointments/appointment-detail-page.tsx", import.meta.url), "utf8");
-  assert.match(detail, /id="reschedule-date"\s+type="date"\s+min=\{institutionalDateInputValue\(\)\}/);
+  assert.match(detail, /<AppointmentDateCalendar[^>]*min=\{institutionalDateInputValue\(\)\}/);
 });
 
 test("a new unavailability may already have started but must not have ended", () => {

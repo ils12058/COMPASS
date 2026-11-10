@@ -1,0 +1,102 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "booking layout 1440",
+      "passed": true
+    },
+    {
+      "name": "booking layout 1024",
+      "passed": true
+    },
+    {
+      "name": "booking layout 390",
+      "passed": true
+    },
+    {
+      "name": "booking layout 320",
+      "passed": true
+    },
+    {
+      "name": "enlarged text and long names at 320",
+      "passed": true
+    },
+    {
+      "name": "keyboard radio and calendar navigation do not select until activation",
+      "passed": true
+    },
+    {
+      "name": "Manila today and boundary dates in America/Los_Angeles",
+      "passed": true
+    },
+    {
+      "name": "Manila today and boundary dates in Asia/Manila",
+      "passed": true
+    },
+    {
+      "name": "Manila today and boundary dates in Pacific/Kiritimati",
+      "passed": true
+    },
+    {
+      "name": "single unassigned counselor is selected directly",
+      "passed": true
+    },
+    {
+      "name": "counselor error",
+      "passed": true
+    },
+    {
+      "name": "counselor pending",
+      "passed": true
+    },
+    {
+      "name": "counselor empty",
+      "passed": true
+    },
+    {
+      "name": "available times pending and recovery",
+      "passed": true
+    },
+    {
+      "name": "available times empty and recovery",
+      "passed": true
+    },
+    {
+      "name": "available times error and recovery",
+      "passed": true
+    },
+    {
+      "name": "counselor date delivery and service changes clear incompatible selections",
+      "passed": true
+    },
+    {
+      "name": "failed refresh holds choices then drops lost selection",
+      "passed": true
+    },
+    {
+      "name": "booking polling invalidates lost time",
+      "passed": true
+    },
+    {
+      "name": "booking submission recheck invalidates lost time",
+      "passed": true
+    },
+    {
+      "name": "booking conflict invalidates lost time",
+      "passed": true
+    },
+    {
+      "name": "reschedule date change preserves reason and focus",
+      "passed": true
+    },
+    {
+      "name": "reschedule recheck preserves reason and focus",
+      "passed": true
+    },
+    {
+      "name": "reschedule conflict preserves reason and focus",
+      "passed": true
+    }
+  ]
+}

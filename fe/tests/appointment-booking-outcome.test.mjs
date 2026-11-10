@@ -49,7 +49,7 @@ test("errors render inside their own steps, never below the whole sheet", () => 
   const review = at('title="5. Review Appointment"');
   const footer = at("<PanelFooter>");
   const serviceError = at("{serviceError ? (");
-  const timeError = at("{timeError ? (");
+  const timeError = at("error={timeError}");
   const bookingError = at("{bookingError ? (");
   assert.ok(service < serviceError && serviceError < delivery, "Service errors stay with the Service step");
   assert.ok(time < timeError && timeError < review, "time errors stay with the time step");

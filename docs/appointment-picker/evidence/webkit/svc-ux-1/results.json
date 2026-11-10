@@ -1,0 +1,166 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "booking choices narrowPhone",
+      "passed": true
+    },
+    {
+      "name": "booking choices tablet",
+      "passed": true
+    },
+    {
+      "name": "booking choices desktop",
+      "passed": true
+    },
+    {
+      "name": "page-local fixed search and Service context",
+      "passed": true
+    },
+    {
+      "name": "fixed slot uncertain response is not replayed",
+      "passed": true
+    },
+    {
+      "name": "group lost response checks exact registration without replay",
+      "passed": true
+    },
+    {
+      "name": "group lost response with no registration stays unconfirmed",
+      "passed": true
+    },
+    {
+      "name": "invalid Service context does not reach the API",
+      "passed": true
+    },
+    {
+      "name": "non-current Student cannot register",
+      "passed": true
+    },
+    {
+      "name": "fixed Service context is rechecked before showing opportunities",
+      "passed": true
+    },
+    {
+      "name": "fixed confirmation links to the saved appointment",
+      "passed": true
+    },
+    {
+      "name": "view permission does not grant registration",
+      "passed": true
+    },
+    {
+      "name": "booking choices remain usable at 200 percent",
+      "passed": true
+    },
+    {
+      "name": "booking choices are keyboard reachable",
+      "passed": true
+    },
+    {
+      "name": "fixed slot conflict reports no longer available",
+      "passed": true
+    },
+    {
+      "name": "group success links to session and history",
+      "passed": true
+    },
+    {
+      "name": "group capacity conflict is shown without replay",
+      "passed": true
+    },
+    {
+      "name": "invalid fixed context offers Service selection",
+      "passed": true
+    },
+    {
+      "name": "empty slots do not become promised availability",
+      "passed": true
+    },
+    {
+      "name": "configured Inventory is explained for fixed booking",
+      "passed": true
+    },
+    {
+      "name": "fixed-only without Inventory does not invent a requirement",
+      "passed": true
+    },
+    {
+      "name": "empty group discovery does not invent a prerequisite or an offering",
+      "passed": true
+    },
+    {
+      "name": "fixed and group navigation preserves Service and page context",
+      "passed": true
+    },
+    {
+      "name": "group detail returns to the Service-filtered browse",
+      "passed": true
+    },
+    {
+      "name": "unfiltered event identifies its Service",
+      "passed": true
+    },
+    {
+      "name": "Service with three pathways explains configuration without promising opportunities",
+      "passed": true
+    },
+    {
+      "name": "flexible-only Service is not a fixed-slot offering",
+      "passed": true
+    },
+    {
+      "name": "fixed-only Service has no invented group link",
+      "passed": true
+    },
+    {
+      "name": "group-only Service does not show appointment actions",
+      "passed": true
+    },
+    {
+      "name": "Service without pathways cannot be used for a fixed booking",
+      "passed": true
+    },
+    {
+      "name": "group restriction: This session is full.",
+      "passed": true
+    },
+    {
+      "name": "group restriction: Registration has closed.",
+      "passed": true
+    },
+    {
+      "name": "failed reconciliation keeps result unconfirmed",
+      "passed": true
+    },
+    {
+      "name": "direct Group Session deep link keeps history return",
+      "passed": true
+    },
+    {
+      "name": "booking permission alone does not expose fixed slot or group viewing",
+      "passed": true
+    },
+    {
+      "name": "confirmed fixed booking remains success when refresh fails",
+      "passed": true
+    },
+    {
+      "name": "confirmed group registration remains success when refresh fails",
+      "passed": true
+    },
+    {
+      "name": "inactive Service cannot filter group discovery",
+      "passed": true
+    },
+    {
+      "name": "malformed fixed success cannot fabricate an appointment",
+      "passed": true
+    },
+    {
+      "name": "malformed group success remains unconfirmed without matching history",
+      "passed": true
+    }
+  ]
+}

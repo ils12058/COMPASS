@@ -1,0 +1,14 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "booking-server-error-same-intent-320",
+      "passed": true
+    },
+    {
+      "name": "booking-server-error-same-intent-1440",
+      "passed": true
+    }
+  ]
+}

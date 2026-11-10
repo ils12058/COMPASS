@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
-import { Input } from "@/components/ui/input";
+import { AppointmentDateCalendar } from "./appointment-date-calendar";
+import { AppointmentAvailableTimes } from "./appointment-available-times";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Select } from "@/components/ui/select";
@@ -29,7 +30,6 @@ import {
   isSlotTakenError,
   slotIsOffered,
   SLOT_JUST_TAKEN,
-  SLOT_NO_LONGER_AVAILABLE,
   SLOTS_NOT_RECHECKED,
   useSlotSelection,
 } from "@/features/appointments/appointment-slot-freshness";
@@ -45,7 +45,6 @@ import {
   appointmentErrorMessage,
   deliveryModeLabel,
   formatAppointmentDateTime,
-  formatAppointmentTime,
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
@@ -70,7 +69,6 @@ import {
   AppointmentStatus,
   DeliveryMode,
   type AppointmentActionsResponse,
-  type BookableSlotResponse,
   type CounselingFinishResponse,
 } from "@/lib/api/generated/model";
 import {
@@ -842,66 +840,18 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             <DialogTitle>Reschedule Appointment</DialogTitle>
             <DialogDescription>Choose a new time and review it before saving.</DialogDescription>
             <form onSubmit={submitReschedule} className="mt-5">
-              <div className="grid gap-2 sm:max-w-xs">
-                <Label htmlFor="reschedule-date">New date</Label>
-                <Input
-                  id="reschedule-date"
-                  type="date"
-                  min={institutionalDateInputValue()}
-                  value={rescheduleDate}
-                  disabled={rescheduling}
-                  onChange={(event) => {
-                    setRescheduleDate(event.target.value);
-                    rescheduleChoice.clear();
-                    setError(null);
-                  }}
-                />
-              </div>
-              {rescheduleDate ? (
-                <div className="mt-4">
-                  {rescheduleChoice.lost ? (
-                    <p role="status" className="mb-3 text-sm text-warning">{SLOT_NO_LONGER_AVAILABLE}</p>
-                  ) : null}
-                  {rescheduleSlots.isPending ? (
-                    <LoadingRegion label="Loading replacement times…" className="flex flex-wrap gap-2"><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /></LoadingRegion>
-                  ) : rescheduleSlots.isError && !rescheduleSlotsUnconfirmed ? (
-                    <div role="alert"><p className="text-sm text-danger">Couldn&apos;t load replacement times. Try again.</p><Button className="mt-2" variant="secondary" onClick={() => void rescheduleSlots.refetch()}>Retry</Button></div>
-                  ) : rescheduleSlotItems.length === 0 ? (
-                    <p role="status" className="text-sm text-muted">No times are available. Choose another date.</p>
-                  ) : (
-                    <>
-                      {rescheduleSlotsUnconfirmed ? (
-                        <Notice
-                          role="status"
-                          tone="warning"
-                          className="mb-3"
-                          action={<Button variant="secondary" disabled={rescheduleSlots.isFetching} onClick={() => void rescheduleSlots.refetch()}>{rescheduleSlots.isFetching ? "Retrying…" : "Retry"}</Button>}
-                        >
-                          {SLOTS_NOT_RECHECKED}
-                        </Notice>
-                      ) : null}
-                      <p className="mb-3 text-sm font-semibold text-ink">Available times · {rescheduleSlots.data?.data.timezone}</p>
-                      <div role="group" aria-label="Available replacement times" className="flex flex-wrap gap-2">
-                        {rescheduleSlotItems.map((slot: BookableSlotResponse) => (
-                          <button
-                            key={slot.starts_at}
-                            type="button"
-                            disabled={rescheduling}
-                            aria-pressed={rescheduleChoice.selected === slot.starts_at}
-                            onClick={() => { rescheduleChoice.select(slot.starts_at); setError(null); }}
-                            className={
-                              "min-h-11 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                              (rescheduleChoice.selected === slot.starts_at ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
-                            }
-                          >
-                            {formatAppointmentTime(slot.starts_at, rescheduleSlots.data?.data.timezone)}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
+              <div className="@container">
+                <div className="grid items-start gap-5 @min-[42rem]:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+                  <AppointmentDateCalendar label="New date" min={institutionalDateInputValue()} value={rescheduleDate} disabled={rescheduling}
+                    onChange={(next) => { setRescheduleDate(next); rescheduleChoice.clear(); setError(null); }} />
+                  <AppointmentAvailableTimes replacement
+                    date={rescheduleDate} items={rescheduleSlotItems} selected={rescheduleChoice.selected} timezone={rescheduleSlots.data?.data.timezone}
+                    pending={rescheduleSlots.isPending} fetching={rescheduleSlots.isFetching} failed={rescheduleSlots.isError}
+                    unconfirmed={rescheduleSlotsUnconfirmed} lost={rescheduleChoice.lost} disabled={rescheduling}
+                    onSelect={(next) => { rescheduleChoice.select(next); setError(null); }} onRefresh={() => void rescheduleSlots.refetch()}
+                  />
                 </div>
-              ) : null}
+              </div>
               <div className="mt-4 grid gap-2">
                 <Label htmlFor="reschedule-reason">Reason (optional)</Label>
                 <Textarea id="reschedule-reason" disabled={rescheduling} className="min-h-24" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} />

@@ -1,3 +1,4 @@
+import { chooseAppointmentDate } from "./support/appointment-calendar.mjs";
 // All requests use synthetic fixtures against local Next. No live records or notifications.
 import assert from 'node:assert/strict';
 import { createBrowserHarness } from './support/browser-harness.mjs';
@@ -123,7 +124,7 @@ for (const width of [320, 1440]) {
         bookingPosts.length = 0;
         await page.getByRole('button', { name: /^Counseling/ }).click();
         await page.getByRole('radio', { name: 'In person', exact: true }).check();
-        await page.getByLabel('Appointment date', { exact: true }).fill('2098-10-10');
+        await chooseAppointmentDate(page, '2098-10-10');
         await page.getByRole('group', { name: 'Available Appointment times' }).getByRole('button').first().click();
         await page.getByRole('button', { name: 'Book Appointment', exact: true }).click();
         await oneAlert(page, "Couldn't confirm your booking.");

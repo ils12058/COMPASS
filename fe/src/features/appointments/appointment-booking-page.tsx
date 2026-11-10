@@ -20,7 +20,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingRegion } from "@/components/ui/loading-region";
-import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
@@ -44,8 +43,6 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import {
   appointmentSlotFreshness,
   slotIsOffered,
-  SLOT_NO_LONGER_AVAILABLE,
-  SLOTS_NOT_RECHECKED,
   useSlotSelection,
 } from "@/features/appointments/appointment-slot-freshness";
 import {
@@ -53,13 +50,16 @@ import {
   classifyBookingFailure,
   type BookedAppointment,
 } from "@/features/appointments/appointment-booking-outcome";
-import { AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
+import { AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { AppointmentDateCalendar } from "./appointment-date-calendar";
+import { AppointmentAvailableTimes } from "./appointment-available-times";
+import { BookingCounselorChoice } from "./booking-counselor-choice";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { focusHeading } from "@/lib/focus-heading";
-import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL, institutionalDateInputValue } from "@/lib/institutional-time";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 // Offers only the modes the Service currently supports. For canonical Counseling, ONLINE is
 // explained as E-Counseling; ordinary Services' ONLINE stays a plain delivery mode.
@@ -67,7 +67,9 @@ export function BookingDeliveryModeChoice({
   service,
   value,
   onChange,
+  disabled = false,
 }: {
+  disabled?: boolean;
   service: AppointmentBookingServiceSummary;
   value: DeliveryMode | "";
   onChange: (mode: DeliveryMode) => void;
@@ -76,7 +78,7 @@ export function BookingDeliveryModeChoice({
     isCounselingService(service) && service.delivery_modes.includes(DeliveryMode.ONLINE);
   return (
     <>
-      <fieldset className="flex flex-wrap gap-3">
+      <fieldset disabled={disabled} className="flex flex-wrap gap-3">
         <legend className="sr-only">Delivery mode</legend>
         {service.delivery_modes.map((mode) => (
           <label key={mode} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface-raised px-3 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:font-semibold">
@@ -142,7 +144,7 @@ function BookingWorkspace() {
   const defaultCounselor = counselorItems.find((candidate) => candidate.is_default);
   const counselorId =
     counselorSelection === null
-      ? defaultCounselor?.id ?? ""
+      ? defaultCounselor?.id ?? (counselorItems.length === 1 ? counselorItems[0].id : "")
       : counselorSelection;
   const selectedCounselor = counselorItems.find((candidate) => candidate.id === counselorId);
 
@@ -155,7 +157,7 @@ function BookingWorkspace() {
     },
     {
       query: {
-        enabled: Boolean(service && deliveryMode && counselorId && date),
+        enabled: Boolean(service && deliveryMode && selectedCounselor && !counselors.isError && date),
         queryKey: [...getAppointmentsListBookableSlotsQueryKey(), viewerScope, service?.id ?? "", counselorId, deliveryMode, date],
         retry: false,
         ...appointmentSlotFreshness,
@@ -401,6 +403,7 @@ function BookingWorkspace() {
                       <button
                         type="button"
                         aria-pressed={selected}
+                        disabled={submitting}
                         onClick={() => changeService(item)}
                         className={
                           "w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus " +
@@ -441,6 +444,7 @@ function BookingWorkspace() {
               service={service}
               value={deliveryMode}
               onChange={changeDeliveryMode}
+              disabled={submitting}
             />
           </PanelSection>
         ) : null}
@@ -459,90 +463,24 @@ function BookingWorkspace() {
             ) : counselorItems.length === 0 ? (
               <p className="text-sm text-muted">No Counselors are available for this Service and delivery mode.</p>
             ) : (
-              <div className="grid gap-2 sm:max-w-xl">
-                <Label htmlFor="booking-counselor">Counselor</Label>
-                <Select
-                  id="booking-counselor"
-                  value={counselorId}
-                  title={selectedCounselor?.display_name}
-                  onChange={(event) => changeCounselor(event.target.value)}
-                >
-                  {!counselorId ? <option value="">Choose a Counselor</option> : null}
-                  {counselorItems.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.display_name}
-                    </option>
-                  ))}
-                </Select>
-                {selectedCounselor?.is_default ? (
-                  <p className="text-xs leading-5 text-muted">Assigned Counselor</p>
-                ) : null}
-              </div>
+              <BookingCounselorChoice items={counselorItems} value={counselorId} onChange={changeCounselor} disabled={submitting} />
             )}
           </PanelSection>
         ) : null}
 
         {service && deliveryMode && selectedCounselor ? (
           <PanelSection title="4. Choose date and time" titleId="booking-time-heading">
-            <div className="grid gap-2 sm:max-w-xs">
-              <Label htmlFor="booking-date">Appointment date</Label>
-              <Input id="booking-date" type="date" min={institutionalDateInputValue()} value={date} onChange={(event) => changeDate(event.target.value)} />
-            </div>
-            {date ? (
-              <div className="mt-5">
-                {timeError ? (
-                  <p role="alert" className="mb-3 text-sm text-danger">{timeError}</p>
-                ) : slotChoice.lost ? (
-                  <p role="status" className="mb-3 text-sm text-warning">{SLOT_NO_LONGER_AVAILABLE}</p>
-                ) : null}
-                {slots.isPending ? (
-                  <LoadingRegion label="Loading available times…" className="flex flex-wrap gap-2">
-                    <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
-                  </LoadingRegion>
-                ) : slots.isError && !slotsUnconfirmed ? (
-                  <div role="alert">
-                    <p className="text-sm text-danger">Couldn&apos;t load available times. Try again.</p>
-                    <Button className="mt-3" variant="secondary" onClick={() => void slots.refetch()}>Retry</Button>
-                  </div>
-                ) : slotItems.length === 0 ? (
-                  <p role="status" className="text-sm text-muted">No available Appointment times were found for this date. Choose another date.</p>
-                ) : (
-                  <>
-                    {slotsUnconfirmed ? (
-                      <Notice
-                        role="status"
-                        tone="warning"
-                        className="mb-3"
-                        action={<Button variant="secondary" disabled={slots.isFetching} onClick={() => void slots.refetch()}>{slots.isFetching ? "Retrying…" : "Retry"}</Button>}
-                      >
-                        {SLOTS_NOT_RECHECKED}
-                      </Notice>
-                    ) : null}
-                    <p className="mb-3 text-sm font-semibold text-ink">Available times · {slots.data?.data.timezone === INSTITUTION_TIME_ZONE ? INSTITUTION_TIME_ZONE_LABEL : slots.data?.data.timezone}</p>
-                    <div role="group" aria-label="Available Appointment times" className="flex flex-wrap gap-2">
-                      {slotItems.map((slot) => {
-                        const selected = slot.starts_at === slotChoice.selected;
-                        return (
-                          <button
-                            key={slot.starts_at}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => changeSlot(slot.starts_at)}
-                            className={
-                              "min-h-11 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus " +
-                              (selected ? "border-brand bg-brand text-on-brand" : "border-border-strong bg-surface-raised text-ink hover:bg-surface-subtle")
-                            }
-                          >
-                            {formatAppointmentTime(slot.starts_at, slots.data?.data.timezone)}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                  </>
-                )}
+            <div className="@container">
+              <div className="grid items-start gap-5 @min-[42rem]:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+                <AppointmentDateCalendar key={`${service.id}:${deliveryMode}:${counselorId}`} min={institutionalDateInputValue()} value={date} onChange={changeDate} disabled={submitting} />
+                <AppointmentAvailableTimes
+                  date={date} items={slotItems} selected={slotChoice.selected} timezone={slots.data?.data.timezone}
+                  pending={slots.isPending} fetching={slots.isFetching} failed={slots.isError}
+                  unconfirmed={slotsUnconfirmed} lost={slotChoice.lost} error={timeError} disabled={submitting}
+                  onSelect={changeSlot} onRefresh={() => void slots.refetch()}
+                />
               </div>
-            ) : null}
+            </div>
           </PanelSection>
         ) : null}
 

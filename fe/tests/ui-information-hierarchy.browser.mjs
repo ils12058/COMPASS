@@ -2,6 +2,7 @@
 // Daily room, credential, recording, notification or institutional record is touched.
 // E-Counseling sessions have their own suite: ecounseling-call.browser.mjs.
 import assert from "node:assert/strict";
+import { chooseAppointmentDate } from "./support/appointment-calendar.mjs";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointmentId, serviceId, appointment, user, slip } from "./support/ui-hierarchy-fixtures.mjs";
@@ -10,11 +11,11 @@ const { check, navigate, shown, hidden, screenshot, noHorizontalOverflow, finish
 
 const appointmentPath = `/portal/appointments/${appointmentId}`;
 await check("appointment-dialogs", appointmentPath, {}, async (page) => {
-  await hidden(page.getByLabel("New date", { exact: true }));
+  await hidden(page.getByRole("group", { name: "New date", exact: true }));
   const reschedule = page.getByRole("button", { name: "Reschedule", exact: true });
   await reschedule.click();
   const dialog = page.getByRole("dialog", { name: "Reschedule Appointment", exact: true });
-  await dialog.getByLabel("New date", { exact: true }).fill("2026-10-09");
+  await chooseAppointmentDate(dialog, "2098-10-09", "New date");
   await dialog.getByLabel("Reason (optional)", { exact: true }).fill("Schedule adjustment");
   await dialog.getByRole("group", { name: "Available replacement times" }).getByRole("button").first().click();
   await shown(dialog.getByRole("heading", { name: "Review reschedule", exact: true }));
@@ -168,7 +169,7 @@ await check("mobile-sort-and-dialog", "/portal/appointments/manage", { mobile: t
   await navigate(page, appointmentPath);
   await page.getByRole("button", { name: "Reschedule", exact: true }).tap();
   const dialog = page.getByRole("dialog", { name: "Reschedule Appointment", exact: true });
-  await dialog.getByLabel("New date", { exact: true }).fill("2026-10-09");
+  await chooseAppointmentDate(dialog, "2098-10-09", "New date");
   await dialog.getByRole("button", { name: "Cancel", exact: true }).tap();
   await hidden(dialog);
   await noHorizontalOverflow(page);
