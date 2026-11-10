@@ -49374,7 +49374,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Submit an authenticated Faculty Referral under approved digital-form policy",
+        "summary": "Submit an authenticated Faculty Referral",
         "tags": [
           "referrals"
         ]
@@ -49508,7 +49508,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Confirm one exact Student identity under approved disclosure policy",
+        "summary": "Confirm one exact Student identity",
         "tags": [
           "referrals"
         ]

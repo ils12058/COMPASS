@@ -1,22 +1,16 @@
-"""Isolated synthetic approvals; no institution policy or external provider is activated."""
+"""Synthetic Faculty accounts, placements and isolated confirmation limiter."""
 
-from dataclasses import replace
-from datetime import timedelta
 from types import SimpleNamespace
-from uuid import uuid4
 
 from django.utils import timezone
 
 from compass.accounts.bootstrap import sync_identity_policy
 from compass.accounts.models import User
-from compass.audit.actions import REFERRAL_FACULTY_POLICY_RECORDED
 from compass.audit.context import AuditContext
-from compass.audit.models import AuditOutcome
-from compass.audit.services import record_event
 from compass.authentication.sessions import create_auth_session
 from compass.common.rate_limit import RateLimitResult
 from compass.organization.models import Campus, College, FacultyAffiliation
-from compass.referrals import faculty_policy, faculty_services
+from compass.referrals import faculty_services
 from compass.student_academics.models import StudentAcademicProfile
 
 
@@ -28,22 +22,6 @@ def person(label, role):
         first_name="Synthetic",
         last_name=label,
     )
-
-
-def seal(policy, kind):
-    event = record_event(
-        context=AuditContext.system(),
-        action=REFERRAL_FACULTY_POLICY_RECORDED,
-        outcome=AuditOutcome.SUCCESS,
-        metadata={
-            "decision": "APPROVED",
-            "policy_kind": kind,
-            "policy_digest": policy.digest,
-            "policy_version": policy.version,
-            "evidence_reference": policy.evidence_reference,
-        },
-    )
-    return replace(policy, activation_event_id=event.pk)
 
 
 class SyntheticLimiter:
@@ -74,35 +52,6 @@ def make_world(monkeypatch):
     StudentAcademicProfile.objects.create(student=student, current_college=ccms)
     issued = create_auth_session(faculty, mfa_verified_at=timezone.now())
     other_issued = create_auth_session(other_faculty, mfa_verified_at=timezone.now())
-    now = timezone.now()
-    shared = dict(
-        version="synthetic-fac2-v1",
-        evidence_reference="SYNTHETIC-NOT-INSTITUTIONAL",
-        valid_from=now - timedelta(days=1),
-        valid_until=now + timedelta(days=1),
-        faculty_ids=frozenset({faculty.pk, other_faculty.pk}),
-        student_college_ids=frozenset({ccms.pk}),
-        activation_event_id=uuid4(),
-    )
-    lookup = seal(
-        faculty_policy.ApprovedFacultyStudentLookupPolicy(
-            **shared,
-            maximum_confirmation_age_seconds=300,
-            actor_attempt_limit=100,
-            ip_attempt_limit=200,
-            attempt_window_seconds=60,
-        ),
-        "STUDENT_CONFIRMATION",
-    )
-    submission = seal(
-        faculty_policy.ApprovedFacultySubmissionPolicy(
-            **shared,
-            lookup_policy_digest=lookup.digest,
-            eligibility_evidence_reference="SYNTHETIC-ELIGIBILITY",
-            own_projection_evidence_reference="SYNTHETIC-OWN-PROJECTION",
-        ),
-        "DIGITAL_SUBMISSION",
-    )
     limiter = SyntheticLimiter()
     monkeypatch.setattr(faculty_services.RedisRateLimiter, "from_settings", lambda: limiter)
     world = SimpleNamespace(
@@ -115,12 +64,8 @@ def make_world(monkeypatch):
         campus=campus,
         issued=issued,
         other_issued=other_issued,
-        lookup=lookup,
-        submission=submission,
         limiter=limiter,
     )
-    monkeypatch.setattr(faculty_policy, "get_approved_lookup_policy", lambda: world.lookup)
-    monkeypatch.setattr(faculty_policy, "get_approved_submission_policy", lambda: world.submission)
     return world
 
 

@@ -1,7 +1,6 @@
-"""FAC-2 policy-gated functional intake and explicit privacy/authorization regressions."""
+"""FAC-2 functional intake and explicit privacy/authorization regressions."""
 
 import json
-from dataclasses import replace
 from datetime import timedelta
 from uuid import uuid4
 
@@ -16,13 +15,13 @@ from compass.accounts.services import effective_capabilities
 from compass.audit.models import AuditEvent
 from compass.common.rate_limit import RateLimitUnavailable
 from compass.organization.models import FacultyAffiliation
-from compass.referrals import faculty_policy, faculty_services
+from compass.referrals import faculty_services
 from compass.referrals.confidential_content import read_referral_confidential_content
-from compass.referrals.faculty_policy import FacultyReferralError
+from compass.referrals.faculty_rules import FacultyReferralError
 from compass.referrals.models import Referral, ReferralAction, ReferralReferenceCounter
 from compass.referrals.services import ReferralCreationConflict, ReferralNotFound
 from compass.student_academics.models import StudentAcademicProfile
-from tests.faculty_referral_helpers import confirm, make_world, seal, submit
+from tests.faculty_referral_helpers import confirm, make_world, person, submit
 
 pytestmark = pytest.mark.django_db
 
@@ -30,31 +29,6 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def world(monkeypatch):
     return make_world(monkeypatch)
-
-
-@pytest.mark.parametrize("missing", ["both", "lookup", "submission", "neither"])
-def test_advisory_availability_keeps_policy_authorities_independent(world, monkeypatch, missing):
-    if missing in {"both", "lookup"}:
-        monkeypatch.setattr(faculty_policy, "get_approved_lookup_policy", lambda: None)
-    if missing in {"both", "submission"}:
-        monkeypatch.setattr(faculty_policy, "get_approved_submission_policy", lambda: None)
-    result = faculty_services.referral_availability(
-        actor=world.faculty, actor_session=world.issued.session
-    )
-    assert result["can_confirm_student"] == (missing not in {"both", "lookup"})
-    assert result["can_view_submissions"] == (missing not in {"both", "submission"})
-    assert result["can_submit_referral"] == (missing == "neither")
-    assert set(result) == {
-        "can_confirm_student",
-        "can_submit_referral",
-        "can_view_submissions",
-        "valid_until",
-    }
-    assert not Referral.objects.exists() and not world.limiter.counts
-    if missing == "both":
-        assert result["valid_until"] is None
-    else:
-        assert result["valid_until"] <= world.issued.session.expires_at
 
 
 def test_availability_does_not_convert_own_read_into_submission_permission(world):
@@ -115,8 +89,6 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
     assert row.student_college_at_submission_id == world.ccms.pk
     assert row.recorded_by_id is None and row.received_at is None
     assert row.submission_channel == "FACULTY_PORTAL"
-    assert row.submission_policy_digest == world.submission.digest
-    assert row.submission_policy_event_id == world.submission.activation_event_id
     content = read_referral_confidential_content(row)
     assert content.reason == "Synthetic confidential reason"
     assert content.referrer_name == world.faculty.get_full_name()
@@ -138,23 +110,6 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
         ).count()
         == 1
     )
-
-
-def test_missing_lookup_or_submission_provider_denies_confirmation_and_submission(
-    world, monkeypatch
-):
-    """A monkeypatched-to-None provider must fail closed; this is not the production default."""
-    ticket = confirm(world)["confirmation"]
-    monkeypatch.setattr(faculty_policy, "get_approved_lookup_policy", lambda: None)
-    with pytest.raises(FacultyReferralError, match="unavailable") as exc:
-        confirm(world)
-    assert exc.value.code.endswith("lookup_policy_unconfirmed")
-    monkeypatch.setattr(faculty_policy, "get_approved_submission_policy", lambda: None)
-    with pytest.raises(FacultyReferralError) as exc:
-        submit(world, ticket)
-    assert exc.value.code.endswith("submission_policy_unconfirmed")
-    assert not Referral.objects.exists()
-    assert not ReferralReferenceCounter.objects.exists()
 
 
 def test_capability_ceiling_and_dependency_revocation(world):
@@ -197,7 +152,6 @@ def test_capability_ceiling_and_dependency_revocation(world):
         "no_placement",
         "retired_college",
         "retired_campus",
-        "out_of_policy",
     ],
 )
 def test_exact_confirmation_uniform_negatives_no_account_or_placement_leak(world, invalid):
@@ -215,11 +169,6 @@ def test_exact_confirmation_uniform_negatives_no_account_or_placement_leak(world
     elif invalid == "retired_college":
         world.ccms.is_active = False
         world.ccms.save(update_fields=["is_active"])
-    elif invalid == "out_of_policy":
-        world.lookup = seal(
-            replace(world.lookup, student_college_ids=frozenset({world.cas.pk})),
-            "STUDENT_CONFIRMATION",
-        )
     else:
         world.campus.is_active = False
         world.campus.save(update_fields=["is_active"])
@@ -242,8 +191,8 @@ def test_exact_confirmation_uniform_negatives_no_account_or_placement_leak(world
 def test_confirmation_rate_limit_is_per_actor_and_ip_and_always_fail_closed(
     world, monkeypatch, settings
 ):
-    world.lookup = seal(replace(world.lookup, actor_attempt_limit=1), "STUDENT_CONFIRMATION")
-    assert confirm(world)["confirmed"]
+    for _ in range(10):
+        assert confirm(world)["confirmed"]
     with pytest.raises(FacultyReferralError) as exc:
         confirm(world)
     assert exc.value.status == 429
@@ -257,22 +206,6 @@ def test_confirmation_rate_limit_is_per_actor_and_ip_and_always_fail_closed(
     with pytest.raises(FacultyReferralError) as exc:
         confirm(world)
     assert exc.value.status == 503
-
-
-def test_policy_requires_current_evidence_exact_form_and_eligible_actor(world):
-    ticket = confirm(world)["confirmation"]
-    for change in (
-        {"activation_event_id": uuid4()},
-        {"form_revision": "2"},
-        {"valid_until": timezone.now() - timedelta(seconds=1)},
-        {"faculty_ids": frozenset({world.other_faculty.pk})},
-    ):
-        old = world.submission
-        world.submission = replace(old, **change)
-        with pytest.raises(FacultyReferralError):
-            submit(world, ticket)
-        world.submission = old
-    assert not Referral.objects.exists()
 
 
 @pytest.mark.parametrize(
@@ -358,7 +291,6 @@ def test_own_submission_queries_never_read_another_faculty_or_operational_detail
         "submitted_at",
         "faculty_home_college_id",
         "student_college_at_submission_id",
-        "submission_policy_digest",
         "submission_channel",
         "student_id",
         "reference_code",
@@ -372,7 +304,6 @@ def test_database_rejects_rewriting_digital_provenance(world, field):
         "submitted_at": timezone.now() + timedelta(seconds=1),
         "faculty_home_college_id": world.ccms.pk,
         "student_college_at_submission_id": world.cas.pk,
-        "submission_policy_digest": "a" * 64,
         "submission_channel": "GCO_RECORDED",
         "student_id": world.other_faculty.pk,
         "reference_code": "CHANGED",
@@ -541,23 +472,6 @@ def test_reference_uses_philippine_year_not_utc_year(world, monkeypatch):
     AuthSession.objects.filter(pk=world.issued.session.pk).update(
         expires_at=instant + timedelta(days=1)
     )
-    world.lookup = seal(
-        replace(
-            world.lookup,
-            valid_from=instant - timedelta(days=1),
-            valid_until=instant + timedelta(days=1),
-        ),
-        "STUDENT_CONFIRMATION",
-    )
-    world.submission = seal(
-        replace(
-            world.submission,
-            valid_from=world.lookup.valid_from,
-            valid_until=world.lookup.valid_until,
-            lookup_policy_digest=world.lookup.digest,
-        ),
-        "DIGITAL_SUBMISSION",
-    )
     result, created = submit(world)
     assert created and result["reference_code"] == "REF-2027-000001"
     row = Referral.objects.get(pk=result["id"])
@@ -579,15 +493,16 @@ def test_identical_replay_after_confirmation_expiry_or_home_change_does_not_resu
     assert Referral.objects.get().faculty_home_college_id == world.cas.pk
 
 
-def test_approval_expiring_during_reference_contention_rolls_back_allocation(world, monkeypatch):
+def test_confirmation_expiring_during_reference_contention_rolls_back_allocation(
+    world, monkeypatch
+):
     ticket = confirm(world)["confirmation"]
     original = faculty_services._allocate_reference
 
     def allocate(*, at):
         reference = original(at=at)
-        world.submission = replace(
-            world.submission, valid_until=timezone.now() - timedelta(seconds=1)
-        )
+        later = timezone.now() + timedelta(seconds=301)
+        monkeypatch.setattr(timezone, "now", lambda: later)
         return reference
 
     monkeypatch.setattr(faculty_services, "_allocate_reference", allocate)
@@ -612,20 +527,14 @@ def test_faculty_home_eligibility_cannot_be_replaced_by_capabilities(world, inva
     assert error.value.code == "faculty_referral_affiliation_unavailable"
 
 
-def test_approved_policy_for_other_faculty_does_not_admit_current_actor(world):
-    ticket = confirm(world)["confirmation"]
-    world.submission = seal(
-        replace(world.submission, faculty_ids=frozenset({world.other_faculty.pk})),
-        "DIGITAL_SUBMISSION",
-    )
-    with pytest.raises(FacultyReferralError) as error:
-        submit(world, ticket)
-    assert error.value.code == "faculty_referral_not_permitted"
-
-
 def test_shared_ip_attempt_bound_applies_across_eligible_faculty(world):
-    world.lookup = seal(replace(world.lookup, ip_attempt_limit=1), "STUDENT_CONFIRMATION")
-    assert confirm(world)["confirmed"]
+    for index in range(30):
+        # The same IP is shared by independently eligible Faculty.
+        actor = person("shared-ip-" + str(index), "FACULTY")
+        FacultyAffiliation.objects.create(faculty=actor, college=world.cas, basis="Synthetic")
+        from compass.authentication.sessions import create_auth_session
+
+        assert confirm(world, actor=actor, issued=create_auth_session(actor))["confirmed"]
     with pytest.raises(FacultyReferralError) as error:
         confirm(world, actor=world.other_faculty, issued=world.other_issued)
     assert error.value.status == 429
@@ -737,7 +646,6 @@ def test_gco_can_process_faculty_origin_without_changing_origin_or_own_projectio
     )
     row = services.void_referral(**args, reason="Authorized GCO correction")
     assert row.submitted_by_id == world.faculty.pk and row.recorded_by_id is None
-    assert row.submission_policy_digest == world.submission.digest and row.received_at is None
     content = read_referral_confidential_content(row)
     assert content.reason == "Synthetic confidential reason"
     assert content.referrer_name == world.faculty.get_full_name()
@@ -747,3 +655,122 @@ def test_gco_can_process_faculty_origin_without_changing_origin_or_own_projectio
             actor_session=world.issued.session,
             referral_id=row.pk,
         )
+
+
+@pytest.mark.parametrize("age,allowed", [(0, True), (300, True), (300.001, False), (-1, False)])
+def test_confirmation_age_boundary_is_300_seconds(world, monkeypatch, age, allowed):
+    now = timezone.now()
+    monkeypatch.setattr(timezone, "now", lambda: now)
+    confirmed = confirm(world)
+    assert confirmed["expires_at"] == now + timedelta(seconds=300)
+    monkeypatch.setattr(timezone, "now", lambda: now + timedelta(seconds=age))
+    if allowed:
+        assert submit(world, confirmed["confirmation"])[1]
+    else:
+        with pytest.raises(FacultyReferralError):
+            submit(world, confirmed["confirmation"])
+        assert not Referral.objects.exists()
+
+
+@pytest.mark.parametrize("college", ["cas", "ccms", "new"])
+def test_any_active_college_is_eligible_at_confirmation_and_submission(world, college):
+    from compass.organization.models import Campus, College
+
+    target = getattr(world, college, None)
+    if target is None:
+        campus = Campus.objects.create(code="NEW", name="New Campus")
+        target = College.objects.create(campus=campus, code="NEW", name="New College")
+    StudentAcademicProfile.objects.filter(student=world.student).update(current_college=target)
+    result, created = submit(world)
+    assert created
+    assert Referral.objects.get(pk=result["id"]).student_college_at_submission_id == target.pk
+
+
+@pytest.mark.parametrize("changed", ["college", "campus", "student_inactive", "student_role"])
+def test_submission_rechecks_student_and_active_college_after_confirmation(world, changed):
+    ticket = confirm(world)["confirmation"]
+    if changed == "college":
+        world.ccms.is_active = False
+        world.ccms.save(update_fields=["is_active"])
+    elif changed == "campus":
+        # Retire only the Student campus so the Faculty home remains active.
+        from compass.organization.models import Campus
+
+        campus = Campus.objects.create(code="STUDENT", name="Student Campus")
+        world.ccms.campus = campus
+        world.ccms.save(update_fields=["campus"])
+        campus.is_active = False
+        campus.save(update_fields=["is_active"])
+    elif changed == "student_inactive":
+        world.student.is_active = False
+        world.student.save(update_fields=["is_active"])
+    else:
+        world.student.role = Role.objects.get(code="FACULTY")
+        world.student.save(update_fields=["role"])
+    with pytest.raises(FacultyReferralError):
+        submit(world, ticket)
+    assert not Referral.objects.exists()
+
+
+def test_confirmation_real_redis_uses_300_second_actor_and_ip_windows(world, monkeypatch, settings):
+    import redis
+
+    from compass.common.rate_limit import RateLimitPolicy, RedisRateLimiter
+
+    client = redis.Redis.from_url(settings.REDIS_RATE_LIMIT_URL)
+    limiter = RedisRateLimiter(client, key_prefix="r2-referral-proof:" + str(uuid4()))
+    monkeypatch.setattr(faculty_services.RedisRateLimiter, "from_settings", lambda: limiter)
+    actor_rule = RateLimitPolicy("faculty-student-confirmation-actor", 10, 300)
+    ip_rule = RateLimitPolicy("faculty-student-confirmation-ip", 30, 300)
+    actor_key = limiter._key(actor_rule, str(world.faculty.pk))
+    ip_key = limiter._key(ip_rule, "127.0.0.1")
+    try:
+        for _ in range(10):
+            assert confirm(world)["confirmed"]
+        assert 295 <= client.ttl(actor_key) <= 300
+        assert 295 <= client.ttl(ip_key) <= 300
+        with pytest.raises(FacultyReferralError) as error:
+            confirm(world)
+        assert error.value.status == 429 and 295 <= error.value.retry_after_seconds <= 300
+        # Expire the actor window and prove a fresh window admits requests.
+        client.pexpire(actor_key, 0)
+        assert confirm(world)["confirmed"]
+        assert int(client.get(actor_key)) == 1
+        # The independently shared IP reaches its own bound even with a fresh actor window.
+        client.set(ip_key, 30, ex=300)
+        with pytest.raises(FacultyReferralError) as error:
+            confirm(world)
+        assert error.value.status == 429
+        client.pexpire(ip_key, 0)
+        assert confirm(world)["confirmed"]
+        assert int(client.get(ip_key)) == 1
+    finally:
+        client.delete(actor_key, ip_key)
+
+
+def test_submission_checks_exact_digital_form_revision(world):
+    from compass.institutional_forms.models import FormRevision
+
+    ticket = confirm(world)["confirmation"]
+    FormRevision.objects.filter(family__key="referral_slip", status="ACTIVE").update(
+        official_revision="2"
+    )
+    from compass.referrals.services import ReferralConfigurationConflict
+
+    with pytest.raises(ReferralConfigurationConflict):
+        submit(world, ticket)
+    assert not Referral.objects.exists() and not ReferralReferenceCounter.objects.exists()
+
+
+def test_advisory_availability_is_read_only_and_session_bounded(world):
+    before = list(AuditEvent.objects.values_list("id", flat=True))
+    result = faculty_services.referral_availability(
+        actor=world.faculty, actor_session=world.issued.session
+    )
+    assert all(
+        result[key]
+        for key in ("can_confirm_student", "can_submit_referral", "can_view_submissions")
+    )
+    assert result["valid_until"] == world.issued.session.expires_at
+    assert not Referral.objects.exists() and not world.limiter.counts
+    assert list(AuditEvent.objects.values_list("id", flat=True)) == before

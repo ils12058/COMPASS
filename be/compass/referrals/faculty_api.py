@@ -14,7 +14,7 @@ from compass.common.rate_limit import client_ip
 from compass.referrals.administrative_state import FacultyReferralSubmissionState
 from compass.referrals.api import _raise
 from compass.referrals.errors import ReferralError
-from compass.referrals.faculty_policy import FacultyReferralError
+from compass.referrals.faculty_rules import FacultyReferralError
 from compass.referrals.faculty_services import (
     confirm_student,
     get_own_submission,
@@ -109,7 +109,7 @@ def faculty_referral_availability(request):
     auth=session_auth,
     response=response_with_errors(FacultyStudentConfirmationResponse, 401, 403, 422, 429, 503),
     operation_id="referralsFacultyConfirmStudent",
-    summary="Confirm one exact Student identity under approved disclosure policy",
+    summary="Confirm one exact Student identity",
 )
 def faculty_confirm_student(request, payload: FacultyStudentConfirmationRequest):
     try:
@@ -132,7 +132,7 @@ def faculty_confirm_student(request, payload: FacultyStudentConfirmationRequest)
         200: FacultyReferralSubmissionResponse,
     },
     operation_id="referralsFacultySubmit",
-    summary="Submit an authenticated Faculty Referral under approved digital-form policy",
+    summary="Submit an authenticated Faculty Referral",
 )
 def faculty_submit_referral(
     request,

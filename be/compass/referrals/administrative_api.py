@@ -11,10 +11,10 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.referrals.administration import get_administration, transition
-from compass.referrals.administrative_policy import AdministrativeReferralError
 from compass.referrals.administrative_state import FacultyReferralSubmissionState
 from compass.referrals.api import _raise, _require
 from compass.referrals.errors import ReferralError
+from compass.referrals.faculty_rules import AdministrativeReferralError
 
 router = Router(tags=["referrals"])
 

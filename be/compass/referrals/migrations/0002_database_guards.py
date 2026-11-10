@@ -2,7 +2,6 @@
 
 from django.db import migrations
 
-
 FORWARD_SQL = r"""
 CREATE OR REPLACE FUNCTION public.referrals_submission_origin_immutable()
  RETURNS trigger
@@ -10,12 +9,10 @@ CREATE OR REPLACE FUNCTION public.referrals_submission_origin_immutable()
 AS $function$
 BEGIN
  IF ROW(NEW.submission_channel, NEW.submitted_by_id, NEW.submitted_at,
-        NEW.faculty_home_college_id, NEW.student_college_at_submission_id,
-        NEW.submission_policy_digest, NEW.submission_policy_event_id)
+        NEW.faculty_home_college_id, NEW.student_college_at_submission_id)
     IS DISTINCT FROM
     ROW(OLD.submission_channel, OLD.submitted_by_id, OLD.submitted_at,
-        OLD.faculty_home_college_id, OLD.student_college_at_submission_id,
-        OLD.submission_policy_digest, OLD.submission_policy_event_id)
+        OLD.faculty_home_college_id, OLD.student_college_at_submission_id)
  OR (OLD.submission_channel = 'FACULTY_PORTAL' AND
      ROW(NEW.student_id, NEW.student_name_snapshot, NEW.course_year_block_snapshot,
          NEW.form_revision_id, NEW.referred_on, NEW.reference_code,
@@ -46,17 +43,13 @@ BEGIN
   RETURN NEW;
  END IF;
  IF OLD.acknowledged_by_id IS NOT NULL AND
-    ROW(OLD.acknowledged_by_id, OLD.received_at, OLD.acknowledgment_policy_digest,
-        OLD.acknowledgment_policy_event_id) IS DISTINCT FROM
-    ROW(NEW.acknowledged_by_id, NEW.received_at, NEW.acknowledgment_policy_digest,
-        NEW.acknowledgment_policy_event_id) THEN
+    ROW(OLD.acknowledged_by_id, OLD.received_at) IS DISTINCT FROM
+    ROW(NEW.acknowledged_by_id, NEW.received_at) THEN
   RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='Referral acknowledgment is immutable';
  END IF;
  IF OLD.administratively_closed_at IS NOT NULL AND
-    ROW(OLD.administratively_closed_at, OLD.administratively_closed_by_id,
-        OLD.closure_policy_digest, OLD.closure_policy_event_id) IS DISTINCT FROM
-    ROW(NEW.administratively_closed_at, NEW.administratively_closed_by_id,
-        NEW.closure_policy_digest, NEW.closure_policy_event_id) THEN
+    ROW(OLD.administratively_closed_at, OLD.administratively_closed_by_id) IS DISTINCT FROM
+    ROW(NEW.administratively_closed_at, NEW.administratively_closed_by_id) THEN
   RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='Referral administrative closure is immutable';
  END IF;
  IF (OLD.voided_at IS NOT NULL OR NEW.voided_at IS NOT NULL) AND

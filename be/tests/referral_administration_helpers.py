@@ -1,57 +1,13 @@
-"""Synthetic FAC-D5/D6/D7 evidence, isolated from the unavailable live providers."""
-
-from dataclasses import replace
-from datetime import timedelta
-from uuid import uuid4
+"""Synthetic Counselor responsibility and staff supervision for Referral tests."""
 
 from django.utils import timezone
 
 from compass.audit.context import AuditContext
-from compass.audit.models import AuditOutcome
-from compass.audit.services import record_event
 from compass.authentication.sessions import create_auth_session
 from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.referrals import administration
-from compass.referrals import administrative_policy as policy
 from tests.faculty_referral_helpers import make_world as intake_world
 from tests.faculty_referral_helpers import person
-
-
-def seal_admin(world, kind, **changes):
-    faculty = kind.startswith("FACULTY_")
-    now = timezone.now()
-    values = dict(
-        version="synthetic-fac4-v1",
-        evidence_reference="SYNTHETIC-NOT-INSTITUTIONAL",
-        contract_evidence_reference="SYNTHETIC-CRITERIA",
-        kind=kind,
-        contract=policy.CONTRACTS[kind],
-        valid_from=now - timedelta(days=1),
-        valid_until=now + timedelta(days=1),
-        activation_event_id=uuid4(),
-        actor_ids=frozenset(
-            {world.faculty.pk, world.other_faculty.pk}
-            if faculty
-            else {world.counselor.pk, world.staff.pk, world.other_counselor.pk}
-        ),
-        roles=frozenset({"FACULTY"} if faculty else {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}),
-        student_college_ids=frozenset({world.ccms.pk}),
-    )
-    values.update(changes)
-    approved = policy.ApprovedAdministrativePolicy(**values)
-    event = record_event(
-        context=AuditContext.system(),
-        action=policy.POLICY_RECORDED,
-        outcome=AuditOutcome.SUCCESS,
-        metadata={
-            "decision": "APPROVED",
-            "policy_kind": kind,
-            "policy_digest": approved.digest,
-            "policy_version": approved.version,
-            "evidence_reference": approved.evidence_reference,
-        },
-    )
-    return replace(approved, activation_event_id=event.pk)
 
 
 def make_world(monkeypatch):
@@ -68,14 +24,6 @@ def make_world(monkeypatch):
             name + "_issued",
             create_auth_session(getattr(world, name), mfa_verified_at=timezone.now()),
         )
-    world.ack_policy = seal_admin(world, "ACKNOWLEDGMENT")
-    world.close_policy = seal_admin(world, "CLOSURE")
-    world.tracking_policy = seal_admin(world, "FACULTY_TRACKING")
-    monkeypatch.setattr(policy, "get_approved_acknowledgment_policy", lambda: world.ack_policy)
-    monkeypatch.setattr(policy, "get_approved_closure_policy", lambda: world.close_policy)
-    monkeypatch.setattr(
-        policy, "get_approved_tracking_disclosure_policy", lambda: world.tracking_policy
-    )
     return world
 
 

@@ -14,7 +14,7 @@ from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
 from compass.organization.models import CounselorResponsibility
 from compass.referrals import faculty_services, services
-from compass.referrals.faculty_policy import FacultyReferralError
+from compass.referrals.faculty_rules import FacultyReferralError
 from compass.referrals.models import Referral, ReferralReferenceCounter
 from compass.student_academics.models import StudentAcademicProfile
 from tests.faculty_referral_helpers import confirm, make_world, person, submit

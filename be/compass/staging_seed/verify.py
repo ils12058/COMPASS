@@ -226,26 +226,9 @@ def _upcoming(lookup: Lookup, user, mode: str | None = None):
 
 
 def _faculty_active(user) -> bool:
-    from compass.referrals import administrative_policy, faculty_policy
-    from compass.referrals import provisional_activation as provisional
+    from compass.referrals.faculty_rules import faculty_can_track
 
-    # Providers get_or_create their decision records. Refuse missing records before resolving
-    # them, so verify stays read-only even when a policy activation is absent.
-    if not all(AuditEvent.objects.filter(pk=pk).exists() for pk in provisional.EVENT_IDS.values()):
-        return False
-    now = timezone.now()
-    try:
-        lookup = faculty_policy.require_lookup_policy(now)
-        submission = faculty_policy.require_submission_policy(now)
-        tracking = administrative_policy.require_policy("FACULTY_TRACKING", now)
-        notice = administrative_policy.require_policy("FACULTY_NOTICES", now)
-        return (
-            user.pk in lookup.faculty_ids & submission.faculty_ids
-            and user.pk in tracking.actor_ids & notice.actor_ids
-            and submission.lookup_policy_digest == lookup.digest
-        )
-    except (faculty_policy.FacultyReferralError, administrative_policy.AdministrativeReferralError):
-        return False
+    return faculty_can_track(user) and user.has_capability("referrals.submit_self")
 
 
 def _faculty_predicate(lookup, user, key, arg):
@@ -598,7 +581,7 @@ def _accounts(section: Section, lookup: Lookup, domain, onboarding, allow) -> di
                 == (account.campus_code, account.college_code),
                 f"{account.key}: Faculty home College differs from the manifest.",
             )
-            section.check(_faculty_active(user), f"{account.key}: Faculty policies are not active.")
+            section.check(_faculty_active(user), f"{account.key}: Faculty access is unavailable.")
             fact.campus, fact.college = account.campus_code, account.college_code
         facts[account.key] = fact
     known = {account.institutional_id for account in ACCOUNTS}

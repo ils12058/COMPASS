@@ -619,7 +619,7 @@ def accessible_referrals(actor: User):
 def faculty_coordination_referral(*, actor: User, referral_id: UUID) -> Referral | None:
     """The Faculty member's own FACULTY_PORTAL submission, for messaging only.
 
-    Provisional: does not re-require an approved submission policy, submission session, or
+    Does not re-require a submission session or
     tracking availability. Authorization is submitter identity plus the messaging capability.
     """
     if not getattr(actor, "pk", None) or not actor.is_active or actor.role.code != "FACULTY":

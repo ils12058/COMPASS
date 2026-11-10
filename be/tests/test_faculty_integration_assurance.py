@@ -51,6 +51,10 @@ def test_cas_faculty_ccms_student_actual_sessions_through_closure_and_safe_track
     assert submitted.status_code == 201 and submitted.json()["state"] == "SUBMITTED"
     pk = submitted.json()["id"]
     row = Referral.objects.get(pk=pk)
+    assert (
+        AuditEvent.objects.get(action="referral.faculty.submitted", target_id=str(row.pk)).metadata
+        == {}
+    )
     source = row.confidential_content_ciphertext
     assert "Synthetic FAC5 confidential narrative" not in source
     assert read_referral_confidential_content(row).reason == body["reason"]

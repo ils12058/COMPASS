@@ -1,27 +1,24 @@
-"""Independent Faculty disclosure authorization; never disclose GCO internals."""
+"""Faculty ownership and live disclosure authorization; never disclose GCO internals."""
 
-from compass.referrals import administrative_policy
-from compass.referrals.faculty_policy import FacultyReferralError
+from compass.referrals.faculty_rules import (
+    FacultyReferralError,
+    active_colleges,
+    faculty_can_track,
+)
 
 
 def require_tracking_for_queryset(actor, queryset, now):
-    tracked = queryset.filter(acknowledged_by__isnull=False)
-    if not tracked.exists():
-        return None
-    try:
-        policy = administrative_policy.require_policy("FACULTY_TRACKING", now)
-        if actor.pk not in policy.actor_ids or actor.role.code not in policy.roles:
-            raise administrative_policy.AdministrativeReferralError("not_permitted")
-        if tracked.exclude(
-            student_college_at_submission_id__in=policy.student_college_ids
-        ).exists():
-            raise administrative_policy.AdministrativeReferralError("not_permitted")
-        return policy
-    except administrative_policy.AdministrativeReferralError:
-        raise FacultyReferralError("tracking_projection_unconfirmed") from None
+    if (
+        not faculty_can_track(actor)
+        or queryset.exclude(submitted_by_id=actor.pk, submission_channel="FACULTY_PORTAL").exists()
+        or queryset.exclude(
+            student_college_at_submission_id__in=active_colleges().values("pk")
+        ).exists()
+    ):
+        raise FacultyReferralError("not_permitted")
 
 
 def require_tracking_for_item(actor, item, now):
     from compass.referrals.models import Referral
 
-    return require_tracking_for_queryset(actor, Referral.objects.filter(pk=item.pk), now)
+    require_tracking_for_queryset(actor, Referral.objects.filter(pk=item.pk), now)

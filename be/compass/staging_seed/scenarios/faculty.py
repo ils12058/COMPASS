@@ -1,15 +1,12 @@
-"""Real provisional Faculty submissions and received notices; no credentials are issued."""
+"""Real Faculty submissions and received notices; no credentials are issued."""
 
 from contextlib import contextmanager
 
 from django.db import transaction
-from django.utils import timezone
 
 from compass.authentication.sessions import create_auth_session, revoke_auth_session
 from compass.referrals import (
     administration,
-    administrative_policy,
-    faculty_policy,
     faculty_services,
 )
 from compass.referrals.models import Referral
@@ -38,13 +35,6 @@ def seed_actor_session(session, key):
 def seed_faculty_referrals(session):
     if not FACULTY:
         return
-    # Resolve the same providers runtime calls use. Their fixed PROVISIONAL events are created
-    # by the product, never fabricated as institutional APPROVED decisions by the dataset.
-    now = timezone.now()
-    faculty_policy.require_lookup_policy(now)
-    faculty_policy.require_submission_policy(now)
-    for kind in ("ACKNOWLEDGMENT", "CLOSURE", "FACULTY_TRACKING", "FACULTY_NOTICES"):
-        administrative_policy.require_policy(kind, now)
     for spec in FACULTY:
         if Referral.objects.filter(
             submitted_by=session.users[spec.key], submission_channel="FACULTY_PORTAL"

@@ -13,8 +13,7 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.notifications.policy import NotificationEvent, NotificationTargetType
-from compass.referrals import administrative_policy
-from compass.referrals.faculty_policy import FacultyReferralError, require_submission_policy
+from compass.referrals.faculty_rules import active_colleges, faculty_can_track
 from compass.referrals.models import Referral
 
 SOURCE_TYPE = "faculty_referral_administration"
@@ -36,37 +35,12 @@ class FacultyAdministrativeNoticeIntent:
 
 
 def _admitted_referrals(recipient, now):
-    if (
-        recipient is None
-        or not recipient.is_active
-        or recipient.role.code != "FACULTY"
-        or not recipient.has_capability("referrals.view_submitted_self")
-    ):
+    if not faculty_can_track(recipient):
         return Referral.objects.none()
-    from compass.organization.models import FacultyAffiliation
-
-    if not FacultyAffiliation.objects.filter(
-        faculty=recipient, college__is_active=True, college__campus__is_active=True
-    ).exists():
-        return Referral.objects.none()
-    try:
-        submission = require_submission_policy(now)
-        notice = administrative_policy.require_policy("FACULTY_NOTICES", now)
-        tracking = administrative_policy.require_policy("FACULTY_TRACKING", now)
-        if recipient.pk not in submission.faculty_ids or any(
-            recipient.pk not in policy.actor_ids or recipient.role.code not in policy.roles
-            for policy in (notice, tracking)
-        ):
-            return Referral.objects.none()
-    except (FacultyReferralError, administrative_policy.AdministrativeReferralError):
-        return Referral.objects.none()
-    colleges = (
-        submission.student_college_ids & notice.student_college_ids & tracking.student_college_ids
-    )
     return Referral.objects.filter(
         submission_channel="FACULTY_PORTAL",
         submitted_by=recipient,
-        student_college_at_submission_id__in=colleges,
+        student_college_at_submission_id__in=active_colleges().values("pk"),
         voided_at__isnull=True,
         acknowledged_by__isnull=False,
         received_at__gte=F("submitted_at"),
@@ -87,7 +61,7 @@ def _for_event(queryset, event, now):
 
 
 def prepare_candidate_intent(*, referral_id, event, now=None):
-    """Re-resolve current ownership, policy admission and the exact transition."""
+    """Re-resolve current ownership, access and the exact transition."""
     if event not in _NOTICE_EVENTS:
         return None
     at = now or timezone.now()

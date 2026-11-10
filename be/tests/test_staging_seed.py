@@ -639,7 +639,6 @@ class SeededDatasetTests(TestCase):
         from compass.accounts.policy import FACULTY_CAPABILITY_CEILING
         from compass.accounts.services import effective_capabilities
         from compass.organization.models import FacultyAffiliation
-        from compass.referrals import provisional_activation as provisional
         from compass.referrals.models import Referral
         from compass.referrals.notification_contract import faculty_notice_is_current
         from compass.staging_seed.faculty import FACULTY
@@ -662,8 +661,6 @@ class SeededDatasetTests(TestCase):
             item = Referral.objects.get(submitted_by=user)
             assert item.student == dataset_user(spec.received_student)
             assert item.submission_channel == "FACULTY_PORTAL"
-            assert item.submission_policy_event_id == provisional.EVENT_IDS["DIGITAL_SUBMISSION"]
-            assert item.acknowledgment_policy_event_id == provisional.EVENT_IDS["ACKNOWLEDGMENT"]
             assert item.submitted_at <= item.received_at
             assert item.administratively_closed_at is None
             assert item.faculty_home_college == affiliation.college
@@ -679,7 +676,7 @@ class SeededDatasetTests(TestCase):
         from tests.faculty_referral_helpers import SyntheticLimiter
 
         # Match canonical Faculty tests: isolate limiter storage while retaining its limits.
-        # The separate local-database proof uses real Redis and unpatched policy providers.
+        # The separate local-database proof uses real Redis and normal services.
         limiter_factory.return_value = SyntheticLimiter()
         for spec in FACULTY:
             user = dataset_user(spec.key)
@@ -723,17 +720,15 @@ class SeededDatasetTests(TestCase):
             own = client.get(f"/api/v1/faculty/referrals/{received.pk}")
             assert own.status_code == 200 and own.json()["state"] == "RECEIVED_BY_GCO"
 
-    def test_unavailable_faculty_policy_fails_read_only_verification(self):
+    def test_inactive_faculty_fails_verification_without_writing_audit(self):
         before = fingerprint(list(AuditEvent.objects.order_by("pk").values()))
-        # Simulate an unavailable provider; append-only activation records stay untouched.
-        with patch(
-            "compass.referrals.administrative_policy.get_approved_faculty_notice_policy",
-            lambda: None,
-        ):
-            result = self.verify()
+        from compass.staging_seed.faculty import FACULTY
+
+        User.objects.filter(pk=dataset_user(FACULTY[0].key).pk).update(is_active=False)
+        result = self.verify()
         assert not result.passed
         assert any(
-            "Faculty policies are not active" in failure
+            "Faculty access is unavailable" in failure
             for section in result.sections
             for failure in section.failures
         )

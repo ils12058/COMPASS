@@ -1,13 +1,10 @@
 """Faculty receipt/closure producers, source currentness and trusted email links."""
 
-from dataclasses import replace
-from datetime import timedelta
 from uuid import uuid4
 
 import pytest
 from django.core import mail
 from django.db import transaction
-from django.utils import timezone
 
 from compass.accounts.models import Capability, Role, User, UserCapabilityOverride
 from compass.audit.context import AuditContext
@@ -28,8 +25,8 @@ from compass.notifications.models import (
 from compass.notifications.policy import NotificationEvent, NotificationTargetType
 from compass.notifications.services import list_my_notifications, unread_count_for
 from compass.organization.models import FacultyAffiliation
-from compass.referrals import administrative_policy as policy
-from compass.referrals import provisional_activation, services
+from compass.referrals import faculty_rules as rules
+from compass.referrals import services
 from compass.referrals.notification_contract import create_faculty_notice, prepare_candidate_intent
 from tests.faculty_referral_helpers import submit
 from tests.referral_administration_helpers import make_world, transition
@@ -143,9 +140,7 @@ def test_received_notice_is_superseded_by_closure_and_void_hides_both(world):
     assert not mail.outbox
 
 
-@pytest.mark.parametrize(
-    "mutation", ["inactive", "role", "capability", "affiliation", "campus", "policy"]
-)
+@pytest.mark.parametrize("mutation", ["inactive", "role", "capability", "affiliation", "campus"])
 @pytest.mark.parametrize("event", EVENTS)
 def test_current_owner_authority_loss_suppresses_notice_and_pending_email(
     world, event, mutation, monkeypatch
@@ -167,8 +162,6 @@ def test_current_owner_authority_loss_suppresses_notice_and_pending_email(
         campus = world.cas.campus
         campus.is_active = False
         campus.save(update_fields=["is_active"])
-    else:
-        monkeypatch.setattr(policy, "get_approved_faculty_notice_policy", lambda: None)
     assert not notification_is_current(notice)
     assert not list_my_notifications(actor=world.faculty).items
     assert unread_count_for(actor=world.faculty) == 0
@@ -181,9 +174,9 @@ def test_invalid_or_void_transitions_never_produce_notices(world):
     pk = submit(world)[0]["id"]
     for event in (*EVENTS, "VOIDED", "UNKNOWN"):
         assert create_faculty_notice(referral_id=pk, event=event) is None
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk, close=True, expected_version=1)
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk, expected_version=0)
     services.void_referral(
         actor=world.counselor,
@@ -191,7 +184,7 @@ def test_invalid_or_void_transitions_never_produce_notices(world):
         reason="Synthetic",
         context=AuditContext.user(world.counselor),
     )
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk)
     assert not Notification.objects.exists() and not EmailDelivery.objects.exists()
 
@@ -248,22 +241,6 @@ def test_final_revalidation_cancels_when_notice_authority_changes_after_render(
     monkeypatch.setattr(worker, "render_notification_email", rendered_then_changed)
     assert deliver_email_delivery(EmailDelivery.objects.get(notification=notice).pk) == "CANCELLED"
     assert not mail.outbox
-
-
-def test_code_owned_notice_policy_has_separate_truthful_idempotent_evidence(world):
-    now = timezone.now()
-    first = provisional_activation.provisional_faculty_notice_policy(now)
-    second = policy.get_approved_faculty_notice_policy()
-    first.validate(now, "FACULTY_NOTICES")
-    assert first.digest == second.digest
-    assert first.activation_event_id == second.activation_event_id
-    event = AuditEvent.objects.get(pk=first.activation_event_id)
-    assert event.metadata["decision"] == "PROVISIONAL"
-    assert event.metadata["policy_kind"] == "FACULTY_NOTICES"
-    assert event.metadata["authority"] == provisional_activation.PROVISIONAL_AUTHORITY
-    assert event.metadata["policy_digest"] == first.digest
-    with pytest.raises(policy.AdministrativeReferralError):
-        replace(first, valid_until=now - timedelta(seconds=1)).validate(now, "FACULTY_NOTICES")
 
 
 @pytest.mark.parametrize("origin", ["", "https://portal.example/path", "javascript:PRIVATE"])

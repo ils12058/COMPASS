@@ -1,7 +1,6 @@
-"""FAC-4 canonical transitions, independent evidence, privacy and Faculty notices."""
+"""FAC-4 canonical transitions, live authorization, privacy and Faculty notices."""
 
 import json
-from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -15,13 +14,13 @@ from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.organization.models import StaffSupervision
 from compass.referrals import administration, faculty_services, services
-from compass.referrals import administrative_policy as policy
-from compass.referrals.faculty_policy import FacultyReferralError
+from compass.referrals import faculty_rules as rules
+from compass.referrals.faculty_rules import FacultyReferralError
 from compass.referrals.models import Referral
 from compass.referrals.notification_contract import prepare_candidate_intent
 from compass.referrals.services import ReferralNotFound
 from tests.faculty_referral_helpers import confirm, submit
-from tests.referral_administration_helpers import make_world, seal_admin, transition
+from tests.referral_administration_helpers import make_world, transition
 
 pytestmark = pytest.mark.django_db
 
@@ -46,7 +45,6 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
         row.submitted_by_id,
         row.submitted_at,
         row.recorded_by_id,
-        row.submission_policy_digest,
     )
     assert value["state"] == "SUBMITTED" and value["received_at"] is None
     received = transition(world, row.pk)
@@ -65,7 +63,6 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
         row.submitted_by_id,
         row.submitted_at,
         row.recorded_by_id,
-        row.submission_policy_digest,
     )
     projection = own(world, row.pk)
     assert set(projection) == {
@@ -93,7 +90,7 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
         ).count()
         == 1
     )
-    # Retry retains identity while disclosing current approved persisted state.
+    # Retry retains identity while disclosing current persisted state.
     replay, created = submit(world, ticket)
     assert not created and replay == projection
 
@@ -101,10 +98,11 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
 @pytest.mark.parametrize("role", ["faculty", "student", "admin"])
 def test_no_administrative_capability_for_other_roles(world, role):
     pk = submit(world)[0]["id"]
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk, actor=getattr(world, role))
 
 
+@pytest.mark.parametrize("close", [False, True])
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -116,14 +114,12 @@ def test_no_administrative_capability_for_other_roles(world, role):
         "unsupervised",
         "scope",
         "supervision",
-        "policy_actor",
-        "policy_college",
-        "policy_expired",
-        "policy_evidence",
     ],
 )
-def test_current_authority_and_scope_revalidated(world, mutation):
+def test_current_authority_and_scope_revalidated(world, mutation, close):
     pk = submit(world)[0]["id"]
+    if close:
+        transition(world, pk)
     args = {}
     if mutation == "capability":
         UserCapabilityOverride.objects.create(
@@ -152,24 +148,12 @@ def test_current_authority_and_scope_revalidated(world, mutation):
     elif mutation == "supervision":
         StaffSupervision.objects.filter(staff=world.staff).update(supervisor=world.other_counselor)
         args = dict(actor=world.staff, actor_session=world.staff_issued.session)
-    elif mutation == "policy_actor":
-        world.ack_policy = seal_admin(
-            world, "ACKNOWLEDGMENT", actor_ids=frozenset({world.other_counselor.pk})
-        )
-    elif mutation == "policy_college":
-        world.ack_policy = seal_admin(
-            world, "ACKNOWLEDGMENT", student_college_ids=frozenset({world.cas.pk})
-        )
-    elif mutation == "policy_expired":
-        world.ack_policy = replace(
-            world.ack_policy, valid_until=timezone.now() - timedelta(seconds=1)
-        )
-    else:
-        world.ack_policy = replace(world.ack_policy, contract_evidence_reference="ALTERED")
-    with pytest.raises((policy.AdministrativeReferralError, ReferralNotFound)):
-        transition(world, pk, **args)
+    with pytest.raises((rules.AdministrativeReferralError, ReferralNotFound)):
+        transition(world, pk, close=close, **args)
     row = Referral.objects.get(pk=pk)
-    assert row.administrative_version == 1 and row.received_at is None
+    assert row.administrative_version == (2 if close else 1)
+    assert row.administratively_closed_at is None
+    assert (row.received_at is not None) == close
 
 
 def test_goa_actual_supervised_ccms_scope_not_faculty_home_college(world):
@@ -177,43 +161,28 @@ def test_goa_actual_supervised_ccms_scope_not_faculty_home_college(world):
     result = transition(world, pk, actor=world.staff, actor_session=world.staff_issued.session)
     assert result["acknowledged_by"]["id"] == world.staff.pk
     assert result["faculty_home_college"] == world.cas.name
-
-
-def test_missing_acknowledgment_or_closure_provider_denies_transition(world, monkeypatch):
-    """Monkeypatches providers to None; it does not claim the production provider is None."""
-    pk = submit(world)[0]["id"]
-    monkeypatch.setattr(policy, "get_approved_acknowledgment_policy", lambda: None)
-    context = administration.get_administration(
-        actor=world.counselor, actor_session=world.counselor_issued.session, referral_id=pk
+    closed = transition(
+        world, pk, close=True, actor=world.staff, actor_session=world.staff_issued.session
     )
-    assert not context["can_acknowledge"] and not context["can_close"]
-    with pytest.raises(policy.AdministrativeReferralError) as exc:
-        transition(world, pk)
-    assert exc.value.code.endswith("policy_unconfirmed")
-    monkeypatch.setattr(policy, "get_approved_acknowledgment_policy", lambda: world.ack_policy)
-    transition(world, pk)
-    monkeypatch.setattr(policy, "get_approved_closure_policy", lambda: None)
-    with pytest.raises(policy.AdministrativeReferralError):
-        transition(world, pk, close=True)
-    assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is not None
+    assert closed["closed_by"]["id"] == world.staff.pk
 
 
 def test_defined_conflicts_prior_receipt_and_explicit_review(world):
     pk = submit(world)[0]["id"]
-    with pytest.raises(policy.AdministrativeReferralError) as exc:
+    with pytest.raises(rules.AdministrativeReferralError) as exc:
         transition(world, pk, close=True, expected_version=1)
     assert exc.value.status == 409
     transition(world, pk)
     for version in (1, 2):
-        with pytest.raises(policy.AdministrativeReferralError) as exc:
+        with pytest.raises(rules.AdministrativeReferralError) as exc:
             transition(world, pk, expected_version=version)
         assert exc.value.status == 409
     for reviewed in (False, 1, "true"):
-        with pytest.raises(policy.AdministrativeReferralError) as exc:
+        with pytest.raises(rules.AdministrativeReferralError) as exc:
             transition(world, pk, close=True, obligations_reviewed=reviewed)
         assert exc.value.status == 422
     transition(world, pk, close=True)
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk, close=True, expected_version=3)
 
 
@@ -236,26 +205,6 @@ def test_audit_failure_rolls_back_ack_and_closure(world, monkeypatch):
     assert Referral.objects.get(pk=pk).administratively_closed_at is None
 
 
-def test_disclosure_is_independent_and_never_lies_about_state(world, monkeypatch):
-    pk = submit(world)[0]["id"]
-    transition(world, pk)
-    monkeypatch.setattr(policy, "get_approved_tracking_disclosure_policy", lambda: None)
-    with pytest.raises(FacultyReferralError):
-        own(world, pk)
-    with pytest.raises(FacultyReferralError):
-        faculty_services.list_own_submissions(
-            actor=world.faculty, actor_session=world.issued.session
-        )
-    availability = faculty_services.referral_availability(
-        actor=world.faculty, actor_session=world.issued.session
-    )
-    assert not availability["can_view_submissions"] and not availability["can_submit_referral"]
-    with pytest.raises(ReferralNotFound):
-        faculty_services.get_own_submission(
-            actor=world.other_faculty, actor_session=world.other_issued.session, referral_id=pk
-        )
-
-
 def test_void_preserves_history_and_omits_faculty_read(world):
     pk = submit(world)[0]["id"]
     transition(world, pk)
@@ -274,7 +223,7 @@ def test_void_preserves_history_and_omits_faculty_read(world):
     )
     with pytest.raises(ReferralNotFound):
         own(world, pk)
-    with pytest.raises(policy.AdministrativeReferralError):
+    with pytest.raises(rules.AdministrativeReferralError):
         transition(world, pk, expected_version=3)
 
 
@@ -289,8 +238,6 @@ def test_database_fences_unacknowledged_start_and_immutable_history(world):
         Referral.objects.filter(pk=pk).update(
             acknowledged_by=None,
             received_at=None,
-            acknowledgment_policy_digest=None,
-            acknowledgment_policy_event=None,
             administrative_version=1,
         )
 
@@ -303,8 +250,6 @@ def test_notice_intent_current_recipient_and_stale_events(world, monkeypatch):
     transition(world, pk)
     assert Notification.objects.count() == start + 1
     assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is not None
-    approved = seal_admin(world, "FACULTY_NOTICES")
-    monkeypatch.setattr(policy, "get_approved_faculty_notice_policy", lambda: approved)
     a = prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO")
     assert a.recipient_id == world.faculty.pk and a.recipient_id != world.student.pk
     assert a.route == f"/portal/faculty/referrals/{pk}"
@@ -451,3 +396,91 @@ def test_origin_filter_paginates_authoritative_rows_and_rejects_invalid_source(w
     ).items
     with pytest.raises(services.InvalidReferralInput):
         services.list_referrals(actor=world.counselor, submission_channel="INVENTED")
+
+
+@pytest.mark.parametrize("closed", [False, True])
+@pytest.mark.parametrize("changed", ["inactive", "role", "capability", "home", "college", "campus"])
+def test_own_tracking_rechecks_live_faculty_authority(world, closed, changed):
+    pk = submit(world)[0]["id"]
+    transition(world, pk)
+    if closed:
+        transition(world, pk, close=True)
+    assert own(world, pk)["state"] == ("ADMINISTRATIVELY_CLOSED" if closed else "RECEIVED_BY_GCO")
+    if changed == "inactive":
+        world.faculty.is_active = False
+        world.faculty.save(update_fields=["is_active"])
+    elif changed == "role":
+        world.faculty.role = Role.objects.get(code="IT_ADMIN")
+        world.faculty.save(update_fields=["role"])
+    elif changed == "capability":
+        UserCapabilityOverride.objects.create(
+            user=world.faculty,
+            capability=Capability.objects.get(code="referrals.view_submitted_self"),
+            effect="REVOKE",
+            reason="Synthetic",
+        )
+    elif changed == "home":
+        from compass.organization.models import FacultyAffiliation
+
+        FacultyAffiliation.objects.filter(faculty=world.faculty).delete()
+    elif changed == "college":
+        world.ccms.is_active = False
+        world.ccms.save(update_fields=["is_active"])
+    else:
+        world.campus.is_active = False
+        world.campus.save(update_fields=["is_active"])
+    with pytest.raises((FacultyReferralError, ReferralNotFound)):
+        own(world, pk)
+    if changed == "college":
+        assert (
+            faculty_services.list_own_submissions(
+                actor=world.faculty, actor_session=world.issued.session
+            )["items"]
+            == []
+        )
+    else:
+        with pytest.raises(FacultyReferralError):
+            faculty_services.list_own_submissions(
+                actor=world.faculty, actor_session=world.issued.session
+            )
+
+
+@pytest.mark.parametrize("stage", ["submitted", "acknowledged", "closed"])
+def test_database_preserves_all_remaining_submission_and_administrative_history(world, stage):
+    pk = submit(world)[0]["id"]
+    if stage != "submitted":
+        transition(world, pk)
+    if stage == "closed":
+        transition(world, pk, close=True)
+    row = Referral.objects.get(pk=pk)
+    changes = [
+        {"submitted_by": world.other_faculty},
+        {"submitted_at": row.submitted_at + timedelta(seconds=1)},
+        {"faculty_home_college": world.ccms},
+        {"student_college_at_submission": world.cas},
+        {"student_name_snapshot": "Changed"},
+        {"course_year_block_snapshot": "Changed"},
+        {"form_revision_id": None},
+        {"referred_on": row.referred_on + timedelta(days=1)},
+        {"creation_key_digest": "b" * 64},
+        {"creation_request_fingerprint": "c" * 64},
+    ]
+    if stage != "submitted":
+        changes += [{"acknowledged_by": world.staff}, {"received_at": timezone.now()}]
+    if stage == "closed":
+        changes += [
+            {"administratively_closed_by": world.staff},
+            {"administratively_closed_at": timezone.now()},
+            {
+                "administratively_closed_by": None,
+                "administratively_closed_at": None,
+                "administrative_version": 2,
+            },
+        ]
+    for change in changes:
+        with pytest.raises(IntegrityError), transaction.atomic():
+            Referral.objects.filter(pk=pk).update(**change)
+    if stage != "submitted":
+        with pytest.raises(IntegrityError), transaction.atomic():
+            Referral.objects.filter(pk=pk).delete()
+    assert Referral.objects.get(pk=pk).administrative_version == row.administrative_version

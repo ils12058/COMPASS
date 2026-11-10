@@ -14,7 +14,7 @@ from compass.organization.services import (
     set_staff_supervisor,
 )
 from compass.referrals import services
-from compass.referrals.administrative_policy import AdministrativeReferralError
+from compass.referrals.faculty_rules import AdministrativeReferralError
 from compass.referrals.models import Referral
 from compass.referrals.services import ReferralNotFound
 from compass.student_academics.services import set_current_placement
