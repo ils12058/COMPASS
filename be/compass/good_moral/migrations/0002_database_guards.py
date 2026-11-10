@@ -74,7 +74,7 @@ BEGIN
    WHERE a.request_id=rid AND v.invalidated_at IS NOT NULL AND (
      (v.invalidation_reason='CANCELLED' AND r.status<>'CANCELLED')
      OR (v.invalidation_reason='RECEIPT_REVISED' AND a.is_current)
-     OR (v.invalidation_reason='POLICY_CHANGED' AND NOT EXISTS (
+     OR (v.invalidation_reason='FEE_CHANGED' AND NOT EXISTS (
        SELECT 1 FROM good_moral_goodmoralreceiptverification successor
        WHERE successor.assignment_id=a.id AND successor.verified_at>v.verified_at
      ))
@@ -245,7 +245,7 @@ BEGIN
  IF TG_OP='UPDATE' THEN
    IF OLD.invalidated_at IS NULL AND NEW.invalidated_at>=OLD.verified_at
      AND NEW.invalidated_by_id IS NOT NULL AND NEW.invalidation_reason IN ( 'RECEIPT_REVISED' ,
-       'CANCELLED' , 'POLICY_CHANGED' )
+       'CANCELLED' , 'FEE_CHANGED' )
      AND (to_jsonb(NEW)-ARRAY['invalidated_at','invalidated_by_id','invalidation_reason']) =
          ( to_jsonb ( OLD ) - ARRAY [ 'invalidated_at' , 'invalidated_by_id' , 'invalidation_reason'
            ] ) THEN RETURN NEW ; END IF ;
@@ -261,21 +261,11 @@ BEGIN
     OR NEW.verified_at < transaction_timestamp ( ) OR NEW.verified_at > clock_timestamp ( ) +
       interval '1 second'
     OR NEW.fingerprint !~ '^[a-f0-9]{64}$'
-    OR NEW.policy_id='' OR NEW.policy_version=''
-    OR coalesce(NEW.fee_decision->>'status','') NOT IN ('APPROVED','PROVISIONAL')
-    OR NEW.fee_decision->>'policy_id' IS DISTINCT FROM NEW.policy_id
-    OR NEW.fee_decision->>'version' IS DISTINCT FROM NEW.policy_version
-    OR NEW.fee_decision->>'currency' IS DISTINCT FROM NEW.currency
-    OR (NEW.fee_decision->>'expected_amount')::numeric IS DISTINCT FROM NEW.expected_amount
-    OR NEW.fee_decision->>'variant' IS DISTINCT FROM r.variant
-    OR NEW.fee_decision->>'reference_date' IS DISTINCT FROM a.receipt_date::text
-    OR NEW.fee_decision->>'applicability_rule' IS DISTINCT FROM 'RECEIPT_DATE_IN_APPROVED_RANGE'
-    OR coalesce(NEW.fee_decision->>'authority_reference','')=''
-    OR NOT coalesce(a.receipt_date BETWEEN (NEW.fee_decision->>'applicable_from')::date
-                                      AND ( NEW.fee_decision ->> 'applicable_through' ) :: date ,
-                                        false ) THEN
+    OR NEW.currency IS DISTINCT FROM 'PHP'
+    OR NEW.expected_amount IS DISTINCT FROM 80.00
+    OR r.variant NOT IN ('CURRENT_STUDENT','GRADUATE') THEN
    RAISE EXCEPTION USING ERRCODE = '23514' , CONSTRAINT = 'gm_inspection_revision' , MESSAGE =
-     'Physical inspection revision or fee evidence is invalid' ;
+     'Physical inspection revision or fee is invalid' ;
  END IF;
  RETURN NEW;
 END $function$;

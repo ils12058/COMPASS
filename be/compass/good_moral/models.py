@@ -492,11 +492,8 @@ class GoodMoralReceiptVerification(models.Model):
         max_length=32, choices=[("PHYSICAL_OR_INSPECTION", "Physical OR inspection")]
     )
     verified_at = models.DateTimeField(auto_now_add=True)
-    policy_id = models.CharField(max_length=100)
-    policy_version = models.CharField(max_length=64)
     expected_amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=3)
-    fee_decision = models.JSONField()
     operation_id = models.UUIDField(unique=True, editable=False)
     fingerprint = models.CharField(max_length=64)
     invalidated_at = models.DateTimeField(null=True)
@@ -521,7 +518,7 @@ class GoodMoralReceiptVerification(models.Model):
                 name="gm_receipt_inspection_method",
             ),
             models.CheckConstraint(
-                condition=models.Q(currency="PHP", expected_amount__gt=0),
+                condition=models.Q(currency="PHP", expected_amount=Decimal("80.00")),
                 name="gm_receipt_inspection_fee",
             ),
             models.CheckConstraint(
@@ -534,7 +531,7 @@ class GoodMoralReceiptVerification(models.Model):
                     | models.Q(
                         invalidated_at__isnull=False,
                         invalidated_by__isnull=False,
-                        invalidation_reason__in=["RECEIPT_REVISED", "CANCELLED", "POLICY_CHANGED"],
+                        invalidation_reason__in=["RECEIPT_REVISED", "CANCELLED", "FEE_CHANGED"],
                     )
                 ),
                 name="gm_receipt_invalidation_shape",

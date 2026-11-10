@@ -28,7 +28,6 @@ from compass.notifications.models import Notification
 from tests.test_good_moral import auth_client
 from tests.test_good_moral_authenticated_integration import (
     actors,  # noqa: F401
-    approved,  # noqa: F401
     create,
     record,
 )
@@ -68,8 +67,8 @@ def test_disposable_backup_restore_preserves_evidence_but_loses_later_claims(act
         Notification,
         FeedbackOpportunity,
     ]
-    # Canonical full-row values, including source form/template/issuer and fee
-    # snapshots. Normalize driver JSON decoding and connection timezone only.
+    # Canonical full-row values, including source form/template/issuer and fee facts.
+    # Normalize driver JSON decoding and connection timezone only.
     expected = {}
     with connection.cursor() as cursor:
         cursor.execute("SET TIME ZONE 'UTC'")

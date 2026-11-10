@@ -2,6 +2,7 @@
 """Independent PostgreSQL connections and explicit request/account fence synchronization."""
 
 from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 from threading import Barrier, Event
 from uuid import uuid4
 
@@ -11,7 +12,7 @@ from django.db import close_old_connections, connection, transaction
 from compass.accounts.models import User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
-from compass.good_moral import receipt_fee_policy as fees
+from compass.good_moral import fees
 from compass.good_moral import receipt_identity as receipts
 from compass.good_moral import receipt_verification as inspections
 from compass.good_moral.models import GoodMoralReceiptVerification as Verification
@@ -19,7 +20,6 @@ from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.services import GoodMoralConflict, GoodMoralNotPermitted, cancel_request
 from tests.test_good_moral_receipts import edit, request_for
 from tests.test_good_moral_verification import (
-    approved,  # noqa: F401 fixture discovery
     grant,
     intent,
     issue,
@@ -178,14 +178,14 @@ def test_concurrent_global_operation_reuse_rolls_back_loser(scene, monkeypatch):
     grant(other)
     operation_id = uuid4()
     barrier = Barrier(2)
-    original = inspections.decision_for
+    original = inspections.checked_fee_terms
 
     def synchronized(item, assignment):
         if not Verification.objects.filter(assignment=assignment).exists():
             barrier.wait(timeout=15)
         return original(item, assignment)
 
-    monkeypatch.setattr(inspections, "decision_for", synchronized)
+    monkeypatch.setattr(inspections, "checked_fee_terms", synchronized)
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
             pool.submit(
@@ -297,7 +297,7 @@ def test_final_issue_and_late_correction_keep_one_committed_history(scene, first
 
 
 @pytest.mark.parametrize("transition", ["verify", "prepare", "issue"])
-def test_policy_changes_during_transaction_roll_back_every_effect(scene, monkeypatch, transition):
+def test_fee_changes_during_transaction_roll_back_every_effect(scene, monkeypatch, transition):
     actor, item = scene
     if transition != "verify":
         verify(item, actor)
@@ -312,12 +312,12 @@ def test_policy_changes_during_transaction_roll_back_every_effect(scene, monkeyp
     )
     original = module.record_event
 
-    def change_policy(**kw):
+    def change_fee(**kw):
         result = original(**kw)
-        monkeypatch.setattr(fees, "resolve_approved_fee", lambda **kwargs: None)
+        monkeypatch.setattr(fees, "expected_amount_for", lambda request: Decimal("100.00"))
         return result
 
-    monkeypatch.setattr(module, "record_event", change_policy)
+    monkeypatch.setattr(module, "record_event", change_fee)
     with pytest.raises(inspections.ReceiptBlocked):
         (verify if transition == "verify" else prepare if transition == "prepare" else issue)(
             item, actor
@@ -328,7 +328,7 @@ def test_policy_changes_during_transaction_roll_back_every_effect(scene, monkeyp
 
 @pytest.mark.parametrize("lifecycle_first", [True, False])
 def test_active_f4_issue_and_account_lifecycle_share_ordered_identity_fence(
-    approved, lifecycle_first
+    lifecycle_first,
 ):
     from compass.account_management.services import _lock_users
     from compass.good_moral.services import GoodMoralCurrentStudentRequired

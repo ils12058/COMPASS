@@ -25,7 +25,6 @@ from compass.accounts.models import User
 from compass.audit.models import AuditEvent
 from compass.common.institutional_time import institution_today
 from compass.feedback.models import FeedbackOpportunity
-from compass.good_moral import receipt_fee_policy as fees
 from compass.good_moral.models import (
     GoodMoralReceiptAssignment as Assignment,
 )
@@ -50,18 +49,13 @@ from tests.test_good_moral import (
     sync_policy,
 )
 from tests.test_good_moral_receipts import person
-from tests.test_good_moral_verification import grant, synthetic_fee
+from tests.test_good_moral_verification import grant
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.fixture
-def approved(monkeypatch):
-    monkeypatch.setattr(fees, "resolve_approved_fee", synthetic_fee)
-
-
-@pytest.fixture
-def actors(approved):
+def actors():
     sync_policy()
     student = make_user(f"gm4-{uuid4()}@example.test", lifecycle="CURRENT")
     make_placement(student)
@@ -282,7 +276,7 @@ def test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged(acto
         body.update(
             verified_by_id=str(counselor.pk),
             verified_at=timezone.now().isoformat(),
-            fee_policy_id="FORGED",
+            fee_status="FORGED",
         )
     elif case == "cross-request":
         other = record(staff, create(auth_client(student), "GRADUATE"))

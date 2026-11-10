@@ -17,7 +17,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.institutional_time import institution_today
 
-from . import receipt_fee_policy as fees
+from . import fees
 from . import receipt_identity as receipts
 from .models import GoodMoralReceiptAssignment as Assignment
 from .models import GoodMoralReceiptIdentity as Identity
@@ -99,22 +99,35 @@ def eligible(item, *, lock=False):
     return latest
 
 
-def approved_decision(item, assignment):
-    decision = fees.resolve_approved_fee(item=item, assignment=assignment)
-    if not isinstance(decision, fees.FeeDecision) or not decision.applies(item, assignment):
+def fee_terms_for(item, assignment):
+    if assignment.request_id != item.pk:
+        raise ReceiptBlocked("conflict", "This Official Receipt belongs to another request.")
+    try:
+        expected_amount = fees.expected_amount_for(item)
+    except ValueError as exc:
         raise ReceiptBlocked(
-            "policy_unresolved", "No applicable fee decision applies to this receipt."
-        )
-    return decision
+            "fee_unavailable", "This certificate type does not have a configured fee."
+        ) from exc
+    return item.variant, expected_amount, fees.GOOD_MORAL_CURRENCY
 
 
-def decision_for(item, assignment):
-    decision = approved_decision(item, assignment)
-    if assignment.amount != decision.expected_amount:
+def checked_fee_terms(item, assignment):
+    terms = fee_terms_for(item, assignment)
+    if assignment.amount != terms[1]:
         raise ReceiptBlocked(
             "fee_mismatch", "The actual receipt amount does not match the expected fee."
         )
-    return decision
+    return terms
+
+
+def verification_matches_fee(item, assignment, verification, terms=None):
+    variant, expected_amount, currency = terms or fee_terms_for(item, assignment)
+    return (
+        assignment.request_id == item.pk
+        and item.variant == variant
+        and verification.expected_amount == expected_amount
+        and verification.currency == currency
+    )
 
 
 def current_verification(assignment, *, lock=False):
@@ -132,7 +145,7 @@ def gate(
     lock=False,
 ):
     assignment = eligible(item, lock=lock)
-    decision = decision_for(item, assignment)
+    terms = checked_fee_terms(item, assignment)
     if lock and (
         not expected_resource_version or item.updated_at.isoformat() != expected_resource_version
     ):
@@ -144,10 +157,8 @@ def gate(
         raise ReceiptBlocked(
             "unverified", "A Guidance Office staff member must inspect this Official Receipt first."
         )
-    if verification.fee_decision != decision.snapshot():
-        raise ReceiptBlocked(
-            "policy_unresolved", "The applicable fee decision changed. Inspect and prepare again."
-        )
+    if not verification_matches_fee(item, assignment, verification, terms):
+        raise ReceiptBlocked("fee_changed", "The expected fee changed. Inspect and prepare again.")
     if issuing and (
         expected_receipt_revision != assignment.pk
         or expected_verification != verification.pk
@@ -156,7 +167,7 @@ def gate(
         raise receipts.ReceiptChanged(
             "Receipt inspection or preparation changed. Review and prepare again."
         )
-    return assignment, verification, decision
+    return assignment, verification, terms
 
 
 def invalidate(*, item, actor, context, reason):
@@ -176,8 +187,6 @@ def invalidate(*, item, actor, context, reason):
             metadata={
                 "revision_id": str(verification.assignment_id),
                 "verification_id": str(verification.pk),
-                "policy_id": verification.policy_id,
-                "policy_version": verification.policy_version,
                 "reason": reason,
             },
         )
@@ -238,26 +247,23 @@ def verify_receipt(
             raise receipts.ReceiptChanged(
                 "This receipt revision changed. Review its latest details before inspecting."
             )
-        decision = decision_for(item, assignment)
+        terms = checked_fee_terms(item, assignment)
         existing = current_verification(assignment, lock=True)
         if existing:
-            if existing.fee_decision == decision.snapshot():
+            if verification_matches_fee(item, assignment, existing, terms):
                 raise ReceiptBlocked(
                     "already_verified",
                     "This exact receipt already has an attributable physical inspection.",
                 )
-            invalidate(item=item, actor=actor, context=context, reason="POLICY_CHANGED")
+            invalidate(item=item, actor=actor, context=context, reason="FEE_CHANGED")
         try:
             with transaction.atomic():
                 verification = Verification.objects.create(
                     assignment=assignment,
                     verified_by=actor,
                     method=METHOD,
-                    policy_id=decision.policy_id,
-                    policy_version=decision.version,
-                    expected_amount=decision.expected_amount,
-                    currency=decision.currency,
-                    fee_decision=decision.snapshot(),
+                    expected_amount=terms[1],
+                    currency=terms[2],
                     operation_id=operation_id,
                     fingerprint=fingerprint,
                 )
@@ -304,16 +310,12 @@ def verify_receipt(
             metadata={
                 "revision_id": str(assignment.pk),
                 "verification_id": str(verification.pk),
-                "policy_id": decision.policy_id,
-                "policy_version": decision.version,
                 "method": METHOD,
             },
         )
         authority(actor, "good_moral.verify_receipt", context)
-        if decision_for(item, assignment).snapshot() != decision.snapshot():
-            raise ReceiptBlocked(
-                "policy_unresolved", "The applicable fee decision changed during inspection."
-            )
+        if checked_fee_terms(item, assignment) != terms:
+            raise ReceiptBlocked("fee_changed", "The expected fee changed during inspection.")
         result = _queryset().get(pk=item.pk)
         result.receipt_verification_result = verification
         return result
@@ -323,7 +325,7 @@ def operational_status(item, actor):
     revision = receipts.latest_revision(item)
     verification = current_verification(revision) if revision else None
     blocker = None
-    decision = None
+    terms = None
     state = "MISSING"
     historical = item.status == GoodMoralStatus.ISSUED and item.issued_receipt_verification_id
     if historical:
@@ -332,13 +334,13 @@ def operational_status(item, actor):
     else:
         try:
             assignment = eligible(item)
-            decision = approved_decision(item, assignment)
-            if assignment.amount != decision.expected_amount:
+            terms = fee_terms_for(item, assignment)
+            if assignment.amount != terms[1]:
                 raise ReceiptBlocked(
                     "fee_mismatch", "The actual amount does not match the expected fee."
                 )
             state = "NEEDS_VERIFICATION"
-            if verification and verification.fee_decision == decision.snapshot():
+            if verification and verification_matches_fee(item, assignment, verification, terms):
                 state = "VERIFIED"
             else:
                 raise ReceiptBlocked("unverified", "Physical receipt inspection is required.")
@@ -348,13 +350,14 @@ def operational_status(item, actor):
                 "missing": "MISSING",
                 "incomplete": "INCOMPLETE",
                 "conflict": "DISPUTED",
-                "policy_unresolved": "POLICY_UNAVAILABLE",
+                "fee_unavailable": "INCOMPLETE",
+                "fee_changed": "INCOMPLETE",
                 "fee_mismatch": "INCOMPLETE",
             }.get(exc.code.removeprefix("good_moral_receipt_"), state)
             if revision and revision.identity_id and revision.identity.state == "DISPUTED":
                 state = "DISPUTED"
     can_verify = False
-    if item.status in PENDING and decision and state == "NEEDS_VERIFICATION":
+    if item.status in PENDING and terms and state == "NEEDS_VERIFICATION":
         try:
             authority(actor, "good_moral.verify_receipt")
             can_verify = True
@@ -368,19 +371,10 @@ def operational_status(item, actor):
         "verified_by_id": verification.verified_by_id if verification else None,
         "verified_at": verification.verified_at if verification else None,
         "method": verification.method if verification else None,
-        "expected_amount": decision.expected_amount
-        if decision
+        "expected_amount": terms[1]
+        if terms
         else verification.expected_amount
         if historical
         else None,
-        "fee_status": decision.status
-        if decision
-        else verification.fee_decision["status"]
-        if historical
-        else None,
-        "currency": decision.currency
-        if decision
-        else verification.currency
-        if historical
-        else None,
+        "currency": terms[2] if terms else verification.currency if historical else None,
     }

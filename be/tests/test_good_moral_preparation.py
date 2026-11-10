@@ -77,7 +77,7 @@ def test_goa_baseline_is_clerical_and_reference_only():
         "good_moral.prepare",
         "exit_interviews.manage_opportunities",
     } <= codes
-    # Case Continuity lets the Guidance Office Assistant request coverage (provisional policy).
+    # Case Continuity lets the Guidance Office Assistant request coverage.
     continuity = {"counseling.continuity.view", "counseling.continuity.request"}
     assert continuity <= codes
     assert not any(

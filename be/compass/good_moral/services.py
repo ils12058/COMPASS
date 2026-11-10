@@ -1358,9 +1358,9 @@ def prepare_request(
             metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
         )
         inspection.authority(actor, "good_moral.prepare", context)
-        if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+        if inspection.checked_fee_terms(item, evidence[0]) != evidence[2]:
             raise inspection.ReceiptBlocked(
-                "policy_unresolved", "The applicable fee decision changed during preparation."
+                "fee_changed", "The expected fee changed during preparation."
             )
         return _queryset().get(pk=item.pk)
 
@@ -1586,9 +1586,9 @@ def issue_request(
             target_id=opportunity.pk,
         )
         inspection.authority(actor, "good_moral.issue", context)
-        if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+        if inspection.checked_fee_terms(item, evidence[0]) != evidence[2]:
             raise inspection.ReceiptBlocked(
-                "policy_unresolved", "The applicable fee decision changed during issuance."
+                "fee_changed", "The expected fee changed during issuance."
             )
         return _queryset().get(pk=item.pk)
 

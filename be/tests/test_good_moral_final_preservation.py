@@ -1,13 +1,13 @@
-"""Issued F4/F6 PDFs and fee evidence preserve the historical definition."""
+"""Issued F4/F6 PDFs and receipt fee facts remain preserved."""
 
 import re
-from dataclasses import replace
+from datetime import date
+from decimal import Decimal
 from io import BytesIO
 
 import pytest
 from pypdf import PdfReader
 
-from compass.good_moral import receipt_fee_policy as fees
 from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.receipt_verification import operational_status
 from tests.test_good_moral import auth_client, sync_policy
@@ -18,15 +18,9 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
-@pytest.mark.parametrize("replacement", ["unavailable", "new_definition"])
-def test_issued_pdf_and_provisional_evidence_survive_current_policy_change(
-    monkeypatch, variant, replacement
-):
+def test_issued_pdf_and_fee_evidence_remain_stable(variant):
     sync_policy()
     counselor = person("issuer", "COUNSELOR")
-    from datetime import date
-    from decimal import Decimal
-
     item = request_for(
         variant=variant,
         official_receipt_number="OR-HISTORICAL",
@@ -37,8 +31,8 @@ def test_issued_pdf_and_provisional_evidence_survive_current_policy_change(
     prepare(item, counselor)
     item = issue(item, counselor)
     before = GoodMoralRequest.objects.filter(pk=item.pk).values().get()
-    decision = fees.resolve_approved_fee(item=item, assignment=item.issued_receipt_assignment)
-    assert item.issued_receipt_verification.fee_decision["status"] == "PROVISIONAL"
+    assert item.issued_receipt_verification.expected_amount == Decimal("80.00")
+    assert item.issued_receipt_verification.currency == "PHP"
     client = auth_client(item.student)
 
     def pdf_content():
@@ -49,11 +43,8 @@ def test_issued_pdf_and_provisional_evidence_survive_current_policy_change(
         return [re.sub(r"\s+", " ", p.extract_text()).strip() for p in pages]
 
     original = pdf_content()
-    successor = (
-        None if replacement == "unavailable" else replace(decision, version="2", status="APPROVED")
-    )
-    monkeypatch.setattr(fees, "resolve_approved_fee", lambda **_: successor)
     assert pdf_content() == original
     assert GoodMoralRequest.objects.filter(pk=item.pk).values().get() == before
-    assert operational_status(item, counselor)["fee_status"] == "PROVISIONAL"
-    assert item.issued_receipt_verification.fee_decision["version"] == "1"
+    status = operational_status(item, counselor)
+    assert status["expected_amount"] == Decimal("80.00")
+    assert status["currency"] == "PHP"

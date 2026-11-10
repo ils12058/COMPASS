@@ -525,14 +525,10 @@ def test_simultaneous_replacement_reserves_only_winning_new_number(world):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("action", ["cancel", "prepare", "issue"])
 @pytest.mark.parametrize("correction_first", [False, True])
-def test_lifecycle_competition_keeps_one_serial_history(
-    world, action, correction_first, monkeypatch
-):
+def test_lifecycle_competition_keeps_one_serial_history(world, action, correction_first):
     actor, item = world
-    from compass.good_moral import receipt_fee_policy as fees
-    from tests.test_good_moral_verification import grant, prepare, synthetic_fee, verify
+    from tests.test_good_moral_verification import grant, prepare, verify
 
-    monkeypatch.setattr(fees, "resolve_approved_fee", synthetic_fee)
     grant(actor)
     edit(
         item,
@@ -718,7 +714,7 @@ def test_api_requires_active_receipt_tokens_preserves_projection_and_replay(worl
 
 
 @pytest.mark.django_db
-def test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation(world):
+def test_active_draft_does_not_inspect_and_wrong_amount_blocks_preparation(world):
     from compass.accounts.policy import CAPABILITY_CODES, ROLE_CAPABILITY_GRANTS
     from compass.good_moral.receipt_verification import ReceiptBlocked
 
@@ -855,11 +851,19 @@ def test_fresh_schema_has_unconditional_guards_and_required_origin():
         for definition in definitions.values():
             assert "goodmoralreceiptledger" not in definition
             assert "LEGACY_" not in definition
+            assert "policy_id" not in definition
+            assert "policy_version" not in definition
+            assert "fee_decision" not in definition
+            assert "PROVISIONAL" not in definition
         assert {
             "gm_receipt_identity_guard",
             "gm_receipt_projection_guard",
             "gm_inspection_request_guard",
         } <= definitions.keys()
+        verification_guard = definitions["gm_receipt_verification_guard"]
+        assert "NEW.currency IS DISTINCT FROM 'PHP'" in verification_guard
+        assert "NEW.expected_amount IS DISTINCT FROM 80.00" in verification_guard
+        assert "r.variant NOT IN ('CURRENT_STUDENT','GRADUATE')" in verification_guard
         cursor.execute(
             "SELECT column_default, is_nullable FROM information_schema.columns "
             "WHERE table_name='good_moral_goodmoralrequest' AND column_name='initiation_origin'"

@@ -1,12 +1,11 @@
-"""Synthetic approved policy, exact physical attestations and prospective transition gates."""
+"""Fixed-fee receipt inspections and prospective transition gates."""
 
-from dataclasses import replace
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -16,7 +15,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.common.institutional_time import institution_today
 from compass.feedback.models import FeedbackOpportunity
-from compass.good_moral import receipt_fee_policy as fees
+from compass.good_moral import fees
 from compass.good_moral import receipt_identity as receipts
 from compass.good_moral import receipt_verification as inspections
 from compass.good_moral.models import GoodMoralReceiptVerification as Verification
@@ -36,21 +35,6 @@ from tests.test_good_moral_receipts import edit, person, request_for
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
-def synthetic_fee(*, item, assignment):
-    # Explicit fiction, not an institutional effective date or deployed schedule.
-    return fees.FeeDecision(
-        policy_id="SYNTHETIC-ONLY",
-        version="fixture-v1",
-        currency="PHP",
-        expected_amount=Decimal("80.00"),
-        authority_reference="isolated-test-approval",
-        variant=item.variant,
-        reference_date=assignment.receipt_date,
-        applicable_from=date(2000, 1, 1),
-        applicable_through=date(2099, 12, 31),
-    )
-
-
 def grant(actor, code="good_moral.verify_receipt", effect="GRANT", expires_at=None):
     return set_user_capability_override(
         user=actor,
@@ -62,12 +46,7 @@ def grant(actor, code="good_moral.verify_receipt", effect="GRANT", expires_at=No
 
 
 @pytest.fixture
-def approved(monkeypatch):
-    monkeypatch.setattr(fees, "resolve_approved_fee", synthetic_fee)
-
-
-@pytest.fixture
-def scene(approved):
+def scene():
     sync_policy()
     actor = person("inspector", "COUNSELOR")
     grant(actor)
@@ -126,7 +105,7 @@ def issue(item, actor, **overrides):
 
 
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
-def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approved, variant):
+def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(variant):
     sync_policy()
     actor = person("inspector", "GUIDANCE_OFFICE_ASSISTANT")
     counselor = person("issuer", "COUNSELOR")
@@ -143,7 +122,8 @@ def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approve
     result = verify(item, actor)
     attestation = result.receipt_verification_result
     assert attestation.verified_by_id == actor.pk and timezone.is_aware(attestation.verified_at)
-    assert attestation.fee_decision["reference_date"] == institution_today().isoformat()
+    assert attestation.expected_amount == Decimal("80.00")
+    assert attestation.currency == "PHP"
     prepared = prepare(item, counselor)  # preparer need not be inspector
     assert prepared.prepared_receipt_verification_id == attestation.pk
     issued = issue(item, counselor)
@@ -171,8 +151,6 @@ def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approve
     assert set(verified_event.metadata) == {
         "revision_id",
         "verification_id",
-        "policy_id",
-        "policy_version",
         "method",
     }
     assert "OR-POSITIVE" not in str(verified_event.metadata)
@@ -193,7 +171,7 @@ def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approve
         ({"official_receipt_amount": Decimal("100.00")}, "fee_mismatch"),
     ],
 )
-def test_ineligible_receipt_facts_are_preserved_and_blocked(approved, variant, facts, code):
+def test_ineligible_receipt_facts_are_preserved_and_blocked(variant, facts, code):
     sync_policy()
     actor = person("inspector", "COUNSELOR")
     grant(actor)
@@ -300,48 +278,6 @@ def test_issue_role_fence_survives_unusual_override(scene, role):
     assert item.status == "READY_FOR_ISSUANCE"
 
 
-@pytest.mark.parametrize(
-    "kind",
-    [
-        "absent",
-        "not_approved",
-        "wrong_variant",
-        "unknown_range",
-        "missing_range",
-        "wrong_reference",
-        "invalid_rule",
-        "missing_authority",
-    ],
-)
-def test_fee_provider_fail_closed(scene, monkeypatch, kind):
-    actor, item = scene
-
-    def provider(**kw):
-        d = synthetic_fee(**kw)
-        if kind == "absent":
-            return None
-        return replace(
-            d,
-            **{
-                "not_approved": {"status": "TEAM_REPORTED"},
-                "wrong_variant": {"variant": "CURRENT_STUDENT"},
-                "unknown_range": {"applicable_from": date(2099, 1, 1)},
-                "missing_range": {"applicable_from": None},
-                "wrong_reference": {"reference_date": date(2001, 1, 1)},
-                "invalid_rule": {"applicability_rule": "ASSUME_ALWAYS"},
-                "missing_authority": {"authority_reference": ""},
-            }[kind],
-        )
-
-    monkeypatch.setattr(fees, "resolve_approved_fee", provider)
-    with pytest.raises(inspections.ReceiptBlocked) as caught:
-        verify(item, actor)
-    assert caught.value.code == "good_moral_receipt_policy_unresolved"
-    with pytest.raises(inspections.ReceiptBlocked):
-        prepare(item, actor)
-    assert not Verification.objects.exists()
-
-
 @pytest.mark.parametrize("change", ["number", "date", "amount", "display", "remove"])
 def test_receipt_revision_invalidates_exact_attestation(scene, change):
     actor, item = scene
@@ -445,41 +381,19 @@ def test_identical_replay_and_different_inspector_preserve_original(scene):
     assert Verification.objects.count() == 1
 
 
-@pytest.mark.parametrize("changed", ["unavailable", "version", "applicability", "amount"])
-def test_policy_change_before_issue_blocks_then_requires_deliberate_review(
-    scene, monkeypatch, changed
-):
+def test_fee_change_before_issue_blocks_without_rewriting_inspection(scene, monkeypatch):
     actor, item = scene
     original = verify(item, actor).receipt_verification_result
     prepare(item, actor)
-
-    def provider(**kw):
-        if changed == "unavailable":
-            return None
-        return replace(
-            synthetic_fee(**kw),
-            **{
-                "version": {"version": "fixture-v2"},
-                "applicability": {"applicable_through": date(2090, 1, 1)},
-                "amount": {"expected_amount": Decimal("100.00")},
-            }[changed],
-        )
-
-    monkeypatch.setattr(fees, "resolve_approved_fee", provider)
-    with pytest.raises(inspections.ReceiptBlocked):
+    monkeypatch.setattr(fees, "expected_amount_for", lambda request: Decimal("100.00"))
+    with pytest.raises(inspections.ReceiptBlocked) as caught:
         issue(item, actor)
+    assert caught.value.code == "good_moral_receipt_fee_mismatch"
     original.refresh_from_db()
-    assert original.invalidated_at is None  # history never reinterpreted
+    assert original.invalidated_at is None
     assert not FeedbackOpportunity.objects.exists()
-    if changed in {"version", "applicability"}:
-        replacement = verify(item, actor).receipt_verification_result
-        item.refresh_from_db()
-        assert item.status == "REQUESTED"
-        original.refresh_from_db()
-        assert original.invalidation_reason == "POLICY_CHANGED"
-        assert replacement.assignment_id == original.assignment_id
-        prepare(item, actor)
-        assert issue(item, actor).issued_receipt_verification_id == replacement.pk
+    item.refresh_from_db()
+    assert item.status == "READY_FOR_ISSUANCE"
 
 
 @pytest.mark.parametrize(
@@ -546,7 +460,7 @@ def test_audit_failure_rolls_back_attestation_transition_and_side_effects(
         "timestamp",
         "assignment",
         "method",
-        "policy",
+        "fee",
         "fake_invalidation",
         "prepared_owner",
         "issued_pair",
@@ -571,7 +485,7 @@ def test_direct_database_rewrite_and_reference_bypass_refused(scene, mutation):
                 "timestamp": {"verified_at": timezone.now()},
                 "assignment": {"assignment_id": uuid4()},
                 "method": {"method": "CASHIER_CONFIRMED"},
-                "policy": {"expected_amount": Decimal("75")},
+                "fee": {"expected_amount": Decimal("75")},
                 "fake_invalidation": {
                     "invalidated_at": timezone.now(),
                     "invalidated_by": actor,
@@ -698,10 +612,10 @@ def test_identity_eligibility_cannot_be_bypassed(scene, condition):
     [
         "duplicate",
         "wrong_revision",
-        "no_approval",
         "invalid_method",
         "invalid_actor",
         "fee_mismatch",
+        "currency_mismatch",
     ],
 )
 def test_direct_insert_inspection_guards(scene, illegal):
@@ -713,19 +627,14 @@ def test_direct_insert_inspection_guards(scene, illegal):
             "assignment",
             "verified_by",
             "method",
-            "policy_id",
-            "policy_version",
             "expected_amount",
             "currency",
-            "fee_decision",
             "fingerprint",
         ]
     }
     values["operation_id"] = uuid4()
     if illegal == "wrong_revision":
         values["assignment"] = receipts.latest_revision(request_for())  # no claim, NOT NULL refuses
-    elif illegal == "no_approval":
-        values["fee_decision"] = {**first.fee_decision, "status": "TEAM_REPORTED"}
     elif illegal == "invalid_method":
         values["method"] = "CASHIER_CONFIRMED"
     elif illegal == "invalid_actor":
@@ -733,18 +642,131 @@ def test_direct_insert_inspection_guards(scene, illegal):
         del values["verified_by"]
     elif illegal == "fee_mismatch":
         values["expected_amount"] = Decimal("100.00")
+    elif illegal == "currency_mismatch":
+        values["currency"] = "USD"
     with pytest.raises(IntegrityError), transaction.atomic():
         Verification.objects.create(**values)
     assert Verification.objects.count() == 1
 
 
-def test_issued_evidence_remains_historical_when_policy_unavailable(scene, monkeypatch):
+def _insert_inspection_sql(
+    *, assignment, actor, expected_amount=Decimal("80.00"), currency="PHP", **overrides
+):
+    values = {
+        "id": uuid4(),
+        "method": inspections.METHOD,
+        "verified_at": timezone.now(),
+        "expected_amount": expected_amount,
+        "currency": currency,
+        "operation_id": uuid4(),
+        "fingerprint": "a" * 64,
+        "invalidated_at": None,
+        "invalidation_reason": "",
+        "assignment_id": assignment.pk,
+        "invalidated_by_id": None,
+        "verified_by_id": actor.pk,
+    }
+    values.update(overrides)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO good_moral_goodmoralreceiptverification
+              (id, method, verified_at, expected_amount, currency, operation_id, fingerprint,
+               invalidated_at, invalidation_reason, assignment_id, invalidated_by_id,
+               verified_by_id)
+            VALUES
+              (%(id)s, %(method)s, %(verified_at)s, %(expected_amount)s, %(currency)s,
+               %(operation_id)s, %(fingerprint)s, %(invalidated_at)s,
+               %(invalidation_reason)s, %(assignment_id)s, %(invalidated_by_id)s,
+               %(verified_by_id)s)
+            """,
+            values,
+        )
+
+
+@pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
+def test_direct_sql_guard_accepts_only_php_80_for_each_variant(scene, variant):
+    actor, _ = scene
+    item = request_for(
+        variant=variant,
+        official_receipt_number=f"OR-SQL-{variant}",
+        official_receipt_date=date(2020, 1, 1),
+        official_receipt_amount=Decimal("79.00"),
+    )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _insert_inspection_sql(
+            assignment=receipts.latest_revision(item),
+            actor=actor,
+            expected_amount=Decimal("79.00"),
+        )
+
+
+def test_direct_sql_guard_rejects_non_php_currency(scene):
+    actor, item = scene
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _insert_inspection_sql(
+            assignment=receipts.latest_revision(item), actor=actor, currency="USD"
+        )
+
+
+def test_direct_sql_guard_rejects_future_receipt_date(scene):
+    actor, item = scene
+    assignment = receipts.latest_revision(item)
+    future = institution_today() + timedelta(days=1)
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            for trigger in (
+                "gm_receipt_assignment_guard",
+                "gm_receipt_projection_revision",
+                "gm_receipt_closure_successor",
+                "gm_inspection_assignment",
+            ):
+                cursor.execute(
+                    f"ALTER TABLE good_moral_goodmoralreceiptassignment DISABLE TRIGGER {trigger}"
+                )
+            cursor.execute(
+                "UPDATE good_moral_goodmoralreceiptassignment SET receipt_date=%s WHERE id=%s",
+                [future, assignment.pk],
+            )
+            for trigger in (
+                "gm_receipt_assignment_guard",
+                "gm_receipt_projection_revision",
+                "gm_receipt_closure_successor",
+                "gm_inspection_assignment",
+            ):
+                cursor.execute(
+                    f"ALTER TABLE good_moral_goodmoralreceiptassignment ENABLE TRIGGER {trigger}"
+                )
+            cursor.execute(
+                "UPDATE good_moral_goodmoralrequest SET official_receipt_date=%s WHERE id=%s",
+                [future, item.pk],
+            )
+        with pytest.raises(IntegrityError), transaction.atomic():
+            _insert_inspection_sql(assignment=assignment, actor=actor)
+
+
+def test_direct_sql_guard_rejects_invalid_timestamp_and_fingerprint(scene):
+    actor, item = scene
+    assignment = receipts.latest_revision(item)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _insert_inspection_sql(
+            assignment=assignment,
+            actor=actor,
+            verified_at=timezone.now() - timedelta(days=1),
+        )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        _insert_inspection_sql(assignment=assignment, actor=actor, fingerprint="not-a-digest")
+
+
+def test_issued_fee_evidence_remains_historical(scene):
     actor, item = scene
     v = verify(item, actor).receipt_verification_result
     prepare(item, actor)
     issued = issue(item, actor)
-    monkeypatch.setattr(fees, "resolve_approved_fee", lambda **kw: None)
-    assert inspections.operational_status(issued, actor)["status"] == "VERIFIED"
+    status = inspections.operational_status(issued, actor)
+    assert status["status"] == "VERIFIED"
+    assert status["expected_amount"] == Decimal("80.00")
+    assert status["currency"] == "PHP"
     assert (
         issue_request(actor=actor, request_id=item.pk, context=AuditContext.user(actor)).pk
         == item.pk
@@ -759,7 +781,7 @@ def test_issued_evidence_remains_historical_when_policy_unavailable(scene, monke
 
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
 @pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"])
-def test_provisional_fee_and_baseline_inspectors_work_without_activation_or_override(variant, role):
+def test_fixed_fee_and_baseline_inspectors_work_without_override(variant, role):
     sync_policy()
     inspector = person("baseline-inspector", role)
     counselor = person("baseline-issuer", "COUNSELOR")
@@ -770,12 +792,13 @@ def test_provisional_fee_and_baseline_inspectors_work_without_activation_or_over
         official_receipt_amount=Decimal("80.00"),
     )
     status = inspections.operational_status(item, inspector)
-    assert status["can_verify"] and status["fee_status"] == "PROVISIONAL"
-    decision = fees.resolve_approved_fee(item=item, assignment=receipts.latest_revision(item))
-    assert decision.applies(item, receipts.latest_revision(item))
-    assert "team-reported provisional" in decision.authority_reference.lower()
+    assert status["can_verify"]
+    assert status["expected_amount"] == Decimal("80.00")
+    assert status["currency"] == "PHP"
+    assert fees.expected_amount_for(item) == Decimal("80.00")
     attestation = verify(item, inspector).receipt_verification_result
-    assert attestation.fee_decision == decision.snapshot()
+    assert attestation.expected_amount == Decimal("80.00")
+    assert attestation.currency == "PHP"
     prepare(item, inspector)
     assert issue(item, counselor).issued_receipt_verification_id == attestation.pk
 

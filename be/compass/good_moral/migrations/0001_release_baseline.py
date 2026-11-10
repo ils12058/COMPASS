@@ -67,11 +67,8 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('method', models.CharField(choices=[('PHYSICAL_OR_INSPECTION', 'Physical OR inspection')], max_length=32)),
                 ('verified_at', models.DateTimeField(auto_now_add=True)),
-                ('policy_id', models.CharField(max_length=100)),
-                ('policy_version', models.CharField(max_length=64)),
                 ('expected_amount', models.DecimalField(decimal_places=2, max_digits=12)),
                 ('currency', models.CharField(max_length=3)),
-                ('fee_decision', models.JSONField()),
                 ('operation_id', models.UUIDField(editable=False, unique=True)),
                 ('fingerprint', models.CharField(max_length=64)),
                 ('invalidated_at', models.DateTimeField(null=True)),
@@ -169,11 +166,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='goodmoralreceiptverification',
-            constraint=models.CheckConstraint(condition=models.Q(('currency', 'PHP'), ('expected_amount__gt', 0)), name='gm_receipt_inspection_fee'),
+            constraint=models.CheckConstraint(condition=models.Q(('currency', 'PHP'), ('expected_amount', Decimal('80.00'))), name='gm_receipt_inspection_fee'),
         ),
         migrations.AddConstraint(
             model_name='goodmoralreceiptverification',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('invalidated_at__isnull', True), ('invalidated_by__isnull', True), ('invalidation_reason', '')), models.Q(('invalidated_at__isnull', False), ('invalidated_by__isnull', False), ('invalidation_reason__in', ['RECEIPT_REVISED', 'CANCELLED', 'POLICY_CHANGED'])), _connector='OR'), name='gm_receipt_invalidation_shape'),
+            constraint=models.CheckConstraint(condition=models.Q(models.Q(('invalidated_at__isnull', True), ('invalidated_by__isnull', True), ('invalidation_reason', '')), models.Q(('invalidated_at__isnull', False), ('invalidated_by__isnull', False), ('invalidation_reason__in', ['RECEIPT_REVISED', 'CANCELLED', 'FEE_CHANGED'])), _connector='OR'), name='gm_receipt_invalidation_shape'),
         ),
         migrations.AddIndex(
             model_name='goodmoralrequest',

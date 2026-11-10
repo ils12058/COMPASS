@@ -16566,21 +16566,6 @@
             ],
             "title": "Expected Amount"
           },
-          "fee_status": {
-            "anyOf": [
-              {
-                "enum": [
-                  "APPROVED",
-                  "PROVISIONAL"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fee Status"
-          },
           "method": {
             "anyOf": [
               {
@@ -16599,8 +16584,7 @@
               "INCOMPLETE",
               "NEEDS_VERIFICATION",
               "VERIFIED",
-              "DISPUTED",
-              "POLICY_UNAVAILABLE"
+              "DISPUTED"
             ],
             "title": "Status",
             "type": "string"
@@ -16651,7 +16635,6 @@
           "verified_at",
           "method",
           "expected_amount",
-          "fee_status",
           "currency"
         ],
         "title": "GoodMoralReceiptInspectionResponse",

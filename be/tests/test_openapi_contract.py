@@ -629,6 +629,9 @@ def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions
     assert inspection_payload["properties"]["method"]["const"] == "PHYSICAL_OR_INSPECTION"
     assert "receipt_inspection" in schemas["GoodMoralOperationalDetailResponse"]["properties"]
     assert "receipt_inspection" not in schemas["GoodMoralDetailResponse"]["properties"]
+    inspection_response = schemas["GoodMoralReceiptInspectionResponse"]
+    assert "fee_status" not in inspection_response["properties"]
+    assert "POLICY_UNAVAILABLE" not in str(inspection_response)
     actions = schemas["GoodMoralActionsResponse"]["properties"]
     assert actions["request_version"]["type"] == "string"
     for name in ("can_prepare", "can_correct", "can_issue", "can_cancel", "can_download"):

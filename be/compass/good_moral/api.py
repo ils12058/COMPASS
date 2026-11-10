@@ -311,7 +311,6 @@ class GoodMoralReceiptInspectionResponse(StrictSchema):
         "NEEDS_VERIFICATION",
         "VERIFIED",
         "DISPUTED",
-        "POLICY_UNAVAILABLE",
     ]
     blocker: str | None
     can_verify: bool
@@ -320,7 +319,6 @@ class GoodMoralReceiptInspectionResponse(StrictSchema):
     verified_at: datetime | None
     method: Literal["PHYSICAL_OR_INSPECTION"] | None
     expected_amount: Decimal | None
-    fee_status: Literal["APPROVED", "PROVISIONAL"] | None
     currency: Literal["PHP"] | None
 
 
