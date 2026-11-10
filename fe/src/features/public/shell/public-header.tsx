@@ -28,10 +28,10 @@ function Brand() {
         width={33}
         height={30}
         alt="University of Camarines Norte"
-        className="h-8 w-auto object-contain @max-[16rem]:hidden"
+        className="h-8 w-auto object-contain @max-[26rem]:hidden"
         priority
       />
-      <span className="h-7 w-px bg-border @max-[16rem]:hidden" aria-hidden="true" />
+      <span className="h-7 w-px bg-border @max-[26rem]:hidden" aria-hidden="true" />
       <Image
         src="/brand/compass-mark.svg"
         width={34}
@@ -162,7 +162,9 @@ export function PublicHeader() {
             </nav>
             {/* Signed in, the reader's own menu replaces the Sign in button at every width. */}
             {user ? (
-              <PublicAccountMenu user={user} />
+              <div className="@max-[26rem]:[&_button>svg:last-child]:hidden">
+                <PublicAccountMenu user={user} />
+              </div>
             ) : (
               <Link
                 href="/login"

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createBrowserHarness } from './support/browser-harness.mjs';
 import { messagesAccount, sessionFor } from './support/guidance-messages-fixtures.mjs';
 const h = await createBrowserHarness('simplify-3b-public-shell');
-for (const audience of ['public', 'account']) for (const width of [320, 390, 768, 1024, 1440]) for (const enlarged of [false, true]) {
+for (const audience of ['public', 'account']) for (const width of [320, 360, 375, 390, 402, 414, 440, 768, 1024, 1440]) for (const enlarged of [false, true]) {
   const account = messagesAccount('STUDENT', { first_name: 'Alex', last_name: 'Example' });
   const handler = async ({ pathname, reply }) => {
     if (pathname === '/api/v1/auth/session') { await reply(audience === 'public' ? { authenticated: false } : sessionFor(account)); return true; }
@@ -29,6 +29,24 @@ for (const audience of ['public', 'account']) for (const width of [320, 390, 768
     const brand = page.getByRole('link', { name: 'COMPASS home' });
     await h.shown(brand);
     const menu = page.getByRole('button', { name: 'Open navigation menu' });
+    const headerItems = [brand, accessibility, menu];
+    if (audience === 'account') headerItems.push(page.getByRole('button', { name: /Open user menu/ }));
+    if (audience === 'account' && ((!enlarged && [320, 375, 402, 440].includes(width)) || (enlarged && width === 402))) {
+      await h.screenshot(page, `${audience}-${width}-${enlarged ? '200' : '100'}`);
+    }
+    if (!enlarged && [360, 375, 390, 402, 414, 440].includes(width)) {
+      const boxes = await Promise.all(headerItems.map(item => item.boundingBox()));
+      assert.ok(boxes.every(Boolean), `${audience} header controls are visible at ${width}px`);
+      const centers = boxes.map(box => box.y + box.height / 2);
+      assert.ok(Math.max(...centers) - Math.min(...centers) <= 1, `${audience} header stays on one row at ${width}px`);
+    }
+    const universityLogo = page.getByAltText('University of Camarines Norte');
+    if (width === 440) assert.equal(await universityLogo.isVisible(), false, 'The public header uses the compact brand at a 400px container');
+    if (width === 768) assert.equal(
+      await universityLogo.isVisible(),
+      !enlarged,
+      enlarged ? 'The compact brand protects reflow when text doubles' : 'The full university brand returns above the compact breakpoint',
+    );
     if (await menu.isVisible()) {
       await menu.focus();
       await page.keyboard.press('Enter');

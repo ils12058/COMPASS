@@ -110,6 +110,7 @@ async function measureHeader(page) {
 // Exercise a Student form shell over every requested width at normal and enlarged root text.
 {
   const rows = [];
+  const oneRowFailures = [];
   await check("shell-layout-matrix-320-to-1440-normal-and-200-percent-text", "/portal/inventory/current", {
     handler: inventoryHandler,
     overrides,
@@ -118,7 +119,7 @@ async function measureHeader(page) {
     await shown(page.locator("#inventory-full-name"));
     await shown(page.getByRole("button", { name: `Open user menu for ${longName}`, exact: true }));
     for (const textSize of ["100%", "200%"])
-      for (const width of [320, 360, 390, 768, 1024, 1440]) {
+      for (const width of [320, 360, 375, 390, 402, 414, 440, 768, 1024, 1440]) {
         await setView(page, width, 844, textSize);
         const metrics = await measureHeader(page);
         metrics.textSize = textSize;
@@ -161,11 +162,23 @@ async function measureHeader(page) {
               Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top) + 1;
             assert.equal(overlap, false, `${width}px ${metrics.actions[first].name} does not overlap ${metrics.actions[second].name}`);
           }
+        if (textSize === "100%" && [360, 375, 390, 402, 414, 440].includes(width)) {
+          const centers = metrics.actions.map((action) => (action.rect.top + action.rect.bottom) / 2);
+          const spread = Math.max(...centers) - Math.min(...centers);
+          if (spread > 1) oneRowFailures.push({ width, spread, actions: metrics.actions });
+        }
+        if (textSize === "100%" && [320, 375, 402, 440].includes(width)) {
+          await capture(page, `portal-header-${width}-100-percent-text`);
+        }
+        if (textSize === "200%" && width === 402) {
+          await capture(page, "portal-header-402-200-percent-text");
+        }
         if (textSize === "200%" && width === 320) await capture(page, "after-inventory-320-200-root-text");
         if (textSize === "100%" && width === 390) await capture(page, "after-inventory-390-mobile");
         if (textSize === "100%" && width === 768) await capture(page, "after-inventory-768-tablet");
         if (textSize === "100%" && width === 1440) await capture(page, "after-inventory-1440-desktop");
       }
+    assert.deepEqual(oneRowFailures, [], "Portal header controls share one row from 360px through 440px");
   });
   await writeFile(join(artifacts, "layout-metrics.json"), `${JSON.stringify(rows, null, 2)}\n`);
 }
