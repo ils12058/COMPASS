@@ -186,6 +186,10 @@ for (const width of [320, 1440]) {
         await screenshot(page, `csm-unconfirmed-${width}`);
     });
     await check(`auth-expired-security-${width}`, '/login', { viewport, overrides: { '/api/v1/auth/session': error('not_authenticated', 401), 'POST /api/v1/auth/login': error('csrf_failed', 403) } }, async (page, { requests }) => {
+        // Linux WebKit can expose the form while the document is still loading. Finish the
+        // auth document and font load before submitting and taking its full-page screenshot.
+        await page.waitForLoadState('load', { timeout: 12_000 });
+        await page.waitForFunction(() => document.fonts.status === 'loaded');
         await page.getByLabel('Email', { exact: true }).fill('synthetic@example.test');
         await page.getByLabel('Password', { exact: true }).fill('synthetic-test-only');
         await page.getByRole('button', { name: 'Sign in', exact: true }).click();
