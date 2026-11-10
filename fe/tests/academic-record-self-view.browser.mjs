@@ -86,7 +86,10 @@ function selfFixture({ capabilities = ["student_academics.view_self"], role = "S
     await h.shown(page.getByText("If this information is incorrect, contact the Registrar or Guidance office.", { exact: true }));
     assert.equal(await page.getByRole("button", { name: /record|update|save|clear/i }).count(), 0);
     assert.equal(await page.getByRole("columnheader", { name: "Action", exact: true }).count(), 0);
-    assert.equal(await page.getByRole("link", { name: "Academic Record", exact: true }).count(), 1);
+    const nav = page.getByRole("navigation", { name: "Portal navigation", exact: true });
+    await h.shown(nav.getByRole("link", { name: "Academic record", exact: true }));
+    assert.equal(await nav.getByRole("button", { name: /^More,/ }).getAttribute("aria-expanded"), "true");
+    assert.equal(await nav.getByRole("link", { name: "Academic record", exact: true }).getAttribute("aria-current"), "page");
     assert.deepEqual(f.requests, [{ pathname: "/api/v1/student-academics/me/record", method: "GET" }]);
   });
 }
@@ -108,7 +111,7 @@ function selfFixture({ capabilities = ["student_academics.view_self"], role = "S
   const f = selfFixture({ capabilities: [] });
   await h.check("03 Student without self-view capability is blocked and gets no navigation entry", path, { handler: f.handler }, async (page) => {
     await h.shown(page.getByRole("heading", { name: "Access restricted", exact: true }));
-    assert.equal(await page.getByRole("link", { name: "Academic Record", exact: true }).count(), 0);
+    assert.equal(await page.locator('nav[aria-label="Portal navigation"] a[href="/portal/academic-record"]').count(), 0);
     assert.deepEqual(f.requests, []);
   });
 }

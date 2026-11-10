@@ -18,7 +18,7 @@ import * as commands from "../src/features/portal/components/portal-command-dest
 import * as keyboard from "../src/features/portal/components/portal-command-keyboard.ts";
 import { PortalCommandPalette, PortalCommandSearch } from "../src/features/portal/components/portal-command-palette.tsx";
 import * as session from "../src/features/portal/components/portal-session.tsx";
-import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
+import { portalNavigationLabel, portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
 import { cn } from "../src/lib/utils/cn.ts";
 import { withNextRouter } from "./support/next-router.mjs";
 
@@ -38,9 +38,9 @@ for (const [name, account] of Object.entries({ student, staff, counselor, head, 
   test(`${name}: root visibility matches the dock and account destinations remain available`, () => {
     const index = commands.portalCommandDestinations(account);
     for (const group of portalWorkspaceGroups(account)) {
-      for (const root of group.links) assert.ok(index.some((item) => item.href === root.href && item.label === root.label));
+      for (const root of group.links) assert.ok(index.some((item) => item.href === root.href && item.label === portalNavigationLabel(root)));
     }
-    assert.equal(index[0].label, "Overview");
+    assert.equal(index[0].label, "Home");
     assert.equal(index.filter((item) => item.group === "Account").length, 5);
     for (const item of index) {
       assert.ok(existsSync(new URL(`../src/app/(portal)${item.href}/page.tsx`, import.meta.url)), item.href);
@@ -54,7 +54,7 @@ test("Exit Interviews label follows effective actions, not the role, in the dock
   const root = (account) => portalWorkspaceGroups(account).flatMap((group) => group.links).find((link) => link.href === "/portal/exit-interviews");
   const command = (account) => commands.portalCommandDestinations(account).find((item) => item.href === "/portal/exit-interviews");
   const label = (account) => {
-    assert.equal(command(account)?.label, root(account)?.label);
+    assert.equal(command(account)?.label, root(account) ? portalNavigationLabel(root(account)) : undefined);
     return root(account)?.label;
   };
   // Access management without review authority, whatever the role.

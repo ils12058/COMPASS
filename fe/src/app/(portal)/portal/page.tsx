@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { PortalHome } from "@/features/portal/home/portal-home";
 
-export const metadata: Metadata = { title: "Overview" };
+export const metadata: Metadata = { title: "Home" };
 
 export default function PortalPage() {
   return <PortalHome />;

@@ -14,6 +14,7 @@ import {
   GraduationCap,
   HeartHandshake,
   ListChecks,
+  LayoutDashboard,
   Megaphone,
   MessageCircle,
   MessageCircleHeart,
@@ -71,8 +72,8 @@ export type PortalWorkspaceGroup = { label: string; links: PortalWorkspaceLink[]
 
 type CandidateLink = PortalWorkspaceLink & { visible: boolean };
 
-// The portal workspaces an account can open, grouped as the portal sidebar shows them. The sidebar
-// and the public landing's quick access both read this list, so they never offer different places.
+// The shared access-filtered registry for the dock, command palette and public quick access.
+// Daily navigation orders this result; its role preferences never grant or remove a workspace.
 export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: FacultyReferralAvailability): PortalWorkspaceGroup[] {
   if (user.role === "FACULTY") {
     const access = facultyReferralAccess(user);
@@ -228,4 +229,85 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
         .map((link) => ({ href: link.href, label: link.label, icon: link.icon, section: link.section })),
     }))
     .filter((group) => group.links.length > 0);
+}
+
+export const portalHomeLink: PortalWorkspaceLink = { href: "/portal", label: "Home", icon: LayoutDashboard };
+
+// Formal page names remain unchanged. The short menu labels also appear in destination search,
+// which retains each registry label as an alias.
+export function portalNavigationLabel(link: PortalWorkspaceLink): string {
+  const labels: Readonly<Record<string, string>> = {
+    "/portal/group-sessions": "Group sessions",
+    "/portal/routine-interviews": "Routine interviews",
+    "/portal/call-slips": "Call slips",
+    "/portal/inventory": "Inventory",
+    "/portal/academic-record": "Academic record",
+    "/portal/follow-ups": "Follow-ups",
+    "/portal/operations": "Office workload",
+    "/portal/assessment-records": "Assessment records",
+    "/portal/academic-years": "Academic years",
+    "/portal/institutional-forms": "Institutional forms",
+    "/portal/platform/health": "Platform",
+    "/portal/privacy": "Privacy governance",
+  };
+  if (link.href === "/portal/exit-interviews" && link.label === "Exit Interviews") return "Exit interviews";
+  return labels[link.href] ?? link.label;
+}
+
+// Approved F2 ordering preferences, not allowlists. Keep additional effective grants and new
+// registry destinations at the end of the secondary list in their original registry order.
+const navigationOrder = {
+  "Student": {
+    daily: ["actions", "appointments", "messages", "inventory", "good-moral"],
+    more: ["group-sessions", "routine-interviews", "counseling", "call-slips", "academic-record", "exit-interviews", "feedback"],
+  },
+  "Alumni": {
+    daily: ["actions", "graduate-tracer", "good-moral", "messages"],
+    more: ["appointments", "group-sessions", "routine-interviews", "counseling", "call-slips", "inventory", "academic-record", "exit-interviews", "feedback"],
+  },
+  "Faculty": {
+    daily: ["faculty/referrals/new", "faculty/referrals", "messages"],
+    more: [],
+  },
+  "Head": {
+    daily: ["work", "operations", "appointments", "messages", "counseling", "reports"],
+    more: ["follow-ups", "reminders", "group-sessions", "availability", "services", "assessment-records", "routine-interviews", "referrals", "call-slips", "inventory", "good-moral", "exit-interviews", "graduate-tracer", "feedback", "announcements", "resources", "organization", "academic-years", "institutional-forms"],
+  },
+  "Counselor": {
+    daily: ["work", "appointments", "messages", "counseling", "routine-interviews", "follow-ups"],
+    more: ["operations", "reminders", "group-sessions", "availability", "referrals", "call-slips", "inventory", "good-moral", "announcements", "resources", "reports", "organization", "academic-years", "institutional-forms"],
+  },
+  "GOA": {
+    daily: ["work", "appointments", "messages", "good-moral", "call-slips", "referrals"],
+    more: ["follow-ups", "operations", "reminders", "group-sessions", "counseling", "exit-interviews", "announcements", "resources", "organization", "academic-years", "institutional-forms"],
+  },
+  "IT Admin": {
+    daily: ["accounts", "platform/health", "organization"],
+    more: ["availability", "services"],
+  },
+  "DPO": {
+    daily: ["privacy"],
+    more: [],
+  },
+} as const;
+
+export function portalNavigationGroups(user: UserSummary, facultyAvailability?: FacultyReferralAvailability) {
+  const links = portalWorkspaceGroups(user, facultyAvailability).flatMap((group) => group.links);
+  const profile = user.role === "STUDENT" ? (user.student_lifecycle_status === "GRADUATED" ? "Alumni" : "Student")
+    : user.role === "COUNSELOR" ? (user.designations.includes("HEAD_GUIDANCE_COUNSELOR") ? "Head" : "Counselor")
+      : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? "GOA"
+        : user.role === "IT_ADMIN" ? "IT Admin"
+          : user.role === "FACULTY" ? "Faculty" : "DPO";
+  const order = navigationOrder[profile];
+  const remaining = new Map(links.map((link) => [link.href, { ...link, label: portalNavigationLabel(link) }]));
+  const take = (slugs: readonly string[]) => slugs.flatMap((slug) => {
+    const href = `/portal/${slug}`;
+    const link = remaining.get(href);
+    if (!link) return [];
+    remaining.delete(href);
+    return [link];
+  });
+  const daily = [portalHomeLink, ...take(order.daily)];
+  const secondary = { label: user.role === "IT_ADMIN" ? "Administration" : "More", links: [...take(order.more), ...remaining.values()] };
+  return { daily, secondary };
 }

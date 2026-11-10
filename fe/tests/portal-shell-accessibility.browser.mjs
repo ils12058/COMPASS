@@ -389,7 +389,7 @@ async function measureHeader(page) {
 
     await drawerTrigger.click();
     await shown(drawer);
-    await drawer.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Overview", exact: true }).click();
+    await drawer.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Home", exact: true }).click();
     await page.waitForURL("**/portal");
     await hidden(drawer);
     await shown(page.getByRole("heading", { level: 1 }));
@@ -412,6 +412,7 @@ async function measureHeader(page) {
     await shown(drawer);
     await drawer.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => {}))));
     const nav = drawer.getByRole("navigation", { name: "Portal navigation", exact: true });
+    await nav.getByRole("button", { name: /^More,/ }).click();
     const metrics = await nav.evaluate((element) => ({ scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, overflowY: getComputedStyle(element).overflowY }));
     assert.equal(metrics.overflowY, "auto");
     assert.ok(metrics.scrollHeight > metrics.clientHeight, `Counselor navigation overflows its scroll region: ${JSON.stringify(metrics)}`);
@@ -444,7 +445,7 @@ async function measureHeader(page) {
     await page.waitForTimeout(250);
     const collapsedWidth = await aside.evaluate((element) => element.getBoundingClientRect().width);
     assert.ok(collapsedWidth < expandedWidth, "The desktop dock collapses to its icon rail");
-    await shown(aside.getByRole("link", { name: "Overview", exact: true }));
+    await shown(aside.getByRole("link", { name: "Home", exact: true }));
     await capture(page, "after-counselor-workspace-1440-dock-collapsed");
     await page.getByRole("button", { name: "Expand navigation", exact: true }).click();
     await page.getByRole("button", { name: "Collapse navigation", exact: true }).waitFor({ state: "visible" });
@@ -480,7 +481,7 @@ async function measureHeader(page) {
     await shown(palette);
     const search = palette.getByRole("combobox", { name: "Search COMPASS features", exact: true });
     await search.fill("Overview");
-    await shown(palette.getByRole("option", { name: /Overview/ }));
+    await shown(palette.getByRole("option", { name: /Home/ }));
     await page.keyboard.press("ArrowDown");
     const navigationQuestion = new Promise((resolve) => {
       page.once("dialog", async (dialog) => {

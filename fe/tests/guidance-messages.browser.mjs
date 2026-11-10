@@ -113,7 +113,7 @@ for (const [label, account] of [
 ]) {
   const world = messagesWorld(staffWorld(), account);
   await check(`${label} has no Messages destination or content`, "/portal", world.options(), async (page, { context, errors }) => {
-    await shown(page.getByRole("link", { name: "Overview" }).first());
+    await shown(page.getByRole("link", { name: "Home", exact: true }).first());
     assert.equal(await page.getByRole("link", { name: "Messages", exact: true }).count(), 0);
     const messagesPage = await openAdditionalPage(context, "/portal/messages", errors);
     try {

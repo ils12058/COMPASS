@@ -1,14 +1,14 @@
 "use client";
 
-import { LayoutDashboard } from "lucide-react";
+import { ChevronDown, Ellipsis } from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FocusEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type PointerEvent } from "react";
 
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
-  portalWorkspaceGroups,
+  portalNavigationGroups,
   type PortalWorkspaceLink,
 } from "@/features/portal/components/portal-workspaces";
 import {
@@ -19,12 +19,10 @@ import { cn } from "@/lib/utils/cn";
 import { useFacultyAvailability } from "@/features/faculty-referrals/availability";
 import { facultyReferralsPath } from "@/features/faculty-referrals/access";
 
-const overviewLink: PortalWorkspaceLink = { href: "/portal", label: "Overview", icon: LayoutDashboard };
-
 // Every dock destination keeps its icon in the same place whether or not its label shows, so the
 // rail does not shift when it expands.
 const itemClass =
-  "flex min-h-11 w-full items-center gap-3 rounded-md px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand focus-visible:ring-offset-2 focus-visible:ring-offset-brand-strong";
+  "flex min-h-11 w-full items-center gap-3 rounded-md px-4 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-brand focus-visible:ring-offset-2 focus-visible:ring-offset-brand-strong";
 
 type Tip = { label: string; top: number; left: number };
 
@@ -134,7 +132,7 @@ function NavItem({
           </span>
         ) : null}
       </span>
-      <span className={expanded ? "min-w-0 flex-1 truncate" : "sr-only"}>{link.label}</span>
+      <span className={expanded ? "min-w-0 flex-1 break-words text-left" : "sr-only"}>{link.label}</span>
       {expanded && badge ? (
         <span
           aria-hidden="true"
@@ -151,15 +149,45 @@ function NavItem({
   );
 }
 
-// The portal's destinations, from portalWorkspaceGroups. On wide screens this is the dock: it shows
-// labels until the reader collapses it to an icon rail (`expanded` false) with the top bar's button.
-// In the small-screen drawer it always shows labels, and `onNavigate` closes the drawer.
-export function PortalNavigation({
-  expanded,
-  navigationId,
-  onNavigate,
-  className,
-}: {
+// Keep native button disclosure behavior and the same guarded destination links in both shells.
+function SecondaryNavigation({ label, links, activeHref, expanded, onNavigate, tips, attention }: {
+  label: string;
+  links: PortalWorkspaceLink[];
+  activeHref?: string;
+  expanded: boolean;
+  onNavigate?: () => void;
+  tips: ReturnType<typeof useDockTips>;
+  attention: ReturnType<typeof useNavigationAttention>;
+}) {
+  const [open, setOpen] = useState(Boolean(activeHref));
+  const contentId = useId();
+  return (
+    <div className="mt-2 border-t border-on-brand/15 pt-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={contentId}
+        aria-label={`${label}, ${links.length} destinations`}
+        onClick={() => setOpen(!open)}
+        className={cn(itemClass, "font-medium text-on-brand/85 hover:bg-on-brand/10 hover:text-on-brand")}
+        {...tips.bind(`${label} (${links.length})`)}
+      >
+        <Ellipsis size={20} aria-hidden="true" className="shrink-0" />
+        <span className={expanded ? "min-w-0 flex-1 break-words text-left" : "sr-only"}>{label} ({links.length})</span>
+        {expanded ? <ChevronDown size={16} aria-hidden="true" className={cn("shrink-0", open && "rotate-180")} /> : null}
+      </button>
+      <div id={contentId} hidden={!open} className="mt-1 space-y-1">
+        {links.map((link) => (
+          <NavItem key={link.href} link={link} current={link.href === activeHref}
+            expanded={expanded} onNavigate={onNavigate} tipProps={tips.bind(link.label)} badge={attention.getBadge(link.href)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Ordering follows the approved daily list only after the registry applies existing access gates.
+export function PortalNavigation({ expanded, navigationId, onNavigate, className }: {
   expanded: boolean;
   navigationId?: string;
   onNavigate?: () => void;
@@ -167,90 +195,46 @@ export function PortalNavigation({
 }) {
   const { user } = usePortalSession();
   const { availability } = useFacultyAvailability(user);
-  const homeLink = user.role === "FACULTY" ? { ...overviewLink, label: "Home" } : overviewLink;
   const pathname = usePathname();
   const attention = useNavigationAttention(user);
-  const isWithin = (href: string) =>
-    Boolean(pathname && (pathname === href || pathname.startsWith(href + "/")));
-  const visibleGroups = portalWorkspaceGroups(user, availability);
+  const { daily, secondary } = portalNavigationGroups(user, availability);
+  const isCurrent = (link: PortalWorkspaceLink) => {
+    if (!pathname) return false;
+    if (link.href === "/portal") return pathname === "/portal";
+    if (link.href === facultyReferralsPath) return pathname === facultyReferralsPath || (pathname.startsWith(facultyReferralsPath + "/") && !pathname.endsWith("/new"));
+    const section = link.section ?? link.href;
+    return pathname === section || pathname.startsWith(section + "/");
+  };
+  const activeSecondary = secondary.links.find(isCurrent)?.href;
   const tips = useDockTips(!expanded);
   const navRef = useRef<HTMLElement>(null);
 
-  // A long dock scrolls on its own; keep the current destination in view as the reader moves.
+  // A long dock scrolls on its own; also reveal a newly available current destination.
   useEffect(() => {
-    navRef.current
-      ?.querySelector<HTMLElement>('[aria-current="page"]')
-      ?.scrollIntoView({ block: "nearest" });
-  }, [pathname, expanded]);
+    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+  }, [pathname, expanded, activeSecondary]);
 
   return (
     <div className={cn("flex h-full min-h-full flex-col bg-brand-strong text-on-brand", className)}>
-      <GuardedPortalLink
-        href="/portal"
-        onNavigate={onNavigate}
+      <GuardedPortalLink href="/portal" onNavigate={onNavigate}
         className="flex min-h-14 shrink-0 items-center gap-3 border-b border-on-brand/15 px-5.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-on-brand"
-        aria-label="COMPASS Portal Overview"
-        {...tips.bind("COMPASS Overview")}
-      >
-        <Image
-          src="/brand/compass-mark.svg"
-          width={32}
-          height={32}
-          alt=""
-          aria-hidden="true"
-          className="shrink-0"
-        />
-        <span
-          aria-hidden="true"
-          className={cn("font-heading text-lg font-bold tracking-[0.08em]", !expanded && "sr-only")}
-        >
-          COMPASS
-        </span>
+        aria-label="COMPASS Portal Home" {...tips.bind("COMPASS Home")}>
+        <Image src="/brand/compass-mark.svg" width={32} height={32} alt="" aria-hidden="true" className="shrink-0" />
+        <span aria-hidden="true" className={cn("font-heading text-lg font-bold tracking-[0.08em]", !expanded && "sr-only")}>COMPASS</span>
       </GuardedPortalLink>
-      <nav
-        ref={navRef}
-        id={navigationId}
-        aria-label="Portal navigation"
-        onScroll={tips.clear}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-3"
-      >
-        <NavItem
-          link={homeLink}
-          current={pathname === "/portal"}
-          expanded={expanded}
-          onNavigate={onNavigate}
-          tipProps={tips.bind(homeLink.label)}
-        />
-        {visibleGroups.map((group) => (
-          <div key={group.label} className="mt-2 border-t border-on-brand/15 pt-2">
-            {/* A label only earns its place when it groups more than one destination. In the rail
-                the line between groups does the grouping, and the label stays for screen readers. */}
-            {group.links.length > 1 ? (
-              <p
-                className={
-                  expanded
-                    ? "truncate px-4 pb-1 pt-1 text-xs font-semibold uppercase tracking-wider text-on-brand/65"
-                    : "sr-only"
-                }
-              >
-                {group.label}
-              </p>
-            ) : null}
-            <div className="space-y-1">
-              {group.links.map((link) => (
-                <NavItem
-                  key={link.href}
-                  link={link}
-                  current={link.href === facultyReferralsPath ? pathname === facultyReferralsPath || (pathname.startsWith(facultyReferralsPath + "/") && !pathname.endsWith("/new")) : isWithin(link.section ?? link.href)}
-                  expanded={expanded}
-                  onNavigate={onNavigate}
-                  tipProps={tips.bind(link.label)}
-                  badge={attention.getBadge(link.href)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+      <nav ref={navRef} id={navigationId} aria-label="Portal navigation" onScroll={tips.clear}
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
+        <div className="space-y-1">
+          {daily.map((link) => (
+            <NavItem key={link.href} link={link} current={isCurrent(link)} expanded={expanded}
+              onNavigate={onNavigate} tipProps={tips.bind(link.label)} badge={attention.getBadge(link.href)} />
+          ))}
+        </div>
+        {secondary.links.length ? (
+          <SecondaryNavigation key={`${user.id}:${pathname}:${activeSecondary ?? ""}`}
+            label={secondary.label} links={secondary.links} activeHref={activeSecondary}
+            expanded={expanded} onNavigate={onNavigate} tips={tips} attention={attention} />
+        ) : null}
       </nav>
       {tips.element}
     </div>

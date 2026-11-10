@@ -166,7 +166,8 @@ async function openSection(page, label) {
     assert.equal(w.state.commands.length, 1, "A failed Stop is never repeated automatically");
     await screenshot(page, "counselor-recording-stop-not-confirmed");
     // The dock's own Stop has sent nothing, so it shows only COMPASS's recorded Stop intent.
-    await page.getByRole("link", { name: "Services", exact: true }).first().click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("button", { name: /^More,/ }).click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Services", exact: true }).click();
     await shown(dock(page));
     assert.equal(await dock(page).getByRole("button", { name: "Stopping…", exact: true }).isDisabled(), true);
     assert.equal(w.state.recording, "STOP_REQUESTED");
@@ -286,7 +287,8 @@ for (const mode of ["disabled", "outage"]) {
 {
   const w = world({ recording: "ACTIVE" });
   await check("persistent off-page call receives media state without another socket or join", PATH, w.options("COUNSELOR"), async (page, { requests }) => {
-    await join(page); await page.getByRole("link", { name: "Services", exact: true }).first().click();
+    await join(page); await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("button", { name: /^More,/ }).click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Services", exact: true }).click();
     await shown(dock(page)); w.state.recording = "STOP_REQUESTED"; w.send();
     await shown(dock(page).getByText("Recording stopping…", { exact: true }));
     assert.equal(requests.filter((request) => request.pathname.endsWith("/join")).length, 1);

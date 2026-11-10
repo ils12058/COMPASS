@@ -269,6 +269,10 @@ await check("ended-session-uses-existing-sign-in-boundary-without-replay", root 
   await fill(page); await review(page);
   await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
   await page.waitForURL(url => url.pathname === "/login");
+  await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
+  // Finish the destination render before closing the context. Aborting its first optimized
+  // logo request leaves later WebKit sign-in captures waiting on that same in-flight image.
+  await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
   assert.equal(endedSession.calls.length, 1);
   assert.equal(await page.getByText("Synthetic confidential concern", { exact: true }).count(), 0);
 });

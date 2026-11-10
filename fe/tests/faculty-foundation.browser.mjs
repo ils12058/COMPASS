@@ -39,7 +39,7 @@ for (const path of ["/portal/referrals/new", "/portal/appointments/book", "/port
   await check(`faculty-deep-link-${path.split("/").slice(2).join("-")}`, path, { handler: facultyHandler }, async (page, fixture) => {
     await shown(page.getByRole("heading", { name: "Workspace access" }));
     assert.equal(fixture.requests.some(protectedRead), false, "Blocked workspace must never mount protected queries");
-    await page.getByRole("link", { name: "Return to Overview" }).click();
+    await page.getByRole("link", { name: "Return to Home" }).click();
     await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
   });
 }

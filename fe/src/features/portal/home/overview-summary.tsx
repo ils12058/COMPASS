@@ -65,7 +65,7 @@ export function OverviewSummary({
               <Skeleton className="h-4 w-6" />
             </div>
           ))}
-          <p className="sr-only">Loading Overview summary counts…</p>
+          <p className="sr-only">Loading Home summary counts…</p>
         </div>
       ) : null}
 

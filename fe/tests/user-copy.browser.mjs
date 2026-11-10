@@ -227,7 +227,7 @@ for (const width of [320, 1440]) {
     await check(`exit-reviewer-staff-navigation-${width}`, '/portal/exit-interviews', { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(reviewerStaff) } }, async (page) => {
         if (width < 1024) await page.getByRole('button', { name: 'Open portal navigation' }).click();
         const nav = page.getByRole('navigation', { name: 'Portal navigation' });
-        await shown(nav.getByRole('link', { name: 'Exit Interviews', exact: true }));
+        await shown(nav.getByRole('link', { name: 'Exit interviews', exact: true }));
         assert.equal(await nav.getByRole('link', { name: 'Exit Interview access', exact: true }).count(), 0);
     });
 }

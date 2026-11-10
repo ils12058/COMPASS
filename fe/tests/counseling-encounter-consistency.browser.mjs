@@ -232,11 +232,14 @@ await check("ecounseling-page-rejected-save-keeps-values", recordPath, session({
 await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ reply }, state) => {
   state.encounter = { id: ENCOUNTER, recorded: true };
   return reply({ error: { code: "counseling_appointment_already_used", message: "Already used" } }, 409);
-} }), async (page) => {
+} }), async (page, { requests }) => {
   const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Record encounter", exact: true }).click();
   await shown(page.getByText("An encounter was already recorded for this Appointment. The latest details are now shown.", { exact: true }));
+  // The reconciliation notice may render before the mutation leaves its pending state.
+  await shown(page.getByRole("button", { name: "Record encounter", exact: true }));
+  assert.equal(posts(requests, "/counseling/encounters").length, 1, "The rejected write is not replayed");
   assert.equal(await page.getByRole("button", { name: "Record encounter", exact: true }).count(), 1, "The reconciled page does not replay the rejected write");
 });
 

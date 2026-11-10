@@ -346,7 +346,7 @@ if (phase !== "before") {
       await page.locator("#inventory-full-name").fill("Unsaved synthetic name");
       const dialogs = [];
       page.on("dialog", async dialog => { dialogs.push({ type: dialog.type(), message: dialog.message() }); await dialog.dismiss(); });
-      await page.getByRole("link", { name: "Individual Inventory", exact: true }).click();
+      await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Inventory", exact: true }).click();
       assert.equal(dialogs.length, 1);
       assert.match(dialogs[0].message, /Discard your unsaved Individual Inventory changes/);
       await page.waitForURL(/inventory\/current$/);
@@ -362,7 +362,7 @@ if (phase !== "before") {
       const beforeSave = dialogs.length;
       await page.getByRole("button", { name: "Save progress", exact: true }).click();
       await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
-      await page.getByRole("link", { name: "Individual Inventory", exact: true }).click();
+      await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Inventory", exact: true }).click();
       await page.waitForURL(/\/portal\/inventory$/);
       assert.equal(dialogs.length, beforeSave);
     });
