@@ -12,7 +12,7 @@ import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { canImportStudentAcademics, canViewStudentAcademics } from "@/features/student-academics/student-academics-access";
-import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
+import { portalNavigationLabel, portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
 import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
 
 export type PortalCommandDestination = {
@@ -40,11 +40,11 @@ const workspaceKeywords: Readonly<Record<string, readonly string[]>> = {
 export function portalCommandDestinations(user: UserSummary, facultyAvailability?: FacultyReferralAvailability): PortalCommandDestination[] {
   const groups = portalWorkspaceGroups(user, facultyAvailability);
   const roots = groups.flatMap((group) => group.links.map((link) => ({
-    ...link, group: group.label, breadcrumb: link.label,
-    keywords: workspaceKeywords[link.label] ?? [],
+    ...link, label: portalNavigationLabel(link), group: group.label, breadcrumb: portalNavigationLabel(link),
+    keywords: [link.label, ...(workspaceKeywords[link.label] ?? [])],
   })));
   const destinations: PortalCommandDestination[] = [
-    { href: "/portal", label: user.role === "FACULTY" ? "Home" : "Overview", breadcrumb: "Overview", group: "General", icon: LayoutDashboard, keywords: ["home"] },
+    { href: "/portal", label: "Home", breadcrumb: "Home", group: "General", icon: LayoutDashboard, keywords: ["overview"] },
     ...roots,
     { href: "/portal/notifications", label: "Notifications", breadcrumb: "Notifications", group: "General", icon: Bell, keywords: ["alerts"] },
   ];

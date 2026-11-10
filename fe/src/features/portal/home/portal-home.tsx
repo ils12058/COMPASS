@@ -33,7 +33,7 @@ function isAuthorizationFailure(error: unknown): boolean {
 
 function overviewErrorMessage(error: unknown): string {
   if (error instanceof CompassApiError && error.status === 403) {
-    return "You don't have access to Overview.";
+    return "You don't have access to Home.";
   }
   return "Couldn't load overview summary. Try again in a moment.";
 }
@@ -90,7 +90,7 @@ function OperationalPortalHome() {
           ? <span className="inline-block max-w-full font-script text-3xl font-semibold leading-[1.1] [overflow-wrap:anywhere] sm:text-4xl">{getOverviewGreeting(user, now)}</span>
           : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? "Guidance Office Home" : getOverviewGreeting(user, now)}
         headingId="portal-overview-heading"
-        context={user.role === "STUDENT" ? "Overview" : undefined}
+        context={user.role === "STUDENT" ? "Home" : undefined}
         description={[formatOverviewDate(now), user.role === "GUIDANCE_OFFICE_ASSISTANT" ? null : roleContext].filter(Boolean).join(" · ")}
         actions={primaryAction ? (
           <PageActionLink

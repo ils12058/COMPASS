@@ -27,7 +27,7 @@ export function WorkspaceUnavailable({
             href="/portal"
             className="inline-flex min-h-10 items-center text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            Return to Overview
+            Return to Home
           </Link>
         }
       >

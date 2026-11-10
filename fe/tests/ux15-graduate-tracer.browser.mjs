@@ -240,7 +240,7 @@ if (phase !== 'before') {
       await page.locator('#gts-mobile').fill('Unsaved synthetic answer');
       const prompts = [];
       page.on('dialog', async dialog => { prompts.push(dialog.type()); await dialog.dismiss(); });
-      await page.getByRole('link', { name: 'Overview', exact: true }).first().click();
+      await page.getByRole('link', { name: 'Home', exact: true }).first().click();
       assert.equal(prompts.length, 1);
       await page.goBack({ timeout: 2000 }).catch(() => null);
       await page.waitForURL(/graduate-tracer$/); assert.equal(prompts.length, 2);
@@ -250,7 +250,7 @@ if (phase !== 'before') {
       assert.equal(await page.locator('#gts-mobile').inputValue(), 'Unsaved synthetic answer');
       await saveButton(page).click(); await shown(page.getByRole('status').filter({ hasText: 'Draft saved.' }));
       const count = prompts.length;
-      await page.getByRole('link', { name: 'Overview', exact: true }).first().click();
+      await page.getByRole('link', { name: 'Home', exact: true }).first().click();
       await page.waitForURL(/\/portal$/); assert.equal(prompts.length, count);
       assert.equal(state.submissions, 0);
     });

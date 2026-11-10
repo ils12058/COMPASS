@@ -522,7 +522,8 @@ async function refreshReferral(page, state) {
     await page.waitForURL(`**${servicePath}`);
     assert.equal(dialogs.seen.length, 2, "One question per navigation");
     // The guard leaves with the editor: later navigation does not ask.
-    await page.getByRole("link", { name: /Services/ }).first().click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("button", { name: /^(More|Administration),/ }).click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Services", exact: true }).click();
     await page.waitForURL("**/portal/services");
     assert.equal(dialogs.seen.length, 2, "No question after the editor is gone");
   });
@@ -569,7 +570,8 @@ async function refreshReferral(page, state) {
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await page.waitForURL(new RegExp(`${servicePath}\\?updated=true$`));
     assert.deepEqual(state.patches, [{ name: "Counseling (renamed)" }]);
-    await page.getByRole("link", { name: /Services/ }).first().click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("button", { name: /^(More|Administration),/ }).click();
+    await page.getByRole("navigation", { name: "Portal navigation", exact: true }).getByRole("link", { name: "Services", exact: true }).click();
     await page.waitForURL("**/portal/services");
     assert.equal(dialogs.seen.length, 0, "A saved Service never asks before navigation");
   });

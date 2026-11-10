@@ -23,7 +23,7 @@ test("identical Active/Inactive meanings share presentation while Legacy keeps i
 });
 
 test("Routine query errors preserve heading, content and Retry with one shared alert", () => {
-  const html = render(h(RoutineQueryError, { title: "Routine unavailable", message: "Please retry.", onRetry() {} }, h("a", { href: "/portal" }, "Return to Overview")));
+  const html = render(h(RoutineQueryError, { title: "Routine unavailable", message: "Please retry.", onRetry() {} }, h("a", { href: "/portal" }, "Return to Home")));
   assert.equal((html.match(/role="alert"/g) ?? []).length, 1);
   assert.match(html, /<h2>Routine unavailable<\/h2>/);
   assert.match(html, /Please retry\./);

@@ -137,7 +137,7 @@ if (phase === "after") {
       const originalUrl = page.url();
       const prompts = [];
       page.on("dialog", async (dialog) => { prompts.push(dialog.message()); await dialog.dismiss(); });
-      await page.getByRole("link", { name: "Overview", exact: true }).first().click();
+      await page.getByRole("link", { name: "Home", exact: true }).first().click();
       assert.equal(prompts.length, 1);
       assert.match(prompts[0], /unsaved Counselor Evaluation changes/);
       assert.equal(page.url(), originalUrl, "Dismissal keeps the Counselor in the draft");

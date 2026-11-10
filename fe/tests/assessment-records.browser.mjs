@@ -61,7 +61,7 @@ for (const role of ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITU
     await shown(page.getByRole("heading", { name: "Assessment Records access" }));
     assert.ok(!requests.some((item) => item.pathname.startsWith("/api/v1/assessment-records")));
     assert.ok(!(await text(page)).includes(content.score));
-    assert.equal(await page.getByRole("link", { name: "Assessment Records", exact: true }).count(), 0);
+    assert.equal(await page.locator('nav[aria-label="Portal navigation"] a[href="/portal/assessment-records"]').count(), 0);
   });
 }
 for (const path of [root, root + "/new", root + "/types", detail]) {

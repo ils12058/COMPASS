@@ -505,7 +505,7 @@ await check("layout-presets-desktop", ePath, { fakeDaily: true, overrides: liveS
 await check("session-remains-mounted-with-collapsed-sidebar", ePath, { fakeDaily: true, overrides: liveSession().overrides }, async (page) => {
   const collapse = page.getByRole("button", { name: "Collapse navigation", exact: true });
   await shown(collapse);
-  await shown(page.getByRole("navigation").getByRole("link", { name: "Overview", exact: true }));
+  await shown(page.getByRole("navigation").getByRole("link", { name: "Home", exact: true }));
   await joinCall(page);
   const joins = await fakeCount(page, "join");
   await collapse.click();
