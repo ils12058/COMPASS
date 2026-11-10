@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Identity and normalization
 
 Implementation: `be/compass/good_moral/receipt_identity.py`, with an equivalent frozen `gm_or_key(text)` SQL function in migration `0002_receipt_identity_and_history`.

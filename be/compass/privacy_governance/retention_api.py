@@ -1,4 +1,4 @@
-"""Read-only retention policy oversight from the code-owned register (ADR-115)."""
+"""Read-only retention policy oversight from the register (ADR-115)."""
 
 from datetime import date
 

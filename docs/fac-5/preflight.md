@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-5 verified baseline and change boundaries
 
 Starting integration SHA: `d9971e892bd432d766567084dba2492746953306`, fetched

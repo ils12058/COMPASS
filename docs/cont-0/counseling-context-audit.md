@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Existing Counseling Context
 
 Evidence: [context_access.py](../../be/compass/counseling/context_access.py), [context_services.py](../../be/compass/counseling/context_services.py), [context_api.py](../../be/compass/counseling/context_api.py), [matching.py](../../be/compass/routine_interviews/matching.py), [settings](../../be/config/settings.py), [existing tests](../../be/tests/test_counseling_context.py). This is current behavior, not a proposed grant.

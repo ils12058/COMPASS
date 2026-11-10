@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Institutional decisions and release gates
 
 No GCO/UCN approval record was supplied or verified. Head approval, backup delegation, durations, notice/consent/basis and retention below are recommendations for deliberation. The current source demonstrates technical capabilities, not institutional authorization to share new professional content. Named owners are responsible functions to confirm, not assigned people.

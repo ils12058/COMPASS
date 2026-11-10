@@ -1329,7 +1329,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert user_summary["capabilities"]["type"] == "array"
     assert user_summary["capabilities"]["items"]["$ref"].endswith("/CapabilityCode")
     assert user_summary["role"]["$ref"].endswith("/RoleCode")
-    # Session typing reuses the canonical code-owned enums; it never becomes a second policy list.
+    # Session typing reuses the canonical canonical enums; it never becomes a second policy list.
     assert set(schemas["CapabilityCode"]["enum"]) == set(CAPABILITY_CODES)
     assert {
         "college_ids",

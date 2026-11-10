@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # D01–D18 institutional release gates
 
 Every determination below is **UNVERIFIED / BLOCKED**. No signed GCO/UCN/privacy/records approval, institutional signatory, real provider or operational custody attestation was supplied or independently verified. Named functions are proposed responsible functions to confirm, not assigned people. Synthetic policies prove deny/allow mechanics only. The existing [decision register](../cont-0/institutional-decisions.md) remains unchanged.

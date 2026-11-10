@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Faculty and GCO UAT execution package
 
 Prepared for institutional review; **no institutional UAT or participant sign-off is claimed**.

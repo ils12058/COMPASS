@@ -150,7 +150,7 @@ def test_pre_canonical_history_is_refused_by_check_and_migrate(old_name):
         call_command("check", databases=["default"], stdout=StringIO())
 
 
-# Code-owned catalog from Phase D's reference schema, independent of migration contents.
+# Canonical catalog from Phase D's reference schema, independent of migration contents.
 # A future squash must preserve these objects even though Django's model state omits them.
 DATABASE_FUNCTIONS = (
     "compass_group_session_facilitator_preserve_delete",
@@ -201,7 +201,7 @@ DATABASE_TRIGGERS = (
 
 
 @pytest.mark.django_db
-def test_every_code_owned_function_and_trigger_exists_in_postgresql():
+def test_every_canonical_function_and_trigger_exists_in_postgresql():
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "

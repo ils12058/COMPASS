@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Security and authorization
 
 The operational API checks active persisted session, CSRF for unsafe requests, base role and dependency-coherent capabilities. Domain services repeat authority checks after acquiring request/account fences. Supported account administration shares the User row lock. Student receipt mutation and preparation are forbidden; final issue requires COUNSELOR plus `good_moral.issue`. GSS may record/prepare and may inspect only with an explicit eligible grant. Head Guidance designation and IT access administration do not imply inspection/issuance authority.

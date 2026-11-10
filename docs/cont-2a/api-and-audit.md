@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Metadata API and transactional audit
 
 Django Ninja registers the focused `continuity_api` router under `/api/v1/counseling/continuity-grants`. Every operation uses existing opaque cookie session authentication and existing error envelopes. Unsafe requests retain canonical CSRF enforcement. Input schemas forbid extra fields and enumerate all response fields; arbitrary clinical text, policy evidence supplied by the caller, generic filters and narrative decisions are not accepted.

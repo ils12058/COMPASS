@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Resolved CI failure matrix
 
 Baseline is FAC-4 implementation `2aed08ac` / integration squash `d9971e89`.

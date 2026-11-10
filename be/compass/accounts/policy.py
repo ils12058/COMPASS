@@ -105,12 +105,12 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="referrals.submit_self",
         name="Submit own Faculty Referrals",
-        description="Requires current Faculty identity and approved digital form policy.",
+        description="Submit Referrals for Students as current Faculty.",
     ),
     CapabilityDefinition(
         code="referrals.view_submitted_self",
         name="View own Faculty submissions",
-        description="Own-submission projection only; separate disclosure policy is required.",
+        description="See the status of your own submitted Referrals.",
     ),
     CapabilityDefinition(
         code="organization.catalog.manage",
@@ -123,37 +123,37 @@ CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
         code="counseling.handoff.manage_own",
         name="Author own confidential Counselor Handoff",
-        description="Requires current original-author relationship and approved Handoff policy.",
+        description="Write a confidential Handoff for your own case coverage.",
     ),
     CapabilityDefinition(
         code="counseling.handoff.read_received",
         name="Read intended submitted Counselor Handoff",
-        description="Requires exact recipient and effective approved coverage and Handoff policy.",
+        description="Read a Handoff sent to you through active case coverage.",
     ),
     CapabilityDefinition(
         code="counseling.continuity.view",
         name="View authorized continuity metadata",
-        description="Continuity foundation; institutional policy and actor checks also required.",
+        description="View case coverage details within your current access.",
     ),
     CapabilityDefinition(
         code="counseling.continuity.request",
         name="Request scoped case coverage",
-        description="Continuity foundation; institutional policy and actor checks also required.",
+        description="Request case coverage for your own or authorized office cases.",
     ),
     CapabilityDefinition(
         code="counseling.continuity.approve",
         name="Decide scoped case coverage",
-        description="Continuity foundation; institutional policy and actor checks also required.",
+        description="Approve or decline case coverage as an independent Head Counselor.",
     ),
     CapabilityDefinition(
         code="counseling.continuity.revoke",
         name="Revoke scoped case coverage",
-        description="Continuity foundation; institutional policy and actor checks also required.",
+        description="End case coverage as an independent Head Counselor.",
     ),
     CapabilityDefinition(
         code="counseling.continuity.read_selected",
         name="Future selected-source eligibility",
-        description="Continuity foundation; institutional policy and actor checks also required.",
+        description="Read the selected records sent to you while case coverage is active.",
     ),
     CapabilityDefinition(
         code="guidance_followups.view",
@@ -205,8 +205,7 @@ CAPABILITY_DEFINITIONS = (
         name="Handle general Guidance Office intake",
         description="Read and answer Faculty inquiries addressed to the Guidance Office.",
     ),
-    # Provisional (GMSG-3): referral coordination messaging ships granted to every Faculty in
-    # FACULTY_CAPABILITY_CEILING. This is an engineering default, not institutional approval.
+    # Referral coordination messaging is granted to every Faculty in FACULTY_CAPABILITY_CEILING.
     CapabilityDefinition(
         code="guidance_messages.referral_view_self",
         name="View own referral conversations",
@@ -217,8 +216,7 @@ CAPABILITY_DEFINITIONS = (
         name="Reply to own referral conversations",
         description="Start and reply to own Guidance conversations bound to submitted Referrals.",
     ),
-    # Provisional (GMSG-4): Counselor direct messaging ships granted to every Counselor. This is an
-    # engineering default, not institutional approval.
+    # Counselor direct messaging is granted to every Counselor.
     CapabilityDefinition(
         code="guidance_messages.counselor_direct.view",
         name="View Counselor direct conversations",
@@ -229,9 +227,8 @@ CAPABILITY_DEFINITIONS = (
         name="Start and reply to Counselor direct conversations",
         description="Start or reply to the direct Guidance conversation between two Counselors.",
     ),
-    # Provisional (GMSG-5): Counselor case coordination ships granted to every Counselor. The live
-    # Counseling grant is the authority; this capability only decides who may ask for it. This is an
-    # engineering default, not institutional approval.
+    # Counselor case coordination is granted to every Counselor. The live Counseling grant is
+    # the authority; this capability only decides who may ask for it.
     CapabilityDefinition(
         code="guidance_messages.case_coordination.view",
         name="View case coordination conversations",
@@ -262,7 +259,7 @@ CAPABILITY_DEFINITIONS = (
         code="privacy_governance.retention.view",
         name="View retention policy oversight",
         description=(
-            "View the code-owned retention policy register. Grants no rule, hold, "
+            "View the retention periods recorded in COMPASS. Grants no rule, hold, "
             "approval, or disposition authority."
         ),
     ),

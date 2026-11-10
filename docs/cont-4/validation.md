@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Executed validation and limitations
 
 Date: 2026-10-24 (Asia/Manila). Verified base `33d645db7fb5599fb916bac36c691539ec5aa675`. Isolated managed worktree and dedicated loopback PostgreSQL 17.11 / Redis. Python 3.13.12, Django 6.1.1, pytest 9.1.1; Node 26.7.0, package-selected pnpm 11.19.0. Dependencies installed from frozen locks/offline stores; no dependency change. Hosted Node 22/container/production role behavior is not inferred from this local runtime.

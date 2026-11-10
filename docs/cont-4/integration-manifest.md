@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Candidate and dependency manifest
 
 Fetched `integration/ux15-modernization`, `staging`, and `main` before creating an isolated managed worktree. Integration matched the supplied last verified SHA exactly. Runtime source tested: **`33d645db7fb5599fb916bac36c691539ec5aa675`**, plus the CONT-4 test/documentation diff identified by the PR head. No application fix was needed by the completed checks. Publication must recheck upstream drift.

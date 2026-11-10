@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Selected-read authorization contract
 
 `continuity_access.read_selected_continuity_record` is a bounded two-kind domain coordinator, called by the source-owned Encounter and Routine entry points. It returns a validated projection after commit, never a reusable permission decision or bearer token. There is no generic HTTP source/model selector.

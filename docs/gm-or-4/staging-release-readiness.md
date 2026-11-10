@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Future staging release sequence — documentation only
 
 **BLOCKED. Do not execute from this validation PR.** Completion of GM-OR-4 authorizes none of these actions. Each live environment/data/grant/cutover action needs its own institutional/release approval and protected evidence.

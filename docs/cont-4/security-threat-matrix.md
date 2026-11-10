@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # T01–T24 traceability and disposition
 
 Original scenarios/ranks are preserved in [CONT-0](../cont-0/threat-model.md). This table evaluates their integrated mitigation, not the older document's then-current implementation. Test names below are exact function families under `be/tests/` unless marked browser. Parametrized identities/results are recorded in the validation evidence. PASS is limited to implemented controls; the final column preserves institutional/operational blockers.

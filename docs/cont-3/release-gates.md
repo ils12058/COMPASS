@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Release gates and CONT-4 handoff
 
 Code and synthetic workflows are reviewable before institutional activation. **All three default policy providers remain None.** Required decisions from CONT-0 remain unresolved: D01/D05 exact request/office-selection scope, D02/D03 independent/backup approval and formal delegation, D04 bounded duration/renewal, D06/D07 source fields/reasons/evidence, D08 Student transparency/disclosure basis, D09 urgent operating procedure, D10 Student lifecycle/transfer, D11 Handoff authorship/correction/post-expiry rights, D12 overlap/receipt, D13 monitoring, D14 independent retention/legal access requests, D15 recipients/channels/currentness, relevant D16 retained/disposable cutover classification, D17 key custody/recovery and D18 residual disclosure/client practices. Typed reference validation and a fixture named TEST are not signed approval.

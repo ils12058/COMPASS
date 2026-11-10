@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-4 acknowledgment, closure and Notifications handoff
 
 FAC-3 delivers the Faculty frontend. FAC-2 still owns intake authorization,

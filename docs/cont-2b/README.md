@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-2B — Selected professional source reads
 
 Repository `ils12058/COMPASS`. Verified starting integration SHA: `7afd4a41fe0a02b9723b5b4d22036beaef86f514`. Isolated managed worktree `cont-2b-confidential-source-access/COMPASS`, branch `feature/cont-2b-confidential-source-access`; target `integration/ux15-modernization`. Final implementation SHA and publication status are on the PR.

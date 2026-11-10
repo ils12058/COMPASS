@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Authorization and capability governance
 
 Canonical definition: `good_moral.verify_receipt`, with dependencies on `good_moral.view` and `good_moral.prepare` through the existing dependency resolver in `accounts/policy.py`. The existing policy synchronization command publishes the definition. **No role or designation baseline grant changes.** No account grants are migrated or seeded by GM-OR-2.

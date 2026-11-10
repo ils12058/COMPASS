@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-3 — Case coverage and confidential Counselor Handoff
 
 Verified starting integration SHA: `dedf1a649c8adb4f8a5508a513d8bf0dd994fa1d`. Managed isolated worktree `cont-3-counselor-handoff/COMPASS`, branch `feature/cont-3-counselor-handoff-workflows`, target `integration/ux15-modernization`. Final implementation SHA/publication state belong on the PR. No automatic merge or deployment.

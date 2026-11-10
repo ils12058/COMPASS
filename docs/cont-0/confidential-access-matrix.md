@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Actual confidential access matrix
 
 Current API/service authorization at the verified integration SHA. **Receiving Counselor authorization is not implemented.** A label such as current Appointment Counselor, Head or College-responsible Counselor does not imply all other relationships. Tables evaluate the record in the column, not everything authored by the actor.

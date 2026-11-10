@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-1 — Permanent receipt identity and assignment history
 
 Base: `integration/ux15-modernization`, fetched at **`7f0c75e970f26cc832158f4609295f0dd40938c5`**. Feature branch: `feature/gm-or-1-receipt-identity-history`. This implements the merged [GM-OR-0 Option C design](../gm-or-0/README.md).

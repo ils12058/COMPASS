@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-3 Faculty Portal
 
 Implemented from integration `1a8f9aa3`, after merged FAC-1 (#348) and FAC-2 (#349).

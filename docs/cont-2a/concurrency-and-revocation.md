@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Concurrency, effective status and authority changes
 
 Every mutation carries `expected_version`. Creation uses zero for the absent resource; persisted grants start at one. Decisions lock and compare the current version, then increment once for a material transition. Stale versions always return `continuity_stale_version` (409), including an old successful intent replay. An identical decision from the same actor at the **current** version returns canonical state without another increment/event. Revocation also requires the same bounded reason. A conflicting or terminal transition returns 409. Renewal creates a new request.

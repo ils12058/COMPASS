@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Threat model and risk disposition
 
 Trust boundaries: browser → session/API → capability+source service → PostgreSQL ciphertext/key-bearing application → notification/worker/external channels. UUIDs, links, submitted scope lists, frontend capabilities and realtime hints are untrusted inputs. The application host can decrypt; at-rest encryption does not protect against a compromised key-bearing host. Current absence of grants is not an existing grant bypass: “missing” below usually means a **required future control**.

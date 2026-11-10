@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Additive migration and validation
 
 Migration: **`be/compass/good_moral/migrations/0002_receipt_identity_and_history.py`**. Dependencies are Good Moral `0001_canonical_baseline` and the swappable account model. The immutable canonical baseline is unchanged; the additive path is registered in `compass/common/canonical_migrations.json`.

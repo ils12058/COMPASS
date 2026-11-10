@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-5 readiness assessment and remaining decisions
 
 > **Superseding implementation note (FUP-3A, 2026-11-05).** FUP-3A now installs code-owned

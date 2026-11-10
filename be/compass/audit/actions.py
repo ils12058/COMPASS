@@ -123,7 +123,6 @@ REFERRAL_STATUS_UPDATED = "referral.status_updated"
 REFERRAL_VOIDED = "referral.voided"
 REFERRAL_ACKNOWLEDGED = "referral.acknowledged"
 REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
-REFERRAL_ADMIN_POLICY_RECORDED = "referral.administration.policy.recorded"
 CALL_SLIP_CREATED = "call_slip.created"
 CALL_SLIP_VOIDED = "call_slip.voided"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
@@ -324,13 +323,11 @@ __all__ = [
     "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
     "REFERRAL_CREATED",
     "REFERRAL_FACULTY_SUBMITTED",
-    "REFERRAL_FACULTY_POLICY_RECORDED",
     "REFERRAL_ACTION_RECORDED",
     "REFERRAL_STATUS_UPDATED",
     "REFERRAL_VOIDED",
     "REFERRAL_ACKNOWLEDGED",
     "REFERRAL_ADMINISTRATIVELY_CLOSED",
-    "REFERRAL_ADMIN_POLICY_RECORDED",
     "CALL_SLIP_CREATED",
     "CALL_SLIP_VOIDED",
     "DOCUMENT_BRANDING_UPDATED",
@@ -392,7 +389,6 @@ ASSESSMENT_TYPE_DEACTIVATED = "assessment_type.deactivated"
 ASSESSMENT_TYPE_REACTIVATED = "assessment_type.reactivated"
 
 # Metadata-only case-continuity lifecycle; no source-content release events yet.
-CONTINUITY_POLICY_RECORDED = "counseling.continuity.policy_recorded"
 CONTINUITY_REQUESTED = "counseling.continuity.requested"
 CONTINUITY_APPROVED = "counseling.continuity.approved"
 CONTINUITY_DECLINED = "counseling.continuity.declined"
@@ -409,4 +405,3 @@ HANDOFF_READ = "counseling.handoff.read"
 CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"
 
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"
-REFERRAL_FACULTY_POLICY_RECORDED = "referral.faculty.policy.recorded"

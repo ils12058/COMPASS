@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Assignment revisions and database invariants
 
 Core models are in `be/compass/good_moral/models.py`. Identity stores a normalized key, version, nullable protected request binding, state, recorder/time/origin and import provenance. It has no Student FK or mutable receipt date/amount. BOUND requires an established request; LEGACY_AMBIGUOUS has no chosen owner; DISPUTED is represented by the schema but has no ordinary creation/resolution workflow.

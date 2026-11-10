@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Legacy import, writer fence and rollback
 
 `import_good_moral_receipts` is a **synthetic-only rehearsal command**. It rejects non-local app environments, non-loopback database hosts, names without a `test_` prefix or `_synthetic` suffix, a mismatched explicit database confirmation, and a server-reported database name different from the configured one. No live credentials are required or authorized. There is no production activation flag or deployment step in this PR.

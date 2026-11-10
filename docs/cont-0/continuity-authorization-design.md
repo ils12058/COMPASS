@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Proposed case continuity authorization
 
 **Not implemented and not institutional policy.** Foundation belongs to existing `compass.counseling` in focused `continuity_models`/`continuity_services`/`continuity_access`/`continuity_api` modules (models imported by Django's `models.py` as needed). No new global permission engine, generic case store or duplicate clinical records domain is justified.

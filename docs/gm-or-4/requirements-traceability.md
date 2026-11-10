@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Requirements traceability
 
 All implementation paths below are under `be/compass/good_moral/` unless otherwise named. `0002` / `0003` mean the frozen migrations in the manifest. Test stems resolve to exact node IDs in [case inventory](evidence/case-inventory.json); existing tests were rerun during GM-OR-4 and are not borrowed historical passing counts. Browser suite stems are `fe/tests/good-moral-*.browser.mjs`. Evidence labels are defined in [authenticated integration](authenticated-integration.md).

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Additive migration and release boundary
 
 Migration: `be/compass/good_moral/migrations/0003_receipt_verification.py`, after verified GM-OR-1 `0002_receipt_identity_and_history`. Registered in `canonical_migrations.json`; baseline hashes and both historical Good Moral migration files stay unchanged.

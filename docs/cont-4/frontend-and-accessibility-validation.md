@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Frontend confidentiality and accessibility
 
 Routes and generated contracts PASS the focused checks. Existing coverage UI is preserved; this slice adds browser evidence only. Source inspected: coverage page/request/detail, `protected-record.tsx`, `use-coverage-privacy.ts`, `coverage-safety.ts`, portal session ownership/revalidation, shared consequential dialogs, Query transport and `public/sw.js`.

@@ -1,4 +1,4 @@
-"""Integrated CONT-4 boundaries; synthetic evidence is never institutional approval."""
+"""Integrated CONT-4 boundaries; synthetic evidence is not institutional evidence."""
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta

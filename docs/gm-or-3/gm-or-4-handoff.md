@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-4 integrated validation and release handoff
 
 GM-OR-3 supplies the existing-page inspection workflow and Student guidance on the merged GM-OR-1/2 backend. It leaves DORMANT runtime behavior, the unavailable approved-fee provider and absent real inspector grants unchanged. This is engineering readiness for integrated validation, not approval to activate.

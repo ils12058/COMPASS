@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Executed validation
 
 Verified base: `7afd4a41fe0a02b9723b5b4d22036beaef86f514` on `origin/integration/ux15-modernization`, fetched again before publication. Final implementation SHA and current hosted checks are recorded on the PR. Tests used only a dedicated temporary loopback PostgreSQL **17.11** cluster, dedicated Redis instance and synthetic users/records/policies/keys. Actual migrations installed into the empty scratch database; pytest did not use SQLite, mocked database locks or `--nomigrations`. No deployed database, real professional record, live key, SSH or deployment was accessed.

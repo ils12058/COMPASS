@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Future staging sequence — BLOCKED, no deployment performed
 
 Repository-owned workflows, deployment planner, local/staging Compose, settings, runtime inventory and CONT-1B/3 runbooks were inspected. No SSH, Droplet connection, DigitalOcean secret/API access, remote database probe, deployed data classification or live source-file check occurred. The current staging filesystem/mount state is unknown. A repository contract check does not establish the actual environment satisfies it.

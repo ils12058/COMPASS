@@ -39,10 +39,9 @@ function fixture({ item = receiptItem(), account = inspector, behavior = 'succes
           await reply({ error: { code: 'good_moral_conflict', message: diagnosis } }, 409); return true;
         }
         if (behavior === 'already') { verified('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'); await reply({ error: { code: 'good_moral_receipt_already_verified', message: diagnosis } }, 409); return true; }
-        if (['conflict', 'policy', 'cancelled', 'revoked', 'deactivated', 'account-changed'].includes(behavior)) {
+        if (['conflict', 'cancelled', 'revoked', 'deactivated', 'account-changed'].includes(behavior)) {
           let code = 'permission_denied'; let status = 403;
           if (behavior === 'conflict') code = 'good_moral_receipt_conflict';
-          if (behavior === 'policy') { code = 'good_moral_receipt_policy_unresolved'; state.item.receipt_inspection = { ...state.item.receipt_inspection, status: 'POLICY_UNAVAILABLE', can_verify: false, expected_amount: null, fee_status: null, currency: null, blocker: code }; }
           if (behavior === 'cancelled') { code = 'good_moral_conflict'; state.item.status = 'CANCELLED'; state.item.receipt_inspection.can_verify = false; state.item.actions.can_correct = false; state.item.actions.can_prepare = false; }
           if (!['revoked', 'deactivated', 'account-changed'].includes(behavior)) status = 409;
           else state.item.receipt_inspection.can_verify = false;
@@ -92,7 +91,7 @@ async function submitInspection(page, name) {
   await dialog.getByRole('button', { name: 'Verify receipt', exact: true }).click();
 }
 
-for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['POLICY_UNAVAILABLE', 'Fee needs confirmation'], ['DISPUTED', 'Receipt disputed']]) {
+for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Receipt incomplete'], ['DISPUTED', 'Receipt disputed']]) {
   const item = receiptItem(state); const f = fixture({ item });
   await check(`blocker-${state}`, route, f.options, async page => {
     await shown(page.getByText(label, { exact: true }));
@@ -103,10 +102,10 @@ for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Re
 }
 {
   const item = receiptItem('INCOMPLETE'); item.official_receipt_amount = '75.00'; item.receipt_inspection.blocker = 'good_moral_receipt_fee_mismatch';
-  const f = fixture({ item }); await check('fee-mismatch-keeps-actual-and-provisional-expected', route, f.options, async page => {
+  const f = fixture({ item }); await check('fee-mismatch-keeps-actual-and-expected', route, f.options, async page => {
     await shown(page.getByText(/keep the amount printed/)); const region = page.getByRole('region', { name: 'Official Receipt', exact: true });
     assert.ok((await region.innerText()).includes('75.00'));
-    await shown(page.getByText('Team-reported provisional expected amount', { exact: true })); await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
+    await shown(page.getByText('Expected amount', { exact: true })); await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true }));
   });
 }
 {
@@ -132,7 +131,7 @@ for (const [state, label] of [['MISSING', 'Missing receipt'], ['INCOMPLETE', 'Re
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
   });
 }
-for (const behavior of ['stale', 'already', 'conflict', 'policy', 'cancelled', 'revoked', 'deactivated', 'account-changed', 'late-invalidated']) {
+for (const behavior of ['stale', 'already', 'conflict', 'cancelled', 'revoked', 'deactivated', 'account-changed', 'late-invalidated']) {
   const f = fixture({ behavior });
   await check(`inspection-recovery-${behavior}`, route, f.options, async page => {
     await submitInspection(page); await f.begun;

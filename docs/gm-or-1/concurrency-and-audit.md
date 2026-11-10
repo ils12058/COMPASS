@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Concurrency, operation replay and Audit
 
 Active receipt corrections run inside the existing `update_request` transaction. They lock the request, freshly validate the actor's active GCO role/capability and Audit attribution, validate exact request/fact-revision review tokens, then lock existing identities in canonical-key order before revision rows. Existing assisted creation/issuance Student locks remain unchanged; receipt correction introduces no Student lock. The database control shared lock prevents an import transition from overtaking in-flight source writes.

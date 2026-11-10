@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Encryption, migration and clean cutover
 
 This is a future execution specification. CONT-0 did not read live secrets, connect to a database, execute migrations, provision keys, inspect records or change deployment configuration.

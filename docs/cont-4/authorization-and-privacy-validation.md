@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Actor, resource and time validation
 
 Result: implemented boundaries PASS under isolated synthetic policies. Production disclosure is BLOCKED because all genuine providers and institutional approvals are absent. UUIDs, capability overrides, ACTIVE metadata, client state and evidence-shaped strings independently establish no authority.

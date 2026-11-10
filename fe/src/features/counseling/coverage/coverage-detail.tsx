@@ -26,7 +26,7 @@ function CoverageDetailForAccount({ grantId }: {
     const config = api.useCounselingCoverageGetConfiguration({ query: { enabled: allowed, retry: false, gcTime: 0, queryKey: [...api.getCounselingCoverageGetConfigurationQueryKey(), user.id] } });
     const grant = grantQuery.data?.data;
     const [selected, setSelected] = useState<string | null>(null);
-    const validUntil = grant && config.data ? new Date(Math.min(Date.parse(grant.expires_at), Date.parse(config.data.data.valid_until))).toISOString() : grant?.expires_at;
+    const validUntil = grant?.expires_at;
     useServerBoundary({ boundary: validUntil, serverDate: grantQuery.data?.headers.date, receivedAt: grantQuery.dataUpdatedAt, onBoundary: privacy.clear });
     const remaining = grant ? boundaryDelay(validUntil, grantQuery.data?.headers.date, grantQuery.dataUpdatedAt) : null;
     const confirmed = Boolean(grant && !grantQuery.isError && config.isSuccess && !privacy.blocked && (remaining ?? 0) > 0 && ["ACTIVE", "SCHEDULED", "PENDING"].includes(grant.effective_status));

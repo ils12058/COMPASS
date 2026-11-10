@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Fee and physical-inspection evidence
 
 PHP 80.00 for each F4/F6 certificate is **team-reported practice**, not a signed institutional schedule. No real effective date, waiver, excess payment treatment, refund rule or charging reference date is supplied. Operational `resolve_approved_fee` still returns `None`; ACTIVE without an applicable approved decision refuses inspection, preparation and new issuance. Neither an environment variable, a client flag, an API field, IT override nor Head designation supplies that approval.

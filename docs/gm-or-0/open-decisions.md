@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Open decisions and approvals
 
 This file separates evidence from policy. **TEAM-REPORTED OPERATIONAL PRACTICE** comes only from the project team's audit request. **PROPOSED DESIGN** is an engineering recommendation. Every policy decision below remains **INSTITUTIONAL CONFIRMATION REQUIRED** until supported by the appropriate UCN/GCO authority; no signed policy was supplied or discovered in this code audit.

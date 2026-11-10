@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Encryption contract
 
 `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS` is required. The standard file-backed convention is `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS_FILE`; source secret `student_session_summary_encryption_keys` is mounted through the repository inventory for applicable web/worker/Beat services. Configuration parsing preserves key order: first encrypts, all decrypt. Missing, malformed, repeated or empty entries fail safely. There is no old setting fallback. Fresh databases require no previous summary secret.

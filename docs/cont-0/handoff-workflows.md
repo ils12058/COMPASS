@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Proposed handoff, absence and user experience
 
 No workflow described here exists yet. [Authorization](continuity-authorization-design.md) and [institutional decisions](institutional-decisions.md) are prerequisites. A Handoff Summary is optional for coverage activation; original Counselor availability is not a technical prerequisite.

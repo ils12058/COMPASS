@@ -30,7 +30,7 @@ function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', i
   item = { ...item,
     official_receipt_amount: '80.00',
     receipt_identity: { revision_id: '11111111-1111-4111-8111-111111111117', identity_state: 'BOUND', history: [] },
-    receipt_inspection: { status: 'VERIFIED', blocker: null, can_verify: false, verification_id: '11111111-1111-4111-8111-111111111118', verified_by_id: counselor.id, verified_at: preparedVersion, method: 'PHYSICAL_OR_INSPECTION', expected_amount: '80.00', fee_status: 'PROVISIONAL', currency: 'PHP' },
+    receipt_inspection: { status: 'VERIFIED', blocker: null, can_verify: false, verification_id: '11111111-1111-4111-8111-111111111118', verified_by_id: counselor.id, verified_at: preparedVersion, method: 'PHYSICAL_OR_INSPECTION', expected_amount: '80.00', currency: 'PHP' },
   };
   let attempts = 0;
   let issuedAttempt = false;

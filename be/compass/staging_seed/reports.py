@@ -299,8 +299,8 @@ def _accounts_csv(result) -> str:
 
 GUIDE_NOTES = {
     "Faculty": (
-        "Five Faculty have active home Colleges (CCMS, CAS, CBPA, COED, COENG), digital Referrals "
-        "and received notices through the product provisional policy. Each fresh-submit scenario "
+        "Five Faculty have active home Colleges (CCMS, CAS, CBPA, COED, COENG). Faculty digital "
+        "Referrals and received notices are active. Each fresh-submit scenario "
         "uses its named background Student, separate from its received submission and from every "
         "participant Student. Own submissions disclose only the product Faculty projection."
     ),

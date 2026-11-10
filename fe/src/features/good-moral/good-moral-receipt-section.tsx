@@ -27,7 +27,7 @@ function ReceiptFacts({ item, review = false }: { item: GoodMoralOperationalDeta
     <GoodMoralField label="Receipt number" value={item.official_receipt_number} />
     <GoodMoralField label="Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
     <GoodMoralField label="Actual amount" value={receiptAmount(item.official_receipt_amount, fee?.currency)} />
-    {fee?.currency === "PHP" && fee.expected_amount !== null ? <GoodMoralField label={fee.fee_status === "PROVISIONAL" ? "Team-reported provisional expected amount" : "Approved expected amount"} value={receiptAmount(fee.expected_amount, fee.currency)} /> : null}
+    {fee?.currency === "PHP" && fee.expected_amount !== null ? <GoodMoralField label="Expected amount" value={receiptAmount(fee.expected_amount, fee.currency)} /> : null}
   </dl>;
 }
 
@@ -47,7 +47,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
   return <>
     <GoodMoralSection title="Official Receipt" labelledBy="good-moral-receipt-heading" actions={<ContextHelp title="Official Receipt inspection" sections={[
       { heading: "Record, then inspect", content: <p>Save the details printed on the receipt using Correct certificate details. Verification is a separate personal inspection of the physical receipt; it does not confirm Cashier records or cleared funds.</p> },
-      { heading: "Fees and corrections", content: <p>The provisional fee is PHP 80.00 for both certificate types. Correcting receipt details requires another inspection; other certificate corrections keep an unchanged receipt inspection but require preparation again.</p> },
+      { heading: "Fees and corrections", content: <p>The fee is PHP 80.00 for both certificate types. Correcting receipt details requires another inspection; other certificate corrections keep an unchanged receipt inspection but require preparation again.</p> },
     ]} />}>
       <ReceiptFacts item={item} />
       <div className="mt-5 space-y-2 border-t border-border pt-4">

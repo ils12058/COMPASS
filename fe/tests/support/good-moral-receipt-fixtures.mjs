@@ -10,7 +10,7 @@ export const inspector = { ...counselor, id: inspectorId, capabilities: [...coun
 export const session = account => ({ user: account, session: { id: `session-${account.id}`, expires_at: '2099-01-01T00:00:00Z', is_current: true } });
 export function receiptItem(status = 'NEEDS_VERIFICATION') {
   const verified = status === 'VERIFIED';
-  const blocker = { MISSING: 'missing', INCOMPLETE: 'incomplete', NEEDS_VERIFICATION: 'unverified', DISPUTED: 'conflict', POLICY_UNAVAILABLE: 'policy_unresolved' }[status];
+  const blocker = { MISSING: 'missing', INCOMPLETE: 'incomplete', NEEDS_VERIFICATION: 'unverified', DISPUTED: 'conflict' }[status];
   return { ...certificate('REQUESTED', 'GRADUATE'),
     initiation_origin: 'STUDENT_SELF', initiated_by: null,
     exit_interview_id: null, exit_interview_submitted_at: null, graduation_opportunity_id: null,
@@ -24,7 +24,7 @@ export function receiptItem(status = 'NEEDS_VERIFICATION') {
     receipt_inspection: { status, blocker: blocker ? `good_moral_receipt_${blocker}` : null,
       can_verify: status === 'NEEDS_VERIFICATION',
       verification_id: verified ? verificationId : null, verified_by_id: verified ? inspectorId : null, verified_at: verified ? '2026-10-24T01:01:00Z' : null,
-      method: verified ? 'PHYSICAL_OR_INSPECTION' : null, fee_status: status === 'POLICY_UNAVAILABLE' ? null : 'PROVISIONAL', expected_amount: status === 'POLICY_UNAVAILABLE' ? null : '80.00', currency: status === 'POLICY_UNAVAILABLE' ? null : 'PHP' },
+      method: verified ? 'PHYSICAL_OR_INSPECTION' : null, expected_amount: '80.00', currency: 'PHP' },
     receipt_mutation_result: null, receipt_verification_result: null,
   };
 }

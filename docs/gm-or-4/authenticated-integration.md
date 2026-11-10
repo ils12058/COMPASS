@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Authenticated integration
 
 Evidence labels: **REAL-BROWSER** = Chromium→actual Next production build→Django live HTTP server→disposable PostgreSQL; **API-PG** = Django HTTP test client using persisted opaque session/real CSRF→PostgreSQL; **PG** = actual database/service/independent connections; **MOCK-UI** = intercepted browser contract; **STATIC** = source/contract/type checks; **MANUAL** = human observation. These labels are not interchangeable.

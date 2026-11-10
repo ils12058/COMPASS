@@ -70,7 +70,7 @@ def run():
             raise KeyboardInterrupt
 
         signal.signal(signal.SIGTERM, stop)
-        print("FAC-3 isolated synthetic approved-policy server ready on loopback:8033", flush=True)
+        print("FAC-3 isolated synthetic Faculty server ready on loopback:8033", flush=True)
         call_command("runserver", "127.0.0.1:8033", use_reloader=False, verbosity=0)
     finally:
         patch.undo()

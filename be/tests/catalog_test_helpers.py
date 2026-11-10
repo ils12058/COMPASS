@@ -47,7 +47,7 @@ def authority(user, issued):
         actor=user,
         actor_session=issued.session,
         context=AuditContext.user(user),
-        basis="Synthetic engineering test; no institutional approval",
+        basis="Synthetic engineering test; not institutional evidence",
     )
 
 

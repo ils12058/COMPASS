@@ -1,3 +1,5 @@
+> 2026-11-10: See [ADR-119](ADR-119-remove-provisional-policy-layer.md) for removal of the policy layer and reset-only delivery. This document remains historical.
+
 # ADR-116: Reset-only canonical baseline and COMPASS Staging Dataset v1
 
 - Status: Accepted. Owner approved promotion and completed COMPASS-LIVE-RESET-1 on 2026-10-17.

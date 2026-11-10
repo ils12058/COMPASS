@@ -117,7 +117,7 @@ export function senderLabel(sender: GuidancePerson, currentUserId: string): stri
   return sender.id === currentUserId ? "You" : personName(sender, "Unnamed participant");
 }
 
-// Provisional wording pending GCO copy (D-GMSG-15). Engineering default, not institutional approval.
+// Guidance Message status wording (D-GMSG-15).
 export const COUNSELOR_DIRECT_NOTICE =
   "Counselor conversations are for coordination between Counselors. Do not include confidential Student case details.";
 

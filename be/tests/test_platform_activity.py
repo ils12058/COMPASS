@@ -161,7 +161,7 @@ def test_platform_activity_is_strict_curated_projection_not_global_audit_browser
 
 
 @pytest.mark.django_db
-def test_platform_activity_presenters_render_safe_code_owned_descriptions():
+def test_platform_activity_presenters_render_safe_canonical_descriptions():
     sync_policy()
     admin = make_user("presenter-admin@example.edu")
     actor = make_user("presenter-actor@example.edu")

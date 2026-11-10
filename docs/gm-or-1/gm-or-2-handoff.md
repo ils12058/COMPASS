@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-2 handoff
 
 GM-OR-1 provides identity reservations, immutable revisions, exact review tokens, durable correction replay, source observations and a database writer boundary. It deliberately provides **no physical inspection attestation, verification capability, PHP 80 comparison, mandatory receipt-completeness gate, payment state or Registrar tracking**.

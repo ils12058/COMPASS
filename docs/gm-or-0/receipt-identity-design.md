@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Receipt identity, history and correction design
 
 **PROPOSED DESIGN** throughout, grounded in the [verified current behavior](current-state-audit.md). Names below are handoff names, not existing models or implemented migrations.

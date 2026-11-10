@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Expected-fee policy
 
 **Team-reported practice:** PHP **80.00** for CURRENT_STUDENT/F4 and GRADUATE/F6, one distinct OR per certificate. Constants retain this report as Decimal/currency/variants. It is not a signed schedule and has no invented effective date.

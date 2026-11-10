@@ -122,7 +122,7 @@ def test_notification_model_has_uuid_identity_safe_source_target_and_durable_ded
 
 
 @pytest.mark.django_db
-def test_optional_email_preference_defaults_true_and_policy_classes_are_code_owned():
+def test_optional_email_preference_defaults_true_and_policy_classes_are_canonical():
     user = make_user("preference-default@example.edu")
 
     assert NotificationPreference.objects.filter(user=user).exists() is False

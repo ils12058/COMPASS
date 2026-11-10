@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Current-state audit
 
 **VERIFIED CODE FACT** throughout this file unless explicitly labeled otherwise. All source links are pinned to inspected integration commit `80b719eb7fbeb86646228b4c013314e8e909876a`. Repository evidence does not establish deployed data or institutional policy.

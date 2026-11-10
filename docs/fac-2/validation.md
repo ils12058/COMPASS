@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-2 validation and review evidence
 
 Validation date: 2026-10-31. Base is FAC-1 merge `1778359f`; target is

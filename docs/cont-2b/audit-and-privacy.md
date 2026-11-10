@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Read Audit and disclosure privacy
 
 The new bounded action is `counseling.continuity.source_read`, registered in the existing Audit action module. Every successful selected Encounter/Evaluation preparation appends one synchronous `record_event` in the same durable transaction. Target is the Grant; actor must match the authenticated receiving Counselor. No automatic retry or notification event is added.

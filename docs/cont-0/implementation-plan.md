@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Implementation slices and acceptance gates
 
 This plan is proposed work, not completed features. Sequence: **CONT-1A → CONT-1B → CONT-2A → CONT-2B → CONT-3 → CONT-4**. Governance work can proceed alongside early slices. Keep one cohesive PR per slice unless source adapters genuinely require separate domain review; do not create many ceremonial microslices. Every PR targets the agreed integration branch and requires explicit merge/deployment authorization independently.

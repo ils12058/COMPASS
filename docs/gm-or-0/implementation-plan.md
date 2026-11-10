@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-1 through GM-OR-4 handoff
 
 **PROPOSED DESIGN.** These are separate future PRs against the agreed integration lineage. GM-OR-0 changes documentation only. Neither this plan nor audit approval authorizes live migration, deployment, exceptional transfer or automatic merge.

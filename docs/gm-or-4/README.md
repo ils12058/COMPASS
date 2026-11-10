@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-4 — Final integrated validation
 
 Date: 2026-10-24, Asia/Manila. Verified/fetched integration baseline: `8872db0a7325239ccab6d6f0ca3f68ffd312de8c`; no intervening commits. Isolated branch: `audit/gm-or-4-final-validation`. See [validation](validation.md) and the [distinct-case evidence](evidence/case-inventory.json) for the tested candidate, commands and results. Final PR HEAD may add documentation only; it is identified in the PR handoff rather than a self-referential commit hash.

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Executed validation and limits
 
 Verified starting integration SHA `dedf1a649c8adb4f8a5508a513d8bf0dd994fa1d`. Execution used the isolated CONT-3 worktree, a dedicated temporary loopback PostgreSQL 17.11 cluster and Redis, ephemeral synthetic keys/users/records and explicit synthetic policy providers. Real migrations installed into an empty scratch database; no SQLite, mocked database locks, `--nomigrations`, live data or deployed environment was used. Final implementation SHA and actual hosted checks are on the PR.

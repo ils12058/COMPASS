@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-4 — Final continuity security and integration validation
 
 Assessment date: 2026-10-24, Asia/Manila. Repository: `ils12058/COMPASS`.

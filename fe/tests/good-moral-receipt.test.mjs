@@ -35,11 +35,12 @@ test('metadata history is a disclosure and never invents old receipt contents', 
   const html = render(receiptItem()); assert.match(html, /<details/); assert.match(html, /Receipt change history/);
   assert.match(html, /Changes to this receipt, newest first/); assert.match(html, /Recorder account reference/);
 });
-test('expected fee displays its backend provisional status', () => {
-  const item = receiptItem('POLICY_UNAVAILABLE'); assert.doesNotMatch(render(item), /Approved expected amount/);
-  assert.match(render(receiptItem()), /Team-reported provisional expected amount/);
-  const approved = receiptItem(); approved.receipt_inspection.fee_status = 'APPROVED';
-  assert.match(render(approved), /Approved expected amount/);
+test('expected fee displays the retained backend amount and currency for both variants', () => {
+  for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) {
+    const item = receiptItem(); item.variant = variant;
+    assert.match(render(item), /Expected amount/);
+    assert.match(render(item), /80\.00/);
+  }
   assert.equal(receiptAmount('9999999999.99', 'PHP').replace(/[^0-9.]/g, ''), '9999999999.99');
 });
 test('fee mismatch gives a review blocker without suggesting editing away the printed amount', () => assert.match(receiptBlockerMessage('good_moral_receipt_fee_mismatch'), /keep the amount printed/));

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Future institutional UAT package
 
 **Every scenario below is NOT EXECUTED institutionally.** Automated synthetic evidence does not mark these scripts passed. Use only an institutionally approved UAT environment/accounts/data and separately authorized policies/grants/cutover. No deployment or real receipt inspection is authorized by this document.

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-2A — Counselor case continuity authorization foundation
 
 Repository `ils12058/COMPASS`; starting integration SHA `1cdad9dd9378b1307140ba92a1023ed0e68a720f`, fetched and verified 2026-10-23. Isolated managed worktree `cont-2a-case-continuity-grants/COMPASS`, branch `feature/cont-2a-case-continuity-grants`; PR target `integration/ux15-modernization`. Implementation SHA and publication state are recorded on the PR.

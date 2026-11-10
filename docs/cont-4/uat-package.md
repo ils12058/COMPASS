@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Institutional UAT package — NOT EXECUTED
 
 No stakeholder session took place. No participant names, credentials, signatories or approval evidence are invented. Automated synthetic browser/backend tests are engineering evidence only. Use this package after separate authorization of the sandbox, participant scope, policy evidence, synthetic accounts and key custody. Real professional records must not be used as convenient test fixtures.

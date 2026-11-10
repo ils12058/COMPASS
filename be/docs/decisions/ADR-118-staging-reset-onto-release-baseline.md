@@ -1,3 +1,5 @@
+> 2026-11-10: See [ADR-119](ADR-119-remove-provisional-policy-layer.md) for removal of the policy layer and reset-only delivery. This document remains historical.
+
 # ADR-118: Staging reset onto the release baseline
 
 - Status: Accepted provisional Phase E owner decisions; implementation does not authorize a live run.

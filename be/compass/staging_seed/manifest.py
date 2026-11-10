@@ -1239,7 +1239,7 @@ SCENARIOS: tuple[Scenario, ...] = (
         "Data Protection Officer",
         "dpo",
         "/portal/privacy/retention",
-        "Code-owned retention register with three NOT_ADOPTED categories.",
+        "Retention register with three NOT_ADOPTED categories.",
         "Open Retention Policies.",
         "Three categories show 'Not adopted' with no period; no rule, case or hold controls exist.",
         mutating=False,

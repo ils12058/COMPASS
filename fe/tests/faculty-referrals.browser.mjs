@@ -38,14 +38,14 @@ function fixture(options = {}) {
         if (state.submitError === 401) state.sessionEnded = true;
         if (state.changeRole) state.account = user("STUDENT");
         if (state.submitError === 403) state.available = false;
-        await reply({ error: { code: state.submitError === 403 ? "faculty_referral_submission_policy_unconfirmed" : "referral_creation_conflict", message: "Synthetic denial" } }, state.submitError); return true;
+        await reply({ error: { code: state.submitError === 403 ? "faculty_referral_ineligible" : "referral_creation_conflict", message: "Synthetic denial" } }, state.submitError); return true;
       }
       await reply(record, state.uncertain ? 200 : 201); return true;
     }
     if (pathname === api && method === "GET") {
       if (state.beforeList) await state.beforeList();
       const page = Number(url.searchParams.get("page") ?? 1);
-      if (state.listError) { await reply({ error: { code: "faculty_referral_policy_unconfirmed", message: "Synthetic read denial" } }, state.listError); return true; }
+      if (state.listError) { await reply({ error: { code: "permission_denied", message: "Synthetic read denial" } }, state.listError); return true; }
       await reply({ items: page > 1 || state.empty ? [] : [record], page, page_size: Number(url.searchParams.get("page_size") ?? 20), has_next: !!state.pages && page === 1 }); return true;
     }
     if (pathname === `${api}/${recordId}`) {

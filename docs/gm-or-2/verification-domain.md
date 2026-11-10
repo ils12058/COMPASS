@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Verification domain
 
 `GoodMoralReceiptVerification` in `be/compass/good_moral/models.py` holds UUID, protected exact assignment FK, protected verifier FK, server-controlled aware `verified_at`, sole method `PHYSICAL_OR_INSPECTION`, policy ID/version, Decimal expected amount, PHP currency, structured fee-decision snapshot, globally unique operation UUID, SHA-256 intent binding and one-way attributable invalidation. There is no request-level mutable verified flag.

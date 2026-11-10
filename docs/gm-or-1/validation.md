@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Validation
 
 Exact starting integration commit: **`7f0c75e970f26cc832158f4609295f0dd40938c5`**. Date: 2026-10-24, Asia/Manila. Work is isolated on `feature/gm-or-1-receipt-identity-history`.

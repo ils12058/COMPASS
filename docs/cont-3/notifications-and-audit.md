@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Notices, invalidation and Audit
 
 Existing CONT-2A actions remain the request/approval/decline/cancel/revoke evidence. New registered actions are `counseling.continuity.selection_read` and `counseling.handoff.draft_created/draft_updated/submitted/read`. The existing synchronous Audit service records actor, resource UUID, Grant/Student/author/recipient UUIDs, lifecycle/version and opaque policy/evidence reference. Source scores, narratives, Handoff text, ciphertext, keys, credentials and raw payloads are absent. Denied guessed sources do not produce successful disclosure events.

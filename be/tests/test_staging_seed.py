@@ -831,7 +831,8 @@ class SeededDatasetTests(TestCase):
             if request.status == "ISSUED":
                 inspection = request.issued_receipt_verification
                 assert inspection.assignment_id == request.issued_receipt_assignment_id
-                assert inspection.fee_decision["status"] == "PROVISIONAL"
+                assert inspection.expected_amount == Decimal("80.00")
+                assert inspection.currency == "PHP"
                 assert inspection.verified_at <= request.issued_at
         thread = GuidanceThread.objects.get(student=dataset_user("ar_14"))
         assert thread.kind == "COUNSELING" and thread.counselor_id == dataset_user("counselor_a").pk

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FAC-4 implementation decisions — before schema changes
 
 Base verified: integration `e10671e2`, containing FAC-1 #348, FAC-2 #349 and FAC-3

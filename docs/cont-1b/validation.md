@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Executed validation and limits
 
 Baseline: `0ba5024a8468b3e27b2b1b3723cf431bf0390f61`. All backend data is synthetic in a newly created, dedicated local PostgreSQL 17 cluster and Redis instance, on temporary loopback ports. Python 3.13.12, Django 6.1.1. The ordinary test database installs the full real migration graph. Upgrade tests create/drop additional isolated databases and migrate historical baseline state forward; no deployed database or key is involved. No worker or delivery provider is started.

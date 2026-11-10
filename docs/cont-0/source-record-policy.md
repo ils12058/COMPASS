@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Proposed continuity source disclosure policy
 
 All new permissions here are **proposed**, gated by GCO/privacy approval and CONT-2B domain adapters. Current access remains the [actual matrix](confidential-access-matrix.md). “Allowed” means eligible for the proposed grant design, never a currently implemented entitlement.

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-2B handoff and blockers
 
 CONT-2A provides persisted intent/decision metadata and technical eligibility. No professional source is readable through a Grant. The source enum's finalized Evaluation projection is a prospective **reference**, not an implemented serializer/decryptor.

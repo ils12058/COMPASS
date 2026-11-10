@@ -283,7 +283,7 @@ export function ThreadStatusControl({
   const resolved = thread.status === "RESOLVED";
   const inquiry = thread.kind === "FACULTY_INQUIRY";
   const referral = thread.kind === "REFERRAL_COORDINATION";
-  // A voided Referral keeps its history readable but freezes status changes (provisional).
+  // A voided Referral keeps its history readable but freezes status changes.
   if (referral && thread.relationship_referral_voided === true) return null;
   const noun = inquiry ? "inquiry" : "conversation";
   const target = inquiry

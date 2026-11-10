@@ -372,7 +372,7 @@ REQUESTER_KINDS = frozenset(
 PAIR_KINDS = frozenset(
     {ThreadKind.COUNSELING, ThreadKind.COUNSELOR_DIRECT, ThreadKind.COUNSELOR_CASE_COORDINATION}
 )
-# D-GMSG-04 (provisional engineering default, not GCO/DPO-approved): Office staff see the
+# D-GMSG-04: Office staff see the
 # requester's personal Seen only in a Student Office thread. Faculty inquiry and Referral
 # coordination withhold it until D-GMSG-03 and D-GMSG-22 are decided.
 REQUESTER_RECEIPT_KINDS = frozenset({ThreadKind.OFFICE})

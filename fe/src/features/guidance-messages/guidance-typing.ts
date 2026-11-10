@@ -10,7 +10,7 @@ import { guidanceMessagesSignalTyping } from "@/lib/api/generated/guidance-messa
 // every few seconds while the draft keeps changing; the backend sends the other side a content-free
 // `messages.typing_changed {thread_id}` hint. Nothing about the draft ever leaves the browser, and
 // the receiver expires the indicator itself, so a lost "stopped" can never leave it stuck.
-// Timings are provisional engineering defaults (D-GMSG-13), not GCO-approved values.
+// Typing hint timings (D-GMSG-13).
 
 /** The writer sends at most one signal per thread in this interval (the backend allows one per 3 s). */
 export const TYPING_SIGNAL_INTERVAL_MS = 3_500;

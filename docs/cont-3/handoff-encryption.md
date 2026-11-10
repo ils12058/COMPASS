@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Handoff encryption and key custody
 
 The dedicated ordered ring is `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS`; protected-file contract `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE`; source `counselor_handoff_summary_encryption_keys`. The first key encrypts, all configured keys decrypt. `handoff_content.py` uses existing `confidential_data.crypto` authenticated versioned JSON/Fernet mechanics, not a generic messaging adapter. Schema version 1 binds Handoff UUID, Grant UUID, Student UUID, author UUID and receiving-Counselor UUID. Payload is exactly `{content}`. Every read validates exact bindings/payload/text; submitted empty bodies deny. Student Summary and Routine tokens cannot be accepted as Handoffs.

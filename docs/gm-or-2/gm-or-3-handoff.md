@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-3 handoff
 
 Backend contract: `contracts/openapi.json`. Generate Orval; do not hand-edit or commit ignored clients. No full receipt interface is implemented here. Existing correction drafts, preparation pages, PDF preview/download and printing remain.

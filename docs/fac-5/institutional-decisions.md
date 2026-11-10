@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Institutional review packet — FAC-D1 through FAC-D10
 
 **Status: proposed rules for review; every institutional approval remains pending.**

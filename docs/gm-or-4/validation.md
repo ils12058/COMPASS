@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-4 validation record
 
 Date: 2026-10-24 Asia/Manila. Exact fetched base: `8872db0a7325239ccab6d6f0ca3f68ffd312de8c`; no intervening changes. Implementation/test candidate: `9ab9cb414c41d886e6b3d78d70a5c2213ba033e6`. Original checkout stays on staging; work occurred only in the managed `gm-or-4-final-validation/COMPASS` worktree on `audit/gm-or-4-final-validation`.

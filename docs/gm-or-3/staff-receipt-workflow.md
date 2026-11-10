@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Staff receipt workflow
 
 Use the existing Good Moral queue and operational request detail. No additional navigation, receipt dashboard, payment workspace or verification wizard is introduced. `good-moral-counselor-detail.tsx` hosts the new `GoodMoralReceiptSection` next to existing request actions and preparation/issuance sections.

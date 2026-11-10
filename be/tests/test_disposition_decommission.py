@@ -2,7 +2,7 @@
 
 The reset-only baseline removes the retired ADR-072 ledger (rules, cases, holds), its tombstone
 tasks, fallback services and preflight command. These tests prove the absence, and that the
-surviving canonical boundaries still hold: code-owned oversight for the DPO and the
+surviving canonical boundaries still hold: canonical oversight for the DPO and the
 E-Counseling disposal and unknown-room fences. All data is synthetic; nothing exercises a
 destructive path.
 """

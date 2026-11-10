@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Institutional decision register
 
 All decisions are **OPEN / NOT APPROVED in this evidence package**. Offices below are proposed responsible authorities to confirm, not invented named approvers, signatures or decision dates. Earlier engineering merges and team-reported practice are not institutional sign-off. Missing authority blocks the stated operational use even if synthetic tests pass.

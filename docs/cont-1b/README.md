@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-1B — Student Session Summary contract cutover
 
 Starting integration SHA: `0ba5024a8468b3e27b2b1b3723cf431bf0390f61`. Branch `feature/cont-1b-student-session-summary`, isolated managed worktree. Target: `integration/ux15-modernization`. This implements the [CONT-0 plan](../cont-0/README.md) after [CONT-1A](../cont-1a/README.md); those historical records remain unchanged.

@@ -1,3 +1,5 @@
+> 2026-11-10: See [ADR-119](ADR-119-remove-provisional-policy-layer.md) for removal of the policy layer and reset-only delivery. This document remains historical.
+
 # ADR-025: Counseling Shared Summary
 
 > Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.

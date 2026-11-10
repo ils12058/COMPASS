@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Validation evidence
 
 Date: 2026-10-24, Asia/Manila. Verified base and final pre-PR integration fetch: **`09c7fd82fb1d77cdc1f47d9435d122a2a853ca56`**. Worktree `gm-or-3-receipt-experience`, branch `feature/gm-or-3-receipt-experience`. Original checkout, other worktrees, staging and main were untouched.

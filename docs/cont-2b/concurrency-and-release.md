@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Concurrency and content-release boundary
 
 The source-read coordinator uses an outermost **durable** PostgreSQL transaction. It cannot return prepared plaintext into an uncommitted outer transaction. PostgreSQL READ COMMITTED is required explicitly; unsupported coordination/isolation fails closed. A transaction-local one-second lock timeout bounds intentionally waiting locks and Audit lock waits; source/authority conflicts do not retry automatically.

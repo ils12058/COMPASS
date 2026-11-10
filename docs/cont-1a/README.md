@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # CONT-1A — Student-facing summary confidentiality correction
 
 Implementation record, 2026-10-23. Planning baseline: the merged [CONT-0 audit](../cont-0/README.md), especially its [summary audit](../cont-0/student-session-summary-audit.md), [access matrix](../cont-0/confidential-access-matrix.md), [threat model](../cont-0/threat-model.md), and [implementation plan](../cont-0/implementation-plan.md). Historical audit documents are unchanged.

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Executed validation and limits
 
 Executed 2026-10-23 from the isolated CONT-2A worktree at starting integration `1cdad9dd9378b1307140ba92a1023ed0e68a720f`. Fetch before publication confirmed that integration remained at that SHA. `staging` stayed `0a843dae20c01984d0fb9aa46d5eef34102ab386`; `main` stayed `1a9933535a0b8c0cbd7764c35f301e8402f48375`.

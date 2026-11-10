@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Identity and coordination evidence
 
 GM_OR_V1 rejects nonprintable/non-ASCII before trimming, trims only ordinary outer spaces, uppercases ASCII for a global C-collated key and preserves trimmed display. Leading zeroes, prefixes, punctuation and internal spaces remain significant. Maximum display/key length is 96; empty normalization cannot reserve an identity. Blank correction is an explicit absence revision. No Student/year/variant/status scope is added. Canonical identity tests cover accepted boundaries and invalid types/characters. Unsupported legacy observations remain exact quarantined facts.

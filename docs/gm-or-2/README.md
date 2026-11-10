@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # GM-OR-2 — Physical receipt inspection and guarded issuance
 
 Verified base: `integration/ux15-modernization` at `ef2ba91777ce75391876c36211b2cde83f02188f` (2026-10-24 Asia/Manila). Isolated branch: `feature/gm-or-2-receipt-verification`. Builds on merged GM-OR-0 and GM-OR-1; those historical documents and migrations are unchanged.

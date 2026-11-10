@@ -36,11 +36,11 @@ test("Referral validation preserves overlong content and identifies exact field 
   }
 });
 
-test("Policy denial, conflict and uncertain outcomes use safe actionable copy", () => {
-  for (const code of ["faculty_referral_lookup_policy_unconfirmed", "faculty_referral_submission_policy_unconfirmed", "faculty_referral_policy_unconfirmed"]) {
+test("Access denial, conflict and uncertain outcomes use safe actionable copy", () => {
+  for (const code of ["permission_denied", "faculty_referral_ineligible", "permission_denied"]) {
     const message = facultyReferralError(error(403, code), "submit");
     assert.match(message, /don't have access/);
-    assert.doesNotMatch(message, /Internal details|provider|policy_unconfirmed/);
+    assert.doesNotMatch(message, /Internal details|provider|permission_denied/);
   }
   assert.equal(uncertainSubmission(new TypeError("network")), true);
   assert.equal(uncertainSubmission(error(500, "unexpected")), true);

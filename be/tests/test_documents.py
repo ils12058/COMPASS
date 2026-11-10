@@ -381,7 +381,7 @@ def test_html_uses_static_branding_local_assets_and_autoescaping():
 
 
 @pytest.mark.django_db
-def test_code_owned_layout_can_omit_accreditation_footer_and_spec_rejects_unknown_paths():
+def test_canonical_layout_can_omit_accreditation_footer_and_spec_rejects_unknown_paths():
     html, spec = render_document_html(
         "foundation_test_no_footer",
         1,

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # FUP-2B + FUP-3A — next follow-up action and provisional Faculty Referral journey
 
 **Status: Provisional — pending GCO/FAC.**

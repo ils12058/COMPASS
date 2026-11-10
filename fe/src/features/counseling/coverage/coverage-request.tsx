@@ -42,7 +42,8 @@ export function CoverageRequest({ configuration, initialStudent, initialOriginal
     // Changing a selection page deliberately clears checked records: only visible exact references submit.
     const startsAt = institutionalDateTimeInputToISO(start), expiresAt = institutionalDateTimeInputToISO(end);
     const duration = startsAt && expiresAt ? Date.parse(expiresAt) - Date.parse(startsAt) : 0;
-    const valid = Boolean(student && original && receiver && ids.length && ids.length <= 32 && duration > 0 && duration <= configuration.maximum_duration_seconds * 1000 && options.isSuccess && !options.isFetching);
+    const advance = startsAt ? Date.parse(startsAt) - Date.parse(configuration.server_now) : 0;
+    const valid = Boolean(student && original && receiver && ids.length && ids.length <= 32 && advance <= configuration.maximum_advance_seconds * 1000 && duration > 0 && duration <= configuration.maximum_duration_seconds * 1000 && options.isSuccess && !options.isFetching);
     useUnsavedChangesGuard({ dirty: Boolean(start || end || receiver || ids.length) && !save.isSuccess, message: "Leave this unsaved coverage request?" });
     async function submit() {
         if (!valid || !startsAt || !expiresAt || !student || !original)
@@ -70,7 +71,7 @@ export function CoverageRequest({ configuration, initialStudent, initialOriginal
   </>}
   <div><Label htmlFor="coverage-reason">Coverage purpose</Label><Select id="coverage-reason" value={reason} onChange={e => setReason(e.target.value as ContinuityReason)}>{configuration.reason_categories.map(r => <option key={r} value={r}>{reasonLabels[r]}</option>)}</Select></div>
   <div className="grid gap-4 sm:grid-cols-2"><div><Label htmlFor="coverage-start">Starts (Philippine time)</Label><Input id="coverage-start" required type="datetime-local" value={start} onChange={e => setStart(e.target.value)}/></div><div><Label htmlFor="coverage-end">Expires (Philippine time)</Label><Input id="coverage-end" required type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}/></div></div>
-  {end && !valid ? <p role="status" className="text-sm text-muted">Select a recipient and at least one record. Expiry must follow the start, within the approved maximum of {configuration.maximum_duration_seconds / 3600} hours.</p> : null}
+  {end && !valid ? <p role="status" className="text-sm text-muted">Select a recipient and at least one record. Expiry must follow the start, within the maximum of {configuration.maximum_duration_seconds / 3600} hours.</p> : null}
   {notice ? <p role="alert">{notice}</p> : null}{save.error ? <CoverageError error={save.error}/> : null}<Button type="submit" disabled={!valid || save.isPending}>Review request</Button></> : null}
  </form><ConsequentialActionDialog open={review} onOpenChange={setReview} title="Request case coverage?" confirmLabel="Submit request" pendingLabel="Submitting…" pending={save.isPending} error={null} onConfirm={() => void submit()}><span className="block">Receiving Counselor: {options.data?.data.receivers.find(r => r.id === receiver)?.name}.</span><span className="block">Purpose: {reasonLabels[reason]}. Starts {startsAt ? formatCounselingDateTime(startsAt) : ""}.</span><span className="block">{ids.length} selected records, until {expiresAt ? formatCounselingDateTime(expiresAt) : ""}. Independent approval is required before selected-record access and case coordination begin.</span><ul className="mt-3 space-y-2">{rows.filter(r => ids.includes(r.source_id)).map(r => <li key={r.source_id} className="break-all text-xs">{r.resource_kind === "ENCOUNTER" ? "Counseling Encounter details" : "Finalized Evaluation"}: {r.source_id}</li>)}</ul></ConsequentialActionDialog></Panel>;
 }

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Confidential Counselor Handoff domain
 
 `counseling.CounselorHandoffSummary` is an independent professional resource. One protected OneToOne Grant, protected Student/author/receiving-Counselor references, UUID, ciphertext, DRAFT/SUBMITTED state, server submission time, positive optimistic version and creation/update timestamps. No Student publication field, audience switch or copied Evaluation store exists. Acknowledgment actor/time and correction histories are deferred until their procedures are approved.

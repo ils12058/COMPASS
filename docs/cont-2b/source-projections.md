@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Source adapters and frozen field inventories
 
 Each Grant selects exact IDs. The owning domain loads and checks one source; ordinary detail projections are not called and trimmed afterward.

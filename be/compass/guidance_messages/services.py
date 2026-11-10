@@ -115,10 +115,10 @@ def thread_receipt(thread, actor):
     Seen is derived only from read cursors, and a cursor moves only through `mark_read`, which the
     portal calls while the conversation is open in a visible tab with its newest Message in view.
     Nothing here claims delivery. A pair sees the other person's cursor. A requester sees
-    "Seen by Guidance Office": the furthest cursor any Office reader reached (D-GMSG-03 option b,
-    provisional). Because every such cursor was produced by an authorized read, an Office Seen does
-    not revert when handling changes. Office staff see the Student's own cursor in a Student Office
-    thread only (D-GMSG-04, provisional); everything else returns `(None, None)`, which the portal
+    "Seen by Guidance Office": the furthest cursor any Office reader reached (D-GMSG-03 option b).
+    Because every such cursor was produced by an authorized read, an Office Seen does not revert
+    when handling changes. Office staff see the Student's own cursor in a Student Office
+    thread only (D-GMSG-04); everything else returns `(None, None)`, which the portal
     renders as no receipt at all rather than "not seen".
     """
     if thread.kind in policy.PAIR_KINDS:
@@ -952,7 +952,7 @@ def _publish_receipt(thread_id, actor_id):
         publish_to_user_on_commit(user_id, "messages.thread_changed", {"thread_id": thread.pk})
 
 
-# D-GMSG-13 (provisional engineering default): at most one typing hint per reader per thread every
+# D-GMSG-13: at most one typing hint per reader per thread every
 # three seconds. Portals expire the indicator locally after eight seconds without another hint.
 TYPING_POLICY = RateLimitPolicy(name="guidance-messages-typing", limit=1, window_seconds=3)
 

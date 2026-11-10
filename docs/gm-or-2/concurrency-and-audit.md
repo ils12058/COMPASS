@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Concurrency, durable replay and Audit
 
 The request row is the serial decision fence, matching GM-OR-1. A control-row shared lock excludes the existing exclusive import transition; existing identity locks precede assignment row locks, then inspection rows. Acting-account locks fence normal authority changes. Active F4 issuance acquires the Counselor and Student rows together in ascending UUID order, matching account management actor/target locks; it then retains the existing Student CURRENT validation. Inspection does not introduce a Student lock; final F4 issuance keeps the existing Student CURRENT lock after request/receipt validation. No lock order is reversed within GM-OR-1 correction paths. Privileged direct writers remain outside actor-specific service authority.

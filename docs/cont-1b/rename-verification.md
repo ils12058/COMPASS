@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Rename verification and history disposition
 
 The mandatory [127-file CONT-0 inventory](../cont-0/rename-inventory.csv) was reconciled against starting SHA `0ba5024a8468b3e27b2b1b3723cf431bf0390f61` before editing. [Disposition CSV](rename-disposition.csv): 61 transformed files, 10 renamed files, 3 Context surfaces already removed/preserved by CONT-1A, 32 preserved historical files, and 21 historical ADR/frontend reports annotated with supersession links. Files added since CONT-0, especially CONT-1A regression tests, were included in the final source scan as well.

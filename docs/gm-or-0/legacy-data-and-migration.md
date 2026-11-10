@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Legacy inventory and safe migration
 
 **PROPOSED DESIGN / future authorized procedure.** No deployed database was contacted. All real F4/F6 counts, receipt formats, duplicates and conflict volumes are **unknown**. The [current-state audit](current-state-audit.md) establishes schema and behavior, not the contents of a deployed database.

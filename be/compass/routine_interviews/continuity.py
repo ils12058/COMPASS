@@ -5,7 +5,7 @@ import hashlib
 from django.core.exceptions import ImproperlyConfigured
 
 from compass.counseling.continuity_encounters import _lock_encounter
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.routine_interviews import content
 from compass.routine_interviews.errors import RoutineContentUnavailable
 from compass.routine_interviews.matching import (
@@ -79,7 +79,7 @@ def _evaluation_projection(item, fields):
         values = content.read_evaluation(item)
     except (RoutineContentUnavailable, ImproperlyConfigured):
         raise ContinuityError("source_unavailable", 503) from None
-    # Explicit policy-approved V1 keys only. Never return the complete decrypted dictionary.
+    # Explicit shared Evaluation keys only. Never return the complete decrypted dictionary.
     return {field: values[field] for field in sorted(fields)}
 
 

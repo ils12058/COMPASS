@@ -244,7 +244,7 @@ RESOURCES = (
 # --- Privacy Governance ----------------------------------------------------------------------
 
 # Plain text: the Privacy Notice field preserves paragraph and line breaks but does not render
-# Markdown. Provisional wording until the University approves the official notice.
+# Markdown.
 _NOTICE_INTRO = (
     "The University of Camarines Norte Guidance and Counseling Office uses COMPASS to provide "
     "guidance and counseling services. We handle your personal information in line with the "
@@ -283,9 +283,6 @@ _NOTICE_ONLINE_SECTION = (
     "withdraw it while the session is running. Recordings are kept and protected like your other "
     "counseling records."
 )
-_NOTICE_PROVISIONAL = (
-    "This notice is provisional. The University's approved wording will replace it."
-)
 
 PRIVACY_NOTICE = {
     "code": "STG-GCO-STUDENT-SERVICES",
@@ -298,7 +295,7 @@ PRIVACY_NOTICE_PUBLISHED = {
         "How the UCN Guidance and Counseling Office collects, uses, protects and keeps your "
         "personal information in COMPASS."
     ),
-    "body": "\n\n".join((_NOTICE_INTRO, *_NOTICE_SECTIONS, _NOTICE_PROVISIONAL)),
+    "body": "\n\n".join((_NOTICE_INTRO, *_NOTICE_SECTIONS)),
     "requires_acknowledgment": True,
     "effective_on": (2026, 8, 3),
 }
@@ -316,7 +313,6 @@ PRIVACY_NOTICE_DRAFT = {
             *_NOTICE_SECTIONS[:3],
             _NOTICE_ONLINE_SECTION,
             *_NOTICE_SECTIONS[3:],
-            _NOTICE_PROVISIONAL,
         )
     ),
     "requires_acknowledgment": True,

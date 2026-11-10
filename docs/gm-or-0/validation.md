@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Validation and evidence limits
 
 Audit performed **2026-10-24 (Asia/Manila)** against **`80b719eb7fbeb86646228b4c013314e8e909876a`**.

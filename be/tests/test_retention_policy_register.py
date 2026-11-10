@@ -1,4 +1,4 @@
-"""Code-owned retention policy register and read-only DPO oversight (ADR-115).
+"""Canonical retention policy register and read-only DPO oversight (ADR-115).
 
 All data is synthetic. The canonical baseline has no disposition ledger (CANON-1C); the only
 historical marker these tests write is disposed media, through
@@ -170,7 +170,7 @@ def module_imports(path, *, names=False):
     return found
 
 
-# --- Code-owned register ------------------------------------------------------------------------
+# --- Canonical register ------------------------------------------------------------------------
 
 
 def test_register_defines_each_former_category_once_in_a_fixed_order():
@@ -488,7 +488,7 @@ def test_retired_capabilities_leave_the_canonical_identity_policy():
     assert DESIGNATION_CAPABILITY_GRANTS["DPO"] == DPO_AUTHORITY
     (view,) = [item for item in CAPABILITY_DEFINITIONS if item.code == VIEW]
     assert view.name == "View retention policy oversight"
-    assert "code-owned retention policy register" in view.description
+    assert "retention periods recorded in COMPASS" in view.description
     assert "no rule, hold, approval, or disposition authority" in view.description
     assert VIEW not in CAPABILITY_DEPENDENCIES
 

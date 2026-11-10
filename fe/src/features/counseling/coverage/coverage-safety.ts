@@ -10,13 +10,6 @@ export class CoverageGeneration {
 }
 export const evaluationLabels = {
     academic_adjustment_rating: "Academic adjustment",
-    physical_adjustment_rating: "Physical adjustment",
-    social_adjustment_rating: "Social adjustment",
-    spiritual_adjustment_rating: "Spiritual adjustment",
-    financial_adjustment_rating: "Financial adjustment",
-    emotional_adjustment_rating: "Emotional adjustment",
-    other_adjustment: "Other adjustment",
-    special_concern: "Special concern",
     recommendations: "Recommendations",
 } as const;
 export function presentApprovedEvaluation(values: Partial<Record<keyof typeof evaluationLabels, string | number | null>>) {

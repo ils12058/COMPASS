@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Migration and recovery
 
 The actual graph is recorded in [manifest](integration-manifest.md). Fresh empty migrate, canonical populated upgrade, GM-OR-1→GM-OR-2, registry/hash/drift checks, idempotent/chunked interrupted import and guard tests all run on disposable PostgreSQL. Frozen migration files are unchanged. 0002/0003 reverse guards are tested with nonempty retained history: reversal raises atomically, leaves migrations applied and retains evidence. Empty verification tables can reverse/reapply independently; receipt identities/claims/operations/batches prevent destructive 0002 reversal.

@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Frontend confidentiality and accessible behavior
 
 Routes `/portal/counseling/coverage` and `/coverage/[grantId]` use existing portal session, generated Orval operations, TanStack Query, PageHeader/Panel/Button/form controls, Context Help and consequential dialogs. Counseling has one Case coverage entry and an author-owned Encounter contextual request action. No Student route or full history viewer is added. Philippine-time inputs and institutional date formatting remain explicit; backend time/status is authoritative.

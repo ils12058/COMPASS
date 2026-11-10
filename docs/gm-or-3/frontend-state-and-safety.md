@@ -1,3 +1,5 @@
+> 2026-11-10: The policy layer was removed; see [ADR-119](../../be/docs/decisions/ADR-119-remove-provisional-policy-layer.md) for current rules and reset-only delivery. This document remains historical.
+
 # Frontend state, review identity and safety
 
 Canonical authority is the unchanged `contracts/openapi.json`. Orval was generated before edits; source imports generated payloads/responses/operations/query keys. Generated clients are ignored and not hand-edited/committed. No backend contract or role/policy changes were needed.
