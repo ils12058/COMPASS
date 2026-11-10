@@ -345,6 +345,7 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     # The GOA rename intentionally changes the two assistant personas, emails, handles and
     # scenario ids. P12 removes only DPO-NEG-01; the scenario counts and hashes below
     # reflect that deletion, verified against the base manifest with only that item removed.
+    # R4 changes only the retention scenario description; identities and selectors stay frozen.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS | E5_KEYS]
     original_scenarios = [
         pre_cont1b_catalog_snapshot(asdict(s))
@@ -367,7 +368,7 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
         == "5d6b54777ff7017154c84fc023fca6aa1dc9d844683916c69c8130b814504a23"
     )
     assert fingerprint(original_scenarios) == (
-        "d96da24594565639240a8b12b86124c396951eb4ed596a0df32822a216b1edb8"
+        "6e66ef6a9754124bf9e8e589d46de5f46b1f272b49f7499a9550678adcf9c81b"
     )
     assert fingerprint(
         [
@@ -375,7 +376,7 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
             for s in SCENARIOS
             if s.id not in COLLEGE_SCENARIOS | E5_SCENARIOS
         ]
-    ) == ("6cdf028356965bfcc79230ff6eda65970cce6a12c6b9e883f860a3662276b7cb")
+    ) == ("6215d406948d0c090b157bceaca344fddd7299e1e127f23bdd9f6386b2c4a35e")
     assert len(ACCOUNTS) == 122 and len(SCENARIOS) == 113
     for key in PROMOTED_KEYS - {"bg_61"}:
         student = STUDENTS_BY_KEY[key]
@@ -398,11 +399,12 @@ def test_e5_preserves_all_116_baseline_identity_and_record_selectors():
     assert (
         fingerprint(original) == "731916a5318c456a243b45c0921240cfaac982346d84ecfd491ba846eb90e5c3"
     )
+    # R4 rewords the retention description; no baseline identity or record selector changes.
     old_scenarios = [asdict(s) for s in SCENARIOS if s.id not in E5_SCENARIOS]
     assert len(old_scenarios) == 101
     assert (
         fingerprint(old_scenarios)
-        == "70a03b561563d9e4bcdeb5da56a91a2ec034a857846d1c03cbdf687b0716b43b"
+        == "47dc62dfe6b7681df05e4cf161549aa47da1b89d91934b0fc83ffe83a756cabd"
     )
 
 

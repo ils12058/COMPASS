@@ -38,12 +38,17 @@ for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
     }, async (page) => {
       try {
         await shown(page.locator("main h1"));
-        // Wait for the heading's actual font rather than unrelated faces whose loading can be
-        // coupled to the intentionally gated image request.
-        await page.locator("main h1").evaluate(async (element) => {
-          const font = getComputedStyle(element).font;
-          await document.fonts.load(font, element.textContent ?? "");
+        // Wait for the bundled heading font. Next's metric fallback names local Arial, which
+        // need not exist on Linux; loading the entire family list would reject for that fallback.
+        const loadedHeadingFaces = await page.locator("main h1").evaluate(async (element) => {
+          const style = getComputedStyle(element);
+          const family = style.fontFamily.split(",")[0];
+          const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${family}`;
+          const faces = await document.fonts.load(font, element.textContent ?? "");
+          return faces.map((face) => face.status);
         });
+        assert.ok(loadedHeadingFaces.length > 0 && loadedHeadingFaces.every((status) => status === "loaded"),
+          "The actual bundled heading font loads before layout measurements");
         const image = page.locator(`main img[src*="${route.asset}"]`);
         assert.equal(await image.count(), 1, "Public title and hero placements render exactly one illustration");
         assert.equal(await image.getAttribute("alt"), "", "Nearby content supplies decorative image meaning");
