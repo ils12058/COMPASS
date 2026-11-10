@@ -75,7 +75,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header ref={topBar} className="relative flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-surface-raised px-4 py-1 sm:px-6 lg:px-8">
+        <header ref={topBar} className="relative flex min-h-14 flex-wrap items-center justify-between gap-x-1 gap-y-1 border-b border-border bg-surface-raised px-4 py-1 sm:px-6 lg:gap-x-3 lg:px-8">
           {/* The dock's own control stays outside its list of destinations. */}
           <button
             type="button"
@@ -123,7 +123,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <div className="flex min-w-11 flex-1 justify-start">
             <PortalCommandPalette />
           </div>
-          <div className="flex min-w-0 max-w-full basis-full flex-wrap items-center justify-end gap-1 sm:gap-2 lg:basis-auto">
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1 sm:gap-2">
             <AccessibilityControl placement="header" />
             <NotificationBell />
             <NotificationHeadsUp key={user.id} />
