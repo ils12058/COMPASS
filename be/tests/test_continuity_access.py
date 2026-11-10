@@ -887,8 +887,20 @@ def test_active_college_and_campus_membership_rechecked(selected_case, entity):
 @pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "FACULTY"])
 def test_office_capability_does_not_replace_live_membership(selected_case, role):
     c = selected_case
-    actor = c.user("office-impostor", role)
-    # Even with all continuity capabilities, unrelated Counselors and Faculty cannot select.
+    if role == "FACULTY":
+        actor = User.objects.create_user(
+            email="office-impostor@synthetic.test",
+            role=role,
+            password=None,
+            first_name="Synthetic",
+            last_name="Faculty",
+        )
+        # The capability ceiling also forbids granting continuity permissions to Faculty.
+        with pytest.raises(ValueError, match="Faculty Role"):
+            foundation_tests.grant_caps(actor)
+    else:
+        actor = c.user("office-impostor", role)
+    # Continuity capabilities never replace Counselor/office membership.
     if role == "GUIDANCE_OFFICE_ASSISTANT":
         StaffSupervision.objects.create(staff=actor, supervisor=c.author)
         CounselorResponsibility.objects.create(college=c.college, counselor=c.author)

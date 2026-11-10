@@ -1138,3 +1138,16 @@ def test_snapshot_identity_scope_and_time_remain_bound_without_policy_fields(cas
         in {"policy_version", "policy_evidence", "policy_digest", "communication_policy_digest"}
         for field in Grant._meta.fields
     )
+
+
+@pytest.mark.parametrize("excess", ["advance", "duration"])
+def test_limit_excess_one_microsecond_is_denied(case, monkeypatch, excess):
+    monkeypatch.setattr(svc.timezone, "now", lambda: case.now)
+    start = case.now + timedelta(days=14)
+    duration = timedelta(days=30)
+    if excess == "advance":
+        start += timedelta(microseconds=1)
+    else:
+        duration += timedelta(microseconds=1)
+    with expect("invalid_interval"):
+        request(case, starts_at=start, expires_at=start + duration)

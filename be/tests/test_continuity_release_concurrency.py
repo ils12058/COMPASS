@@ -253,9 +253,12 @@ def test_every_authority_relation_is_fenced_against_ordinary_dml(selected_case, 
         "organization_campus",
     ],
 )
-def test_authority_writer_first_denies_before_decryption(mutable_selected_case, monkeypatch, table):
+def test_authority_writer_first_blocks_read_until_commit_and_rechecks_access(
+    mutable_selected_case, monkeypatch, table
+):
     c = mutable_selected_case
     g = approved(c)
+    decrypt = content.read_evaluation
     monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
     mutate = authority_mutation(c, table)
     with transaction.atomic():
@@ -264,8 +267,13 @@ def test_authority_writer_first_denies_before_decryption(mutable_selected_case, 
             result = pool.submit(run, lambda: read(c, g)).result(timeout=5)
         assert result == ("denied", 409, "continuity_authority_busy")
     assert reads().count() == 0
-    with pytest.raises(ContinuityError):
-        read(c, g)
+    if table == "accounts_userdesignation":
+        # The relation fence blocks release during mutation; completed approval survives it.
+        monkeypatch.setattr(content, "read_evaluation", decrypt)
+        assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
+    else:
+        with pytest.raises(ContinuityError):
+            read(c, g)
 
 
 def test_read_waiting_on_user_rechecks_exact_expiry(selected_case, monkeypatch):
