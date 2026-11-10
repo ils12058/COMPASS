@@ -8,7 +8,7 @@
   "compass/authentication/migrations/0001_release_baseline.py": "461fc6535622432174d0223c4f21fb79bf467ec91ff6c048e82b33e8400e8217",
   "compass/availability/migrations/0001_release_baseline.py": "60ff3e994933b1b047712004f912cb3f95b6c45376619138976a42ca3e7550c0",
   "compass/call_slips/migrations/0001_release_baseline.py": "ed9b33323f747c0da6b93c4a6e5478681bd74cba4b124da58544cdfdfff3cf4a",
-  "compass/counseling/migrations/0001_release_baseline.py": "626927daa1329c81d684a9953d04961e806b412d24ba0bcc8cbfc981f248637d",
+  "compass/counseling/migrations/0001_release_baseline.py": "6b4699ab6813bd5fa849b82d9afc59c5cbf5bfc5e2fe50195f04c972d3bdd4fe",
   "compass/counseling/migrations/0002_database_guards.py": "e62397cc300521ce111dc8d6db46da3b0f79bd09af6f4bea3f45d83ac9747eaf",
   "compass/ecounseling/migrations/0001_release_baseline.py": "71b818e79aef28665b37f6eb122454310f2f541301358940437961f5450053d8",
   "compass/exit_interviews/migrations/0001_release_baseline.py": "3a5d3d6ae8b5fea56b101b0ab7ce97e1452614f1a8d7d121cd031fa4d8e65dff",

@@ -1,4 +1,4 @@
-"""Real provisional communication with explicit seams for policy-variation tests."""
+"""Case coordination helpers through the production services."""
 
 from __future__ import annotations
 
@@ -10,8 +10,6 @@ import pytest
 from django.utils import timezone
 
 from compass.accounts.models import Role, User
-from compass.counseling import case_communication_policy
-from compass.counseling.case_communication_policy import ApprovedCaseCommunicationPolicy
 from compass.counseling.continuity_models import (
     CounselorCaseContinuityGrant as Grant,
 )
@@ -27,41 +25,8 @@ PURPOSE = "CASE_COORDINATION"
 BODY = "Synthetic case coordination message. No Student content."
 
 
-def approved_communication_policy(
-    case,
-    *,
-    version="synthetic-c1",
-    evidence="TEST-ONLY-GMSG5",
-    permitted=("CASE_COORDINATION",),
-    **changes,
-):
-    return ApprovedCaseCommunicationPolicy(
-        **(
-            {
-                "version": version,
-                "evidence_reference": evidence,
-                "valid_from": case.policy.valid_from,
-                "valid_until": case.policy.valid_until,
-                "permitted_purposes": frozenset(permitted),
-            }
-            | changes
-        )
-    )
-
-
-def patch_communication_policy(monkeypatch, policy):
-    monkeypatch.setattr(
-        case_communication_policy,
-        "get_approved_case_communication_policy",
-        lambda: policy,
-    )
-    return policy
-
-
 @pytest.fixture
 def communication(case):
-    """The real provisional communication policy beside the real continuity policy."""
-    case.communication_policy = case_communication_policy.get_approved_case_communication_policy()
     return case
 
 

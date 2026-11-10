@@ -11,31 +11,32 @@ from compass.counseling import continuity_services as grants
 from compass.counseling.continuity_encounters import _lock_encounter
 from compass.counseling.continuity_locks import (
     lock_authority_relations,
-    lock_policy_for_selected_read,
 )
-from compass.counseling.continuity_policy import ContinuityError, require_policy
-from compass.counseling.coverage_policy import (
+from compass.counseling.continuity_models import ContinuityReason
+from compass.counseling.continuity_rules import (
+    MAX_ADVANCE,
+    MAX_DURATION,
+    SOURCE_KINDS,
+    ContinuityError,
+    active_college_ids,
+    is_head,
+    is_office_requester,
     office_can_select,
     office_college_ids,
-    require_workflow_policy,
 )
 from compass.counseling.models import CounselingEncounter
 from compass.routine_interviews.continuity import _lock_evaluation
 from compass.routine_interviews.models import RoutineInterview
 
 
-def _policies(actor, action="request"):
-    now = timezone.now()
-    actor = grants._actor(actor, action, now)
-    policy = require_policy(now)
-    workflow = require_workflow_policy(policy, now)
-    return policy, workflow
+def _authorize(actor, action="request"):
+    return grants._actor(actor, action, timezone.now())
 
 
-def _office_cases(actor, policy, workflow):
+def _office_cases(actor):
     # Only structurally eligible cases in this requester's live responsibility. No plaintext.
     students = grants.StudentAcademicProfile.objects.filter(
-        current_college_id__in=office_college_ids(actor, policy, workflow),
+        current_college_id__in=office_college_ids(actor),
         student__is_active=True,
         student__role__code="STUDENT",
         student__student_lifecycle_status="CURRENT",
@@ -66,25 +67,19 @@ def _office_cases(actor, policy, workflow):
 
 @transaction.atomic(durable=True)
 def configuration(*, actor):
-    lock_policy_for_selected_read()
     grants._users(actor.pk)
     lock_authority_relations()
     actor = User.objects.select_related("role").get(pk=actor.pk)
-    policy, workflow = _policies(actor, "view")
-    office = actor.pk in policy.office_requester_ids
+    _authorize(actor, "view")
+    office = is_office_requester(actor)
     return {
         "server_now": timezone.now(),
-        "valid_until": min(policy.valid_until, workflow.valid_until),
-        "maximum_duration_seconds": int(policy.maximum_duration.total_seconds()),
-        "maximum_advance_seconds": int(policy.maximum_advance.total_seconds()),
-        "reason_categories": sorted(policy.reason_categories),
+        "maximum_duration_seconds": int(MAX_DURATION.total_seconds()),
+        "maximum_advance_seconds": int(MAX_ADVANCE.total_seconds()),
+        "reason_categories": sorted(ContinuityReason.values),
         "can_request": actor.has_capability("counseling.continuity.request"),
-        "can_approve": actor.pk in policy.approver_ids
-        and grants.UserDesignation.objects.filter(
-            user=actor, designation__code="HEAD_GUIDANCE_COUNSELOR"
-        ).exists()
-        and actor.has_capability("counseling.continuity.approve"),
-        "office_cases": _office_cases(actor, policy, workflow) if office else [],
+        "can_approve": is_head(actor) and actor.has_capability("counseling.continuity.approve"),
+        "office_cases": _office_cases(actor) if office else [],
     }
 
 
@@ -95,27 +90,26 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
         with transaction.atomic(durable=True):
             with connection.cursor() as cursor:
                 cursor.execute("SET LOCAL lock_timeout = '1000ms'")
-            lock_policy_for_selected_read()
             users = grants._users(actor.pk, student_id, original_counselor_id)
             lock_authority_relations()
             users = {u.pk: u for u in User.objects.select_related("role").filter(pk__in=users)}
             actor = users[actor.pk]
-            policy, workflow = _policies(actor)
-            grants._student(users.get(student_id), policy)
+            _authorize(actor)
+            grants._student(users.get(student_id))
             if not grants.StudentAcademicProfile.objects.filter(
-                student_id=student_id, current_college_id__in=workflow.college_ids
+                student_id=student_id, current_college_id__in=active_college_ids()
             ).exists():
                 raise ContinuityError("source_not_found", 404)
             office = actor.pk != original_counselor_id
             if office:
-                if not office_can_select(actor, student_id, policy, workflow):
+                if not office_can_select(actor, student_id):
                     raise ContinuityError("source_not_found", 404)
             original = users.get(original_counselor_id)
             if original is None or original.role.code != "COUNSELOR":
                 raise ContinuityError("source_not_found", 404)
-            # Source inventories are filtered to this exact approved Student + historical author.
+            # Source inventories are filtered to this exact eligible Student + historical author.
             candidates = []
-            if "ENCOUNTER" in workflow.source_kinds and (
+            if "ENCOUNTER" in SOURCE_KINDS and (
                 office or actor.has_capability("counseling.view_assigned")
             ):
                 candidates += [
@@ -126,7 +120,7 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                     .order_by("pk")
                     .values_list("pk", flat=True)[(page - 1) * 25 : page * 25 + 1]
                 ]
-            if "ROUTINE_EVALUATION" in workflow.source_kinds and (
+            if "ROUTINE_EVALUATION" in SOURCE_KINDS and (
                 office or actor.has_capability("routine_interviews.view_assigned")
             ):
                 candidates += [
@@ -205,12 +199,10 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                 metadata={
                     "student_id": str(student_id),
                     "original_counselor_id": str(original_counselor_id),
-                    "policy_version": workflow.version,
-                    "policy_evidence": workflow.selection_evidence,
                     "page": page,
                 },
             )
-            _policies(actor)
+            _authorize(actor)
             people = grants.display_people([student_id, original_counselor_id])
             return {
                 "student_name": people.get(student_id, {}).get("name", "Name not available"),
@@ -222,9 +214,7 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
                 "receivers": receivers,
                 "page": page,
                 "has_next": len(candidates) > 50
-                or any(
-                    len([c for c in candidates if c[0] == k]) > 25 for k in workflow.source_kinds
-                ),
+                or any(len([c for c in candidates if c[0] == k]) > 25 for k in SOURCE_KINDS),
             }
     except OperationalError as exc:
         if getattr(exc.__cause__, "sqlstate", None) in {"55P03", "40P01"}:

@@ -1,6 +1,6 @@
-"""Per-call selected reads with live policy, source-owned adapters and atomic release audit.
+"""Per-call selected reads with live authority, source-owned adapters and atomic release audit.
 
-No decision/token is returned. The only result is a fixed approved projection after
+No decision/token is returned. The only result is a fixed projection after
 transaction commit. Neither ordinary getters nor mutation services consume this path.
 """
 
@@ -14,7 +14,6 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.authentication.models import AuthSession
 from compass.counseling import continuity_services as grants
-from compass.counseling.continuity_disclosure import require_disclosure_policy
 from compass.counseling.continuity_encounters import (
     _encounter_projection,
     _lock_encounter,
@@ -22,15 +21,14 @@ from compass.counseling.continuity_encounters import (
 )
 from compass.counseling.continuity_locks import (
     lock_authority_relations,
-    lock_policy_for_selected_read,
 )
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
-from compass.counseling.continuity_policy import ContinuityError, require_policy
 from compass.counseling.continuity_read_schemas import (
     ContinuitySelectedEncounterResponse,
     ContinuitySelectedEvaluationResponse,
 )
+from compass.counseling.continuity_rules import ContinuityError, active_college_ids, selected_fields
 from compass.routine_interviews.continuity import (
     _evaluation_projection,
     _lock_evaluation,
@@ -51,20 +49,16 @@ def _read_authority(*, actor, grant, scopes, users, resource_kind, projection, n
         raise ContinuityError("source_not_found", 404)
     if not actor.has_capability(source_capability, at=now):
         raise ContinuityError("missing_capability")
-    policy = require_policy(now)
-    disclosure = require_disclosure_policy(now)
-    if not policy.disclosure_policy_digest or policy.disclosure_policy_digest != disclosure.digest:
-        raise ContinuityError("disclosure_policy_unconfirmed")
-    selected = disclosure.selected_projection(resource_kind, projection)
+    fields = selected_fields(resource_kind, projection)
     if grant is None or grant.receiving_counselor_id != actor.pk or grant.decision != "APPROVED":
         raise ContinuityError("not_found", 404)
     if not grant.starts_at <= now < grant.expires_at:
         raise ContinuityError("not_found", 404)
-    grants._snapshot(grant, scopes, policy)
-    if grants._effective(grant, scopes, users, policy, now) != "ACTIVE":
+    grants._snapshot(grant, scopes)
+    if grants._effective(grant, scopes, users, now) != "ACTIVE":
         raise ContinuityError("not_found", 404)
     if not StudentAcademicProfile.objects.filter(
-        student_id=grant.student_id, current_college_id__in=disclosure.college_ids
+        student_id=grant.student_id, current_college_id__in=active_college_ids()
     ).exists():
         raise ContinuityError("not_found", 404)
     if session is not None and (
@@ -73,7 +67,7 @@ def _read_authority(*, actor, grant, scopes, users, resource_kind, projection, n
         or not now < session.expires_at
     ):
         raise ContinuityError("session_unavailable", 401)
-    return policy, disclosure, selected
+    return fields
 
 
 def _prepared_read(
@@ -88,7 +82,6 @@ def _prepared_read(
     actor_session_id,
     actor_session_digest,
 ):
-    lock_policy_for_selected_read()
     # Never lock another receiver's Grant: contention must not become an existence oracle.
     hint = Grant.objects.filter(pk=grant_id, receiving_counselor_id=actor.pk).first()
     ids = (
@@ -146,7 +139,7 @@ def _prepared_read(
         )
         if session is None or not actor_session_digest:
             raise ContinuityError("session_unavailable", 401)
-    policy, disclosure, selected = _read_authority(
+    fields = _read_authority(
         actor=current_actor,
         grant=grant,
         scopes=scopes,
@@ -188,7 +181,7 @@ def _prepared_read(
     if revision != scope.source_revision:
         raise ContinuityError("source_changed", 409)
     # Final pre-decryption authorization: no source body is loaded before this point.
-    policy, disclosure, selected = _read_authority(
+    fields = _read_authority(
         actor=current_actor,
         grant=grant,
         scopes=scopes,
@@ -201,8 +194,6 @@ def _prepared_read(
     result = dict(
         grant_id=grant.pk,
         grant_version=grant.version,
-        policy_version=policy.version,
-        disclosure_policy_version=disclosure.version,
         projection=projection,
     )
     if resource_kind == "ENCOUNTER":
@@ -211,12 +202,12 @@ def _prepared_read(
     else:
         result.update(
             routine_interview_id=source.pk,
-            evaluation=_evaluation_projection(source, selected.fields),
+            evaluation=_evaluation_projection(source, fields),
         )
         schema = ContinuitySelectedEvaluationResponse
     result = schema.model_validate(result).model_dump(exclude_unset=True)
-    # Re-evaluate live clocks and provider snapshots after decryption/serialization.
-    policy, disclosure, _ = _read_authority(
+    # Re-evaluate live clocks and authority after decryption/serialization.
+    _read_authority(
         actor=current_actor,
         grant=grant,
         scopes=scopes,
@@ -244,11 +235,6 @@ def _prepared_read(
             "source_id": str(source_id),
             "projection": projection,
             "grant_version": grant.version,
-            "policy_version": policy.version,
-            "policy_evidence": policy.evidence_reference,
-            "disclosure_policy_version": disclosure.version,
-            "disclosure_policy_evidence": disclosure.evidence_reference,
-            "disclosure_policy_digest": disclosure.digest,
         },
     )
     # An audit insert may itself wait. Expiry then rolls back the event and returns no body.

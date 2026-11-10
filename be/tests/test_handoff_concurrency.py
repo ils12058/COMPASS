@@ -11,7 +11,6 @@ from django.utils import timezone
 from compass.accounts.models import User
 from compass.audit.models import AuditEvent
 from compass.counseling import handoff_content, handoff_services
-from compass.counseling.continuity_locks import continuity_policy_change
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.handoff_models import CounselorHandoffSummary as Handoff
 from tests import test_handoff as cases
@@ -102,7 +101,7 @@ def test_concurrent_draft_update_or_duplicate_submission(workflow_case, operatio
     )
 
 
-@pytest.mark.parametrize("writer", ["grant", "user", "ciphertext", "policy"])
+@pytest.mark.parametrize("writer", ["grant", "user", "ciphertext"])
 def test_writer_first_denies_without_decrypt(mutable_workflow_case, monkeypatch, writer):
     c = mutable_workflow_case
     g = approved(c)
@@ -126,12 +125,6 @@ def test_writer_first_denies_without_decrypt(mutable_workflow_case, monkeypatch,
             elif writer == "ciphertext":
                 Handoff.objects.select_for_update().get(grant_id=g["id"])
                 Handoff.objects.filter(grant_id=g["id"]).update(content_ciphertext="corrupt")
-            else:
-                with continuity_policy_change():
-                    c.workflow_control[0] = None
-                    entered.set()
-                    assert release.wait(5)
-                return
             entered.set()
             assert release.wait(5)
 
@@ -150,33 +143,6 @@ def test_writer_first_denies_without_decrypt(mutable_workflow_case, monkeypatch,
             release.set()
         assert result[0] == "denied"
         assert future.result(timeout=5)[0] == "ok"
-
-
-def test_policy_invalidation_cannot_publish_during_read(mutable_workflow_case, monkeypatch):
-    c = mutable_workflow_case
-    g = approved(c)
-    cases.submitted(c, g)
-    entered, release = Event(), Event()
-    real = handoff_content.read
-
-    def slow(item):
-        value = real(item)
-        entered.set()
-        assert release.wait(5)
-        return value
-
-    monkeypatch.setattr(handoff_content, "read", slow)
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        reader = pool.submit(run, lambda: cases.op(c, g, "receive", actor=c.receiver))
-        assert entered.wait(5)
-
-        def invalidate():
-            with continuity_policy_change():
-                c.workflow_control[0] = None
-
-        assert run(invalidate)[0] == "denied"
-        release.set()
-        assert reader.result(timeout=5)[0] == "ok"
 
 
 def test_expiry_after_actual_user_lock_wait(workflow_case, monkeypatch):

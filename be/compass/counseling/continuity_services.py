@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from compass.accounts.models import User, UserDesignation
+from compass.accounts.models import User
 from compass.accounts.services import is_current_student
 from compass.audit.actions import (
     CONTINUITY_APPROVED,
@@ -21,9 +21,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
-from compass.counseling.case_communication_policy import require_case_communication_policy
 from compass.counseling.continuity_models import (
-    ContinuityCommunicationPurpose,
     ContinuityDecision,
     ContinuityReason,
     ContinuityRevocationReason,
@@ -35,7 +33,16 @@ from compass.counseling.continuity_models import (
 from compass.counseling.continuity_models import (
     CounselorCaseContinuityScope as Scope,
 )
-from compass.counseling.continuity_policy import ContinuityError, require_policy
+from compass.counseling.continuity_rules import (
+    CASE_COORDINATION,
+    MAX_ADVANCE,
+    MAX_DURATION,
+    ContinuityError,
+    active_college_ids,
+    is_head,
+    overlapping_grants,
+    require_unchanged_placement,
+)
 from compass.counseling.continuity_sources import resolve_source, validate_selection
 from compass.student_academics.models import StudentAcademicProfile
 
@@ -64,19 +71,14 @@ def _actor(user, action, now):
     return user
 
 
-def _head(actor, policy, now):
+def _head(actor, now):
     _actor(actor, "approve", now)
-    if (
-        actor.pk not in policy.approver_ids
-        or not UserDesignation.objects.filter(
-            user_id=actor.pk, designation__code="HEAD_GUIDANCE_COUNSELOR"
-        ).exists()
-    ):
+    if not is_head(actor):
         # No Acting route: an override/supervision cannot establish formal delegation.
         raise ContinuityError("approval_authority_missing")
 
 
-def _student(student, policy):
+def _student(student):
     if student is None or not is_current_student(student):
         raise ContinuityError("ineligible_student", 422)
     placement = (
@@ -92,7 +94,7 @@ def _student(student, policy):
     if (
         not placement
         or placement["current_college_id"] is None
-        or placement["current_college_id"] not in policy.college_ids
+        or placement["current_college_id"] not in active_college_ids()
         or not placement["current_college__is_active"]
         or not placement["current_college__campus__is_active"]
     ):
@@ -107,7 +109,7 @@ def _receiver(receiver, now):
         raise ContinuityError("ineligible_receiver", 422)
 
 
-def _interval(starts_at, expires_at, policy, now):
+def _interval(starts_at, expires_at, now):
     if (
         not isinstance(starts_at, datetime)
         or not isinstance(expires_at, datetime)
@@ -115,10 +117,8 @@ def _interval(starts_at, expires_at, policy, now):
         or timezone.is_naive(expires_at)
         or starts_at >= expires_at
         or expires_at <= now
-        or expires_at > policy.valid_until
-        or starts_at < policy.valid_from
-        or expires_at - starts_at > policy.maximum_duration
-        or starts_at - now > policy.maximum_advance
+        or expires_at - starts_at > MAX_DURATION
+        or starts_at - now > MAX_ADVANCE
     ):
         raise ContinuityError("invalid_interval", 422)
 
@@ -133,15 +133,9 @@ def _digest(grant, scopes):
         "requested_by_id",
         "starts_at",
         "expires_at",
-        "policy_version",
-        "policy_evidence",
-        "policy_digest",
         "student_placement_marker",
     )
-    if grant.communication_purpose is not None:
-        # Historical metadata-only digests stay byte-for-byte identical: without a purpose these
-        # two fields never enter the digest.
-        fields = (*fields, "communication_purpose", "communication_policy_digest")
+    fields = (*fields, "communication_purpose")
     data = {}
     for field in fields:
         value = getattr(grant, field)
@@ -162,44 +156,27 @@ def _scopes(grant):
     )
 
 
-def _snapshot(grant, scopes, policy):
-    if (
-        grant.policy_digest != policy.digest
-        or grant.policy_version != policy.version
-        or grant.policy_evidence != policy.evidence_reference
-    ):
-        raise ContinuityError("policy_unconfirmed")
+def _snapshot(grant, scopes):
     validate_selection(scopes)
     if grant.snapshot_digest != _digest(grant, scopes):
         raise ContinuityError("scope_changed", 409)
 
 
-def _sources(grant, scopes, users, policy):
+def _sources(grant, scopes, users):
     for scope in scopes:
         revision = resolve_source(
             selection=scope,
             student_id=grant.student_id,
             requester=users[grant.requested_by_id],
-            policy=policy,
             original_counselor_id=grant.original_counselor_id,
         )
         if revision != scope.source_revision:
             raise ContinuityError("source_changed", 409)
 
 
-def _overlap(grant, policy):
+def _overlap(grant):
     # Student identity lock serializes empty-set races too, across distinct receivers.
-    qs = Grant.objects.filter(
-        student_id=grant.student_id,
-        decision__in=["REQUESTED", "APPROVED"],
-        starts_at__lt=grant.expires_at,
-        expires_at__gt=grant.starts_at,
-    ).exclude(pk=grant.pk)
-    if policy.overlap_rule == "ALLOW_DIFFERENT_RECEIVERS":
-        qs = qs.filter(
-            receiving_counselor_id=grant.receiving_counselor_id, coverage_kind=grant.coverage_kind
-        )
-    if qs.exists():
+    if overlapping_grants(grant).exists():
         raise ContinuityError("overlap", 409)
 
 
@@ -217,8 +194,6 @@ def _audit(grant, actor, verb, context):
         "version": grant.version,
         "starts_at": grant.starts_at.isoformat(),
         "expires_at": grant.expires_at.isoformat(),
-        "policy_version": grant.policy_version,
-        "policy_evidence": grant.policy_evidence,
         "scope_snapshot_digest": grant.snapshot_digest,
     }
     if grant.communication_purpose is not None:
@@ -239,7 +214,7 @@ def _audit(grant, actor, verb, context):
     )
 
 
-def _effective(grant, scopes, users, policy, now):
+def _effective(grant, scopes, users, now):
     if grant.decision != ContinuityDecision.APPROVED:
         return {
             "REQUESTED": "PENDING",
@@ -248,14 +223,11 @@ def _effective(grant, scopes, users, policy, now):
             "REVOKED": "REVOKED",
         }[grant.decision]
     try:
-        _snapshot(grant, scopes, policy)
+        _snapshot(grant, scopes)
         _receiver(users.get(grant.receiving_counselor_id), now)
-        if _student(users.get(grant.student_id), policy) != grant.student_placement_marker:
+        if _student(users.get(grant.student_id)) != grant.student_placement_marker:
             return "UNAVAILABLE"
-        # A completed provisional approval survives ordinary Head/staff turnover.
-        # Approval/revocation still require the current Head; receiver rights remain live.
-        if policy.membership_rule != "LIVE_ROLES_AND_COLLEGES":
-            _head(users.get(grant.decision_by_id), policy, now)
+        # Completed approvals survive Head turnover; receiver rights remain live.
         if not grant.starts_at <= now < grant.expires_at:
             return "SCHEDULED" if now < grant.starts_at else "EXPIRED"
     except ContinuityError:
@@ -293,8 +265,8 @@ def _people(grant):
     return [people[key] for key in sorted(people, key=str)]
 
 
-def _metadata(grant, scopes, users, policy, now):
-    _snapshot(grant, scopes, policy)
+def _metadata(grant, scopes, users, now):
+    _snapshot(grant, scopes)
     return {
         "id": grant.pk,
         "student_id": grant.student_id,
@@ -307,7 +279,7 @@ def _metadata(grant, scopes, users, policy, now):
         "starts_at": grant.starts_at,
         "expires_at": grant.expires_at,
         "decision": grant.decision,
-        "effective_status": _effective(grant, scopes, users, policy, now),
+        "effective_status": _effective(grant, scopes, users, now),
         "decision_by_id": grant.decision_by_id,
         "decided_at": grant.decided_at,
         "revoked_by_id": grant.revoked_by_id,
@@ -315,8 +287,6 @@ def _metadata(grant, scopes, users, policy, now):
         "revocation_reason": grant.revocation_reason or None,
         "communication_purpose": grant.communication_purpose,
         "version": grant.version,
-        "policy_version": grant.policy_version,
-        "policy_evidence": grant.policy_evidence,
         "people": _people(grant),
         "scopes": [
             {
@@ -343,34 +313,30 @@ def _ids(grant, actor_id):
     ]
 
 
-def _visible(grant, actor, policy, now):
+def _visible(grant, actor, now):
     if actor.pk in {grant.requested_by_id, grant.receiving_counselor_id}:
         return
-    # Original-author metadata participation is new only for a sealed workflow policy.
-    if policy.workflow_policy_digest and actor.pk == grant.original_counselor_id:
-        from compass.counseling.coverage_policy import require_workflow_policy
-
-        workflow = require_workflow_policy(policy, now)
+    # Original authors may view metadata within their live College placement.
+    if actor.pk == grant.original_counselor_id:
         try:
             student = User.objects.select_related("role").filter(pk=grant.student_id).first()
-            placement_matches = _student(student, policy) == grant.student_placement_marker
+            placement_matches = _student(student) == grant.student_placement_marker
         except ContinuityError:
             placement_matches = False
         if (
-            grant.policy_digest == policy.digest
-            and placement_matches
+            placement_matches
             and actor.has_capability("counseling.handoff.manage_own", at=now)
             and StudentAcademicProfile.objects.filter(
                 student_id=grant.student_id,
-                current_college_id__in=workflow.college_ids.intersection(policy.college_ids),
+                current_college_id__in=active_college_ids(),
             ).exists()
         ):
             return
-    # Head status alone gives no office-wide enumeration; exact policy office scope applies.
+    # Head metadata enumeration remains limited to active Colleges.
     try:
-        _head(actor, policy, now)
+        _head(actor, now)
         if StudentAcademicProfile.objects.filter(
-            student_id=grant.student_id, current_college_id__in=policy.college_ids
+            student_id=grant.student_id, current_college_id__in=active_college_ids()
         ).exists():
             return
     except ContinuityError:
@@ -403,28 +369,24 @@ def request_coverage(
     users = _users(actor.pk, student_id, receiving_counselor_id, original_counselor_id, *replay_ids)
     now = timezone.now()
     actor = _actor(users.get(actor.pk), "request", now)
-    policy = require_policy(now)
-    placement_marker = _student(users.get(student_id), policy)
+    placement_marker = _student(users.get(student_id))
     _receiver(users.get(receiving_counselor_id), now)
-    _interval(starts_at, expires_at, policy, now)
-    if (
-        coverage_kind not in CoverageKind.values
-        or reason_category not in ContinuityReason.values
-        or reason_category not in policy.reason_categories
-    ):
+    _interval(starts_at, expires_at, now)
+    if coverage_kind not in CoverageKind.values or reason_category not in ContinuityReason.values:
         raise ContinuityError("invalid_purpose", 422)
     if original_counselor_id is not None:
         original = users.get(original_counselor_id)
-        if original is None or original.role.code != "COUNSELOR":
+        if (
+            original is None
+            or original.role.code != "COUNSELOR"
+            or original.pk == receiving_counselor_id
+        ):
             raise ContinuityError("invalid_original_counselor", 422)
-    communication_policy_digest = ""
     if communication_purpose is not None:
-        if communication_purpose not in ContinuityCommunicationPurpose.values:
+        if communication_purpose != CASE_COORDINATION:
             raise ContinuityError("invalid_purpose", 422)
         if original_counselor_id is None or original_counselor_id == receiving_counselor_id:
             raise ContinuityError("invalid_original_counselor", 422)
-        # Bind the purpose to the current Audit-backed communication policy.
-        communication_policy_digest = require_case_communication_policy(now).digest
     if not isinstance(request_id, UUID):
         raise ContinuityError("invalid_request_id", 422)
     grant = Grant(
@@ -437,12 +399,8 @@ def request_coverage(
         requested_at=now,
         starts_at=starts_at,
         expires_at=expires_at,
-        policy_version=policy.version,
-        policy_evidence=policy.evidence_reference,
-        policy_digest=policy.digest,
         student_placement_marker=placement_marker,
         communication_purpose=communication_purpose,
-        communication_policy_digest=communication_policy_digest,
         request_id=request_id,
     )
     selected = []
@@ -451,7 +409,6 @@ def request_coverage(
             selection=selection,
             student_id=student_id,
             requester=actor,
-            policy=policy,
             original_counselor_id=original_counselor_id,
         )
         selected.append(
@@ -471,24 +428,14 @@ def request_coverage(
         if existing.snapshot_digest != grant.snapshot_digest:
             raise ContinuityError("request_conflict", 409)
         existing_scopes = _scopes(existing)
-        _snapshot(existing, existing_scopes, policy)
+        _snapshot(existing, existing_scopes)
         # Replay creates no second event or transition, irrespective of current decision/version.
-        return _metadata(existing, existing_scopes, users, policy, timezone.now())
-    _overlap(grant, policy)
+        return _metadata(existing, existing_scopes, users, timezone.now())
+    _overlap(grant)
     grant.save(force_insert=True)
     Scope.objects.bulk_create(selected)
     _audit(grant, actor, "requested", context)
-    return _metadata(grant, selected, users, policy, now)
-
-
-def _communication_policy(grant, now):
-    """Require the reviewed communication policy and the grant's recorded digest."""
-    if grant.communication_purpose is None:
-        return None
-    policy = require_case_communication_policy(now)
-    if grant.communication_policy_digest != policy.digest:
-        raise ContinuityError("communication_policy_changed", 409)
-    return policy
+    return _metadata(grant, selected, users, now)
 
 
 @transaction.atomic
@@ -508,25 +455,23 @@ def decide_coverage(
     users = _users(*(_ids(hint, actor.pk) if hint else [actor.pk]))
     now = timezone.now()
     actor = _actor(users.get(actor.pk), action, now)
-    policy = require_policy(now)
     if hint is None:
         raise ContinuityError("not_found", 404)
     grant = Grant.objects.select_for_update().get(pk=grant_id)
     if decision != "CANCELLED":
-        _head(actor, policy, now)
-    _visible(grant, actor, policy, now)
+        _head(actor, now)
+    _visible(grant, actor, now)
     if decision == "CANCELLED":
         if actor.pk != grant.requested_by_id:
             raise ContinuityError("not_found", 404)
     else:
-        _head(actor, policy, now)
+        _head(actor, now)
         if actor.pk in {grant.requested_by_id, grant.receiving_counselor_id}:
             raise ContinuityError("self_approval")
     selected = _scopes(grant)
     # Reducing transitions remain possible when source revision/receiver eligibility changes.
     if decision == "APPROVED":
-        _snapshot(grant, selected, policy)
-        _communication_policy(grant, now)
+        _snapshot(grant, selected)
     if expected_version != grant.version:
         raise ContinuityError("stale_version", 409)
     if grant.decision == decision and (
@@ -537,27 +482,25 @@ def decide_coverage(
         )
         or (decision != "REVOKED" and grant.decision_by_id == actor.pk)
     ):
-        return _metadata(grant, selected, users, policy, now)
+        return _metadata(grant, selected, users, now)
     required = "APPROVED" if decision == "REVOKED" else "REQUESTED"
     if grant.decision != required:
         raise ContinuityError("invalid_transition", 409)
     now = timezone.now()  # Recheck after all lock waits.
-    policy.validate(now)
     if decision == "APPROVED":
         _receiver(users.get(grant.receiving_counselor_id), now)
-        if _student(users.get(grant.student_id), policy) != grant.student_placement_marker:
-            raise ContinuityError("student_changed", 409)
-        _interval(grant.starts_at, grant.expires_at, policy, now)
-        _sources(grant, selected, users, policy)
+        require_unchanged_placement(
+            _student(users.get(grant.student_id)), grant.student_placement_marker
+        )
+        _interval(grant.starts_at, grant.expires_at, now)
+        _sources(grant, selected, users)
         # NOWAIT source locks avoid reversed-order waits; recheck expiring authority
         # immediately before persistence, after every source validation.
         now = timezone.now()
-        policy.validate(now)
-        _communication_policy(grant, now)
-        _head(actor, policy, now)
+        _head(actor, now)
         _receiver(users.get(grant.receiving_counselor_id), now)
-        _interval(grant.starts_at, grant.expires_at, policy, now)
-        _overlap(grant, policy)
+        _interval(grant.starts_at, grant.expires_at, now)
+        _overlap(grant)
     if decision == "REVOKED":
         if revocation_reason not in ContinuityRevocationReason.values:
             raise ContinuityError("invalid_revocation_reason", 422)
@@ -592,7 +535,7 @@ def decide_coverage(
         }[decision],
         context,
     )
-    return _metadata(grant, selected, users, policy, now)
+    return _metadata(grant, selected, users, now)
 
 
 @transaction.atomic
@@ -601,16 +544,15 @@ def get_grant_metadata(*, actor, grant_id):
     users = _users(*(_ids(hint, actor.pk) if hint else [actor.pk]))
     now = timezone.now()
     actor = _actor(users.get(actor.pk), "view", now)
-    policy = require_policy(now)
     if hint is None:
         raise ContinuityError("not_found", 404)
     grant = Grant.objects.select_for_update().get(pk=grant_id)
-    _visible(grant, actor, policy, now)
+    _visible(grant, actor, now)
     selected = _scopes(grant)
     # Identity references are immutable through the service; defend against privileged drift.
     if any(i is not None and i not in users for i in _ids(grant, actor.pk)):
         raise ContinuityError("not_found", 404)
-    return _metadata(grant, selected, users, policy, timezone.now())
+    return _metadata(grant, selected, users, timezone.now())
 
 
 @transaction.atomic
@@ -618,26 +560,17 @@ def list_grant_metadata(*, actor, page=1, page_size=20):
     users = _users(actor.pk)
     now = timezone.now()
     actor = _actor(users.get(actor.pk), "view", now)
-    policy = require_policy(now)
     if not 1 <= page or not 1 <= page_size <= 50:
         raise ContinuityError("invalid_pagination", 422)
     scope = Q(requested_by=actor) | Q(receiving_counselor=actor)
-    if policy.workflow_policy_digest and actor.has_capability(
-        "counseling.handoff.manage_own", at=now
-    ):
-        from compass.counseling.coverage_policy import require_workflow_policy
-
-        workflow = require_workflow_policy(policy, now)
+    if actor.has_capability("counseling.handoff.manage_own", at=now):
         scope |= Q(
-            original_counselor=actor,
-            policy_digest=policy.digest,
-            student__student_academic_profile__current_college_id__in=(
-                workflow.college_ids.intersection(policy.college_ids)
-            ),
+            original_counselor_id=actor.pk,
+            student__student_academic_profile__current_college_id__in=active_college_ids(),
         )
     try:
-        _head(actor, policy, now)
-        scope |= Q(student__student_academic_profile__current_college_id__in=policy.college_ids)
+        _head(actor, now)
+        scope |= Q(student__student_academic_profile__current_college_id__in=active_college_ids())
     except ContinuityError:
         pass
     # Filter before slicing; no all-Student search parameters.

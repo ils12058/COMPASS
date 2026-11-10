@@ -1,9 +1,7 @@
-"""Actual selected reads under explicit synthetic policy evidence. No runtime activation."""
+"""Selected reads under live authority and fixed field inventories."""
 
-import hashlib
 import json
-from dataclasses import asdict, replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -25,20 +23,15 @@ from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.confidential_data import crypto
 from compass.counseling import continuity_access as access
-from compass.counseling import continuity_disclosure as disclosure
-from compass.counseling import continuity_policy
-from compass.counseling.continuity_disclosure import (
-    ENCOUNTER_METADATA_FIELDS_V1,
-    EVALUATION_FIELDS_V1,
-    ApprovedDisclosurePolicy,
-    ApprovedSourceProjection,
-)
+from compass.counseling import coverage_selection, handoff_services
 from compass.counseling.continuity_encounters import read_selected_encounter_for_continuity
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ENCOUNTER_METADATA_FIELDS, ContinuityError
 from compass.counseling.models import CounselingEncounter
-from compass.organization.models import CounselorResponsibility
+from compass.guidance_messages import services as messages
+from compass.guidance_messages.errors import CaseCoordinationEnded, ThreadNotFound
+from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.routine_interviews import content
 from compass.routine_interviews.continuity import read_selected_evaluation_for_continuity
 from compass.routine_interviews.crypto import RoutineContentSection, encrypt_section
@@ -55,45 +48,8 @@ SENTINEL = "SYNTHETIC-PROFESSIONAL-CONTENT-NOT-FOR-ERRORS"
 
 
 @pytest.fixture
-def mutable_selected_case(synthetic_case, monkeypatch):
-    c = synthetic_case
-    c.service.code = "COUNSELING"
-    c.service.save(update_fields=["code"])
-    c.values = content.empty_evaluation() | {
-        "academic_adjustment_rating": 7,
-        "recommendations": SENTINEL,
-        "other_adjustment": "UNAPPROVED-OTHER-SENTINEL",
-        "special_concern": "UNAPPROVED-CONCERN-SENTINEL",
-    }
-    content.write_evaluation(c.routine, c.values)
-    c.routine.save(update_fields=["counselor_evaluation_ciphertext", "updated_at"])
-    c.disclosure = ApprovedDisclosurePolicy(
-        version="TEST-DISCLOSURE-V1",
-        evidence_reference="TEST-D06",
-        basis_evidence_reference="TEST-BASIS-D08",
-        transparency_evidence_reference="TEST-TRANSPARENCY-D08",
-        retention_evidence_reference="TEST-D14",
-        monitoring_evidence_reference="TEST-D13",
-        coordination_evidence_reference="TEST-PG-PROVIDER-FENCE",
-        valid_from=c.policy.valid_from,
-        valid_until=c.policy.valid_until,
-        college_ids=c.policy.college_ids,
-        projections=(
-            ApprovedSourceProjection(
-                "ENCOUNTER", "ENCOUNTER_METADATA_V1", ENCOUNTER_METADATA_FIELDS_V1
-            ),
-            ApprovedSourceProjection(
-                "ROUTINE_EVALUATION",
-                "FINALIZED_EVALUATION_V1",
-                frozenset({"academic_adjustment_rating", "recommendations"}),
-            ),
-        ),
-    )
-    c.policy = replace(c.policy, disclosure_policy_digest=c.disclosure.digest)
-    c.control = SimpleNamespace(operational=c.policy, disclosure=c.disclosure)
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: c.control.operational)
-    monkeypatch.setattr(disclosure, "get_approved_disclosure_policy", lambda: c.control.disclosure)
-    return c
+def mutable_selected_case(selected_case):
+    return selected_case
 
 
 @pytest.fixture
@@ -109,9 +65,6 @@ def selected_case(metadata_case):
     }
     content.write_evaluation(c.routine, c.values)
     c.routine.save(update_fields=["counselor_evaluation_ciphertext", "updated_at"])
-    c.disclosure = disclosure.get_approved_disclosure_policy()
-    c.policy = continuity_policy.get_approved_policy()
-    c.control = SimpleNamespace(operational=c.policy, disclosure=c.disclosure)
     return c
 
 
@@ -144,11 +97,9 @@ def test_selected_projection_success_and_history_unchanged(selected_case, kind):
     models = [Grant, Scope, CounselingEncounter, RoutineInterview]
     before = [list(m.objects.order_by("pk").values()) for m in models]
     result = read(c, g, kind)
-    assert (
-        result["grant_version"] == 2 and result["disclosure_policy_version"] == c.disclosure.version
-    )
+    assert result["grant_version"] == 2
     if kind == "ENCOUNTER":
-        assert set(result["encounter"]) == ENCOUNTER_METADATA_FIELDS_V1
+        assert set(result["encounter"]) == ENCOUNTER_METADATA_FIELDS
         assert result["encounter"]["counselor_id"] == c.author.pk
     else:
         assert result["evaluation"] == {
@@ -168,11 +119,6 @@ def test_selected_projection_success_and_history_unchanged(selected_case, kind):
         "source_id",
         "projection",
         "grant_version",
-        "policy_version",
-        "policy_evidence",
-        "disclosure_policy_version",
-        "disclosure_policy_evidence",
-        "disclosure_policy_digest",
     }
 
 
@@ -210,7 +156,6 @@ def test_cross_college_and_legitimate_head_receiver(mutable_selected_case):
     UserDesignation.objects.create(
         user=c.outsider, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
-    c.control.operational = replace(c.policy, approver_ids=frozenset([c.outsider.pk]))
     g = approved(c, approver=c.outsider, receiving_counselor_id=c.head.pk, request_id=uuid4())
     assert read(c, g, actor=c.head)["evaluation"]["recommendations"] == SENTINEL
 
@@ -227,7 +172,6 @@ def test_cross_college_and_legitimate_head_receiver(mutable_selected_case):
         "transfer",
         "former",
         "student_inactive",
-        "head_designation",
     ],
 )
 def test_current_authority_rechecked_before_decrypt(mutable_selected_case, monkeypatch, change):
@@ -263,8 +207,6 @@ def test_current_authority_rechecked_before_decrypt(mutable_selected_case, monke
         User.objects.filter(pk=c.student.pk).update(student_lifecycle_status="FORMER")
     elif change == "student_inactive":
         User.objects.filter(pk=c.student.pk).update(is_active=False)
-    elif change == "head_designation":
-        UserDesignation.objects.filter(user=c.head).delete()
     monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
     with pytest.raises(ContinuityError):
         read(c, g)
@@ -300,94 +242,6 @@ def test_noneffective_grant_concealed_before_decryption(selected_case, monkeypat
     with expect("not_found"):
         read(c, g)
     assert reads().count() == 0
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        "operational_missing",
-        "operational_expired",
-        "operational_changed",
-        "disclosure_missing",
-        "disclosure_expired",
-        "disclosure_changed",
-        "unbound",
-        "rebound_without_new_request",
-    ],
-)
-def test_both_policies_independently_required_and_sealed(
-    mutable_selected_case, monkeypatch, change
-):
-    c = mutable_selected_case
-    g = approved(c)
-    if change == "operational_missing":
-        c.control.operational = None
-    elif change == "operational_expired":
-        c.control.operational = replace(c.policy, valid_until=c.now - timedelta(seconds=1))
-    elif change == "operational_changed":
-        c.control.operational = replace(c.policy, version="CHANGED")
-    elif change == "disclosure_missing":
-        c.control.disclosure = None
-    elif change == "disclosure_expired":
-        c.control.disclosure = replace(c.disclosure, valid_until=c.now - timedelta(seconds=1))
-    elif change == "disclosure_changed":
-        c.control.disclosure = replace(c.disclosure, version="CHANGED")
-    elif change == "unbound":
-        c.control.operational = replace(c.policy, disclosure_policy_digest="")
-    else:
-        c.control.disclosure = replace(c.disclosure, version="CHANGED")
-        c.control.operational = replace(
-            c.policy, disclosure_policy_digest=c.control.disclosure.digest
-        )
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    with expect("policy_unconfirmed"):
-        read(c, g)
-    assert reads().count() == 0
-
-
-@pytest.mark.parametrize(
-    "field",
-    [
-        "version",
-        "evidence_reference",
-        "basis_evidence_reference",
-        "transparency_evidence_reference",
-        "retention_evidence_reference",
-        "monitoring_evidence_reference",
-        "coordination_evidence_reference",
-    ],
-)
-def test_required_evidence_absence_denies_before_decrypt(mutable_selected_case, monkeypatch, field):
-    c = mutable_selected_case
-    g = approved(c)
-    c.control.disclosure = replace(c.disclosure, **{field: ""})
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    with expect("disclosure_policy_unconfirmed"):
-        read(c, g)
-
-
-@pytest.mark.parametrize(
-    "fields",
-    [frozenset(), frozenset({"student_intake"}), frozenset({"recommendations", "future_field"})],
-)
-def test_empty_unknown_or_excluded_field_lists_denied(mutable_selected_case, monkeypatch, fields):
-    c = mutable_selected_case
-    g = approved(c)
-    item = ApprovedSourceProjection("ROUTINE_EVALUATION", "FINALIZED_EVALUATION_V1", fields)
-    c.control.disclosure = replace(c.disclosure, projections=(item,))
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    with expect("disclosure_policy_unconfirmed"):
-        read(c, g)
-
-
-def test_all_nine_fields_only_with_explicit_bound_projection(mutable_selected_case):
-    c = mutable_selected_case
-    item = ApprovedSourceProjection(
-        "ROUTINE_EVALUATION", "FINALIZED_EVALUATION_V1", EVALUATION_FIELDS_V1
-    )
-    c.control.disclosure = replace(c.disclosure, projections=(item,))
-    c.control.operational = replace(c.policy, disclosure_policy_digest=c.control.disclosure.digest)
-    assert read(c, approved(c))["evaluation"] == c.values
 
 
 def test_future_ordinary_evaluation_field_does_not_expand_projection(selected_case, monkeypatch):
@@ -688,47 +542,6 @@ def test_http_projection_omission_no_store_and_read_only(selected_case, monkeypa
     assert reads().count() == 2
 
 
-def test_old_metadata_policy_digest_is_preserved_and_cannot_disclose(synthetic_case):
-    c = synthetic_case
-    values = asdict(c.policy)
-    values.pop("disclosure_policy_digest")
-    values.pop("workflow_policy_digest")
-    for key, value in values.items():
-        if isinstance(value, frozenset):
-            values[key] = sorted(str(i) for i in value)
-        elif isinstance(value, datetime):
-            values[key] = value.astimezone(UTC).isoformat()
-        elif isinstance(value, timedelta):
-            values[key] = value.total_seconds()
-    assert (
-        c.policy.digest == hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
-    )
-    g = approved(c)
-    with expect("disclosure_policy_unconfirmed"):
-        read(c, g)
-
-
-@pytest.mark.parametrize("missing", ["operational", "disclosure"])
-def test_policy_http_denial_before_decrypt_and_content_free_error(
-    mutable_selected_case, monkeypatch, missing, caplog
-):
-    c = mutable_selected_case
-    g = approved(c)
-    http = client(c.receiver)
-    setattr(c.control, missing, None)
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    response = http.get(
-        "/api/v1/counseling/continuity-grants/"
-        + str(g["id"])
-        + "/routine-evaluations/"
-        + str(c.routine.pk),
-        {"expected_version": 2},
-    )
-    assert response.status_code == 403 and response.headers["Cache-Control"] == "private, no-store"
-    assert SENTINEL not in response.content.decode() and SENTINEL not in caplog.text
-    assert reads().count() == 0
-
-
 @pytest.mark.parametrize("failure", ["crypto", "audit"])
 def test_authorized_http_failure_never_returns_prepared_body(
     selected_case, monkeypatch, failure, caplog
@@ -757,57 +570,6 @@ def test_authorized_http_failure_never_returns_prepared_body(
     assert response.headers["Cache-Control"] == "private, no-store"
     assert SENTINEL not in response.content.decode() and SENTINEL not in caplog.text
     assert "BAD-CIPHERTEXT-SENTINEL" not in response.content.decode()
-    assert reads().count() == 0
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        "lifecycle",
-        "revision",
-        "unknown_kind",
-        "unknown_projection",
-        "college_scope",
-        "partial_encounter",
-    ],
-)
-def test_invalid_disclosure_projection_contract_denied(mutable_selected_case, monkeypatch, change):
-    c = mutable_selected_case
-    g = approved(c)
-    if change == "college_scope":
-        p = replace(c.disclosure, college_ids=frozenset())
-    else:
-        item = c.disclosure.projections[1]
-        if change == "lifecycle":
-            item = replace(item, lifecycle_rule="ALLOW_DRAFT")
-        if change == "revision":
-            item = replace(item, revision_rule="IGNORE_CHANGE")
-        if change == "unknown_kind":
-            item = replace(item, resource_kind="INTAKE")
-        if change == "unknown_projection":
-            item = replace(item, projection="ALL_FIELDS")
-        if change == "partial_encounter":
-            item = ApprovedSourceProjection("ENCOUNTER", "ENCOUNTER_METADATA_V1", frozenset({"id"}))
-        p = replace(c.disclosure, projections=(item,))
-    c.control.disclosure = p
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    with expect("disclosure_policy_unconfirmed"):
-        read(c, g)
-
-
-def test_provider_drift_during_decryption_is_not_released(mutable_selected_case, monkeypatch):
-    c = mutable_selected_case
-    g = approved(c)
-    original = content.read_evaluation
-
-    def decrypt(item):
-        result = original(item)
-        c.control.disclosure = None
-        return result
-
-    monkeypatch.setattr(content, "read_evaluation", decrypt)
-    with expect("disclosure_policy_unconfirmed"):
-        read(c, g)
     assert reads().count() == 0
 
 
@@ -916,7 +678,7 @@ def test_appointment_backed_source_lifecycle_is_independently_checked(
     g = approved(c)
     if parent_state == "valid":
         assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
-        assert set(read(c, g, "ENCOUNTER")["encounter"]) == ENCOUNTER_METADATA_FIELDS_V1
+        assert set(read(c, g, "ENCOUNTER")["encounter"]) == ENCOUNTER_METADATA_FIELDS
         return
     if parent_state == "cancelled":
         changes = {"status": "CANCELLED", "cancelled_at": timezone.now(), "completed_at": None}
@@ -964,3 +726,178 @@ def test_selected_content_half_open_start_and_expiry_boundaries(selected_case, m
     with expect("not_found"):
         read(c, g)
     assert reads().count() == 2
+
+
+def test_real_head_receiver_outsider_and_expiry(selected_case, monkeypatch):
+    c = selected_case
+    UserCapabilityOverride.objects.all().delete()
+    assert c.head.has_capability("counseling.continuity.approve")
+    assert c.receiver.has_capability("counseling.continuity.read_selected")
+    g = decide(c, request(c, communication_purpose="CASE_COORDINATION"))
+    assert g["effective_status"] == "ACTIVE"
+    assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
+    d = handoff_services.operate(
+        actor=c.author,
+        grant_id=g["id"],
+        operation="save",
+        expected_grant_version=g["version"],
+        expected_version=0,
+        body="Synthetic handoff",
+    )
+    handoff_services.operate(
+        actor=c.author,
+        grant_id=g["id"],
+        operation="submit",
+        expected_grant_version=g["version"],
+        expected_version=d["version"],
+    )
+    assert (
+        handoff_services.operate(
+            actor=c.receiver,
+            grant_id=g["id"],
+            operation="receive",
+            expected_grant_version=g["version"],
+        )["content"]
+        == "Synthetic handoff"
+    )
+    thread, _ = messages.open_case_coordination_thread(
+        actor=c.author, grant_id=g["id"], client_message_id=uuid4(), body="Synthetic coordination"
+    )
+    assert messages.list_messages(actor=c.receiver, thread_id=thread.pk)[0]
+    with pytest.raises(ContinuityError):
+        read(c, g, actor=c.outsider)
+    with pytest.raises(ThreadNotFound):
+        messages.get_thread(actor=c.outsider, thread_id=thread.pk)
+    moment = g["expires_at"]
+    monkeypatch.setattr(timezone, "now", lambda: moment)
+    for actor in (c.author, c.receiver):
+        with pytest.raises(CaseCoordinationEnded):
+            messages.list_messages(actor=actor, thread_id=thread.pk)
+        with pytest.raises(ContinuityError):
+            handoff_services.operate(
+                actor=actor,
+                grant_id=g["id"],
+                operation="receive",
+                expected_grant_version=g["version"],
+            )
+    with pytest.raises(ContinuityError):
+        read(c, g)
+
+
+def test_assistant_request_uses_live_responsibility_and_independent_head(selected_case):
+    c = selected_case
+    assistant = c.user("office-assistant", "GUIDANCE_OFFICE_ASSISTANT")
+    UserCapabilityOverride.objects.all().delete()
+    StaffSupervision.objects.create(staff=assistant, supervisor=c.author)
+    CounselorResponsibility.objects.create(college=c.college, counselor=c.author)
+    config = coverage_selection.configuration(actor=assistant)
+    assert config["can_request"] and not config["can_approve"]
+    assert {x["student_id"] for x in config["office_cases"]} == {c.student.pk}
+    assert (
+        len(
+            coverage_selection.select(
+                actor=assistant, student_id=c.student.pk, original_counselor_id=c.author.pk
+            )["items"]
+        )
+        == 2
+    )
+    g = request(c, actor=assistant, coverage_kind="TEMPORARY_COVERAGE")
+    with pytest.raises(ContinuityError):
+        decide(c, g, actor=assistant)
+    assert decide(c, g)["effective_status"] == "ACTIVE"
+    CounselorResponsibility.objects.filter(college=c.college).delete()
+    assert coverage_selection.configuration(actor=assistant)["office_cases"] == []
+    with pytest.raises(ContinuityError):
+        coverage_selection.select(
+            actor=assistant, student_id=c.student.pk, original_counselor_id=c.author.pk
+        )
+
+
+def test_demo_coverage_uses_real_services_and_does_not_extend_expiry(selected_case):
+    from types import SimpleNamespace
+
+    from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
+    from compass.staging_seed.scenarios.continuity import DEMO_REQUEST_ID, seed_demo_coverage
+    from compass.staging_seed.staff import COUNSELOR_A, COUNSELOR_B, HEAD_GUIDANCE
+    from compass.staging_seed.students import FOURTH_YEAR
+
+    c = selected_case
+    UserCapabilityOverride.objects.all().delete()
+    users = {
+        COUNSELOR_A.key: c.author,
+        COUNSELOR_B.key: c.receiver,
+        HEAD_GUIDANCE.key: c.head,
+        FOURTH_YEAR.key: c.student,
+    }
+    records = []
+    session = SimpleNamespace(user=users.__getitem__, record=lambda name, **kw: records.append(kw))
+    seed_demo_coverage(session)
+    grant = Grant.objects.get(request_id=DEMO_REQUEST_ID)
+    expiry = grant.expires_at
+    assert grant.decision == "APPROVED" and grant.communication_purpose == "CASE_COORDINATION"
+    assert (
+        read(c, {"id": grant.pk, "version": grant.version})["evaluation"]["recommendations"]
+        == SENTINEL
+    )
+    seed_demo_coverage(session)
+    grant.refresh_from_db()
+    assert grant.expires_at == expiry and records == [{"created": True}, {"created": False}]
+
+
+def test_completed_approval_survives_live_head_turnover(selected_case):
+    from compass.counseling.case_communication import authorize_case_coordination
+    from compass.counseling.continuity_rules import active_college_ids, is_head, is_office_requester
+
+    c = selected_case
+    UserCapabilityOverride.objects.all().delete()
+    g = approved(c, communication_purpose="CASE_COORDINATION")
+    UserDesignation.objects.filter(user=c.head).delete()
+    User.objects.filter(pk=c.head.pk).update(is_active=False)
+    c.head.refresh_from_db()
+    new_head = c.user("new-head")
+    assistant = c.user("new-assistant", "GUIDANCE_OFFICE_ASSISTANT")
+    UserCapabilityOverride.objects.all().delete()
+    UserDesignation.objects.create(
+        user=new_head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    added = foundation_tests.College.objects.create(campus=c.campus, code="NEW", name="New")
+    assert is_head(new_head) and not is_head(c.head)
+    assert is_office_requester(assistant) and added.pk in active_college_ids()
+    assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
+    authorize_case_coordination(actor=c.receiver, grant_id=g["id"])
+    with pytest.raises(ContinuityError):
+        decide(c, g, "REVOKED", revocation_reason="COVERAGE_ENDED")
+    decide(c, g, "REVOKED", actor=new_head, revocation_reason="COVERAGE_ENDED")
+    with pytest.raises(ContinuityError):
+        read(c, g)
+
+
+@pytest.mark.parametrize("entity", ["college", "campus"])
+def test_active_college_and_campus_membership_rechecked(selected_case, entity):
+    c = selected_case
+    g = approved(c)
+    target = c.college if entity == "college" else c.campus
+    type(target).objects.filter(pk=target.pk).update(is_active=False)
+    with pytest.raises(ContinuityError):
+        read(c, g)
+    with pytest.raises(ContinuityError, match="ineligible_student"):
+        request(c, request_id=uuid4())
+
+
+@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "FACULTY"])
+def test_office_capability_does_not_replace_live_membership(selected_case, role):
+    c = selected_case
+    actor = c.user("office-impostor", role)
+    # Even with all continuity capabilities, unrelated Counselors and Faculty cannot select.
+    if role == "GUIDANCE_OFFICE_ASSISTANT":
+        StaffSupervision.objects.create(staff=actor, supervisor=c.author)
+        CounselorResponsibility.objects.create(college=c.college, counselor=c.author)
+        g = request(c, actor=actor)
+        assert decide(c, g)["effective_status"] == "ACTIVE"
+        StaffSupervision.objects.filter(staff=actor).delete()
+    with pytest.raises(ContinuityError):
+        coverage_selection.select(
+            actor=actor, student_id=c.student.pk, original_counselor_id=c.author.pk
+        )
+    with pytest.raises(ContinuityError):
+        read(c, {"id": uuid4(), "version": 2}, actor=actor)

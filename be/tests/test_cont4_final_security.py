@@ -15,7 +15,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.counseling import continuity_access, handoff_content, handoff_services
 from compass.counseling import student_session_summary_content as summary_content
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.handoff_models import CounselorHandoffSummary as Handoff
 from compass.counseling.student_session_summaries import (
     publish_assigned_student_session_summary,

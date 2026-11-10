@@ -14,12 +14,10 @@ from compass.counseling import continuity_services as grants
 from compass.counseling import handoff_content as content
 from compass.counseling.continuity_locks import (
     lock_authority_relations,
-    lock_policy_for_selected_read,
 )
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
-from compass.counseling.continuity_policy import ContinuityError, require_policy
-from compass.counseling.coverage_policy import require_workflow_policy
+from compass.counseling.continuity_rules import ContinuityError, active_college_ids
 from compass.counseling.handoff_models import CounselorHandoffSummary as Handoff
 
 
@@ -46,27 +44,25 @@ def _metadata(item):
 def _guard(actor, grant, scopes, users, operation, session):
     now = timezone.now()
     grants._actor(actor, "view", now)
-    policy = require_policy(now)
-    workflow = require_workflow_policy(policy, now)
     if session is not None and (
         session.user_id != actor.pk or session.revoked_at is not None or now >= session.expires_at
     ):
         raise ContinuityError("session_unavailable", 401)
     if grant is None:
         raise ContinuityError("not_found", 404)
-    grants._snapshot(grant, scopes, policy)
+    grants._snapshot(grant, scopes)
     if operation == "metadata":
-        grants._visible(grant, actor, policy, now)
-        return workflow
+        grants._visible(grant, actor, now)
+        return
     if grant.decision not in {"REQUESTED", "APPROVED"} or now >= grant.expires_at:
         raise ContinuityError("not_found", 404)
-    if grants._student(users.get(grant.student_id), policy) != grant.student_placement_marker:
+    if grants._student(users.get(grant.student_id)) != grant.student_placement_marker:
         raise ContinuityError("not_found", 404)
     grants._receiver(users.get(grant.receiving_counselor_id), now)
     if (
-        not workflow.college_ids.intersection(policy.college_ids)
+        not active_college_ids()
         or not grants.StudentAcademicProfile.objects.filter(
-            student_id=grant.student_id, current_college_id__in=workflow.college_ids
+            student_id=grant.student_id, current_college_id__in=active_college_ids()
         ).exists()
     ):
         raise ContinuityError("not_found", 404)
@@ -76,7 +72,7 @@ def _guard(actor, grant, scopes, users, operation, session):
             raise ContinuityError("missing_capability")
         if (
             actor.pk != grant.receiving_counselor_id
-            or grants._effective(grant, scopes, users, policy, now) != "ACTIVE"
+            or grants._effective(grant, scopes, users, now) != "ACTIVE"
         ):
             raise ContinuityError("not_found", 404)
     else:
@@ -86,14 +82,14 @@ def _guard(actor, grant, scopes, users, operation, session):
             "counseling.handoff.manage_own", at=now
         ) or not actor.has_capability("counseling.view_assigned", at=now):
             raise ContinuityError("missing_capability")
-        if grant.decision == "APPROVED" and grants._effective(
-            grant, scopes, users, policy, now
-        ) not in {"ACTIVE", "SCHEDULED"}:
+        if grant.decision == "APPROVED" and grants._effective(grant, scopes, users, now) not in {
+            "ACTIVE",
+            "SCHEDULED",
+        }:
             raise ContinuityError("not_found", 404)
-    return workflow
 
 
-def _audit(actor, item, verb, grant, workflow, context):
+def _audit(actor, item, verb, grant, context):
     context = context or AuditContext.user(actor)
     if context.actor_type != "USER" or context.actor.pk != actor.pk:
         raise ValueError("Handoff Audit actor must match")
@@ -111,8 +107,6 @@ def _audit(actor, item, verb, grant, workflow, context):
             "version": item.version,
             "state": item.state,
             "grant_version": grant.version,
-            "policy_version": workflow.version,
-            "policy_evidence": workflow.evidence_reference,
         },
     )
 
@@ -134,7 +128,6 @@ def operate(
         with transaction.atomic(durable=True):
             with connection.cursor() as cursor:
                 cursor.execute("SET LOCAL lock_timeout = '1000ms'")
-            lock_policy_for_selected_read()
             hint_qs = Grant.objects.filter(pk=grant_id)
             if operation != "metadata":
                 hint_qs = hint_qs.filter(
@@ -177,7 +170,7 @@ def operate(
             def guard():
                 return _guard(current_actor, grant, scopes, users, operation, session)
 
-            workflow = guard()
+            guard()
             if type(expected_grant_version) is not int or expected_grant_version != grant.version:
                 raise ContinuityError("stale_version", 409)
             item = (
@@ -226,7 +219,7 @@ def operate(
                     raise ContinuityError("handoff_unavailable", 503) from None
                 guard()
                 item.save()
-                _audit(current_actor, item, verb, grant, workflow, context)
+                _audit(current_actor, item, verb, grant, context)
                 result = _metadata(item)
             elif operation == "submit":
                 if item is None:
@@ -247,7 +240,7 @@ def operate(
                 item.submitted_at = timezone.now()
                 item.version += 1
                 item.save(update_fields=["state", "submitted_at", "version", "updated_at"])
-                _audit(current_actor, item, "submitted", grant, workflow, context)
+                _audit(current_actor, item, "submitted", grant, context)
                 result = _metadata(item)
             elif operation in {"author_read", "receive"}:
                 if item is None or (operation == "receive" and item.state != "SUBMITTED"):
@@ -255,7 +248,7 @@ def operate(
                 guard()
                 result = {**_metadata(item), "content": content.read(item)}
                 guard()
-                _audit(current_actor, item, "read", grant, workflow, context)
+                _audit(current_actor, item, "read", grant, context)
             else:
                 raise ContinuityError("not_found", 404)
             guard()  # Audit insertion can wait; expiry rolls back event/body/mutation.

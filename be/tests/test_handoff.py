@@ -1,7 +1,6 @@
-"""Real provisional workflows; isolated policy variations and ephemeral keys."""
+"""Handoff workflows with live authority and independent ephemeral keys."""
 
 import json
-from dataclasses import replace
 from datetime import timedelta
 from io import StringIO
 from uuid import uuid4
@@ -18,14 +17,12 @@ from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.confidential_data import crypto
 from compass.counseling import (
-    coverage_policy,
     coverage_selection,
     handoff_content,
     handoff_services,
 )
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
-from compass.counseling.continuity_policy import ContinuityError
-from compass.counseling.coverage_policy import ApprovedCoverageWorkflowPolicy
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.handoff_models import CounselorHandoffSummary as Handoff
 from tests import test_continuity_access as selected
 from tests.test_continuity import client, decide, request
@@ -39,45 +36,14 @@ TEXT = "  Confidential synthetic handoff — 你好\nExact second line  \n"
 
 
 @pytest.fixture
-def mutable_workflow_case(mutable_selected_case, monkeypatch):
-    c = mutable_selected_case
-    selected.CounselorResponsibility.objects.create(college=c.college, counselor=c.head)
-    c.workflow = ApprovedCoverageWorkflowPolicy(
-        version="TEST-WORKFLOW-V1",
-        evidence_reference="TEST-D11",
-        selection_evidence="TEST-D05",
-        handoff_basis_evidence="TEST-D08",
-        retention_evidence="TEST-D14",
-        author_qualification_evidence="TEST-D11-AUTHOR",
-        client_safety_evidence="TEST-D18",
-        valid_from=c.policy.valid_from,
-        valid_until=c.policy.valid_until,
-        college_ids=c.policy.college_ids,
-        source_kinds=frozenset({"ENCOUNTER", "ROUTINE_EVALUATION"}),
-    )
-    c.control.operational = replace(
-        c.policy,
-        workflow_policy_digest=c.workflow.digest,
-        office_requester_ids=frozenset({c.head.pk}),
-    )
-    c.policy = c.control.operational
-    c.workflow_control = [c.workflow]
-    monkeypatch.setattr(
-        coverage_policy, "get_approved_workflow_policy", lambda: c.workflow_control[0]
-    )
-    for u in [c.author, c.receiver, c.head, c.outsider, c.student]:
-        for code in ["counseling.handoff.manage_own", "counseling.handoff.read_received"]:
-            set_user_capability_override(
-                user=u, capability=code, effect="GRANT", reason="SYNTHETIC ONLY"
-            )
-    return c
+def mutable_workflow_case(workflow_case):
+    return workflow_case
 
 
 @pytest.fixture
 def workflow_case(selected_case):
     c = selected_case
-    c.workflow = coverage_policy.get_approved_workflow_policy()
-    c.workflow_control = [c.workflow]
+    selected.CounselorResponsibility.objects.create(college=c.college, counselor=c.head)
     return c
 
 
@@ -164,9 +130,6 @@ def test_unsupported_role_even_with_overrides(workflow_case, role, monkeypatch):
         "role",
         "student",
         "placement",
-        "policy",
-        "workflow",
-        "manifest",
         "revoked",
         "expired",
         "scheduled",
@@ -208,12 +171,6 @@ def test_receiver_invalidations_before_decrypt(mutable_workflow_case, monkeypatc
         selected.StudentAcademicProfile.objects.filter(student=c.student).update(
             current_college=c.college_b
         )
-    elif change == "policy":
-        c.control.operational = None
-    elif change == "workflow":
-        c.workflow_control[0] = None
-    elif change == "manifest":
-        c.workflow_control[0] = replace(c.workflow, evidence_reference="CHANGED")
     elif change == "revoked":
         decide(c, g, "REVOKED", revocation_reason="COVERAGE_ENDED")
     elif change == "expired":
@@ -303,24 +260,16 @@ def test_unplanned_absence_no_author_login_or_handoff_and_narrow_selection(
     )
     with pytest.raises(ContinuityError, match="self_approval"):
         decide(c, g)
-    c.control.operational = replace(c.policy, approver_ids=frozenset({c.head.pk, c.outsider.pk}))
     selected.UserDesignation.objects.create(
         user=c.outsider,
         designation=selected.Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
-    # A changed approval policy requires a new request, never rebind an old sealed grant.
-    with pytest.raises(ContinuityError, match="policy"):
-        decide(c, g, actor=c.outsider)
+    assert decide(c, g, actor=c.outsider)["effective_status"] == "ACTIVE"
     assert not Handoff.objects.exists()
 
 
 def test_unplanned_with_independent_authorized_backup(mutable_workflow_case):
     c = mutable_workflow_case
-    c.control.operational = replace(
-        c.policy,
-        office_requester_ids=frozenset({c.head.pk}),
-        approver_ids=frozenset({c.head.pk, c.outsider.pk}),
-    )
     selected.UserDesignation.objects.create(
         user=c.outsider,
         designation=selected.Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
@@ -336,9 +285,7 @@ def test_unplanned_with_independent_authorized_backup(mutable_workflow_case):
     assert not Handoff.objects.exists()
 
 
-@pytest.mark.parametrize(
-    "change", ["requester", "student", "original", "missing_policy", "case", "kind"]
-)
+@pytest.mark.parametrize("change", ["requester", "student", "original"])
 def test_unapproved_selector_never_decrypts(mutable_workflow_case, monkeypatch, change):
     c = mutable_workflow_case
     kw = dict(actor=c.head, student_id=c.student.pk, original_counselor_id=c.author.pk)
@@ -348,12 +295,6 @@ def test_unapproved_selector_never_decrypts(mutable_workflow_case, monkeypatch, 
         kw["student_id"] = c.receiver.pk
     elif change == "original":
         kw["original_counselor_id"] = c.outsider.pk
-    elif change == "missing_policy":
-        c.workflow_control[0] = None
-    elif change == "case":
-        c.workflow_control[0] = replace(c.workflow, office_selection_rule="DENY")
-    elif change == "kind":
-        c.workflow_control[0] = replace(c.workflow, source_kinds=frozenset())
     monkeypatch.setattr(
         selected.content, "read_evaluation", lambda *_: pytest.fail("evaluation decrypt")
     )
@@ -376,10 +317,10 @@ def test_selection_is_metadata_only_and_request_requires_approved_case(mutable_w
         "eligible",
     }
     assert len(page["receivers"]) >= 1
-    c.workflow_control[0] = replace(c.workflow, office_selection_rule="DENY")
-    c.control.operational = replace(c.policy, workflow_policy_digest=c.workflow_control[0].digest)
+    selected.CounselorResponsibility.objects.filter(college=c.college).delete()
+    # Heads retain live office-wide responsibility; an unrelated Counselor cannot request.
     with pytest.raises(ContinuityError):
-        request(c, actor=c.head)
+        request(c, actor=c.outsider)
 
 
 @pytest.mark.parametrize(
@@ -534,7 +475,7 @@ def test_api_csrf_cache_content_separation_and_default_unavailable(mutable_workf
     )
     r = client(c.receiver).get(base + "/submitted", {"expected_grant_version": g["version"]})
     assert r.status_code == 200 and r.json()["content"] == TEXT
-    c.workflow_control[0] = None
+    selected.User.objects.filter(pk=c.receiver.pk).update(is_active=False)
     r = client(c.receiver).get(base + "/submitted", {"expected_grant_version": g["version"]})
     assert (
         r.status_code == 403
@@ -613,15 +554,6 @@ def test_real_csrf_and_unapproved_endpoints_no_store(workflow_case):
     assert not AuditEvent.objects.filter(action="counseling.handoff.read").exists()
 
 
-def test_default_providers_and_policy_manifest_validation():
-    from compass.counseling.continuity_disclosure import get_approved_disclosure_policy
-    from compass.counseling.continuity_policy import get_approved_policy
-
-    assert get_approved_policy().version == "code_owned_provisional_v1"
-    assert get_approved_disclosure_policy().version == "code_owned_provisional_v1"
-    assert coverage_policy.get_approved_workflow_policy().post_expiry_rule == "DENY_ALL"
-
-
 @pytest.mark.parametrize("fault", ["revoked", "rotated", "expired", "wrong_actor"])
 def test_http_session_rechecked_before_handoff_decryption(workflow_case, monkeypatch, fault):
     from compass.authentication.models import AuthSession
@@ -669,38 +601,6 @@ def test_no_handoff_notification_intents_or_student_disclosure(workflow_case):
     assert response.status_code == 403 and TEXT not in response.content.decode()
 
 
-@pytest.mark.parametrize(
-    "change",
-    [
-        "author_rule",
-        "post_expiry_rule",
-        "acknowledgment_rule",
-        "notification_rule",
-        "source_kinds",
-        "office_selection_rule",
-        "valid_until",
-        "college_ids",
-    ],
-)
-def test_unapproved_workflow_policy_contract_denies(mutable_workflow_case, change):
-    c = mutable_workflow_case
-    g = selected.approved(c)
-    submitted(c, g)
-    value = {
-        "author_rule": "ANY_COUNSELOR",
-        "post_expiry_rule": "FOREVER",
-        "acknowledgment_rule": "MANDATORY",
-        "notification_rule": "SEND_ALL",
-        "source_kinds": frozenset({"INTAKE"}),
-        "office_selection_rule": "DENY",
-        "valid_until": c.now - timedelta(seconds=1),
-        "college_ids": frozenset(),
-    }[change]
-    c.workflow_control[0] = replace(c.workflow, **{change: value})
-    with pytest.raises(ContinuityError):
-        op(c, g, "receive", actor=c.receiver)
-
-
 def test_bad_input_errors_and_audit_failure_never_echo_content(workflow_case, monkeypatch, caplog):
     c = workflow_case
     g = selected.approved(c)
@@ -732,7 +632,7 @@ def test_bad_input_errors_and_audit_failure_never_echo_content(workflow_case, mo
     assert response.status_code == 422 and TEXT not in response.content.decode()
 
 
-def test_original_author_participates_in_policy_bound_office_request_metadata(workflow_case):
+def test_original_author_participates_in_office_request_metadata(workflow_case):
     from compass.counseling import continuity_services
 
     c = workflow_case

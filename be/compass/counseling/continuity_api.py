@@ -1,4 +1,4 @@
-"""Continuity metadata and independently policy-gated selected source reads."""
+"""Continuity metadata and independently authorized selected source reads."""
 
 from datetime import datetime
 from enum import StrEnum
@@ -13,7 +13,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.counseling import continuity_services as services
 
-# Source-specific read operations, independently gated by approved field disclosure.
+# Source-specific read operations, independently gated by fixed field inventories.
 from compass.counseling.continuity_encounters import (
     read_selected_encounter_for_continuity,
 )
@@ -26,11 +26,11 @@ from compass.counseling.continuity_models import (
     ContinuitySourceKind,
     CoverageKind,
 )
-from compass.counseling.continuity_policy import ContinuityError
 from compass.counseling.continuity_read_schemas import (
     ContinuitySelectedEncounterResponse,
     ContinuitySelectedEvaluationResponse,
 )
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.continuity_sources import SelectedSource
 from compass.routine_interviews.continuity import (
     read_selected_evaluation_for_continuity,
@@ -113,8 +113,6 @@ class ContinuityGrantMetadata(ContinuitySchema):
     revocation_reason: ContinuityRevocationReason | None
     communication_purpose: ContinuityCommunicationPurpose | None
     version: int
-    policy_version: str
-    policy_evidence: str
     # Display names for the Student and staff referenced above.
     people: list[ContinuityPerson]
     scopes: list[ContinuityScopeMetadata]

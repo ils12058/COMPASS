@@ -11,7 +11,7 @@ from compass.counseling.case_communication import (
     authorize_case_coordination,
     visible_case_coordination_grant_ids,
 )
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.organization.access_scope import (
     HEAD_GUIDANCE_DESIGNATION,
     resolve_general_guidance_college_scope,

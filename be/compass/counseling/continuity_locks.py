@@ -5,11 +5,9 @@ capability engine or every writer. All acquisition after sorted User locks is NO
 These intentionally conservative short transactions may conflict with unrelated changes.
 """
 
-from contextlib import contextmanager
-
 from django.db import OperationalError, connection, transaction
 
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 
 # Compile-time identifiers only. Never accept table/model names from a caller.
 AUTHORITY_TABLES = (
@@ -26,9 +24,6 @@ AUTHORITY_TABLES = (
     "organization_college",
     "organization_campus",
 )
-# Two-int PostgreSQL advisory namespace, dedicated to continuity policy publication.
-POLICY_LOCK_NAMESPACE = 1129270608
-POLICY_LOCK_KEY = 2
 
 
 def _postgres_transaction():
@@ -39,35 +34,6 @@ def _postgres_transaction():
         cursor.execute("SHOW transaction_isolation")
         if cursor.fetchone()[0] != "read committed":
             raise ContinuityError("release_coordination_unavailable")
-
-
-def lock_policy_for_selected_read():
-    _postgres_transaction()
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT pg_try_advisory_xact_lock_shared(%s, %s)",
-            [POLICY_LOCK_NAMESPACE, POLICY_LOCK_KEY],
-        )
-        if not cursor.fetchone()[0]:
-            raise ContinuityError("policy_busy", 409)
-
-
-@contextmanager
-def continuity_policy_change():
-    """Required future provider publication/invalidation boundary; no policy writer exists.
-
-    Acquire before changing any provider-visible state, hold through commit. Providers
-    must use transactionally visible storage; an in-process fixture is test-only.
-    """
-    with transaction.atomic():
-        _postgres_transaction()
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT pg_try_advisory_xact_lock(%s, %s)", [POLICY_LOCK_NAMESPACE, POLICY_LOCK_KEY]
-            )
-            if not cursor.fetchone()[0]:
-                raise ContinuityError("policy_busy", 409)
-        yield
 
 
 def lock_authority_relations():

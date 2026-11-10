@@ -1,11 +1,9 @@
-"""Wire boundaries and code-owned production providers."""
+"""Wire boundaries and fixed selected-record fields."""
 
 import json
 from pathlib import Path
 
 import pytest
-
-from compass.counseling.continuity_policy import get_approved_policy
 
 CONTRACT = Path(__file__).resolve().parents[2] / "contracts/openapi.json"
 
@@ -53,11 +51,6 @@ def test_continuity_contract_preserves_seven_metadata_operations():
             assert operation["security"] == [{"OpaqueSessionAuth": []}]
 
 
-@pytest.mark.django_db
-def test_deployed_policy_provider_is_code_owned_provisional():
-    assert get_approved_policy().version == "code_owned_provisional_v1"
-
-
 def test_handoff_wire_contract_keeps_identity_and_body_audiences_separate():
     contract = json.loads(CONTRACT.read_text())
     schemas = contract["components"]["schemas"]
@@ -92,7 +85,6 @@ def test_handoff_wire_contract_keeps_identity_and_body_audiences_separate():
 
 @pytest.mark.django_db
 def test_selected_read_contract_has_fixed_typed_fields_and_default_denial():
-    from compass.counseling.continuity_disclosure import get_approved_disclosure_policy
 
     contract = json.loads(CONTRACT.read_text())
     schemas = contract["components"]["schemas"]
@@ -106,18 +98,10 @@ def test_selected_read_contract_has_fixed_typed_fields_and_default_denial():
     }
     assert set(schemas["SelectedEvaluationFields"]["properties"]) == {
         "academic_adjustment_rating",
-        "physical_adjustment_rating",
-        "social_adjustment_rating",
-        "spiritual_adjustment_rating",
-        "financial_adjustment_rating",
-        "emotional_adjustment_rating",
-        "other_adjustment",
-        "special_concern",
         "recommendations",
     }
     assert not schemas["SelectedEvaluationFields"].get("required")
     assert schemas["SelectedEvaluationFields"]["additionalProperties"] is False
-    assert get_approved_disclosure_policy().version == "code_owned_provisional_v1"
     for path, route in contract["paths"].items():
         if "continuity-grants" in path and (
             "/encounters/" in path or "/routine-evaluations/" in path

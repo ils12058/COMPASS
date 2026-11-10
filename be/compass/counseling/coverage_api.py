@@ -17,7 +17,7 @@ from compass.counseling.continuity_models import (
     ContinuityReason,
     ContinuitySourceKind,
 )
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 
 router = Router(auth=session_auth)
 
@@ -36,7 +36,6 @@ class OfficeCaseReference(StrictSchema):
 
 class CoverageConfiguration(StrictSchema):
     server_now: datetime
-    valid_until: datetime
     maximum_duration_seconds: int
     maximum_advance_seconds: int
     reason_categories: list[ContinuityReason]

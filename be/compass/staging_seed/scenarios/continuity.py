@@ -36,7 +36,7 @@ def seed_demo_coverage(session: SeedSession):
     )
     if source is None:
         raise ValueError("Demo coverage needs the completed Counseling story")
-    # The policy's 30-day maximum keeps the demonstration active through Evaluation.
+    # The 30-day maximum keeps the demonstration active through Evaluation.
     starts_at = timezone.now() - timedelta(minutes=1)
     grant = request_coverage(
         actor=original,

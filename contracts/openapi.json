@@ -6673,14 +6673,6 @@
             "title": "People",
             "type": "array"
           },
-          "policy_evidence": {
-            "title": "Policy Evidence",
-            "type": "string"
-          },
-          "policy_version": {
-            "title": "Policy Version",
-            "type": "string"
-          },
           "reason_category": {
             "$ref": "#/components/schemas/ContinuityReason"
           },
@@ -6775,8 +6767,6 @@
           "revocation_reason",
           "communication_purpose",
           "version",
-          "policy_version",
-          "policy_evidence",
           "people",
           "scopes"
         ],
@@ -7038,10 +7028,6 @@
       "ContinuitySelectedEncounterResponse": {
         "additionalProperties": false,
         "properties": {
-          "disclosure_policy_version": {
-            "title": "Disclosure Policy Version",
-            "type": "string"
-          },
           "encounter": {
             "$ref": "#/components/schemas/SelectedEncounterFields"
           },
@@ -7054,10 +7040,6 @@
             "title": "Grant Version",
             "type": "integer"
           },
-          "policy_version": {
-            "title": "Policy Version",
-            "type": "string"
-          },
           "projection": {
             "const": "ENCOUNTER_METADATA_V1",
             "title": "Projection",
@@ -7067,8 +7049,6 @@
         "required": [
           "grant_id",
           "grant_version",
-          "policy_version",
-          "disclosure_policy_version",
           "projection",
           "encounter"
         ],
@@ -7078,10 +7058,6 @@
       "ContinuitySelectedEvaluationResponse": {
         "additionalProperties": false,
         "properties": {
-          "disclosure_policy_version": {
-            "title": "Disclosure Policy Version",
-            "type": "string"
-          },
           "evaluation": {
             "$ref": "#/components/schemas/SelectedEvaluationFields"
           },
@@ -7093,10 +7069,6 @@
           "grant_version": {
             "title": "Grant Version",
             "type": "integer"
-          },
-          "policy_version": {
-            "title": "Policy Version",
-            "type": "string"
           },
           "projection": {
             "const": "FINALIZED_EVALUATION_V1",
@@ -7112,8 +7084,6 @@
         "required": [
           "grant_id",
           "grant_version",
-          "policy_version",
-          "disclosure_policy_version",
           "projection",
           "routine_interview_id",
           "evaluation"
@@ -9819,16 +9789,10 @@
             "format": "date-time",
             "title": "Server Now",
             "type": "string"
-          },
-          "valid_until": {
-            "format": "date-time",
-            "title": "Valid Until",
-            "type": "string"
           }
         },
         "required": [
           "server_now",
-          "valid_until",
           "maximum_duration_seconds",
           "maximum_advance_seconds",
           "reason_categories",
@@ -28978,56 +28942,6 @@
             ],
             "title": "Academic Adjustment Rating"
           },
-          "emotional_adjustment_rating": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 1,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Emotional Adjustment Rating"
-          },
-          "financial_adjustment_rating": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 1,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Financial Adjustment Rating"
-          },
-          "other_adjustment": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Other Adjustment"
-          },
-          "physical_adjustment_rating": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 1,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Physical Adjustment Rating"
-          },
           "recommendations": {
             "anyOf": [
               {
@@ -29038,43 +28952,6 @@
               }
             ],
             "title": "Recommendations"
-          },
-          "social_adjustment_rating": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 1,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Social Adjustment Rating"
-          },
-          "special_concern": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Special Concern"
-          },
-          "spiritual_adjustment_rating": {
-            "anyOf": [
-              {
-                "maximum": 10,
-                "minimum": 1,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spiritual Adjustment Rating"
           }
         },
         "title": "SelectedEvaluationFields",

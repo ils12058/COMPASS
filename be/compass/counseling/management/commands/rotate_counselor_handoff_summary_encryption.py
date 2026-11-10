@@ -5,7 +5,7 @@ from django.db import transaction
 
 from compass.confidential_data import crypto
 from compass.counseling import handoff_content as content
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.handoff_models import CounselorHandoffSummary
 
 

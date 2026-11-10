@@ -18,8 +18,6 @@ class SelectedReadSchema(Schema):
 class SelectedReadProvenance(SelectedReadSchema):
     grant_id: UUID
     grant_version: int
-    policy_version: str
-    disclosure_policy_version: str
 
 
 class SelectedEncounterFields(SelectedReadSchema):
@@ -37,15 +35,7 @@ class ContinuitySelectedEncounterResponse(SelectedReadProvenance):
 
 
 class SelectedEvaluationFields(SelectedReadSchema):
-    # An unapproved field is UNSET, not a disclosed null/empty value. Approved nulls remain null.
     academic_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    physical_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    social_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    spiritual_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    financial_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    emotional_adjustment_rating: int | None = Field(default=None, ge=1, le=10)
-    other_adjustment: str | None = None
-    special_concern: str | None = None
     recommendations: str | None = None
 
 

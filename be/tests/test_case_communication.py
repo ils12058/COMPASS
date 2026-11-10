@@ -1,39 +1,29 @@
-"""Synthetic evidence only: the deployed case-communication policy stays unavailable.
-
-`authorize_case_coordination` is the only authority for "may this Counselor coordinate about this
-Student now?". Messaging, list, context and recipient code must not repeat its conditionals.
-"""
+"""Case coordination authority within active grants."""
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import timedelta
 from uuid import uuid4
 
 import pytest
 from django.db import connection, transaction
 from django.test.utils import CaptureQueriesContext
-from django.utils import timezone
 
-from compass.counseling import case_communication_policy, continuity_policy
 from compass.counseling.case_communication import (
     authorize_case_coordination,
     visible_case_coordination_grant_ids,
 )
-from compass.counseling.case_communication_policy import require_case_communication_policy
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.student_academics.models import StudentAcademicProfile
 from tests.case_communication_helpers import (  # noqa: F401
     PURPOSE,
     additional_student,
-    approved_communication_policy,
     case,
     communication,
     expire,
     live_case_grant,
-    patch_communication_policy,
     request_case_grant,
     revoke,
 )
@@ -48,62 +38,14 @@ def expect(code):
     return pytest.raises(ContinuityError, match=rf"\({code}\)")
 
 
-def test_real_provider_allows_purpose_requests(case):
-    policy = require_case_communication_policy(timezone.now())
-    assert policy.version == "code_owned_provisional_v1"
+def test_case_coordination_purpose_requests(case):
     assert request_case_grant(case)["communication_purpose"] == PURPOSE
 
 
-def test_policy_digest_is_deterministic_and_covers_reviewed_fields(communication):
-    policy = communication.communication_policy
-    policy.validate(timezone.now())
-    assert len(policy.digest) == 64
-    assert policy.digest == require_case_communication_policy(timezone.now()).digest
-    for changed in (
-        approved_communication_policy(communication, version="synthetic-c2"),
-        approved_communication_policy(communication, evidence="TEST-ONLY-GMSG5-B"),
-        approved_communication_policy(
-            communication, valid_until=communication.policy.valid_until - timedelta(hours=1)
-        ),
-    ):
-        assert changed.digest != policy.digest
-
-
-@pytest.mark.parametrize(
-    "changes",
-    [
-        {"version": ""},
-        {"version": "bad version"},
-        {"version": "v" * 65},
-        {"evidence_reference": "bad evidence"},
-        {"evidence_reference": "e" * 129},
-        {"permitted_purposes": frozenset()},
-        {"permitted_purposes": frozenset({"SYNTHETIC_PURPOSE"})},
-    ],
-)
-def test_policy_rejects_unreviewed_values(communication, changes):
-    with expect("communication_policy_unconfirmed"):
-        approved_communication_policy(communication, **changes).validate(timezone.now())
-
-
-def test_policy_rejects_naive_or_closed_effective_window(communication):
-    now = timezone.now()
-    naive = approved_communication_policy(
-        communication, valid_from=communication.policy.valid_from.replace(tzinfo=None)
-    )
-    closed = approved_communication_policy(
-        communication, valid_until=communication.policy.valid_from
-    )
-    for policy in (naive, closed):
-        with expect("communication_policy_unconfirmed"):
-            policy.validate(now)
-
-
-def test_grant_records_the_reviewed_purpose_and_digest(communication):
+def test_grant_records_the_case_coordination_purpose(communication):
     grant = live_case_grant(communication)
     row = Grant.objects.get(pk=grant["id"])
     assert row.communication_purpose == PURPOSE
-    assert row.communication_policy_digest == communication.communication_policy.digest
     assert grant["communication_purpose"] == PURPOSE
 
 
@@ -181,40 +123,6 @@ def test_revocation_and_expiry_end_access_for_both_participants(communication):
         for actor in (case.author, case.receiver):
             with expect("case_access_ended"):
                 authorize_case_coordination(actor=actor, grant_id=grant["id"])
-
-
-def test_changed_communication_policy_denies_everything(communication, monkeypatch):
-    case = communication
-    grant = live_case_grant(case)
-    patch_communication_policy(
-        monkeypatch, approved_communication_policy(case, version="synthetic-c2")
-    )
-    with expect("communication_policy_unconfirmed"):
-        authorize_case_coordination(actor=case.author, grant_id=grant["id"])
-    assert visible_case_coordination_grant_ids(actor=case.author) == []
-
-
-def test_missing_communication_provider_denies_everything(communication, monkeypatch):
-    case = communication
-    grant = live_case_grant(case)
-    monkeypatch.setattr(
-        case_communication_policy, "get_approved_case_communication_policy", lambda: None
-    )
-    with expect("communication_policy_unconfirmed"):
-        authorize_case_coordination(actor=case.author, grant_id=grant["id"])
-    assert visible_case_coordination_grant_ids(actor=case.author) == []
-
-
-def test_changed_continuity_policy_denies_case_coordination(communication, monkeypatch):
-    case = communication
-    grant = live_case_grant(case)
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, evidence_reference="TEST-ONLY-OTHER"),
-    )
-    with expect("policy_unconfirmed"):
-        authorize_case_coordination(actor=case.author, grant_id=grant["id"])
 
 
 def test_student_placement_change_ends_coordination(communication):

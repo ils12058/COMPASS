@@ -1,7 +1,7 @@
 """Counseling-owned exact Encounter metadata adapter; no ordinary ownership changes."""
 
 from compass.appointments.models import Appointment, AppointmentStatus
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.models import CounselingEncounter, CounselingEntryMode
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service

@@ -1,6 +1,6 @@
 """Metadata-only professional continuity provenance; no source-content authority.
 
-The optional communication purpose and policy digest are a separate communication authority,
+The optional communication purpose are a separate communication authority,
 never a source-read scope: they gate who may coordinate about the case, not what case content
 either Counselor may read.
 """
@@ -98,15 +98,11 @@ class CounselorCaseContinuityGrant(models.Model):
         max_length=24, choices=ContinuityRevocationReason.choices, blank=True, default=""
     )
     version = models.PositiveIntegerField(default=1)
-    policy_version = models.CharField(max_length=64)
-    policy_evidence = models.CharField(max_length=128)
-    policy_digest = models.CharField(max_length=64)
     student_placement_marker = models.CharField(max_length=128)
-    # Separate communication authority. Historical grants keep NULL/"" and no message access.
+    # Separate communication authority. Grants without a purpose keep NULL and no message access.
     communication_purpose = models.CharField(
         max_length=24, choices=ContinuityCommunicationPurpose.choices, null=True, blank=True
     )
-    communication_policy_digest = models.CharField(max_length=64, blank=True, default="")
     snapshot_digest = models.CharField(max_length=64)
     # One new client intent uses a UUID, never a bearer credential. Replays bind to snapshot.
     request_id = models.UUIDField()
@@ -195,19 +191,15 @@ class CounselorCaseContinuityGrant(models.Model):
                 name="continuity_revocation_provenance",
             ),
             models.CheckConstraint(
-                condition=~models.Q(policy_version="")
-                & ~models.Q(policy_evidence="")
-                & ~models.Q(policy_digest="")
-                & ~models.Q(snapshot_digest=""),
-                name="continuity_evidence_present",
+                condition=~models.Q(snapshot_digest=""),
+                name="continuity_snapshot_present",
             ),
             models.CheckConstraint(
                 condition=(
-                    models.Q(communication_purpose__isnull=True, communication_policy_digest="")
+                    models.Q(communication_purpose__isnull=True)
                     | models.Q(
-                        communication_purpose__isnull=False,
+                        communication_purpose=ContinuityCommunicationPurpose.CASE_COORDINATION,
                         original_counselor__isnull=False,
-                        communication_policy_digest__regex=r"^[0-9a-f]{64}$",
                     )
                 ),
                 name="counseling_grant_communication_scope",

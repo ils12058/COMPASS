@@ -1,10 +1,8 @@
-"""Real provisional coverage; explicit synthetic seams for policy-variation tests."""
+"""Case coverage lifecycle and live authority boundaries."""
 
-import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from threading import Barrier
 from types import SimpleNamespace
 from uuid import uuid4
@@ -28,13 +26,11 @@ from compass.accounts.models import (
 from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.counseling import case_communication_policy, continuity_policy
 from compass.counseling import continuity_services as svc
-from compass.counseling.case_communication_policy import ApprovedCaseCommunicationPolicy
 from compass.counseling.continuity_models import ContinuityCommunicationPurpose
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
-from compass.counseling.continuity_policy import ApprovedContinuityPolicy, ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.continuity_sources import SelectedSource
 from compass.counseling.models import CounselingEncounter
 from compass.organization.models import Campus, College
@@ -102,22 +98,6 @@ def _case_data():
         student_intake_ciphertext="UNREADABLE-SYNTHETIC-INTAKE",
         counselor_evaluation_ciphertext="UNREADABLE-SYNTHETIC-EVALUATION",
     )
-    synthetic_policy = ApprovedContinuityPolicy(
-        version="synthetic-v1",
-        evidence_reference="TEST-ONLY-D01-D13",
-        valid_from=now - timedelta(days=1),
-        valid_until=now + timedelta(days=20),
-        maximum_duration=timedelta(hours=8),
-        maximum_advance=timedelta(days=2),
-        college_ids=frozenset([college.pk, college_b.pk]),
-        approver_ids=frozenset([head.pk]),
-        office_requester_ids=frozenset(),
-        reason_categories=frozenset(["PLANNED_ABSENCE", "UNEXPECTED_ABSENCE", "TEMPORARY_SUPPORT"]),
-        overlap_rule="REJECT_ALL_RECEIVERS",
-        student_transfer_rule="REQUIRE_NEW_REQUEST",
-        metadata_review_approved=True,
-    )
-    policy = continuity_policy.get_approved_policy()
     payload = dict(
         actor=author,
         student_id=student.pk,
@@ -143,11 +123,7 @@ def case():
 
 
 @pytest.fixture
-def synthetic_case(monkeypatch):
-    """Only tests varying the policy contract use this provider seam."""
-    case = _case_data()
-    case.policy = case.synthetic_policy
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: case.policy)
+def synthetic_case(case):
     return case
 
 
@@ -178,18 +154,9 @@ def test_lifecycle_exact_boundaries_version_and_idempotency(case, monkeypatch):
     assert g["effective_status"] == "PENDING" and g["version"] == 1
     g = decide(case, g)
     assert g["effective_status"] == "SCHEDULED" and g["version"] == 2
-    count = (
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
-        .exclude(action="counseling.continuity.policy_recorded")
-        .count()
-    )
+    count = AuditEvent.objects.filter(action__startswith="counseling.continuity.").count()
     assert decide(case, g)["version"] == 2
-    assert (
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
-        .exclude(action="counseling.continuity.policy_recorded")
-        .count()
-        == count
-    )
+    assert AuditEvent.objects.filter(action__startswith="counseling.continuity.").count() == count
     for now, status in [
         (g["starts_at"], "ACTIVE"),
         (g["expires_at"] - timedelta(microseconds=1), "ACTIVE"),
@@ -226,11 +193,6 @@ def test_self_approval_denied_even_head(synthetic_case, monkeypatch, who):
     actor = getattr(case, who)
     UserDesignation.objects.create(
         user=actor, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
-    )
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, approver_ids=frozenset([actor.pk])),
     )
     g = request(case)
     with expect("self_approval"):
@@ -274,9 +236,7 @@ def test_inactive_actor_and_stale_user_object(case, operation):
             decide(case, g)
 
 
-@pytest.mark.parametrize(
-    "change", ["no_head", "missing_cap", "expired_cap", "explicit_revoke", "unnamed_head"]
-)
+@pytest.mark.parametrize("change", ["no_head", "missing_cap", "expired_cap", "explicit_revoke"])
 def test_current_head_authority_and_no_acting_override(synthetic_case, change, monkeypatch):
     case = synthetic_case
     g = request(case)
@@ -296,12 +256,6 @@ def test_current_head_authority_and_no_acting_override(synthetic_case, change, m
         UserCapabilityOverride.objects.filter(
             user=case.head, capability__code="counseling.continuity.approve"
         ).update(expires_at=case.now - timedelta(seconds=1))
-    if change == "unnamed_head":
-        monkeypatch.setattr(
-            continuity_policy,
-            "get_approved_policy",
-            lambda: replace(case.policy, approver_ids=frozenset([case.outsider.pk])),
-        )
     with expect(
         "missing_capability"
         if change in ["missing_cap", "expired_cap", "explicit_revoke"]
@@ -310,42 +264,7 @@ def test_current_head_authority_and_no_acting_override(synthetic_case, change, m
         decide(case, g)
 
 
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("version", ""),
-        ("evidence_reference", ""),
-        ("maximum_duration", timedelta(0)),
-        ("metadata_review_approved", False),
-        ("approver_ids", frozenset()),
-        ("overlap_rule", "UNKNOWN"),
-        ("student_transfer_rule", "ALLOW_TRANSFER"),
-    ],
-)
-def test_policy_incomplete_remains_denied(synthetic_case, monkeypatch, field, value):
-    case = synthetic_case
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, **{field: value}),
-    )
-    with expect("policy_unconfirmed"):
-        request(case)
-    assert Grant.objects.count() == 0
-
-
-def test_default_provider_and_missing_approval_policy(case, monkeypatch):
-    g = request(case)
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: None)
-    with expect("policy_unconfirmed"):
-        decide(case, g)
-    with expect("policy_unconfirmed"):
-        svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])
-    with expect("policy_unconfirmed"):
-        request(case)
-
-
-@pytest.mark.parametrize("seconds", [0, -1, 8 * 3600 + 1])
+@pytest.mark.parametrize("seconds", [0, -1, 30 * 24 * 3600 + 1])
 def test_invalid_intervals(synthetic_case, seconds):
     case = synthetic_case
     with expect("invalid_interval"):
@@ -362,8 +281,8 @@ def test_naive_and_unbounded_advance_intervals(synthetic_case):
     with expect("invalid_interval"):
         request(
             case,
-            starts_at=case.now + timedelta(days=3),
-            expires_at=case.now + timedelta(days=3, hours=1),
+            starts_at=case.now + timedelta(days=15),
+            expires_at=case.now + timedelta(days=15, hours=1),
         )
 
 
@@ -491,7 +410,6 @@ def test_post_approval_scope_widening_is_denied(case):
         "transfer",
         "former",
         "student_inactive",
-        "policy",
     ],
 )
 def test_effective_eligibility_revalidated(synthetic_case, monkeypatch, change):
@@ -525,43 +443,19 @@ def test_effective_eligibility_revalidated(synthetic_case, monkeypatch, change):
         User.objects.filter(pk=case.student.pk).update(student_lifecycle_status="FORMER")
     elif change == "student_inactive":
         User.objects.filter(pk=case.student.pk).update(is_active=False)
-    elif change == "policy":
-        monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: None)
-    if change == "policy":
-        with expect("policy_unconfirmed"):
-            svc.get_grant_metadata(actor=case.author, grant_id=g["id"])
-    else:
-        assert (
-            svc.get_grant_metadata(actor=case.author, grant_id=g["id"])["effective_status"]
-            == "UNAVAILABLE"
-        )
+    assert (
+        svc.get_grant_metadata(actor=case.author, grant_id=g["id"])["effective_status"]
+        == "UNAVAILABLE"
+    )
 
 
-def test_original_departure_is_historical_only_and_absence_has_no_required_original(
-    synthetic_case, monkeypatch
-):
-    case = synthetic_case
+def test_original_departure_is_historical_only(case):
     g = decide(case, request(case))
     User.objects.filter(pk=case.author.pk).update(is_active=False)
     assert (
         svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])["effective_status"]
         == "ACTIVE"
     )
-    decide(case, g, "REVOKED", revocation_reason="COVERAGE_ENDED")
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, office_requester_ids=frozenset([case.outsider.pk])),
-    )
-    g = request(
-        case,
-        actor=case.outsider,
-        original_counselor_id=None,
-        coverage_kind="TEMPORARY_COVERAGE",
-        reason_category="UNEXPECTED_ABSENCE",
-        request_id=uuid4(),
-    )
-    assert decide(case, g)["effective_status"] == "ACTIVE"
 
 
 def test_scope_before_pagination_and_concealed_detail(case):
@@ -654,9 +548,9 @@ def test_metadata_never_loads_or_decrypts_content(case, monkeypatch):
     )
     assert "ciphertext" not in selected_sql
     events = list(
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
-        .exclude(action="counseling.continuity.policy_recorded")
-        .values("action", "metadata")
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.").values(
+            "action", "metadata"
+        )
     )
     assert len(events) == 2
     assert "UNREADABLE-SYNTHETIC" not in json.dumps(events)
@@ -670,8 +564,6 @@ def test_metadata_never_loads_or_decrypts_content(case, monkeypatch):
             "version",
             "starts_at",
             "expires_at",
-            "policy_version",
-            "policy_evidence",
             "scope_snapshot_digest",
         }
         for e in events
@@ -685,7 +577,7 @@ def test_metadata_never_loads_or_decrypts_content(case, monkeypatch):
         ("coverage_kind", "ALL"),
         ("reason_category", "CLINICAL_TEXT"),
         ("decision", "ACTIVE"),
-        ("policy_evidence", ""),
+        ("snapshot_digest", ""),
         ("decision", "APPROVED"),
         ("revoked_at", timezone.now()),
     ],
@@ -818,12 +710,7 @@ def test_postgresql_concurrent_approval_decisions(case, second):
     assert sum(o[0] == "ok" for o in outcomes) == 1
     assert ("error", "continuity_stale_version") in outcomes
     assert Grant.objects.get(pk=g["id"]).version == 2
-    assert (
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
-        .exclude(action="counseling.continuity.policy_recorded")
-        .count()
-        == 2
-    )
+    assert AuditEvent.objects.filter(action__startswith="counseling.continuity.").count() == 2
 
 
 def test_postgresql_stale_approval_vs_revocation_and_metadata(case):
@@ -882,7 +769,7 @@ def test_postgresql_authority_mutation_serializes(case, change):
         assert stored.decision == "REQUESTED"
 
 
-def test_adjacent_intervals_and_different_receiver_policy(synthetic_case, monkeypatch):
+def test_adjacent_intervals_and_overlap_across_receivers(synthetic_case, monkeypatch):
     case = synthetic_case
     request(case)
     request(
@@ -893,12 +780,6 @@ def test_adjacent_intervals_and_different_receiver_policy(synthetic_case, monkey
     )
     with expect("overlap"):
         request(case, receiving_counselor_id=case.outsider.pk, request_id=uuid4())
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, overlap_rule="ALLOW_DIFFERENT_RECEIVERS"),
-    )
-    request(case, receiving_counselor_id=case.outsider.pk, request_id=uuid4())
 
 
 def test_capability_registration_grants_only_supported_roles(case):
@@ -947,11 +828,6 @@ def test_request_requires_verified_relationship_even_with_capability(case):
 def test_unverified_acting_head_with_expiring_override_denied(synthetic_case, monkeypatch):
     case = synthetic_case
     actor = case.outsider
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, approver_ids=frozenset([actor.pk])),
-    )
     set_user_capability_override(
         user=actor,
         capability="counseling.continuity.approve",
@@ -972,17 +848,8 @@ def test_unverified_acting_head_with_expiring_override_denied(synthetic_case, mo
         decide(case, g, actor=actor)
 
 
-def test_policy_expiry_and_approval_scope_changed(synthetic_case, monkeypatch):
-    case = synthetic_case
+def test_approval_requires_unchanged_college(case):
     g = request(case)
-    monkeypatch.setattr(
-        continuity_policy,
-        "get_approved_policy",
-        lambda: replace(case.policy, valid_until=case.now - timedelta(seconds=1)),
-    )
-    with expect("policy_unconfirmed"):
-        decide(case, g)
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: case.policy)
     StudentAcademicProfile.objects.filter(student=case.student).update(
         current_college=case.college_b, updated_at=timezone.now()
     )
@@ -1092,7 +959,7 @@ def assert_managed_approval_state(case, grant, *, approved):
     assert AuditEvent.objects.filter(
         action="counseling.continuity.approved", target_id=str(stored.pk)
     ).count() == int(approved)
-    # The current provisional policy preserves completed approvals after Head turnover.
+    # The coverage rules preserves completed approvals after Head turnover.
     # A mutation that wins the lock prevents approval and leaves the request pending.
     metadata = svc.get_grant_metadata(actor=case.receiver, grant_id=stored.pk)
     assert metadata["effective_status"] == ("ACTIVE" if approved else "PENDING")
@@ -1128,14 +995,6 @@ def test_real_account_management_approval_order(case, mutation, order):
         with expect("invalid_role" if mutation == "deactivate" else "missing_capability"):
             decide(case, g)
     assert_managed_approval_state(case, g, approved=order == "approval_first")
-
-
-def test_default_policy_http_denial_has_no_store(case, monkeypatch):
-    monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: None)
-    response = client(case.author).get(PREFIX)
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "continuity_policy_unconfirmed"
-    assert response.headers["Cache-Control"] == "private, no-store"
 
 
 def test_approved_grant_never_bypasses_ordinary_content_or_mutation(case, monkeypatch):
@@ -1185,92 +1044,31 @@ def test_audit_actor_spoof_rolls_back(case):
     assert Grant.objects.count() == 0
 
 
-def communication_policy(case, *, version="synthetic-comm-v1", **changes):
-    return ApprovedCaseCommunicationPolicy(
-        **(
-            {
-                "version": version,
-                "evidence_reference": "TEST-ONLY-GMSG5-CONT",
-                "valid_from": case.policy.valid_from,
-                "valid_until": case.policy.valid_until,
-                "permitted_purposes": frozenset([ContinuityCommunicationPurpose.CASE_COORDINATION]),
-            }
-            | changes
-        )
-    )
-
-
-def patch_communication(monkeypatch, policy):
-    monkeypatch.setattr(
-        case_communication_policy,
-        "get_approved_case_communication_policy",
-        lambda: policy,
-    )
-    return policy
-
-
 def purpose_request(case, **changes):
     return request(
         case, communication_purpose=ContinuityCommunicationPurpose.CASE_COORDINATION, **changes
     )
 
 
-def legacy_snapshot_digest(grant, scopes):
-    data = {}
-    for field in (
-        "student_id",
-        "original_counselor_id",
-        "receiving_counselor_id",
-        "coverage_kind",
-        "reason_category",
-        "requested_by_id",
-        "starts_at",
-        "expires_at",
-        "policy_version",
-        "policy_evidence",
-        "policy_digest",
-        "student_placement_marker",
-    ):
-        value = getattr(grant, field)
-        data[field] = (
-            value.astimezone(UTC).isoformat() if isinstance(value, datetime) else str(value)
-        )
-    data["scopes"] = sorted(
-        (s.resource_kind, str(s.source_id), s.projection, s.source_revision) for s in scopes
-    )
-    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
-
-
-def test_metadata_only_grant_keeps_the_legacy_digest_bytes(case):
-    g = request(case)
-    grant = Grant.objects.get(pk=g["id"])
-    scopes = list(
-        Scope.objects.filter(grant=grant).order_by("resource_kind", "source_id", "projection")
-    )
-    assert legacy_snapshot_digest(grant, scopes) == grant.snapshot_digest
-
-
-def test_real_policy_records_case_coordination_purpose(case):
+def test_records_case_coordination_purpose(case):
     g = purpose_request(case)
     assert g["communication_purpose"] == "CASE_COORDINATION"
 
 
-def test_synthetic_policy_records_digest_metadata_and_audit(case, monkeypatch):
-    policy = patch_communication(monkeypatch, communication_policy(case))
+def test_case_coordination_purpose_metadata_and_audit(case, monkeypatch):
     g = decide(case, purpose_request(case))
 
     grant = Grant.objects.get(pk=g["id"])
     assert grant.communication_purpose == ContinuityCommunicationPurpose.CASE_COORDINATION
-    assert grant.communication_policy_digest == policy.digest
     assert g["communication_purpose"] == ContinuityCommunicationPurpose.CASE_COORDINATION
     assert (
         svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])["communication_purpose"]
         == ContinuityCommunicationPurpose.CASE_COORDINATION
     )
     metadata = list(
-        AuditEvent.objects.filter(action__startswith="counseling.continuity.")
-        .exclude(action="counseling.continuity.policy_recorded")
-        .values_list("metadata", flat=True)
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.").values_list(
+            "metadata", flat=True
+        )
     )
     assert len(metadata) == 2
     assert all(
@@ -1279,48 +1077,64 @@ def test_synthetic_policy_records_digest_metadata_and_audit(case, monkeypatch):
     )
 
 
-def test_replay_with_a_changed_communication_policy_conflicts(case, monkeypatch):
-    key = uuid4()
-    patch_communication(monkeypatch, communication_policy(case))
-    purpose_request(case, request_id=key)
-    patch_communication(monkeypatch, communication_policy(case, version="synthetic-comm-v2"))
-
-    with expect("request_conflict"):
-        purpose_request(case, request_id=key)
-    assert Grant.objects.count() == 1
-
-
-def test_approval_revalidates_the_recording_communication_policy(case, monkeypatch):
-    patch_communication(monkeypatch, communication_policy(case))
-    g = purpose_request(case)
-    patch_communication(monkeypatch, communication_policy(case, version="synthetic-comm-v2"))
-
-    with expect("communication_policy_changed"):
-        decide(case, g)
-    assert Grant.objects.get(pk=g["id"]).decision == "REQUESTED"
-
-    patch_communication(monkeypatch, communication_policy(case))
-    assert decide(case, g)["decision"] == "APPROVED"
-
-
 def test_database_communication_scope_constraints(case):
     g = request(case)
     row = Grant.objects.get(pk=g["id"])
     assert row.communication_purpose is None
-    assert row.communication_policy_digest == ""
     for changes in (
-        {"communication_purpose": "CASE_COORDINATION", "communication_policy_digest": ""},
-        {
-            "communication_purpose": "CASE_COORDINATION",
-            "communication_policy_digest": "0" * 64,
-            "original_counselor_id": None,
-        },
-        {"communication_purpose": None, "communication_policy_digest": "0" * 64},
+        {"communication_purpose": "UNKNOWN"},
+        {"communication_purpose": "CASE_COORDINATION", "original_counselor_id": None},
     ):
         with pytest.raises(IntegrityError), transaction.atomic():
             Grant.objects.filter(pk=row.pk).update(**changes)
-    Grant.objects.filter(pk=row.pk).update(
-        communication_purpose="CASE_COORDINATION", communication_policy_digest="0" * 64
-    )
+    Grant.objects.filter(pk=row.pk).update(communication_purpose="CASE_COORDINATION")
     row.refresh_from_db()
     assert row.communication_purpose == "CASE_COORDINATION"
+
+
+@pytest.mark.parametrize("reason", ["PLANNED_ABSENCE", "UNEXPECTED_ABSENCE", "TEMPORARY_SUPPORT"])
+def test_all_reason_categories_at_exact_duration_and_advance_limits(case, monkeypatch, reason):
+    monkeypatch.setattr(svc.timezone, "now", lambda: case.now)
+    start = case.now + timedelta(days=14)
+    g = request(
+        case, starts_at=start, expires_at=start + timedelta(days=30), reason_category=reason
+    )
+    assert decide(case, g)["effective_status"] == "SCHEDULED"
+
+
+@pytest.mark.parametrize("kind", ["PLANNED_HANDOFF", "TEMPORARY_COVERAGE"])
+def test_receiver_cannot_be_original_even_without_communication_purpose(case, kind):
+    with expect("invalid_original_counselor"):
+        request(case, receiving_counselor_id=case.author.pk, coverage_kind=kind)
+
+
+def test_new_request_required_after_college_transfer(case):
+    g = request(case)
+    StudentAcademicProfile.objects.filter(student=case.student).update(
+        current_college=case.college_b, updated_at=timezone.now()
+    )
+    with expect("student_changed"):
+        decide(case, g)
+    decide(case, g, "CANCELLED", actor=case.author)
+    assert decide(case, request(case, request_id=uuid4()))["effective_status"] == "ACTIVE"
+
+
+def test_snapshot_identity_scope_and_time_remain_bound_without_policy_fields(case):
+    g = request(case)
+    grant = Grant.objects.get(pk=g["id"])
+    scopes = list(Scope.objects.filter(grant=grant))
+    assert svc._digest(grant, scopes) == grant.snapshot_digest
+    for field, value in [
+        ("expires_at", grant.expires_at + timedelta(seconds=1)),
+        ("receiving_counselor_id", case.outsider.pk),
+        ("communication_purpose", "CASE_COORDINATION"),
+    ]:
+        before = getattr(grant, field)
+        setattr(grant, field, value)
+        assert svc._digest(grant, scopes) != grant.snapshot_digest
+        setattr(grant, field, before)
+    assert not any(
+        field.name
+        in {"policy_version", "policy_evidence", "policy_digest", "communication_policy_digest"}
+        for field in Grant._meta.fields
+    )

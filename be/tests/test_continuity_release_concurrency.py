@@ -28,8 +28,8 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
 from compass.counseling import continuity_access as access
-from compass.counseling.continuity_locks import AUTHORITY_TABLES, continuity_policy_change
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_locks import AUTHORITY_TABLES
+from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.models import CounselingEncounter
 from compass.organization.models import Campus, College, CounselorResponsibility, StaffSupervision
 from compass.routine_interviews import content
@@ -262,44 +262,6 @@ def test_authority_writer_first_denies_before_decryption(mutable_selected_case, 
     assert reads().count() == 0
     with pytest.raises(ContinuityError):
         read(c, g)
-
-
-@pytest.mark.parametrize("policy_kind", ["operational", "disclosure"])
-def test_policy_invalidation_is_coordinated_by_postgresql_fence(
-    mutable_selected_case, monkeypatch, policy_kind
-):
-    c = mutable_selected_case
-    g = approved(c)
-    entered, release = gated_decryption(monkeypatch)
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        reader = pool.submit(run, lambda: read(c, g))
-        assert entered.wait(timeout=5)
-        try:
-            with pytest.raises(ContinuityError, match="policy_busy"), continuity_policy_change():
-                setattr(c.control, policy_kind, None)
-        finally:
-            release.set()
-        assert reader.result(timeout=10)[0] == "ok"
-    assert getattr(c.control, policy_kind) is not None
-    with continuity_policy_change():
-        setattr(c.control, policy_kind, None)
-    with pytest.raises(ContinuityError, match="policy_unconfirmed"):
-        read(c, g)
-    assert reads().count() == 1
-
-
-def test_policy_invalidation_first_prevents_read(mutable_selected_case, monkeypatch):
-    c = mutable_selected_case
-    g = approved(c)
-    monkeypatch.setattr(content, "read_evaluation", lambda *a, **k: pytest.fail("decrypt"))
-    with continuity_policy_change():
-        c.control.disclosure = None
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            result = pool.submit(run, lambda: read(c, g)).result(timeout=5)
-        assert result == ("denied", 409, "continuity_policy_busy")
-    with pytest.raises(ContinuityError, match="disclosure_policy_unconfirmed"):
-        read(c, g)
-    assert reads().count() == 0
 
 
 def test_read_waiting_on_user_rechecks_exact_expiry(selected_case, monkeypatch):

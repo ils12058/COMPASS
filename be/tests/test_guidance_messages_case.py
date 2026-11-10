@@ -1,7 +1,6 @@
 """GMSG-5: authorized Counselor case coordination on one live continuity grant.
 
-Synthetic institutional evidence only. The deployed communication policy provider stays `None`,
-so every helper here replaces it inside one test; nothing asserts GCO/DPO approval.
+Every helper uses the production case-coordination rules.
 """
 
 from __future__ import annotations

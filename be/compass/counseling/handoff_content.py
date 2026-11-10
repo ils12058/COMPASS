@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 from compass.confidential_data import crypto
 from compass.confidential_data.errors import ConfidentialDataUnavailable
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 
 KEYRING_SETTING = "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS"
 MAX_CONTENT_LENGTH = 12000

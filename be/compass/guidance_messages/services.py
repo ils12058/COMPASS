@@ -32,7 +32,7 @@ from compass.audit.services import record_event
 from compass.common.rate_limit import RateLimitPolicy, RateLimitUnavailable, RedisRateLimiter
 from compass.counseling.case_communication import authorize_case_coordination
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import ContinuityError
 from compass.operational_students import list_scoped_operational_students
 from compass.organization.access_scope import (
     resolve_general_guidance_college_scope,

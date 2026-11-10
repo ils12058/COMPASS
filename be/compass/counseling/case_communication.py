@@ -2,7 +2,7 @@
 
 `authorize_case_coordination` is the only place that answers "may this Counselor coordinate about
 this Student now?". It enforces the exact pair, the recorded communication purpose, the grant
-decision and window, both approved policies, the persisted scope snapshot and the current effective
+decision and window, the persisted scope snapshot and the current effective
 grant status. Messaging must not repeat those conditionals.
 
 Lock contract: callers that write Messages pass `lock=True` and acquire the grant **before** the
@@ -16,9 +16,7 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.counseling import continuity_services
-from compass.counseling.case_communication_policy import require_case_communication_policy
 from compass.counseling.continuity_models import (
-    ContinuityCommunicationPurpose,
     ContinuityDecision,
 )
 from compass.counseling.continuity_models import (
@@ -27,7 +25,7 @@ from compass.counseling.continuity_models import (
 from compass.counseling.continuity_models import (
     CounselorCaseContinuityScope as Scope,
 )
-from compass.counseling.continuity_policy import ContinuityError, require_policy
+from compass.counseling.continuity_rules import CASE_COORDINATION, ContinuityError
 
 
 def _scopes(grant):
@@ -56,10 +54,7 @@ def _evaluate(grant, actor_id, now):
     ):
         # Never disclose that a grant exists to anyone outside the exact pair.
         raise ContinuityError("not_found", 404)
-    if (
-        grant.communication_purpose != ContinuityCommunicationPurpose.CASE_COORDINATION
-        or not grant.communication_policy_digest
-    ):
+    if grant.communication_purpose != CASE_COORDINATION:
         raise ContinuityError("not_found", 404)
     if grant.revoked_at is not None or grant.decision == ContinuityDecision.REVOKED:
         raise ContinuityError("case_access_ended")
@@ -69,26 +64,13 @@ def _evaluate(grant, actor_id, now):
         raise ContinuityError("not_found", 404)
     if now >= grant.expires_at:
         raise ContinuityError("case_access_ended")
-    policy = require_policy(now)
-    communication_policy = require_case_communication_policy(now)
-    if (
-        grant.policy_digest != policy.digest
-        or grant.policy_version != policy.version
-        or grant.policy_evidence != policy.evidence_reference
-    ):
-        raise ContinuityError("policy_unconfirmed")
-    if grant.communication_policy_digest != communication_policy.digest:
-        # The reviewed communication policy changed after this grant was recorded.
-        raise ContinuityError("communication_policy_unconfirmed")
     scopes = _scopes(grant)
     try:
-        continuity_services._snapshot(grant, scopes, policy)
-    except ContinuityError as exc:
-        if exc.code.endswith("policy_unconfirmed"):
-            raise
+        continuity_services._snapshot(grant, scopes)
+    except ContinuityError:
         # A changed persisted snapshot or source revision ends coordination, never widens it.
         raise ContinuityError("case_access_ended") from None
-    if continuity_services._effective(grant, scopes, _users(grant), policy, now) != "ACTIVE":
+    if continuity_services._effective(grant, scopes, _users(grant), now) != "ACTIVE":
         raise ContinuityError("case_access_ended")
     return grant
 
@@ -113,7 +95,7 @@ def visible_case_coordination_grant_ids(*, actor, now=None) -> list[UUID]:
     candidates = (
         Grant.objects.filter(
             Q(original_counselor_id=actor.pk) | Q(receiving_counselor_id=actor.pk),
-            communication_purpose=ContinuityCommunicationPurpose.CASE_COORDINATION,
+            communication_purpose=CASE_COORDINATION,
         )
         .order_by("pk")
         .iterator()

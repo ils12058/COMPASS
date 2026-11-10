@@ -1,6 +1,6 @@
 """Exact structural selectors. Never load ciphertext or enumerate Student history.
 
-These reviewed selectors are policy-gated by their caller. Ordinary assigned getters
+These selectors are authorized by their caller. Ordinary assigned getters
 and content services remain unchanged. Source-owned read adapters are separate from
 these metadata selectors.
 """
@@ -12,16 +12,18 @@ from django.db import OperationalError, transaction
 
 from compass.counseling.continuity_encounters import encounter_revision
 from compass.counseling.continuity_models import ContinuitySourceKind
-from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_rules import (
+    PROJECTIONS,
+    SOURCE_KINDS,
+    ContinuityError,
+    is_office_requester,
+    office_can_select,
+)
 from compass.counseling.models import CounselingEncounter
 from compass.routine_interviews.continuity import evaluation_revision
 from compass.routine_interviews.models import RoutineInterview
 
-PROJECTIONS = {
-    "ENCOUNTER": "ENCOUNTER_METADATA_V1",
-    "ROUTINE_EVALUATION": "FINALIZED_EVALUATION_V1",
-}
-MAX_SCOPES = 32  # Technical request-size bound, not an institutional duration/category policy.
+MAX_SCOPES = 32  # Technical request-size bound.
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +43,7 @@ def validate_selection(selection):
         raise ContinuityError("invalid_source_category", 422)
 
 
-def _resolve_source(*, selection, student_id, requester, policy, original_counselor_id):
+def _resolve_source(*, selection, student_id, requester, original_counselor_id):
     """Caller holds identity locks first; source locks are read-only and deterministic."""
     model = (
         CounselingEncounter
@@ -62,19 +64,11 @@ def _resolve_source(*, selection, student_id, requester, policy, original_counse
         raise ContinuityError("source_not_found", 404)
     if original_counselor_id is not None and source.counselor_id != original_counselor_id:
         raise ContinuityError("source_not_found", 404)
-    if policy.workflow_policy_digest:
-        from django.utils import timezone
-
-        from compass.counseling.coverage_policy import office_can_select, require_workflow_policy
-
-        workflow = require_workflow_policy(policy, timezone.now())
-        if selection.resource_kind not in workflow.source_kinds or original_counselor_id is None:
-            raise ContinuityError("source_not_found", 404)
-        if requester.pk != source.counselor_id and not office_can_select(
-            requester, student_id, policy, workflow
-        ):
-            raise ContinuityError("source_not_found", 404)
-    if requester.pk not in policy.office_requester_ids:
+    if selection.resource_kind not in SOURCE_KINDS or original_counselor_id is None:
+        raise ContinuityError("source_not_found", 404)
+    if requester.pk != source.counselor_id and not office_can_select(requester, student_id):
+        raise ContinuityError("source_not_found", 404)
+    if not is_office_requester(requester):
         capability = (
             "counseling.view_assigned"
             if model is CounselingEncounter
