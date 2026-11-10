@@ -793,6 +793,16 @@ await check("prejoin-device-check-and-join-transition", ePath, {
       window.AudioContext = new Proxy(AudioContextConstructor, {
         construct(target, args) {
           const context = Reflect.construct(target, args);
+          const createOscillator = context.createOscillator.bind(context);
+          context.createOscillator = () => {
+            const oscillator = createOscillator();
+            const start = oscillator.start.bind(oscillator);
+            oscillator.start = (...args) => {
+              start(...args);
+              context.__testToneStarted = true;
+            };
+            return oscillator;
+          };
           window.__testAudioContexts.push(context);
           return context;
         },
@@ -819,18 +829,30 @@ await check("prejoin-device-check-and-join-transition", ePath, {
   await dialog.getByRole("combobox", { name: "Microphone", exact: true }).selectOption({ label: "USB headset mic" });
   await dialog.getByRole("combobox", { name: "Speaker", exact: true }).selectOption({ label: "External speakers" });
   assert.doesNotMatch(await dialog.innerText(), /cam-2|mic-2|spk-1|spk-2/, "Raw device IDs are never displayed");
+  await screenshot(page, "counselor-prejoin-advanced-devices");
 
   await page.evaluate(() => { window.__sinkIds = []; });
   const testSound = dialog.getByRole("button", { name: "Play test sound", exact: true });
   await testSound.click();
   const stopSound = dialog.getByRole("button", { name: "Stop test sound", exact: true });
   await shown(stopSound);
+  // The button changes before async audio startup completes. Observe the native oscillator,
+  // so Stop and dialog dismissal exercise an active tone rather than a pending startup.
+  await page.waitForFunction((startIndex) => {
+    const context = window.__testAudioContexts[startIndex];
+    return context?.__testToneStarted && context.state === "running";
+  }, toneContextStartIndex);
   assert.deepEqual(await page.evaluate(() => window.__sinkIds), ["spk-2"]);
   await stopSound.click();
   await shown(testSound);
+  await page.waitForFunction((startIndex) => window.__testAudioContexts[startIndex]?.state === "closed", toneContextStartIndex);
   await testSound.click();
   await shown(stopSound);
-  await screenshot(page, "counselor-prejoin-advanced-devices");
+  await page.waitForFunction((startIndex) => {
+    const context = window.__testAudioContexts[startIndex + 1];
+    return context?.__testToneStarted && context.state === "running";
+  }, toneContextStartIndex);
+  // Keep screenshot work outside the bounded tone, which must still be active on dismissal.
   await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await hidden(dialog);
   try {
