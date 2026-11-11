@@ -1,10 +1,10 @@
 # Capability catalog audit — 2026-09-25
 
 This is a review of all 67 canonical definitions in `compass/accounts/policy.py` at the staging baseline. It is a historical baseline for ADR-059. ADR-063 subsequently retires
-`institutional_forms.manage`; the current canonical catalog therefore contains 66 capabilities,
+`institutional_forms.manage`; that revision's canonical catalog therefore contained 66 capabilities,
 and Institutional Forms are read-only through `institutional_forms.view`. Names and full descriptions live in that policy file. The table records each definition, its baseline grant source, direct backend consumers, direct frontend checks, authority class, and rename decision. A dash means no direct literal-code consumer; generic access inspection and capability resolution still enumerate all canonical definitions. Frontend paths are audit evidence only; this backend PR does not edit `fe/`.
 
-Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistant, S = Student, IO = Institutional Officer. Head are designations layered on compatible roles. Backend consumer names are modules under `be/compass/`; frontend names are features under `fe/src/features/`.
+Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistant, S = Student, IO = Institutional Officer. Head is a designation layered on a compatible role. Backend consumer names are modules under `be/compass/`; frontend names are features under `fe/src/features/`.
 
 | Capability | Name | Class | Baseline grant | Backend direct consumer | Frontend direct check | Decision |
 |---|---|---|---|---|---|---|

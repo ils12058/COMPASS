@@ -598,8 +598,9 @@ by the frontend generator.
 Accepted ADRs are not rewritten when later decisions refine them; follow the newer decision for
 current behavior. In particular, ADR-097 governs UCN civil time where ADR-019, ADR-020, and
 ADR-021 interpret it in `settings.TIME_ZONE`; ADR-089 governs Service booking and Counselor
-qualification over ADR-018 and the scheduling ADRs it lists; ADR-114 decommissions the
-operational retention of ADR-072 and ADR-092, which followed ADR-061, ADR-065, and ADR-069; and ADR-100 refines ADR-071's
+qualification over ADR-018 and the scheduling ADRs it lists; [Privacy Governance](docs/privacy-governance.md)
+defines the current Notice and Activity baseline, preserving historical audit evidence after removal
+of the former retention implementation; and ADR-100 refines ADR-071's
 WebSocket remark with a separate realtime tier. Two documents share the number ADR-057
 and there is no ADR-077, so cite those by title.
 

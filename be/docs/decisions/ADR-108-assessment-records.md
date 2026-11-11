@@ -132,6 +132,6 @@ This slice generates no real key, accesses no Droplet secret directory and perfo
 ## Deferred governance
 
 No hard delete, archive/void state, Student reassignment, automated purge or retention duration is
-invented. Assessment Records are not registered with ADR-072's retention executor. Disposition,
+invented. The canonical baseline has no in-app retention executor. Disposition,
 controlled correction of erroneous ownership, graduate backfill, Student disclosure, attachments
 and analytics require separate institutional governance decisions.

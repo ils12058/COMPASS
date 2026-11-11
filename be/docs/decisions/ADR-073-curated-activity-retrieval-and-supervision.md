@@ -3,22 +3,22 @@
 - Status: Proposed
 - Date: 2026-10-04
 - Refines: ADR-006 capability and organizational scope; ADR-011 append-only Audit Trail
-- Preserves: ADR-013 self activity, ADR-069 historical retention registry, ADR-070 capability dependencies and ADR-072 operational retention/disposition
+- Preserves: ADR-013 self activity, ADR-070 capability dependencies and append-only historical audit evidence
 
 ## Purpose and projection boundary
 
 Activity surfaces remain closed, purpose-specific projections of internal evidence. An event is
 invisible unless the surface's explicit action, target, outcome and presenter policy admits it.
 No raw AuditEvent API/browser/export, arbitrary metadata query, IP address, User-Agent or request ID
-is introduced. AuditEvent mutation/deletion protections and retention/disposition semantics are
-unchanged. Curated activity is not the complete Audit Trail.
+is introduced. AuditEvent mutation/deletion protections remain. Historical retention/disposition
+events remain readable after removal of their owning feature. Curated activity is not the complete Audit Trail.
 
 My activity and Security activity retain their existing self-only presenter allowlists and
 page/page_size contracts. Neither accepts another person's scope or gains search, filters or
 export. A separate Supervised staff view provides operational oversight, not staff security history.
 Platform Technical Activity gains retrieval tools without expanding its existing five-action
 allowlist or `platform_operations.view` authority. Privacy & Security Activity keeps all its existing
-safe presentations, including the eleven ADR-072 retention/disposition actions and three historical
+safe presentations, including the eleven historical retention/disposition actions and three historical
 removed-registry actions; CSV uses exactly that same safe projection.
 
 ## Capability plus current direct supervision

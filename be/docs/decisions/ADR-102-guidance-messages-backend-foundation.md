@@ -110,9 +110,8 @@ Audits commit atomically with mutations. Private read changes do not create nois
 
 No frontend Messages workspace/navigation, contextual entry buttons, Notification records/events,
 large seed dataset, workflow hooks, or deployment are added. OpenAPI/generated client validation
-prepares the next phase without inventing UI. ADR-072's closed retention executor is unchanged.
-A future `GUIDANCE_MESSAGE_THREAD` category needs adopted institutional duration/trigger/treatment,
-holds, approval, executor and verification tests. This foundation preserves creation/resolution
+prepares the next phase without inventing UI. The canonical baseline has no in-app retention executor.
+Message retention and disposition require separate adopted institutional policy. This foundation preserves creation/resolution
 timestamps, immutable provenance and encrypted content; it does not add retention rules,
 disposition, deletion placeholders or speculative statuses.
 
