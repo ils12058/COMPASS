@@ -70,11 +70,6 @@ def make_head(email: str = "overview-head@example.edu") -> User:
     return user
 
 
-def make_privacy_admin(email: str = "overview-officer@example.edu") -> User:
-    user = make_user(email, "INSTITUTIONAL_OFFICER")
-    return user
-
-
 def auth_client(user: User) -> Client:
     issued = create_auth_session(user, now=timezone.now())
     client = Client()
@@ -553,11 +548,9 @@ def test_platform_section_and_officer_overview_have_no_invented_privacy_metrics(
         "email_sent_today_count": 1,
     }
 
-    officer = make_privacy_admin()
-    ordinary_officer = make_user("overview-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    for actor in (officer, ordinary_officer):
-        body = auth_client(actor).get("/api/v1/overview").json()
-        assert set(body) == {"generated_at", "student", "guidance", "platform"}
-        assert body["student"] is None
-        assert body["guidance"] is None
-        assert body["platform"] is None
+    officer = make_user("overview-officer@example.edu", "INSTITUTIONAL_OFFICER")
+    body = auth_client(officer).get("/api/v1/overview").json()
+    assert set(body) == {"generated_at", "student", "guidance", "platform"}
+    assert body["student"] is None
+    assert body["guidance"] is None
+    assert body["platform"] is None

@@ -39,16 +39,9 @@ from tests.historical_outcome_fixtures import (
     legacy_media_source,
 )
 from tests.test_ecounseling_webhook_security import body_for, reservation, signed
-from tests.test_privacy_governance import (
-    make_privacy_admin,
-    make_user,
-    sync_policy,
-)
+from tests.test_privacy_governance import make_user
 
 pytestmark = pytest.mark.django_db
-ROOT = "/api/v1/privacy/retention"
-CAPS = set()
-RETIRED_CAPS = {"privacy_governance.retention.manage", "privacy_governance.retention.approve"}
 RETIRED_TASK_NAMES = (
     "compass.privacy_governance.discover_retention",
     "compass.privacy_governance.execute_disposition",
@@ -66,12 +59,6 @@ RETIRED_TABLES = (
 )
 RETIRED_MODELS = ("OperationalRetentionRule", "DispositionCase", "DispositionHold")
 COMPASS = Path(__file__).resolve().parents[1] / "compass"
-
-
-@pytest.fixture
-def officer():
-    sync_policy()
-    return make_privacy_admin()
 
 
 def tracer(email="graduate@example.edu", **values):
@@ -182,9 +169,6 @@ def test_no_production_module_references_the_retired_engine():
                 if node.value in RETIRED_TASK_NAMES or node.value == "retention_decommissioned":
                     offenders.append((rel, node.value))
     assert offenders == []
-
-
-# --- Canonical oversight boundary ---------------------------------------------------------------
 
 
 # --- Surviving historical-outcome readers -------------------------------------------------------

@@ -1363,7 +1363,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
     counselor = make_user("mfa.counselor@example.edu", role="COUNSELOR")
     goa = make_user("mfa.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("mfa.admin@example.edu", role="IT_ADMIN")
-    officer = make_user("mfa.officer@example.edu", role="IT_ADMIN")
+    officer = make_user("mfa.officer@example.edu", role="INSTITUTIONAL_OFFICER")
     item = make_graduate_request(student)
     item = prepare_request(
         actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)

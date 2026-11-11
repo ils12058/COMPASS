@@ -20,9 +20,9 @@ def _integrity_error(cause: Exception) -> IntegrityError:
 @pytest.mark.django_db
 def test_value_the_database_cannot_store_is_a_validation_error():
     sync_policy()
-    officer = auth_client(make_privacy_admin(), recent_mfa=True)
+    admin = auth_client(make_privacy_admin(), recent_mfa=True)
     response = post_json(
-        officer,
+        admin,
         "/api/v1/privacy/notices",
         notice_payload() | {"name": "Contains a NUL\u0000byte"},
     )
@@ -43,14 +43,14 @@ def test_value_the_database_cannot_store_is_a_validation_error():
 )
 def test_uncaught_integrity_errors_are_classified_by_sqlstate(monkeypatch, cause, status, code):
     sync_policy()
-    officer = auth_client(make_privacy_admin())
-    officer.raise_request_exception = False
+    admin = auth_client(make_privacy_admin())
+    admin.raise_request_exception = False
 
     def reject(**kwargs):
         raise _integrity_error(cause)
 
     monkeypatch.setattr(expansion, "list_notices", reject)
-    response = officer.get("/api/v1/privacy/notices")
+    response = admin.get("/api/v1/privacy/notices")
 
     assert response.status_code == status
     body = response.json()["error"]

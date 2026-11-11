@@ -881,7 +881,7 @@ def test_referral_capabilities_and_api_deny_student_it_admin_and_officer():
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    officer = make_user("officer@example.edu", "IT_ADMIN")
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
 
     assert head.has_capability("referrals.view")
     assert head.has_capability("referrals.manage")

@@ -419,7 +419,7 @@ def test_denied_roles_inactive_and_missing_capability_never_decrypt(world, monke
     item = create(world)
     student = world[1]
     admin = make_user("crypto-admin@example.edu", "IT_ADMIN")
-    officer = make_user("crypto-officer@example.edu", "IT_ADMIN")
+    officer = make_user("crypto-officer@example.edu", "INSTITUTIONAL_OFFICER")
     revoked = make_head("revoked@example.edu")
     UserCapabilityOverride.objects.create(
         user=revoked,

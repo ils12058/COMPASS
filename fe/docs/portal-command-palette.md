@@ -148,7 +148,7 @@ These seven static routes are deliberately excluded:
 | `/portal/feedback/csm`, `/portal/feedback/customer-feedback` | Submission forms require an opportunity/context; enter through Feedback |
 | `/portal/platform` | Redirect only; the existing dock opens `/portal/platform/health` |
 
-All 30 dynamic routes are excluded because they require a record identifier and the palette
+Dynamic routes are excluded because they require a record identifier and the palette
 has no record context:
 
 ```text
@@ -173,8 +173,6 @@ has no record context:
 /portal/inventory/records/[inventoryId]
 /portal/privacy/notice-revisions/[revisionId]
 /portal/privacy/notices/[noticeId]
-/portal/privacy/retention/cases/[caseId]
-/portal/privacy/retention/rules/[ruleId]
 /portal/referrals/[referralId]
 /portal/referrals/[referralId]/issue-call-slip
 /portal/resources/[resourceId]

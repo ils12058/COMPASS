@@ -183,7 +183,7 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
             "csv_import_unsupported_headers",
         ),
         (
-            b"email,first_name,last_name,role,designation\na@example.edu,A,User,STUDENT,officer\n",
+            b"email,first_name,last_name,role,designation\na@example.edu,A,User,STUDENT,HEAD_GUIDANCE_COUNSELOR\n",
             "csv_import_unsupported_headers",
         ),
         (

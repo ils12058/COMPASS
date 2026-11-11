@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
-import { appointmentId, serviceId, appointment, user, slip } from "./support/ui-hierarchy-fixtures.mjs";
+import { appointmentId, serviceId, appointment, slip } from "./support/ui-hierarchy-fixtures.mjs";
 
 const { check, navigate, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ui-information-hierarchy");
 

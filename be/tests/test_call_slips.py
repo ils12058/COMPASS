@@ -998,7 +998,7 @@ def test_student_it_admin_and_officer_cannot_create_or_read_operational_content(
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    officer = make_user("officer@example.edu", "IT_ADMIN")
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
     item = create_for(head, student, key="authorization", fingerprint="a" * 64)
 
     assert student.has_capability("call_slips.view_self")

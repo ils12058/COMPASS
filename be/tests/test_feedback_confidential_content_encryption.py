@@ -233,14 +233,11 @@ def test_raw_storage_queryable_metadata_content_free_audit_and_authorized_detail
         "GUIDANCE_OFFICE_ASSISTANT",
         "IT_ADMIN",
         "INSTITUTIONAL_OFFICER",
-        "officer",
     ],
 )
 def test_denied_detail_never_decrypts(world, family, role, monkeypatch):
     item = submitted(world, family)
-    user = make_user(
-        f"denied-{role}@example.edu", role="INSTITUTIONAL_OFFICER" if role == "officer" else role
-    )
+    user = make_user(f"denied-{role}@example.edu", role=role)
     monkeypatch.setattr(api, "read_feedback_confidential_content", forbid)
     monkeypatch.setattr(content.crypto, "decrypt_bound_json", forbid)
     path = "customer-feedback" if family == NAMES[0] else "csm"

@@ -168,7 +168,7 @@ def test_pdf_endpoints_enforce_owner_head_scope_and_fail_closed_release(monkeypa
         .status_code
         == 403
     )
-    officer = make_user("exit-pdf-officer@example.edu", role="COUNSELOR")
+    officer = make_user("exit-pdf-officer@example.edu", role="INSTITUTIONAL_OFFICER")
     assert auth_client(officer).get(head_url).status_code == 403
 
     head = auth_client(make_head("exit-pdf-head@example.edu"))

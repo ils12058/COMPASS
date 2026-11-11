@@ -64,6 +64,7 @@ def users(db):
         "student": make("Student", "STUDENT"),
         "it": make("IT", "IT_ADMIN"),
         "privacy_admin": make("PrivacyAdmin", "IT_ADMIN"),
+        "officer": make("Officer", "INSTITUTIONAL_OFFICER"),
         "head": make("Head", "COUNSELOR"),
     }
     for key, designation in (("head", "HEAD_GUIDANCE_COUNSELOR"),):
@@ -124,6 +125,7 @@ def ids(response):
         ("student", False),
         ("it", False),
         ("privacy_admin", False),
+        ("officer", False),
     ],
 )
 def test_supervised_capability_baselines_and_routes(users, key, allowed):
@@ -441,7 +443,7 @@ def test_retention_policy_events_survive_search_filter_and_export(users):
     assert "HIDDEN-CONFIDENTIAL" not in exported.content.decode()
 
 
-@pytest.mark.parametrize("key", ["a", "head", "student", "staff"])
+@pytest.mark.parametrize("key", ["a", "head", "student", "staff", "officer"])
 def test_export_default_denial(users, key):
     assert not users[key].has_capability(EXPORT)
     assert client(users[key]).get(PRIV_PATH + "/export").status_code == 403
@@ -452,12 +454,12 @@ def test_export_capability_dependency_overrides_and_browse_only(users):
     override(users["privacy_admin"], EXPORT, "REVOKE")
     assert client(users["privacy_admin"]).get(PRIV_PATH).status_code == 200
     assert client(users["privacy_admin"]).get(PRIV_PATH + "/export").status_code == 403
-    override(users["it"], VIEW, "GRANT")
-    override(users["it"], EXPORT, "GRANT")
-    assert client(users["it"]).get(PRIV_PATH + "/export").status_code == 200
-    override(users["it"], VIEW, "REVOKE")
-    assert not users["it"].has_capability(EXPORT)
-    assert client(users["it"]).get(PRIV_PATH + "/export").status_code == 403
+    override(users["officer"], VIEW, "GRANT")
+    override(users["officer"], EXPORT, "GRANT")
+    assert client(users["officer"]).get(PRIV_PATH + "/export").status_code == 200
+    override(users["officer"], VIEW, "REVOKE")
+    assert not users["officer"].has_capability(EXPORT)
+    assert client(users["officer"]).get(PRIV_PATH + "/export").status_code == 403
 
 
 def test_export_all_matching_not_page_and_safe_minimized_audit(users):

@@ -280,7 +280,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     other = make_user("other@example.edu", "COUNSELOR")
     head = make_user("head@example.edu", "COUNSELOR")
     goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
-    officer = make_user("officer@example.edu", "IT_ADMIN")
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
     student = make_user("student@example.edu", "STUDENT")
     UserDesignation.objects.create(
         user=head,

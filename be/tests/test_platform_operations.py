@@ -86,7 +86,6 @@ def test_platform_operations_capability_is_it_admin_baseline_only():
     staff = make_user("platform-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("platform-student@example.edu", "STUDENT")
     officer = make_user("platform-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    officer = make_user("platform-officer@example.edu", "INSTITUTIONAL_OFFICER")
     head = make_user("platform-head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
@@ -95,7 +94,7 @@ def test_platform_operations_capability_is_it_admin_baseline_only():
 
     assert admin.has_capability("platform_operations.view")
     assert admin.has_capability("platform_operations.manage")
-    for user in (counselor, staff, student, officer, officer, head):
+    for user in (counselor, staff, student, officer, head):
         assert not user.has_capability("platform_operations.view")
         assert not user.has_capability("platform_operations.manage")
 

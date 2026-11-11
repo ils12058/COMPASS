@@ -175,14 +175,13 @@ def test_non_it_baselines_and_institutional_designations_do_not_gain_manage():
     staff = make_user("baseline-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("baseline-student@example.edu", "STUDENT")
     officer = make_user("baseline-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    officer = make_user("baseline-officer@example.edu", "INSTITUTIONAL_OFFICER")
     head = make_user("baseline-head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
 
-    for user in (counselor, staff, student, officer, officer, head):
+    for user in (counselor, staff, student, officer, head):
         assert not user.has_capability("platform_operations.manage")
 
 
