@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -14,7 +14,7 @@ import { calendarDate, calendarDateValue } from "./appointment-calendar-date";
 const months = Array.from({ length: 12 }, (_, month) =>
   new Intl.DateTimeFormat("en", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2000, month, 1))),
 );
-const focusStyle = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1";
+const focusStyle = "focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-1";
 
 export function AppointmentDateCalendar({
   value, onChange, label = "Appointment date", min, disabled = false,
@@ -32,8 +32,21 @@ export function AppointmentDateCalendar({
   const [month, setMonth] = useState(() => selected ?? earliest ?? today!);
   const [yearDraft, setYearDraft] = useState(String(month.getUTCFullYear()));
   const [yearError, setYearError] = useState(false);
+  const daysRef = useRef<HTMLDivElement>(null);
+  const pendingTodayFocus = useRef<string | null>(null);
   const monthKey = calendarDateValue(month).slice(0, 7);
   const minMonth = min.slice(0, 7);
+
+  useEffect(() => {
+    const target = pendingTodayFocus.current;
+    if (!target) return;
+    pendingTodayFocus.current = null;
+    const button = daysRef.current?.querySelector<HTMLButtonElement>(`[data-day="${target}"] button`);
+    if (button && !button.disabled) {
+      button.focus({ preventScroll: true });
+      button.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+    }
+  }, [month]);
 
   function navigate(next: Date) {
     const bounded = earliest && calendarDateValue(next).slice(0, 7) < minMonth ? earliest : next;
@@ -56,6 +69,14 @@ export function AppointmentDateCalendar({
     next.setUTCDate(1);
     next.setUTCMonth(next.getUTCMonth() + offset);
     navigate(next);
+  }
+
+  function goToToday() {
+    const current = institutionalDateInputValue();
+    const day = calendarDate(current);
+    if (!day) return;
+    pendingTodayFocus.current = current;
+    navigate(day);
   }
 
   return (
@@ -91,7 +112,7 @@ export function AppointmentDateCalendar({
         <p aria-live="polite" aria-atomic="true" className="min-w-0 flex-1 text-center font-heading font-semibold text-ink">{months[month.getUTCMonth()]} {month.getUTCFullYear()}</p>
         <Button className="px-2" variant="secondary" aria-label="Next month" disabled={disabled || monthKey === "9999-12"} onClick={() => shiftMonth(1)}><ChevronRight aria-hidden="true" className="size-4" /></Button>
       </div>
-      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${label} calendar days`}>
+      <div ref={daysRef} className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${label} calendar days`}>
       <DayPicker
         mode="single" required timeZone="UTC" weekStartsOn={0}
         month={month} onMonthChange={navigate} selected={selected} today={today}
@@ -107,7 +128,7 @@ export function AppointmentDateCalendar({
           month_grid: "w-full min-w-56 table-fixed border-collapse",
           weekday: "h-8 text-center text-xs font-medium text-muted",
           day: "p-0.5 text-center [&[data-selected]>button]:border-brand [&[data-selected]>button]:bg-brand [&[data-selected]>button]:text-on-brand",
-          day_button: `w-full min-h-11 rounded-md border border-transparent text-sm font-medium text-ink hover:bg-surface-subtle disabled:text-muted disabled:opacity-50 ${focusStyle}`,
+          day_button: `w-full min-h-11 scroll-m-20 rounded-md border border-transparent text-sm font-medium text-ink hover:bg-surface-subtle disabled:text-muted disabled:opacity-50 ${focusStyle}`,
           today: "[&>button]:border-brand [&>button]:font-bold [&>button]:underline [&>button]:decoration-2 [&>button]:underline-offset-4",
           hidden: "invisible",
         }}
@@ -115,7 +136,7 @@ export function AppointmentDateCalendar({
       </div>
       <p className="mt-2 text-sm text-ink" role="status">{value ? `Selected date: ${formatDateOnly(value, { dateStyle: "long" })}` : "No date selected."}</p>
       <p id={`${id}-help`} className="mt-1 text-xs leading-5 text-muted">Use arrow keys to move by day, Page Up/Down by month, and Enter to select. Today is underlined.</p>
-      <Button variant="quiet" className="mt-1" onClick={() => navigate(today!)}>Go to today</Button>
+      <Button variant="quiet" className="mt-1" onClick={goToToday}>Go to today</Button>
     </fieldset>
   );
 }

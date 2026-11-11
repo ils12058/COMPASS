@@ -54,6 +54,35 @@ async function start(page) {
 const calendar = page => page.getByRole('group', { name: 'Appointment date', exact: true });
 const times = page => page.getByRole('group', { name: 'Available Appointment times' });
 
+for (const chosen of ['2027-01-05', '2027-02-05']) {
+  const w = world();
+  await h.check(`today navigation from ${chosen} preserves the selected schedule`, path, { ...w.options, viewport: { width: 390, height: 500 }, timezoneId: 'America/Los_Angeles' }, async page => {
+    await start(page);
+    await chooseAppointmentDate(page, chosen);
+    await times(page).getByRole('button').first().click();
+    const selected = w.state.reads.at(-1).date;
+    const shortcut = calendar(page).getByRole('button', { name: 'Go to today', exact: true });
+    for (let repeat = 0; repeat < 2; repeat++) {
+      if (repeat === 0) await shortcut.click();
+      else { await shortcut.focus(); await page.keyboard.press('Enter'); }
+      const todayButton = calendar(page).locator('[data-day="2027-01-01"] button');
+      assert.equal(await todayButton.evaluate(el => el === document.activeElement), true);
+      assert.ok(await todayButton.evaluate(el => getComputedStyle(el).boxShadow !== 'none'), 'today has visible focus after mouse or keyboard navigation');
+      const box = await todayButton.boundingBox();
+      const header = await page.getByRole('banner').boundingBox();
+      assert.ok(box.y >= Math.max(0, header.y + header.height) && box.y + box.height <= 500, `today stays fully visible in the short viewport: ${JSON.stringify(box)}`);
+      await h.shown(page.getByRole('heading', { name: '5. Review Appointment' }));
+      assert.equal(w.state.reads.at(-1).date, selected, 'navigation does not fetch slots for another date');
+    }
+    await page.keyboard.press('Enter');
+    await h.shown(page.getByText('Selected date: January 1, 2027', { exact: true }));
+    await h.shown(times(page));
+    assert.equal(w.state.reads.at(-1).date, '2027-01-01', 'deliberate activation selects today');
+    assert.equal(await page.getByRole('heading', { name: '5. Review Appointment' }).count(), 0, 'selecting another date clears the chosen time');
+    assert.equal(w.state.posts.length, 0);
+  });
+}
+
 for (const width of [1440, 1024, 390, 320]) {
   const w = world();
   await h.check(`booking layout ${width}`, path, { ...w.options, viewport: { width, height: width > 1000 ? 720 : 844 } }, async page => {
@@ -218,6 +247,9 @@ for (const trigger of ['date change', 'recheck', 'conflict']) {
     await chooseAppointmentDate(dialog, day, 'New date');
     await dialog.getByLabel('Reason (optional)').fill('Keep my reason');
     await dialog.getByRole('group', { name: 'Available replacement times' }).getByRole('button').first().click();
+    await dialog.getByRole('button', { name: 'Go to today', exact: true }).click();
+    assert.equal(await dialog.locator('[data-day="2027-01-01"] button').evaluate(el => el === document.activeElement), true);
+    await h.shown(dialog.getByRole('heading', { name: 'Review reschedule' }));
     if (trigger === 'date change') {
       await chooseAppointmentDate(dialog, '2027-01-06', 'New date');
       assert.equal(await dialog.getByRole('heading', { name: 'Review reschedule' }).count(), 0);

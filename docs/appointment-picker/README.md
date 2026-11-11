@@ -31,6 +31,10 @@ without waiting for hosted CI.
 - Service details, supported delivery modes, Inventory requirements, booking review,
   fixed-slot booking, and Group Session registration remain covered by regressions.
   Calendar navigation makes no requests for decorative availability indicators.
+- Go to today remains a navigation action. It now brings the Philippine current
+  day into view and gives its button visible focus, even when the current month is
+  already displayed. It preserves the selected date and time; activating the
+  focused day separately changes the date and clears the incompatible time.
 
 ## Verified contract gaps
 
@@ -58,8 +62,9 @@ build. They do not establish live-backend readiness or institutional approval.
 | `pnpm lint` | Passed |
 | `pnpm typecheck` | Passed |
 | `pnpm build` | Passed |
-| Full Node test suite | 1169/1169 passed |
-| Appointment picker | 24/24 Chromium; 24/24 WebKit |
+| Full Node test suite, initial picker implementation | 1169/1169 passed |
+| Calendar/date semantics, today-navigation follow-up | 11/11 passed |
+| Appointment picker, including today navigation | 26/26 Chromium; 26/26 WebKit |
 | Existing appointment dialogs | 2/2 Chromium; 2/2 WebKit |
 | Unconfirmed booking/same-request retry | 2/2 Chromium; 2/2 WebKit |
 | Fixed-slot and Group Session flows | 40/40 Chromium; 40/40 WebKit |
@@ -71,6 +76,9 @@ empty/error states, time loading/empty/error states, failed refresh and recovery
 service/delivery/counselor/date resets, polling and submission conflicts, leap days,
 year boundaries, and browser zones in Los Angeles, Manila, and Kiritimati. Tests use
 the new calendar interaction instead of filling a native date input.
+Today-navigation checks cover mouse and keyboard activation, repeated use in the
+same month, returning from another month, a 390 × 500 viewport, preserved time
+selection, and focus within the rescheduling dialog.
 
 The browser suite is automatically discovered by `tests/run-browser-regressions.mjs`
 and the frontend browser CI inventory. Hosted CI is not being awaited for this
@@ -90,6 +98,8 @@ short-window resize and physical iPhone Safari were not verified. Screen-reader
 interaction and human UAT remain unverified; the calendar uses DayPicker's semantic
 grid and keyboard behavior. The saved screenshots below come from automated
 Chromium/WebKit, not native Safari.
+The subsequent today-navigation focus and scroll refinement was verified in
+Chromium and WebKit; the native Safari observations above cover the initial picker.
 
 ## Screenshots and result records
 

@@ -3,6 +3,14 @@
   "engine": "chromium",
   "results": [
     {
+      "name": "today navigation from 2027-01-05 preserves the selected schedule",
+      "passed": true
+    },
+    {
+      "name": "today navigation from 2027-02-05 preserves the selected schedule",
+      "passed": true
+    },
+    {
       "name": "booking layout 1440",
       "passed": true
     },
