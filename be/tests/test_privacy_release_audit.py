@@ -46,12 +46,8 @@ def make_head() -> User:
     return user
 
 
-def make_dpo() -> User:
-    user = make_user("release-dpo@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=user,
-        designation=Designation.objects.get(code="DPO"),
-    )
+def make_privacy_admin() -> User:
+    user = make_user("release-officer@example.edu", "INSTITUTIONAL_OFFICER")
     return user
 
 
@@ -142,8 +138,8 @@ def test_student_profiling_successful_release_records_safe_audit_event(
 @pytest.mark.django_db
 def test_student_profiling_failed_authorization_or_render_does_not_log_release(monkeypatch):
     sync_policy()
-    dpo = make_dpo()
-    denied = auth_client(dpo).get("/api/v1/reports/student-profile/pdf")
+    officer = make_privacy_admin()
+    denied = auth_client(officer).get("/api/v1/reports/student-profile/pdf")
     assert denied.status_code == 403
     assert not AuditEvent.objects.filter(action="report.export_released").exists()
 
@@ -323,8 +319,8 @@ def test_graduate_tracer_xlsx_release_records_only_safe_report_context(monkeypat
 @pytest.mark.django_db
 def test_graduate_tracer_denial_or_render_failure_creates_no_release_event(monkeypatch):
     sync_policy()
-    dpo = make_dpo()
-    denied = auth_client(dpo).get("/api/v1/reports/graduate-tracer/xlsx")
+    officer = make_privacy_admin()
+    denied = auth_client(officer).get("/api/v1/reports/graduate-tracer/xlsx")
     assert denied.status_code == 403
     assert not AuditEvent.objects.filter(action="report.export_released").exists()
 

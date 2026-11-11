@@ -70,12 +70,8 @@ def make_head(email: str = "overview-head@example.edu") -> User:
     return user
 
 
-def make_dpo(email: str = "overview-dpo@example.edu") -> User:
+def make_privacy_admin(email: str = "overview-officer@example.edu") -> User:
     user = make_user(email, "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=user,
-        designation=Designation.objects.get(code="DPO"),
-    )
     return user
 
 
@@ -515,7 +511,7 @@ def test_guidance_overview_preserves_counselor_goa_and_head_scope() -> None:
 
 
 @pytest.mark.django_db
-def test_platform_section_and_dpo_overview_have_no_invented_privacy_metrics() -> None:
+def test_platform_section_and_officer_overview_have_no_invented_privacy_metrics() -> None:
     sync_policy()
     admin = make_user("overview-admin@example.edu", "IT_ADMIN")
     recipient = make_user(
@@ -557,9 +553,9 @@ def test_platform_section_and_dpo_overview_have_no_invented_privacy_metrics() ->
         "email_sent_today_count": 1,
     }
 
-    dpo = make_dpo()
+    officer = make_privacy_admin()
     ordinary_officer = make_user("overview-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    for actor in (dpo, ordinary_officer):
+    for actor in (officer, ordinary_officer):
         body = auth_client(actor).get("/api/v1/overview").json()
         assert set(body) == {"generated_at", "student", "guidance", "platform"}
         assert body["student"] is None

@@ -42,18 +42,18 @@ test('Faculty availability combinations and absent availability keep independent
   }
 });
 test('designation titles confer no workspace, and ordinary identities cannot gain confidential roots through ordering', () => {
-  for (const name of ['Head', 'DPO']) {
+  for (const name of ['Head']) {
     const withTitle = reachability({...profiles[name], capabilities: []});
     const withoutTitle = reachability({...profiles[name], capabilities: [], designations: []});
     assert.deepEqual(hrefs([...withTitle.daily, ...withTitle.secondary.links]).sort(), hrefs([...withoutTitle.daily, ...withoutTitle.secondary.links]).sort());
   }
   for (const name of ['Student','Alumni','Faculty','IT Admin']) {
-    const user = {...profiles[name], designations: ['DPO','HEAD_GUIDANCE_COUNSELOR'], capabilities: [...new Set(Object.values(profiles).flatMap(p=>p.capabilities))]};
+    const user = {...profiles[name], designations: ['HEAD_GUIDANCE_COUNSELOR'], capabilities: [...new Set(Object.values(profiles).flatMap(p=>p.capabilities))]};
     const {daily, secondary} = reachability(user, available);
     assert.ok(!hrefs([...daily, ...secondary.links]).includes('/portal/assessment-records'));
   }
-  reachability({...profiles.DPO, designations: [], capabilities: ['privacy_governance.manage']});
-  reachability({...profiles.DPO, capabilities: ['privacy_governance.retention.view']});
+  reachability({...profiles['Institutional Officer'], designations: [], capabilities: ['privacy_governance.notices.manage']});
+  reachability({...profiles['Institutional Officer'], capabilities: ['privacy_governance.activity.view']});
 });
 test('additional allowed roots append to More without displacing approved destinations', () => {
   const user = {...profiles.Counselor, capabilities: [...profiles.Counselor.capabilities, 'accounts.manage', 'platform_operations.view']};

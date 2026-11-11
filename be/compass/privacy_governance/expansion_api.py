@@ -1,4 +1,4 @@
-"""DPO governance management and narrowly scoped privacy notice readership."""
+"""Administrative Notice management and narrowly scoped privacy notice readership."""
 
 from __future__ import annotations
 
@@ -193,7 +193,7 @@ def notice_list(
     page_size: int = service.DEFAULT_PAGE_SIZE,
     is_active: bool | None = None,
 ):
-    _require(request, "privacy_governance.view")
+    _require(request, "privacy_governance.notices.view")
     try:
         return _page(
             service.list_notices(is_active=is_active, page_number=page, page_size=page_size),
@@ -211,7 +211,7 @@ def notice_list(
     openapi_extra=VALIDATION_OPENAPI,
 )
 def notice_create(request, payload: NoticeCreate):
-    _require(request, "privacy_governance.manage")
+    _require(request, "privacy_governance.notices.manage")
     try:
         return Status(
             201,
@@ -232,7 +232,7 @@ def notice_create(request, payload: NoticeCreate):
     operation_id="privacyGovernanceGetNotice",
 )
 def notice_get(request, notice_id: UUID):
-    _require(request, "privacy_governance.view")
+    _require(request, "privacy_governance.notices.view")
     try:
         return _notice(service.get_notice(notice_id))
     except PrivacyGovernanceError as exc:
@@ -246,7 +246,7 @@ def notice_get(request, notice_id: UUID):
     operation_id="privacyGovernanceUpdateNotice",
 )
 def notice_update(request, notice_id: UUID, payload: NoticeUpdate):
-    _require(request, "privacy_governance.manage")
+    _require(request, "privacy_governance.notices.manage")
     try:
         return _notice(
             service.update_notice(
@@ -266,7 +266,7 @@ def notice_update(request, notice_id: UUID, payload: NoticeUpdate):
     operation_id="privacyGovernanceRetireNotice",
 )
 def notice_retire(request, notice_id: UUID):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.notices.manage", recent_mfa=True)
     try:
         return _notice(service.retire_notice(notice_id=notice_id, context=_context(request)))
     except PrivacyGovernanceError as exc:
@@ -282,7 +282,7 @@ def notice_retire(request, notice_id: UUID):
 def revision_list(
     request, notice_id: UUID, page: int = 1, page_size: int = service.DEFAULT_PAGE_SIZE
 ):
-    _require(request, "privacy_governance.view")
+    _require(request, "privacy_governance.notices.view")
     try:
         return _page(
             service.list_revisions(notice_id=notice_id, page_number=page, page_size=page_size),
@@ -299,7 +299,7 @@ def revision_list(
     operation_id="privacyGovernanceCreateNoticeRevision",
 )
 def revision_create(request, notice_id: UUID, payload: RevisionCreate):
-    _require(request, "privacy_governance.manage")
+    _require(request, "privacy_governance.notices.manage")
     try:
         return Status(
             201,
@@ -323,7 +323,7 @@ def revision_create(request, notice_id: UUID, payload: RevisionCreate):
     operation_id="privacyGovernanceGetNoticeRevision",
 )
 def revision_get(request, revision_id: UUID):
-    _require(request, "privacy_governance.view")
+    _require(request, "privacy_governance.notices.view")
     try:
         return _revision(service.get_revision(revision_id))
     except PrivacyGovernanceError as exc:
@@ -337,7 +337,7 @@ def revision_get(request, revision_id: UUID):
     operation_id="privacyGovernanceUpdateNoticeRevision",
 )
 def revision_update(request, revision_id: UUID, payload: RevisionUpdate):
-    _require(request, "privacy_governance.manage")
+    _require(request, "privacy_governance.notices.manage")
     try:
         changes = payload.model_dump(exclude_unset=True)
         expected_updated_at = changes.pop("expected_updated_at", None)
@@ -360,7 +360,7 @@ def revision_update(request, revision_id: UUID, payload: RevisionUpdate):
     operation_id="privacyGovernancePublishNoticeRevision",
 )
 def revision_publish(request, revision_id: UUID):
-    _require(request, "privacy_governance.manage", recent_mfa=True)
+    _require(request, "privacy_governance.notices.manage", recent_mfa=True)
     try:
         return _revision(
             service.publish_revision(

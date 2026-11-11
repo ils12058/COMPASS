@@ -203,12 +203,12 @@ Release is fail closed: authorization and workbook generation happen before the 
 and workbook bytes are returned only after that audit succeeds. Audit failure returns
 `release_audit_unavailable`.
 
-## DPO Privacy Activity
+## Privacy & Security Activity
 
-The closed DPO report-release presenter recognizes `reports.graduatetracer` only when action, target,
+The closed privacy report-release presenter recognizes `reports.graduatetracer` only when action, target,
 schema version, XLSX format, and bounded submission-date metadata are valid.
 
-The DPO projection may show schema version and submission-period scope. It does not project report
+The Privacy Activity projection may show schema version and submission-period scope. It does not project report
 counts, survey outcomes, salaries, Student identity, report contents, or raw AuditEvent metadata.
 
 Student Profiling and Good Moral release presentation remain unchanged.

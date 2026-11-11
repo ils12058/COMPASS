@@ -31,10 +31,10 @@ const staff = user("GUIDANCE_OFFICE_ASSISTANT", ["exit_interviews.manage_opportu
 const counselor = user("COUNSELOR", [...staff.capabilities.filter((code) => code !== "exit_interviews.manage_opportunities"), "academic_years.view", "institutional_forms.view", "availability.manage_self", "inventory.view", "inventory.reopen", "counseling.view_assigned", "counseling.manage_assigned", "routine_interviews.view_assigned", "reports.view", "good_moral.view", "good_moral.manage", "good_moral.issue"]);
 const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view", "student_academics.view", "student_academics.manage", "student_academics.import"] };
 const it = user("IT_ADMIN", ["accounts.view", "accounts.manage", "platform_operations.view", "platform_operations.manage", "organization.structure.view", "organization.manage", "services.catalog.view", "services.manage", "availability.view", "availability.manage", "student_academics.view", "student_academics.manage", "student_academics.import"]);
-const dpo = user("INSTITUTIONAL_OFFICER", ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.retention.view", "privacy_governance.activity.export"], { designations: ["DPO"] });
+const privacyAdmin = user("IT_ADMIN", ["privacy_governance.notices.view", "privacy_governance.notices.manage", "privacy_governance.activity.view", "privacy_governance.activity.export"]);
 const hrefs = (account) => commands.portalCommandDestinations(account).map((item) => item.href);
 
-for (const [name, account] of Object.entries({ student, staff, counselor, head, it, dpo })) {
+for (const [name, account] of Object.entries({ student, staff, counselor, head, it, privacyAdmin })) {
   test(`${name}: root visibility matches the dock and account destinations remain available`, () => {
     const index = commands.portalCommandDestinations(account);
     for (const group of portalWorkspaceGroups(account)) {
@@ -69,13 +69,13 @@ test("Exit Interviews label follows effective actions, not the role, in the dock
   // Students with a self-service workspace.
   assert.equal(label({ ...student, exit_interview_workspace_available: true }), "Exit Interviews");
   // No workspace: no destination for any role.
-  for (const account of [student, counselor, it, dpo, { ...staff, capabilities: [] }]) {
+  for (const account of [student, counselor, it, privacyAdmin, { ...staff, capabilities: [] }]) {
     assert.equal(root(account), undefined);
     assert.equal(command(account), undefined);
   }
 });
 
-test("Students get self destinations and never staff/admin/DPO destinations", () => {
+test("Students get self destinations and never staff/admin destinations", () => {
   const paths = hrefs(student);
   for (const path of ["/portal/appointments/my", "/portal/appointments/book", "/portal/inventory/current", "/portal/good-moral/request", "/portal/feedback"]) assert.ok(paths.includes(path));
   assert.ok(paths.every((path) => !/^\/portal\/(accounts|organization|privacy|platform|availability|reports)(?:\/|$)|\/responses|\/manage/.test(path)));
@@ -112,19 +112,14 @@ test("reference structure, catalog reads, and submission access never imply mana
   assert.ok(!hrefs(head).includes("/portal/feedback/csm"), "submission forms require an opportunity and are not indexed");
 });
 
-test("DPO and Platform destinations follow effective capabilities, not role/designation labels", () => {
-  assert.ok(hrefs(dpo).includes("/portal/privacy/retention"));
-  assert.ok(!hrefs({ ...dpo, capabilities: [] }).includes("/portal/privacy"));
-  const privacyReader = user("COUNSELOR", ["privacy_governance.view"]);
-  assert.ok(hrefs(privacyReader).includes("/portal/privacy/activity"));
-  assert.ok(!hrefs(privacyReader).includes("/portal/privacy/retention"));
-  const retentionReader = user("INSTITUTIONAL_OFFICER", ["privacy_governance.retention.view"]);
-  assert.ok(hrefs(retentionReader).includes("/portal/privacy/retention"));
-  assert.ok(!hrefs(retentionReader).includes("/portal/privacy/notices"));
-  for (const account of [dpo, retentionReader]) {
-    const retention = commands.portalCommandDestinations(account).filter((item) => item.href.startsWith("/portal/privacy/retention"));
-    assert.deepEqual(retention.map((item) => [item.href, item.label]), [["/portal/privacy/retention", "Retention Policies"]]);
-  }
+test("Privacy and Platform destinations follow independent effective capabilities", () => {
+  const activityReader = user("COUNSELOR", ["privacy_governance.activity.view"], { designations: ["HEAD_GUIDANCE_COUNSELOR"] });
+  assert.ok(hrefs(activityReader).includes("/portal/privacy/activity"));
+  assert.ok(!hrefs(activityReader).includes("/portal/privacy/notices"));
+  const noticeReader = user("IT_ADMIN", ["privacy_governance.notices.view"]);
+  assert.ok(hrefs(noticeReader).includes("/portal/privacy/notices"));
+  assert.ok(!hrefs(noticeReader).includes("/portal/privacy/activity"));
+  assert.ok(!hrefs(user("INSTITUTIONAL_OFFICER", [])).includes("/portal/privacy"));
   for (const slug of ["health", "maintenance", "email-delivery", "environment", "activity"]) assert.ok(hrefs(it).includes(`/portal/platform/${slug}`));
   assert.ok(!hrefs({ ...it, capabilities: it.capabilities.filter((value) => value !== "platform_operations.view") }).some((path) => path.startsWith("/portal/platform")));
 });
@@ -132,12 +127,12 @@ test("DPO and Platform destinations follow effective capabilities, not role/desi
 test("deep actions disappear when their actual manage capability is removed", () => {
   const readonly = { ...head, capabilities: head.capabilities.filter((value) => !value.endsWith(".manage")) };
   for (const path of ["/portal/referrals/new", "/portal/call-slips/new", "/portal/resources/new", "/portal/announcements/new", "/portal/services/new"]) assert.ok(!hrefs(readonly).includes(path));
-  const privacyReader = { ...dpo, capabilities: dpo.capabilities.filter((value) => !value.endsWith(".manage")) };
+  const privacyReader = { ...privacyAdmin, capabilities: privacyAdmin.capabilities.filter((value) => !value.endsWith(".manage")) };
   assert.ok(!hrefs(privacyReader).includes("/portal/privacy/notices/new"));
 });
 
-const all = commands.portalCommandDestinations({ ...head, capabilities: [...new Set([...student.capabilities, ...head.capabilities, ...it.capabilities, ...dpo.capabilities])] });
-for (const [query, expected] of [["retention", "/portal/privacy/retention"], ["student placement", "/portal/organization/student-academics"], ["mfa", "/portal/account/security"], ["email delivery", "/portal/platform/email-delivery"], ["worker", "/portal/platform/health"], ["forms", "/portal/institutional-forms"], ["profile", "/portal/account/profile"], ["book", "/portal/appointments/book"]]) {
+const all = commands.portalCommandDestinations({ ...head, capabilities: [...new Set([...student.capabilities, ...head.capabilities, ...it.capabilities, ...privacyAdmin.capabilities])] });
+for (const [query, expected] of [["student placement", "/portal/organization/student-academics"], ["mfa", "/portal/account/security"], ["email delivery", "/portal/platform/email-delivery"], ["worker", "/portal/platform/health"], ["forms", "/portal/institutional-forms"], ["profile", "/portal/account/profile"], ["book", "/portal/appointments/book"]]) {
   test(`search alias: ${query}`, () => {
     const index = query === "book" ? commands.portalCommandDestinations(student) : all;
     assert.ok(commands.searchPortalCommands(index, query).some((item) => item.href === expected));

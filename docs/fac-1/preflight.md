@@ -16,7 +16,7 @@ idempotently. Unknown database grants are retained by sync, and generic override
 can add capabilities. Consequently an empty baseline alone is insufficient to
 guarantee a Faculty boundary: FAC-1 needs an explicit capability ceiling too.
 
-Head Guidance is a COUNSELOR designation; DPO requires INSTITUTIONAL_OFFICER.
+Head Guidance is a COUNSELOR designation; Institutional Officer remains a generic empty role.
 Account Management checks capabilities, recent MFA for authority changes, a shared
 manager mutex, locked current actors/targets, last-manager preservation, CSRF,
 and authentication invalidation. Existing role changes reject stranded Student,
@@ -37,7 +37,7 @@ published Markdown is available. No institutional approval is inferred from it.
 | Principle / predicate | Current owning source and FAC-1 result |
 | --- | --- |
 | Valid current actor | Existing session authentication and `_admin_mutation` reload/lock active manager; no new auth system |
-| Role and compatible designation | One Role FK; existing Head/DPO compatibility retained; Faculty inherits neither designation authority nor clinical identity |
+| Role and compatible designation | One Role FK; existing Head/General Guidance Intake compatibility retained; Faculty inherits neither designation authority nor clinical identity |
 | Effective function authority | Existing persisted grants/dependency resolver preserved; Faculty ceiling prevents additive-sync drift or raw overrides from becoming effective |
 | Exact resource relationship | Manager targets one account; Faculty College FK is home provenance only, never Student ownership, teaching scope or GCO routing |
 | Action/lifecycle eligibility | Active College/Campus validation, explicit stale-version rejection, safe role clearing and retained-reference reactivation checks |
@@ -51,7 +51,7 @@ separate ACCESS work. FAC-1 makes no unapproved changes to other roles' baseline
 and does not claim inspection of persisted production grants or complete ACCESS-0.
 
 Current source baseline counts: IT Administrator 11, Counselor 40, GSS 23,
-Student 25, Institutional Officer 0, Faculty 0; Head designation 16, DPO 4.
+Current privacy defaults are documented in `be/docs/privacy-governance.md`; Institutional Officer remains empty.
 There are 89 canonical capability codes, 99 expected role grants and 20 expected
 designation grants. Existing-database unknown grants remain retained by sync;
 synthetic malformed Faculty role/override rows are tested and stay ineffective.

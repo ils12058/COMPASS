@@ -28,7 +28,6 @@ Every claim is marked **Verified**, **Inferred** or **Unknown**.
 | Reports | Inventory Program/Year Level; affiliation for current-year coverage | both | `reports.view` + active College scope | Same report can use different College sources | `be/compass/reports/services.py:413-433,1011-1027` |
 | Group sessions | None | — | — | No academic filtering or snapshot | `be/compass/group_sessions/models.py:185-224` (registration stores Student only) |
 | Notifications | No academic fields; events about Good Moral/Inventory/appointments | domain events | Recipient policy | Indirect only; no academic payload | `be/compass/notifications/policy.py:41-70`; `email_presentation.py` has no College/Program/Year fields |
-| Privacy / retention | Audit metadata; retention register | audit + register | DPO/oversight | No academic-record retention category adopted | `be/compass/privacy_governance/retention_policy_register.py:96-118` |
 | FUP-3C | Would require canonical current College | not implemented | — | **Unknown**; no `FUP-3C` reference in repository | repository search |
 | Faculty academic-contact attestation | Would require enrollment/teaching verification | not implemented | — | **Unknown**; explicitly absent per FAC-D9 | `docs/fac-5/institutional-decisions.md:121-133` |
 | Seeds / verification | Affiliation and Inventory consistency | both | seeding service calls | Seeds enforce persona alignment; no independent cross-check | `be/compass/staging_seed/organization.py:139-184`; `be/compass/staging_seed/history.py:147-171` |
@@ -145,3 +144,5 @@ exports with College/Program columns. Repository inspection found no account-lev
 export builder; the reports domain does produce PDF/XLSX outputs with academic dimensions
 (`be/compass/reports/pdf.py`, `be/compass/reports/xlsx.py`), but those builders were not inspected
 line-by-line. Operational use outside the repository cannot be verified.
+
+Privacy Activity reads minimized audit events; no Retention Policies register exists. Institutional retention schedules remain external.

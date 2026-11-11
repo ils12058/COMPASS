@@ -38,7 +38,7 @@ No model or migration changes are needed.
 | Faculty | 5 | `faculty_ccms`, `faculty_cas`, `faculty_cbpa`, `faculty_coed`, `faculty_coeng` |
 | Alumni | 5 | `recent_graduate`, `alumni`, `ar_13`, `ar_25`, `ar_26` |
 | ITSO Personnel | 3 | `it_admin`, `it_admin_2`, `it_admin_3` |
-| Data Protection Officer | 1 | `dpo` |
+| Institutional Officer | 1 | `officer_no_designation` |
 
 The 30 current Students satisfy `UAT_50_STUDENT_QUOTA`:
 
@@ -266,7 +266,7 @@ manifest disagree. Sections:
 | Organization routing | Counselor responsibility for nine Colleges and staff supervision exactly as declared |
 | Scenario initial states | Every executable scenario's documented starting state (named predicates in the manifest) |
 | Workflow integrity | Appointment providers follow routing, one Inventory per year, notifications for published summaries, LIVE Call Slips and issued certificates, Work Queue projections |
-| Privacy and security | Every `*_ciphertext` column holds Fernet ciphertext only, Students hold only self capabilities, staff/IT/officer scopes, DPO scope equals the DPO designation, disabled accounts have no live session |
+| Privacy and security | Every `*_ciphertext` column holds Fernet ciphertext only, Students hold only self capabilities, staff/IT/officer scopes, Institutional Officer has zero domain capabilities, disabled accounts have no live session |
 | External side effects | No email or push intents, no Daily-provisioned or local E-Counseling rooms for dataset accounts |
 
 During active UAT, `--allow-uat-changes` reports states that evaluators changed (and the email
@@ -326,7 +326,7 @@ before commit, so no other session observes a historical year as current.
 | Action-ready Students (`ar_01`…`ar_27`) | 27 | One evaluator-owned pending action each |
 | Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled; eight are promoted to UAT-ready for the College distribution |
 | Faculty (participants) | 5 | One each for CCMS, CAS, CBPA, COED and COENG; digital Referrals and received notices |
-| Staff (participants) | 11 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Office Assistant ×2, DPO ×2 |
+| Staff (participants) | 10 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Office Assistant ×2, Institutional Officer |
 | Staff (restricted) | 3 | Disabled former staff, a Counselor without responsibility, an undesignated Institutional Officer |
 
 Counselor routing: `counselor_a` — Main CCMS, CAS, COENG; `counselor_b` — Main CBPA, Abaño COED;

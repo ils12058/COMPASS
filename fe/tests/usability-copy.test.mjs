@@ -97,7 +97,7 @@ test("a Privacy Notice still says acknowledging it is not consent", async () => 
     acknowledged: false,
     acknowledged_at: null,
     audiences: ["STUDENT"],
-    body: "Notice body as written by the Data Protection Officer.",
+    body: "Institutionally approved Notice body.",
     code: "PN-1",
     effective_on: "2026-09-01",
     name: "Student Privacy Notice",
@@ -116,5 +116,5 @@ test("a Privacy Notice still says acknowledging it is not consent", async () => 
   const html = renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(AccountPrivacyPage)));
   assert.match(html, /Acknowledgment records that you have seen this notice\. It is not consent to all data processing\./);
   // The notice text itself is shown as written.
-  assert.match(html, /Notice body as written by the Data Protection Officer\./);
+  assert.match(html, /Institutionally approved Notice body\./);
 });

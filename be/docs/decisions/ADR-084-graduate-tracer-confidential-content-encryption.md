@@ -62,7 +62,7 @@ fails. Runtime cryptography delegates to ADR-079; migrations freeze their histor
 An active graduated Student owner requires the existing self capability and owner selector before
 any read. Head raw detail requires effective graduate_tracer.view and an identifiable SUBMITTED
 selector. List/search/date/employment pagination and aggregate JSON/XLSX read E0/E1 only.
-The workbook remains five visible aggregate sheets. No ordinary Counselor, GSS, IT Admin or DPO
+The workbook remains five visible aggregate sheets. No ordinary Counselor, GSS, IT Admin or Institutional Officer
 raw access is introduced. Any unreadable selected root/child returns the stable generic 500
 code graduate_tracer_confidential_content_unavailable. Replacement authenticates existing content
 before writing and cannot repair corruption. No partial private answer is returned.

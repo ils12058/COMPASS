@@ -99,9 +99,6 @@ to have every command.
 | Privacy | Privacy Governance | `/portal/privacy` |
 | Privacy | Privacy Governance › Privacy Notices | `/portal/privacy/notices` |
 | Privacy | Privacy Governance › Create Privacy Notice | `/portal/privacy/notices/new` |
-| Privacy | Privacy Governance › Retention & Disposition | `/portal/privacy/retention` |
-| Privacy | Privacy Governance › Retention Rules | `/portal/privacy/retention/rules` |
-| Privacy | Privacy Governance › Create Retention Rule | `/portal/privacy/retention/rules/new` |
 | Privacy | Privacy Governance › Privacy & Security Activity | `/portal/privacy/activity` |
 | Platform | Platform Operations | `/portal/platform/health` |
 | Platform | Platform Operations › Health | `/portal/platform/health` |
@@ -131,16 +128,14 @@ All rules below additionally require the visible parent from `portalWorkspaceGro
 | Structure | Organization workspace gate plus `canViewOrganizationStructure` |
 | Responsibilities / Student placements | Organization workspace/layout gate (`canManageOrganization`) |
 | Create account / Import accounts | Accounts workspace/layout gate (`accounts.manage`, inherited rather than duplicated) |
-| Privacy Notices / Privacy & Security Activity | `canViewPrivacyGovernance` |
-| Create Privacy Notice | `canViewPrivacyGovernance` and `canManagePrivacyGovernance` |
-| Retention & Disposition / Retention Rules | `canViewRetention` |
-| Create Retention Rule | `canViewRetention` and `canManageRetention` |
+| Privacy Notices / Privacy & Security Activity | `canViewPrivacyNotices` |
+| Create Privacy Notice | `canViewPrivacyNotices` and `canManagePrivacyNotices` |
 | Health / Maintenance / Email delivery / Environment / Technical activity | Platform workspace/layout gate (`platform_operations.view`, inherited rather than duplicated) |
 
 Read-only Organization structure access does not grant the Organization management workspace.
 Services catalog reads do not grant Services management. Feedback submission does not grant
-operational response lists. Privacy and Retention view capabilities are independently checked;
-the DPO designation itself grants no palette visibility. A Counselor receives no IT/DPO pages
+operational response lists. Notice and Activity viewing are independently checked.
+An Institutional Officer receives no privacy workspace by default. A Counselor receives no IT pages
 merely from the role. A graduated Student cannot book an appointment through this index.
 
 ## Exclusions
@@ -242,7 +237,7 @@ Local commands completed successfully on the reconciled base:
 | `git diff --check` | Passed |
 
 Focused coverage includes six representative sessions (Student, GSS, Counselor, Head Guidance,
-IT Admin, DPO), effective-capability overrides, lifecycle restrictions, static-route existence,
+IT Admin, Institutional Officer), effective-capability overrides, lifecycle restrictions, static-route existence,
 root parity, aliases/ranking/ties, shortcut/cleanup/modal rules, actual component key handlers,
 current-path handling, actual guard reject/accept order, accessible markup, focus callbacks,
 and local/private query behavior. Handler tests use small hook storage and SSR with the existing
@@ -257,9 +252,7 @@ This establishes frontend visibility/interaction behavior, not live backend auth
 | Session | Queries and observed scope |
 | --- | --- |
 | Student | appointment, book, inventory, security, profile; self destinations only; retention/platform/forms produced no results |
-| Counselor | appointments, availability, counseling, referral, reports; My/Manage appointments, My availability, assigned/operational workspaces and reports; no IT/DPO commands |
 | IT Admin | accounts, platform, email delivery, maintenance, environment, forms; management/platform entries; **forms correctly absent** from the default baseline without institutional_forms.view |
-| DPO | privacy, retention, activity; notices/retention/rules/privacy activity per effective capabilities, with distinct Account activity; no IT platform commands |
 
 Screenshots were inspected at 1440×900, 1280×900 with expanded and collapsed docks, 768×1024,
 and 375×812. The trigger preserves surrounding controls, the modal fits, no horizontal clipping
@@ -296,3 +289,7 @@ screen-reader session or real-provider end-to-end run is claimed.
 - No new cmdk/search dependency was added, and Next.js was not upgraded.
 - No backend/OpenAPI/schema/migration/generated API contract changes were made.
 - Search queries cause no backend request, analytics, logging, storage or search history.
+
+Privacy destinations use independent access helpers: `canViewPrivacyNotices` and
+`canManagePrivacyNotices` for Notices, `canViewPrivacyActivity` for Activity. IT Administrator sees
+both; Head Guidance's default Activity grant exposes only Activity. There are no retention commands.

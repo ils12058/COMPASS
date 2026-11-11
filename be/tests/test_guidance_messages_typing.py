@@ -152,7 +152,7 @@ def test_resolved_conversation_refuses_typing(world, limiter, hints):
     assert hints == []
 
 
-@pytest.mark.parametrize("name", ["other_student", "other", "admin", "dpo"])
+@pytest.mark.parametrize("name", ["other_student", "other", "admin", "officer"])
 def test_outsiders_are_concealed(world, limiter, hints, name):
     thread, _ = counseling(world)
     with pytest.raises(ThreadNotFound):

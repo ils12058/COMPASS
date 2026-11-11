@@ -329,7 +329,7 @@ Assignments:
 - ordinary Counselor: no broad Exit Interview content access
 - Guidance Services Staff: no broad Exit Interview content access
 - IT Admin: no Exit Interview content access
-- DPO: no Exit Interview content access merely by designation
+- Institutional Officer: no default Exit Interview content access
 
 Capability names express action, not scope implementation.
 

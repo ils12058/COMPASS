@@ -291,19 +291,15 @@ def test_report_scope_zero_scope_and_unsupported_roles_are_denied():
     )
     student = make_user("scope-student@example.edu")
     admin = make_user("scope-admin@example.edu", role="IT_ADMIN", lifecycle=None)
-    dpo = make_user(
-        "scope-dpo@example.edu",
+    officer = make_user(
+        "scope-officer@example.edu",
         role="INSTITUTIONAL_OFFICER",
         lifecycle=None,
-    )
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
     )
 
     assert zero_scope.has_capability("reports.view")
     assert auth_client(zero_scope).get("/api/v1/reports/scope").status_code == 403
-    for actor in (staff, student, admin, dpo):
+    for actor in (staff, student, admin, officer):
         assert auth_client(actor).get("/api/v1/reports/scope").status_code == 403
 
     set_user_capability_override(

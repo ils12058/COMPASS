@@ -99,7 +99,7 @@ read or mutate the Counselor side of a Routine Interview. Capabilities are neces
 replace the resource relationship. Students receive `routine_interviews.view_self` and
 `routine_interviews.manage_self`; Counselors receive `routine_interviews.view_assigned` and
 `routine_interviews.manage_assigned`. Head Guidance receives no extra blanket Routine-content
-capability from the designation itself. GSS, IT Admin, and DPO receive no Routine-content capability
+capability from the designation itself. GSS, IT Admin, and Institutional Officer receive no Routine-content capability
 by default. A Head who is actually the assigned Counselor uses ordinary assigned-Counselor access.
 
 This reflects the effective current policy: Academic Year configuration authority is supplied by the

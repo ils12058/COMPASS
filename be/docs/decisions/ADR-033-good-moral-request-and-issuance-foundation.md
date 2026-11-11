@@ -152,7 +152,7 @@ Cashier, billing, payment-gateway, or receipt-verification subsystem is introduc
 
 Counselors receive narrow scope-free `good_moral.view`, `good_moral.manage`, and
 `good_moral.issue` capabilities. Students receive only self-view/request capabilities. Guidance
-Services Staff, IT Admin, and DPO receive no Good Moral content authority by default. Head Guidance
+Services Staff, IT Admin, and Institutional Officer receive no Good Moral content authority by default. Head Guidance
 requires no duplicate designation grant because the Head already operates with the canonical
 Counselor primary role.
 

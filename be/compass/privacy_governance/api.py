@@ -113,7 +113,7 @@ def privacy_activity(
     date_from: date | None = None,
     date_to: date | None = None,
 ):
-    _require(request, "privacy_governance.view")
+    _require(request, "privacy_governance.activity.view")
     try:
         result = list_privacy_activity(
             page=page,

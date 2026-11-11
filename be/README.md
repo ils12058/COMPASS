@@ -331,36 +331,25 @@ overrides require a non-empty reason and optional future expiry.
 
 ## Privacy Governance
 
-Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
-Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, curated
-Privacy & Security Activity, and read-only retention policy oversight.
-Processing Activity,
-Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
-COMPASS features (ADR-065, ADR-069).
+COMPASS supports versioned Privacy Notices, exact-revision self-acknowledgments, sensitive
+release auditing and curated Privacy & Security Activity. See [current privacy access](docs/privacy-governance.md).
 
-COMPASS no longer performs records disposition
-([ADR-114](docs/decisions/ADR-114-decommission-in-app-disposition.md)). Formal authorization,
-disposal and destruction of University records happen outside COMPASS. A state university's
-public records need National Archives authority (RA 9470). On the reset-only canonical baseline
-(CANON-1C) the ADR-072/ADR-092 engine is gone entirely: no rule, case or hold table, no Celery task
-or tombstone, no fallback service and no Beat schedule. E-Counseling keeps every capture and
-artifact disposal, terminal-state, quarantine, consent and custody fence, and custody-transfer
-cleanup of the provider copy after verified private storage is unchanged. The canonical baseline
-assumes an empty history: no pre-reset capture, room, broker message, worker or backup may reach
-it (see [ADR-116](docs/decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md)).
+IT Administrator is the sole default in-app Notice administrator. It maintains and publishes
+institutionally approved wording; application permission is not institutional content authority.
+Head Guidance can view Activity under its designation, with no default administrative Notice or
+Activity-export access. Institutional Officer remains a generic role with zero default domain
+capabilities. All authenticated users retain applicable published-notice readership and their own
+acknowledgments, independent of administrative capabilities.
 
-Decommissioning does not settle retention periods or disposal obligations. Until the University
-adopts them, identifiable records and stored media are retained.
+There is no Retention Policies page or policy-register endpoint. Records disposition remains
+outside COMPASS. Independent E-Counseling provider-copy cleanup, consent, disposal/terminal-state
+fences, audit integrity and confidential records are preserved.
 
-Retention policies are code-owned and read-only
-([ADR-115](docs/decisions/ADR-115-code-owned-retention-oversight.md)):
-- `compass/privacy_governance/retention_policy_register.py` lists each category with its adoption
-  status. Every entry is `NOT_ADOPTED`, with no period, reference or date. An entry changes only
-  through an authorized institutional policy source and a reviewed code change.
-- `GET /api/v1/privacy/retention/policies` needs `privacy_governance.retention.view`. The register
-  enforces nothing, and the legacy rule and case routes are removed.
-- `privacy_governance.retention.manage` and `.approve` are retired. `sync_identity_policy` deletes
-  their persisted grants, overrides and rows.
+This baseline targets fresh installations/rebuilt databases. Normal Django schema initialization
+and identity-policy synchronization remain required. No migration, account conversion, grant
+cleanup, compatibility route, staged cutover or reset tool is supplied. Source deletion does not
+remove assignments or grants in an already populated database; upgrading those databases is
+outside this baseline's scope. No deployment or reset of shared infrastructure is implied.
 
 ## Confidential-content keyrings
 

@@ -89,7 +89,7 @@ The narrow capabilities are:
 
 Capabilities never replace the Appointment relationship. Head Guidance receives no additional
 blanket workspace or join access from the designation; a Head who is actually the assigned Counselor
-uses normal assigned-Counselor authority. Guidance Services Staff, IT Admin, and DPO receive no
+uses normal assigned-Counselor authority. Guidance Services Staff, IT Admin, and Institutional Officer receive no
 E-Counseling content or join capability by default.
 
 Student workspace output contains safe appointment/provider readiness and optional safe Routine

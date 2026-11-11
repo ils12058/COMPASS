@@ -2,14 +2,14 @@
 
 import { ChevronRight } from "lucide-react";
 
-import { Archive, FileText, ShieldCheck, type LucideIcon } from "lucide-react";
+import { FileText, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { PrivacyPageHeader } from "./privacy-governance-shared";
 import {
-  canViewPrivacyGovernance,
-  canViewRetention,
+  canViewPrivacyNotices,
+  canViewPrivacyActivity,
 } from "./privacy-governance-access";
 
 type Workspace = { href: string; title: string; description: string; icon: LucideIcon };
@@ -18,7 +18,7 @@ type Workspace = { href: string; title: string; description: string; icon: Lucid
 // the same capabilities as the workspace tabs. No counts, scores, or status summaries.
 export function PrivacyLanding() {
   const { user } = usePortalSession();
-  const governance = canViewPrivacyGovernance(user);
+  const governance = canViewPrivacyNotices(user);
   const workspaces: Workspace[] = [
     ...(governance
       ? [{
@@ -28,15 +28,7 @@ export function PrivacyLanding() {
           icon: FileText,
         }]
       : []),
-    ...(canViewRetention(user)
-      ? [{
-          href: "/portal/privacy/retention",
-          title: "Retention policies",
-          description: "Retention policy status recorded in COMPASS.",
-          icon: Archive,
-        }]
-      : []),
-    ...(governance
+    ...(canViewPrivacyActivity(user)
       ? [{
           href: "/portal/privacy/activity",
           title: "Privacy and security activity",

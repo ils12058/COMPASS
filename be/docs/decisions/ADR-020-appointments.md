@@ -95,7 +95,7 @@ CANCELLED state without a second Audit event.
 Capabilities are `appointments.view_self`, `appointments.manage_self`, and
 `appointments.manage`. Student receives view_self/manage_self. Counselor and Guidance Services
 Staff receive view_self for Appointments assigned to them as Provider. Head Guidance Counselor
-designation adds manage. IT Admin and DPO receive no Appointment business capability by default.
+designation adds manage. IT Admin and Institutional Officer receive no Appointment business capability by default.
 
 Account Management explicitly invokes Organization, Availability, then Appointment role-transition
 validators. Leaving STUDENT or a provider role is blocked while the user has a SCHEDULED

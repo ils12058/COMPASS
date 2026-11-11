@@ -47,7 +47,7 @@ Add canonical capability:
 
 Only the IT_ADMIN baseline Role receives it.
 
-Counselor, Guidance Services Staff, Student, Institutional Officer, DPO, and Head Guidance do not
+Counselor, Guidance Services Staff, Student, Institutional Officer, and Head Guidance do not
 receive it from their baseline Role or Designation.
 
 Routes use the existing effective capability resolver rather than checking role names. Existing

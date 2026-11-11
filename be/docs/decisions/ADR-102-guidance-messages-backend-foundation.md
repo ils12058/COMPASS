@@ -42,14 +42,14 @@ Messages relationship. Both participants must be active in their canonical roles
 must have Messages view authority. No Counseling Context time window controls durable Messages.
 After creation, stored participants remain authoritative even if the Appointment is cancelled,
 reassigned, or its time window expires. Historical read access still requires an active account
-and its appropriate Messages capability. GSS, unrelated Counselors, IT Admin, DPO and
+and its appropriate Messages capability. GSS, unrelated Counselors, IT Admin, Institutional Officer and
 Head-not-provider cannot inspect content or create a relationship by organizational override.
 A future E-Counseling text side-channel can reuse this one Appointment thread; join authorization
 is separate. There is no Daily chat, transcript copy or Encounter note generation.
 
 Capabilities are `guidance_messages.view_self` / `manage_self` for Student and
 `guidance_messages.view` / `manage` for Counselor/GSS; each manage depends on its matching view.
-IT Admin and Institutional Officer receive none; Head and DPO designations add none. Generic
+IT Admin and Institutional Officer receive none; Head and General Guidance Intake designations add none. Generic
 capability overrides remain effective subject to these role/resource rules. Resource denial is
 concealed 404; collection capability denial is 403.
 

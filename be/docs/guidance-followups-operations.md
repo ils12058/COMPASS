@@ -32,7 +32,7 @@ recovery and web-only key rotation tooling. It does not own Service Catalog or G
 | Counselor | Assigned records in current handled scope | Assigned canonical source relationship plus current source capabilities | Operational records in current scope whose owner is ineligible |
 | Guidance Office Assistant | Assigned records in current supervisor-derived scope | None | Same narrow operational recovery scope |
 | Head Guidance Counselor | Assigned operational records; institutional operational scope | Own assigned source relationship only | Operational institutional scope only |
-| Student, IT Administrator, DPO without a Guidance business role | None | None | None |
+| Student, IT Administrator, Institutional Officer | None | None | None |
 
 Capabilities remain `guidance_followups.view` and `.manage`, with manage depending on view. The
 server reloads current account state. A designation alone does not grant confidential authority.

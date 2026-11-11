@@ -39,7 +39,7 @@ UAT_50_STAKEHOLDER_COUNTS = {
     "Faculty": 5,
     "Alumni": 5,
     "ITSO Personnel": 3,
-    "Data Protection Officer": 1,
+    "Institutional Officer": 1,
 }
 UAT_50_STUDENT_QUOTA = {
     "CCMS": 4,
@@ -76,7 +76,7 @@ UAT_50_ALLOCATION = {
     "Faculty": tuple(spec.key for spec in FACULTY),
     "Alumni": ("recent_graduate", "alumni", "ar_13", "ar_25", "ar_26"),
     "ITSO Personnel": ("it_admin", "it_admin_2", "it_admin_3"),
-    "Data Protection Officer": ("dpo",),
+    "Institutional Officer": ("officer_no_designation",),
 }
 
 ROLE_LABELS = {
@@ -100,8 +100,6 @@ def stakeholder(account: AccountSpec) -> str:
 
     if "HEAD_GUIDANCE_COUNSELOR" in account.designations:
         return "Head Guidance Counselor"
-    if "DPO" in account.designations:
-        return "Data Protection Officer"
     return ROLE_LABELS[account.role]
 
 
@@ -1231,61 +1229,61 @@ SCENARIOS: tuple[Scenario, ...] = (
         fresh_state=False,
         checks=(("it_admin_2", "capabilities:no_counseling"),),
     ),
-    # --- Data Protection Officer --------------------------------------------------------------
+    # --- Administrative Privacy Notices and Activity -------------------------------------------
     _s(
-        "DPO-RET-01",
-        "Privacy governance",
-        "Read-only retention oversight",
-        "Data Protection Officer",
-        "dpo",
-        "/portal/privacy/retention",
-        "Retention register with three NOT_ADOPTED categories.",
-        "Open Retention Policies.",
-        "Three categories show 'Not adopted' with no period; no rule, case or hold controls exist.",
-        mutating=False,
-        fresh_state=False,
-        checks=(("dpo", "capability:retention_view"),),
-    ),
-    _s(
-        "DPO-NOT-01",
+        "ITA-NOT-01",
         "Privacy governance",
         "Review and publish a Privacy Notice revision",
-        "Data Protection Officer",
-        "dpo",
+        "IT Administrator",
+        "it_admin",
         "/portal/privacy/notices",
         "A published staging Privacy Notice and an unpublished draft revision.",
         "Review the draft revision and publish it.",
         "The revision becomes current; users are asked to acknowledge it.",
         restrictions="Publishing prompts every signed-in user; schedule it with the UAT lead.",
-        checks=(("dpo", "privacy:draft_revision"),),
+        checks=(("it_admin", "privacy:draft_revision"),),
     ),
     _s(
-        "DPO-ACT-01",
+        "ITA-ACT-01",
         "Privacy governance",
         "Privacy activity and export",
-        "Data Protection Officer",
-        "dpo_2",
+        "IT Administrator",
+        "it_admin_2",
         "/portal/privacy/activity",
         "Account and privacy activity recorded during seeding.",
         "Filter privacy activity and export it.",
         "The export contains activity metadata, never confidential content.",
         mutating=False,
         fresh_state=False,
-        checks=(("dpo_2", "capability:activity_export"),),
+        checks=(("it_admin_2", "capability:activity_export"),),
     ),
     _s(
-        "DPO-NEG-02",
-        "Restricted content",
-        "The DPO cannot read guidance records",
-        "Data Protection Officer",
-        "dpo",
-        "/portal/counseling",
-        "Confidential guidance records exist.",
-        "Try to open Counseling, Inventory and Graduate Tracer responses.",
-        "The workspaces are unavailable to the DPO.",
+        "HGC-PRIV-ACT-01",
+        "Privacy governance",
+        "Head Guidance views privacy activity",
+        "Head Guidance Counselor",
+        "head_guidance",
+        "/portal/privacy/activity",
+        "Notice-management and publication events exist.",
+        "Open Privacy Governance and filter Activity; try Notices and Activity export directly.",
+        "Activity is readable; administrative Notices and Activity export are refused.",
         mutating=False,
         fresh_state=False,
-        checks=(("dpo", "capabilities:no_counseling"),),
+        checks=(("head_guidance", "privacy:activity_only"),),
+    ),
+    _s(
+        "OFF-SELF-01",
+        "Privacy readership",
+        "Institutional Officer reads published Notices and acknowledges own revision",
+        "Institutional Officer",
+        "officer_no_designation",
+        "/portal/account/privacy",
+        "Published applicable Notices exist; the role has no domain permissions.",
+        "Read the current Notice and acknowledge it; try administrative Privacy routes.",
+        "Own readership and acknowledgment work; Notices administration and Activity are refused.",
+        mutating=False,
+        fresh_state=False,
+        checks=(("officer_no_designation", "capabilities:none"),),
     ),
     # --- Negative authorization and lifecycle -------------------------------------------------
     _s(

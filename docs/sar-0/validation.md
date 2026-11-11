@@ -74,7 +74,7 @@ ls fe/tests/*.mjs | wc -l
   `assessment_records/services.py`, `group_sessions/models.py`: affiliation usage or verified
   absence.
 - `be/compass/audit/actions.py`: audit action names.
-- `be/compass/privacy_governance/retention_policy_register.py`, `activity_export.py`: retention
+- `be/compass/privacy_governance/activity_export.py`: privacy Activity
   coverage and export content.
 - Migrations: organization `0001`/`0002`, accounts `0001`, inventory `0001`, good_moral `0001`,
   graduate_tracer `0001`.

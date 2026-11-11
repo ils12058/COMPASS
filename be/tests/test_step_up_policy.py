@@ -17,7 +17,7 @@ from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import Role, User
 from compass.authentication.crypto import encrypt_totp_secret
 from compass.authentication.models import TOTPFactor
 from compass.authentication.sessions import (
@@ -47,10 +47,8 @@ def make_user(email: str, role: str = "IT_ADMIN") -> User:
     )
 
 
-def make_dpo(email: str) -> User:
-    user = make_user(email, "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(user=user, designation=Designation.objects.get(code="DPO"))
-    return user
+def make_privacy_admin(email: str) -> User:
+    return make_user(email, "IT_ADMIN")
 
 
 def enable_totp(user: User, *, confirmed: bool = True, disabled: bool = False) -> TOTPFactor:
@@ -202,9 +200,9 @@ def test_privacy_drafts_need_no_step_up_but_publication_and_retirement_keep_it()
     from tests.test_privacy_governance_expansion import notice_payload
 
     sync_policy()
-    dpo = make_dpo("draft-dpo@example.edu")
-    enable_totp(dpo)
-    stale = client_for(dpo, recent=False)
+    privacy_admin = make_privacy_admin("draft-privacy_admin@example.edu")
+    enable_totp(privacy_admin)
+    stale = client_for(privacy_admin, recent=False)
 
     created = send(stale, "post", "/api/v1/privacy/notices", notice_payload())
     assert created.status_code == 201

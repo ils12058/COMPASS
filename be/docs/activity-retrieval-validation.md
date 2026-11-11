@@ -1,5 +1,7 @@
 # Curated activity retrieval validation
 
+Historical evidence: the recorded outcomes below describe their original revision, not current privacy permissions or supported features. Current policy is in `be/docs/privacy-governance.md`.
+
 Validated on 2026-10-04 in the isolated `codex/activity-retrieval-and-supervision` worktree.
 Staging base: `ed14b7580b5fc825bd49675f4a93e3c93c441ec2` (#162 included).
 Design/scope and all 22 admitted supervised actions are specified in

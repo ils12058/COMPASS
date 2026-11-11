@@ -80,7 +80,7 @@ navigation, forms and workflow owners remain unchanged.
   the existing graduated/self-view gate; Former/Graduated Inventory reading does not imply editing.
 - Exact metrics, authorized destinations, null omission and confirmed numeric zero are retained.
 - Student presentation never includes professional queue rows, Guidance metrics or email status.
-  Counselor/Head, GSS, IT and Institutional Officer/DPO behavior is covered by focused regressions.
+  Counselor/Head, GSS, IT and Institutional Officer behavior is covered by focused regressions.
 - Announcement audience, order, pins, first-three preview and reader links remain server-owned.
 
 The reported 320px/200% Announcements spill is fixed locally. No clipping, global overflow

@@ -876,24 +876,20 @@ def test_referral_audit_metadata_excludes_sensitive_source_text():
 
 
 @pytest.mark.django_db
-def test_referral_capabilities_and_api_deny_student_it_admin_and_dpo():
+def test_referral_capabilities_and_api_deny_student_it_admin_and_officer():
     sync_policy()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo@example.edu", "IT_ADMIN")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("officer@example.edu", "IT_ADMIN")
 
     assert head.has_capability("referrals.view")
     assert head.has_capability("referrals.manage")
     assert not student.has_capability("referrals.view")
     assert not admin.has_capability("referrals.view")
-    assert not dpo.has_capability("referrals.view")
+    assert not officer.has_capability("referrals.view")
 
-    for user in (student, admin, dpo):
+    for user in (student, admin, officer):
         client = auth_client(user)
         response = client.get("/api/v1/referrals")
         assert response.status_code == 403

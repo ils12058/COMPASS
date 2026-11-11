@@ -318,11 +318,7 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
     counselor = make_user("counselor-policy@example.edu", role="COUNSELOR")
     staff = make_user("staff-policy@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("admin-policy@example.edu", role="IT_ADMIN")
-    dpo = make_user("dpo-policy@example.edu", role="INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("officer-policy@example.edu", role="INSTITUTIONAL_OFFICER")
     head = make_head()
 
     assert student.has_capability("exit_interviews.view_self")
@@ -336,9 +332,9 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
     assert not head.has_capability("exit_interviews.view_self")
 
     assert staff.has_capability("exit_interviews.manage_opportunities")
-    for user in (student, counselor, admin, dpo):
+    for user in (student, counselor, admin, officer):
         assert not user.has_capability("exit_interviews.manage_opportunities")
-    for user in (counselor, staff, admin, dpo):
+    for user in (counselor, staff, admin, officer):
         assert not user.has_capability("exit_interviews.view")
         assert not user.has_capability("exit_interviews.reopen")
         assert not user.has_capability("exit_interviews.view_self")
@@ -728,12 +724,8 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     counselor = make_user("ordinary-counselor@example.edu", role="COUNSELOR")
     staff = make_user("ordinary-staff@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("technical-admin@example.edu", role="IT_ADMIN")
-    dpo = make_user("privacy-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    for actor in (student, counselor, staff, admin, dpo):
+    officer = make_user("privacy-officer@example.edu", role="INSTITUTIONAL_OFFICER")
+    for actor in (student, counselor, staff, admin, officer):
         client = auth_client(actor)
         assert client.get("/api/v1/exit-interviews").status_code == 403
         assert (

@@ -1363,17 +1363,13 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
     counselor = make_user("mfa.counselor@example.edu", role="COUNSELOR")
     goa = make_user("mfa.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("mfa.admin@example.edu", role="IT_ADMIN")
-    dpo = make_user("mfa.dpo@example.edu", role="IT_ADMIN")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("mfa.officer@example.edu", role="IT_ADMIN")
     item = make_graduate_request(student)
     item = prepare_request(
         actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
     )
 
-    for user in (student, goa, admin, dpo):
+    for user in (student, goa, admin, officer):
         client = auth_client(user, recent_mfa=True)
         denied = client.post(
             f"/api/v1/good-moral/requests/{item.pk}/issue",

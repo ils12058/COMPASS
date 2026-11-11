@@ -658,16 +658,12 @@ def test_eligible_people_projection_is_complete_and_excludes_inactive_users():
 
 
 @pytest.mark.django_db
-def test_dpo_institutional_officer_is_never_head_guidance_fallback():
+def test_officer_institutional_officer_is_never_head_guidance_fallback():
     sync_policy()
-    campus = Campus.objects.create(code="DPO-FALLBACK", name="DPO Fallback")
-    college = College.objects.create(campus=campus, code="DPO-COL", name="DPO College")
-    student = make_user("dpo-routing-student@example.edu", "STUDENT")
-    officer = make_user("dpo-routing-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=officer,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    campus = Campus.objects.create(code="officer-FALLBACK", name="officer Fallback")
+    college = College.objects.create(campus=campus, code="officer-COL", name="officer College")
+    student = make_user("officer-routing-student@example.edu", "STUDENT")
+    officer = make_user("officer-routing-officer@example.edu", "INSTITUTIONAL_OFFICER")
     set_current_placement(
         student_id=student.pk,
         college_id=college.pk,

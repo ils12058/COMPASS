@@ -278,7 +278,6 @@ links to authenticator setup. After either, the person submits again; nothing is
 
 Handle step-up only where the backend keeps it: account security and access, organization scope,
 academic years, the service catalog, maintenance, and Privacy Notice publication and retirement.
-Retention Policies are read-only oversight with no actions, so they have no step-up (ADR-115).
 Routine work (Appointments, Availability, Good Moral issuance, email retry, name and ID corrections,
 Privacy Notice drafts) and Referrals and Call Slips have no step-up, so do not add authenticator
 prompts or MFA pre-checks to them.
@@ -1749,14 +1748,14 @@ Examples:
 
 ```text
 HEAD_GUIDANCE_COUNSELOR
-DPO
+GENERAL_GUIDANCE_INTAKE
 ```
 
 are institutional designations.
 
 Render them according to their actual semantics.
 
-Do not assume Head Guidance or DPO is a standalone role.
+Do not assume Head Guidance is a standalone role.
 
 ---
 

@@ -18,7 +18,7 @@ from compass.privacy_governance.models import (
 )
 from tests.test_privacy_governance import (
     auth_client,
-    make_dpo,
+    make_privacy_admin,
     make_user,
     patch_json,
     post_json,
@@ -44,18 +44,21 @@ def notice_payload(code="NOTICE-1", audiences=None, effective_on=None):
 @pytest.mark.django_db
 def test_notice_lifecycle_public_self_acknowledgment_and_new_revision():
     sync_policy()
-    dpo = auth_client(make_dpo("notice-lifecycle@example.edu"), recent_mfa=True)
+    privacy_admin = auth_client(make_privacy_admin("notice-lifecycle@example.edu"), recent_mfa=True)
     student = auth_client(make_user("student@example.edu", role="STUDENT"))
     staff = auth_client(make_user("staff@example.edu"))
     public = Client()
-    created = post_json(dpo, f"{ROOT}/notices", notice_payload())
+    created = post_json(privacy_admin, f"{ROOT}/notices", notice_payload())
     assert created.status_code == 201, created.content
     notice_id = created.json()["id"]
-    first = dpo.get(f"{ROOT}/notices/{notice_id}/revisions").json()["items"][0]
+    first = privacy_admin.get(f"{ROOT}/notices/{notice_id}/revisions").json()["items"][0]
     first_id = first["id"]
     assert first["status"] == "DRAFT" and first["revision_number"] == 1
     assert public.get(f"{ROOT}/public-notices").json()["items"] == []
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{first_id}/publish", {}).status_code == 200
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{first_id}/publish", {}).status_code
+        == 200
+    )
     public_item = public.get(f"{ROOT}/public-notices").json()["items"][0]
     assert public_item["revision_id"] == first_id
     assert "created_by" not in public_item and "published_by" not in public_item
@@ -65,28 +68,38 @@ def test_notice_lifecycle_public_self_acknowledgment_and_new_revision():
     assert post_json(student, f"{ROOT}/my-notices/{first_id}/acknowledge", {}).status_code == 200
     assert PrivacyNoticeAcknowledgment.objects.filter(revision_id=first_id).count() == 1
     assert (
-        patch_json(dpo, f"{ROOT}/notice-revisions/{first_id}", {"body": "Changed"}).status_code
+        patch_json(
+            privacy_admin, f"{ROOT}/notice-revisions/{first_id}", {"body": "Changed"}
+        ).status_code
         == 409
     )
     revision_values = {
         key: value for key, value in notice_payload().items() if key not in {"code", "name"}
     }
     second = post_json(
-        dpo, f"{ROOT}/notices/{notice_id}/revisions", revision_values | {"body": "Correction"}
+        privacy_admin,
+        f"{ROOT}/notices/{notice_id}/revisions",
+        revision_values | {"body": "Correction"},
     )
     assert second.status_code == 201, second.content
     second_id = second.json()["id"]
     assert second.json()["revision_number"] == 2
     assert (
-        post_json(dpo, f"{ROOT}/notices/{notice_id}/revisions", revision_values).status_code == 409
+        post_json(
+            privacy_admin, f"{ROOT}/notices/{notice_id}/revisions", revision_values
+        ).status_code
+        == 409
     )
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{second_id}/publish", {}).status_code == 200
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{second_id}/publish", {}).status_code
+        == 200
+    )
     assert PrivacyNoticeRevision.objects.get(pk=first_id).status == "SUPERSEDED"
     assert student.get(f"{ROOT}/my-notices").json()["items"][0]["acknowledged"] is False
     assert post_json(student, f"{ROOT}/my-notices/{first_id}/acknowledge", {}).status_code == 409
     assert post_json(student, f"{ROOT}/my-notices/{second_id}/acknowledge", {}).status_code == 200
     assert PrivacyNoticeAcknowledgment.objects.count() == 2
-    assert post_json(dpo, f"{ROOT}/notices/{notice_id}/retire", {}).status_code == 200
+    assert post_json(privacy_admin, f"{ROOT}/notices/{notice_id}/retire", {}).status_code == 200
     assert public.get(f"{ROOT}/public-notices").json()["items"] == []
     assert student.get(f"{ROOT}/my-notices").json()["items"] == []
     assert PrivacyNoticeAcknowledgment.objects.count() == 2
@@ -95,35 +108,43 @@ def test_notice_lifecycle_public_self_acknowledgment_and_new_revision():
 @pytest.mark.django_db
 def test_audiences_future_effective_date_and_publication_step_up():
     sync_policy()
-    dpo_user = make_dpo("notice-audience-dpo@example.edu")
-    dpo = auth_client(dpo_user, recent_mfa=True)
-    no_mfa = auth_client(dpo_user)
+    privacy_admin_user = make_privacy_admin("notice-audience-privacy_admin@example.edu")
+    privacy_admin = auth_client(privacy_admin_user, recent_mfa=True)
+    no_mfa = auth_client(privacy_admin_user)
     student = auth_client(make_user("audience-student@example.edu", role="STUDENT"))
     staff = auth_client(make_user("audience-staff@example.edu"))
     payload = notice_payload("STAFF-ONLY", ["STAFF"], institution_today() + timedelta(days=1))
     assert (
-        post_json(dpo, f"{ROOT}/notices", payload | {"audiences": ["STAFF", "STAFF"]}).status_code
+        post_json(
+            privacy_admin, f"{ROOT}/notices", payload | {"audiences": ["STAFF", "STAFF"]}
+        ).status_code
         == 422
     )
     # Draft authoring needs no step-up; publishing the draft does.
     notice = post_json(no_mfa, f"{ROOT}/notices", payload)
     assert notice.status_code == 201, notice.content
-    revision_id = dpo.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()["items"][0][
-        "id"
-    ]
+    revision_id = privacy_admin.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()[
+        "items"
+    ][0]["id"]
     assert (
         post_json(no_mfa, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 403
     )
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 409
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code
+        == 409
+    )
     assert (
         patch_json(
-            dpo,
+            privacy_admin,
             f"{ROOT}/notice-revisions/{revision_id}",
             {"effective_on": str(institution_today())},
         ).status_code
         == 200
     )
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 200
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code
+        == 200
+    )
     assert student.get(f"{ROOT}/my-notices").json()["items"] == []
     assert staff.get(f"{ROOT}/my-notices").json()["items"][0]["revision_id"] == revision_id
     assert post_json(student, f"{ROOT}/my-notices/{revision_id}/acknowledge", {}).status_code == 409
@@ -133,7 +154,9 @@ def test_audiences_future_effective_date_and_publication_step_up():
 @pytest.mark.django_db
 def test_management_boundary_and_self_route_rejects_impersonation():
     sync_policy()
-    dpo = auth_client(make_dpo("management-dpo@example.edu"), recent_mfa=True)
+    privacy_admin = auth_client(
+        make_privacy_admin("management-privacy_admin@example.edu"), recent_mfa=True
+    )
     ordinary = auth_client(make_user("ordinary@example.edu"))
     student = auth_client(make_user("self-student@example.edu", role="STUDENT"))
     assert ordinary.get(f"{ROOT}/notices").status_code == 403
@@ -141,11 +164,14 @@ def test_management_boundary_and_self_route_rejects_impersonation():
     assert post_json(ordinary, f"{ROOT}/notices", notice_payload()).status_code == 403
     assert student.get(f"{ROOT}/my-notices").status_code == 200
 
-    created = post_json(dpo, f"{ROOT}/notices", notice_payload("SELF-NOTICE"))
-    revision_id = dpo.get(f"{ROOT}/notices/{created.json()['id']}/revisions").json()["items"][0][
-        "id"
-    ]
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 200
+    created = post_json(privacy_admin, f"{ROOT}/notices", notice_payload("SELF-NOTICE"))
+    revision_id = privacy_admin.get(f"{ROOT}/notices/{created.json()['id']}/revisions").json()[
+        "items"
+    ][0]["id"]
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code
+        == 200
+    )
     assert (
         post_json(
             student, f"{ROOT}/my-notices/{revision_id}/acknowledge", {"user_id": "someone-else"}
@@ -158,31 +184,41 @@ def test_management_boundary_and_self_route_rejects_impersonation():
 @pytest.mark.django_db
 def test_audit_rollback_minimized_metadata_and_curated_activity():
     sync_policy()
-    dpo = auth_client(make_dpo("audit-dpo@example.edu"), recent_mfa=True)
+    privacy_admin = auth_client(
+        make_privacy_admin("audit-privacy_admin@example.edu"), recent_mfa=True
+    )
     with patch(
         "compass.privacy_governance.expansion.record_event",
         side_effect=RuntimeError("audit unavailable"),
     ):
-        assert post_json(dpo, f"{ROOT}/notices", notice_payload()).status_code == 500
+        assert post_json(privacy_admin, f"{ROOT}/notices", notice_payload()).status_code == 500
     assert PrivacyNotice.objects.count() == 0
 
-    notice = post_json(dpo, f"{ROOT}/notices", notice_payload())
+    notice = post_json(privacy_admin, f"{ROOT}/notices", notice_payload())
     assert notice.status_code == 201
-    revision_id = dpo.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()["items"][0][
-        "id"
-    ]
+    revision_id = privacy_admin.get(f"{ROOT}/notices/{notice.json()['id']}/revisions").json()[
+        "items"
+    ][0]["id"]
     with patch(
         "compass.privacy_governance.expansion.record_event",
         side_effect=RuntimeError("audit unavailable"),
     ):
         assert (
-            post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 500
+            post_json(
+                privacy_admin, f"{ROOT}/notice-revisions/{revision_id}/publish", {}
+            ).status_code
+            == 500
         )
     assert PrivacyNoticeRevision.objects.get(pk=revision_id).status == "DRAFT"
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code == 200
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{revision_id}/publish", {}).status_code
+        == 200
+    )
     activity_types = {
         item["type"]
-        for item in dpo.get(f"{ROOT}/activity?category=PRIVACY_GOVERNANCE").json()["items"]
+        for item in privacy_admin.get(f"{ROOT}/activity?category=PRIVACY_GOVERNANCE").json()[
+            "items"
+        ]
     }
     assert "privacy.notice.revision.published" in activity_types
     for event in AuditEvent.objects.filter(action__startswith="privacy."):
@@ -194,11 +230,11 @@ def test_audit_rollback_minimized_metadata_and_curated_activity():
 @pytest.mark.django_db
 def test_database_rejects_second_draft_and_duplicate_acknowledgment():
     sync_policy()
-    actor = make_dpo("constraint-dpo@example.edu")
-    dpo = auth_client(actor, recent_mfa=True)
+    actor = make_privacy_admin("constraint-privacy_admin@example.edu")
+    privacy_admin = auth_client(actor, recent_mfa=True)
     student_user = make_user("constraint-student@example.edu", role="STUDENT")
     student = auth_client(student_user)
-    created = post_json(dpo, f"{ROOT}/notices", notice_payload("CONSTRAINT-NOTICE"))
+    created = post_json(privacy_admin, f"{ROOT}/notices", notice_payload("CONSTRAINT-NOTICE"))
     first = PrivacyNoticeRevision.objects.get(notice_id=created.json()["id"])
     with pytest.raises(IntegrityError), transaction.atomic():
         PrivacyNoticeRevision.objects.create(
@@ -210,7 +246,10 @@ def test_database_rejects_second_draft_and_duplicate_acknowledgment():
             summary="Summary",
             body="Body",
         )
-    assert post_json(dpo, f"{ROOT}/notice-revisions/{first.pk}/publish", {}).status_code == 200
+    assert (
+        post_json(privacy_admin, f"{ROOT}/notice-revisions/{first.pk}/publish", {}).status_code
+        == 200
+    )
     assert post_json(student, f"{ROOT}/my-notices/{first.pk}/acknowledge", {}).status_code == 200
     with pytest.raises(IntegrityError), transaction.atomic():
         PrivacyNoticeAcknowledgment.objects.create(user=student_user, revision=first)

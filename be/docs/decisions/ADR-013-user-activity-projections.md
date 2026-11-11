@@ -52,7 +52,7 @@ The source authorization helpers remain owned by their domains; My Activity adds
 
 Students see eligible effects only for records their existing self-service read capability
 allows. Staff see only their own eligible actions with current role, capability and source scope.
-Head status supplies no organization-wide actor selector. IT Admin and DPO stay account-only.
+Head status supplies no organization-wide actor selector. IT Admin and Institutional Officer stay account-only.
 Routine professional actions, encounter/evaluation events and Call Slip interview completion are
 excluded, as are Student referral events. The original BACKLOG-ACT-2 implementation evidence and
 deferrals remain available in git history.

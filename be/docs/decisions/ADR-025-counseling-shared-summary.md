@@ -42,7 +42,7 @@ Authorization requires both capability and resource relationship. Students recei
 `shared_summaries.view_self`; Counselors receive `shared_summaries.view_assigned` and
 `shared_summaries.manage_assigned`. Capability alone never bypasses the Encounter relationship.
 Head Guidance receives no designation-wide Shared Summary access; a Head who is the actual assigned
-Counselor uses ordinary Counselor access. Guidance Services Staff, IT Admin, and DPO receive no
+Counselor uses ordinary Counselor access. Guidance Services Staff, IT Admin, and Institutional Officer receive no
 Shared Summary content capability by default.
 
 Counselor endpoints are Encounter-nested. Student endpoints are self-facing under

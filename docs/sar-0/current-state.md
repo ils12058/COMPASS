@@ -217,7 +217,7 @@ placement are not atomic.
 **Verified.** The canonical role/capability policy has no `student_academics.*` capability
 (`be/compass/accounts/policy.py:608-760`). Existing roles are `FACULTY`, `IT_ADMIN`, `COUNSELOR`,
 `GUIDANCE_SERVICES_STAFF`, `STUDENT`, `INSTITUTIONAL_OFFICER`; designations are
-`HEAD_GUIDANCE_COUNSELOR` and `DPO` (`be/compass/accounts/policy.py:20-76`). There is no Registrar
+`HEAD_GUIDANCE_COUNSELOR` and `GENERAL_GUIDANCE_INTAKE` (`be/compass/accounts/policy.py:20-76`). There is no Registrar
 role.
 
 **Verified.** Affiliation management is an `organization.manage` responsibility; IT_ADMIN receives

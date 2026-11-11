@@ -517,10 +517,6 @@ def test_counselor_override_is_scoped_and_unsupported_role_overrides_fail_closed
         get_appointment_for_actor(appointment_id=outside.pk, actor=counselor)
 
     institutional = make_user("override-officer@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=institutional,
-        designation=Designation.objects.get(code="DPO"),
-    )
     student = make_user("override-student@example.edu", "STUDENT")
     for actor in (admin, institutional, student):
         UserCapabilityOverride.objects.create(

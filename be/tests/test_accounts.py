@@ -145,14 +145,13 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     }
     assert set(Designation.objects.values_list("code", flat=True)) == {
         "HEAD_GUIDANCE_COUNSELOR",
-        "DPO",
         "GENERAL_GUIDANCE_INTAKE",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 125
-    assert DesignationCapability.objects.count() == 24
+    assert RoleCapability.objects.count() == 129
+    assert DesignationCapability.objects.count() == 21
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -162,10 +161,10 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "capabilities created=0 updated=0" in second_output.getvalue()
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 6
-    assert Designation.objects.count() == 3
+    assert Designation.objects.count() == 2
     assert Capability.objects.count() == len(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 125
-    assert DesignationCapability.objects.count() == 24
+    assert RoleCapability.objects.count() == 129
+    assert DesignationCapability.objects.count() == 21
 
 
 @pytest.mark.django_db
@@ -175,6 +174,9 @@ def test_retired_capabilities_are_absent_from_canonical_policy():
         "institutional_forms.manage",
         "document_branding.view",
         "document_branding.manage",
+        "privacy_governance.view",
+        "privacy_governance.manage",
+        "privacy_governance.retention.view",
         "privacy_governance.retention.manage",
         "privacy_governance.retention.approve",
     )
@@ -237,7 +239,7 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
         "exit_interviews.reopen",
         "exit_interviews.manage_opportunities",
         "platform_operations.view",
-        "privacy_governance.view",
+        "privacy_governance.activity.view",
     }
 
     assert all(counselor.has_capability(code) for code in expected)
@@ -273,6 +275,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     DesignationCapability.objects.create(designation=head, capability=manage)
 
     assert effective_capabilities(user) == {
+        "privacy_governance.activity.view",
         "activity.supervised_staff.view",
         "accounts.view",
         "accounts.manage",
@@ -553,40 +556,20 @@ def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
 
 
 @pytest.mark.django_db
-def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities():
+def test_institutional_officer_has_zero_default_capabilities():
     sync_policy()
-    officer = make_user(
-        role="INSTITUTIONAL_OFFICER",
-        email="dpo.officer@example.edu",
-    )
+    officer = make_user(role="INSTITUTIONAL_OFFICER", email="empty.officer@example.edu")
     assert effective_capabilities(officer) == frozenset()
-
-    UserDesignation.objects.create(
-        user=officer,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    assert effective_capabilities(officer) == frozenset(
-        {
-            "privacy_governance.view",
-            "privacy_governance.activity.export",
-            "privacy_governance.manage",
-            "privacy_governance.retention.view",
-        }
-    )
-    assert not officer.has_capability("accounts.manage")
-    assert not officer.has_capability("institutional_designations.manage")
-    assert not officer.has_capability("organization.manage")
-    assert not officer.has_capability("reports.view")
-    assert not officer.has_capability("student_support.view")
+    assert not officer.designations.exists()
 
 
 def test_designation_role_compatibility_fails_closed_for_unknown_codes():
     assert designation_role_compatible(
-        designation_code="DPO",
-        role_code="INSTITUTIONAL_OFFICER",
+        designation_code="HEAD_GUIDANCE_COUNSELOR",
+        role_code="COUNSELOR",
     )
     assert not designation_role_compatible(
-        designation_code="DPO",
+        designation_code="HEAD_GUIDANCE_COUNSELOR",
         role_code="IT_ADMIN",
     )
     assert not designation_role_compatible(
@@ -594,7 +577,7 @@ def test_designation_role_compatibility_fails_closed_for_unknown_codes():
         role_code="INSTITUTIONAL_OFFICER",
     )
     assert not designation_role_compatible(
-        designation_code="DPO",
+        designation_code="HEAD_GUIDANCE_COUNSELOR",
         role_code="UNKNOWN_ROLE",
     )
 

@@ -39,13 +39,8 @@ def make_user(
     )
 
 
-def make_dpo(email: str = "dpo@example.edu", *, active: bool = True) -> User:
-    user = make_user(email, active=active)
-    UserDesignation.objects.create(
-        user=user,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    return user
+def make_privacy_admin(email: str = "privacy-admin@example.edu", *, active: bool = True) -> User:
+    return make_user(email, role="IT_ADMIN", active=active)
 
 
 def make_head(email: str = "head@example.edu") -> User:
@@ -94,81 +89,50 @@ def patch_json(client: Client, path: str, payload: dict[str, object]):
 
 
 @pytest.mark.django_db
-def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
+def test_privacy_defaults_are_independent_and_head_authority_is_designation_derived():
     sync_policy()
-
-    dpo = make_dpo()
-    plain_officer = make_user("plain-officer@example.edu")
-    admin = make_user("admin@example.edu", role="IT_ADMIN")
-    counselor = make_user("counselor@example.edu", role="COUNSELOR")
+    admin = make_privacy_admin()
     head = make_head()
-
+    notices = {"privacy_governance.notices.view", "privacy_governance.notices.manage"}
+    activity = {"privacy_governance.activity.view", "privacy_governance.activity.export"}
+    assert notices | activity <= effective_capabilities(admin)
+    assert "privacy_governance.activity.view" in effective_capabilities(head)
+    assert (notices | {"privacy_governance.activity.export"}).isdisjoint(
+        effective_capabilities(head)
+    )
     assert set(
-        DesignationCapability.objects.filter(designation__code="DPO").values_list(
-            "capability__code", flat=True
-        )
-    ) == {
-        "privacy_governance.activity.export",
-        "privacy_governance.view",
-        "privacy_governance.manage",
-        "privacy_governance.retention.view",
-    }
-
-    assert effective_capabilities(dpo) == frozenset(
-        {
-            "privacy_governance.activity.export",
-            "privacy_governance.view",
-            "privacy_governance.manage",
-            "privacy_governance.retention.view",
-        }
-    )
-    for actor in (plain_officer, admin, counselor, head):
-        assert "privacy_governance.view" not in effective_capabilities(actor)
-        assert "privacy_governance.manage" not in effective_capabilities(actor)
-
-    forbidden_dpo_capabilities = {
-        "accounts.view",
-        "accounts.manage",
-        "platform_operations.view",
-        "platform_operations.manage",
-        "organization.structure.view",
-        "organization.manage",
-        "reports.view",
-        "counseling.view_assigned",
-        "counseling.manage_assigned",
-        "inventory.view_self",
-        "referrals.view",
-        "referrals.manage",
-        "exit_interviews.view",
-        "graduate_tracer.view",
-    }
-    assert forbidden_dpo_capabilities.isdisjoint(effective_capabilities(dpo))
+        DesignationCapability.objects.filter(
+            designation__code="HEAD_GUIDANCE_COUNSELOR",
+            capability__code__startswith="privacy_governance.",
+        ).values_list("capability__code", flat=True)
+    ) == {"privacy_governance.activity.view"}
+    for role in (
+        "INSTITUTIONAL_OFFICER",
+        "COUNSELOR",
+        "GUIDANCE_OFFICE_ASSISTANT",
+        "STUDENT",
+        "FACULTY",
+    ):
+        actor = make_user(f"privacy-{role}@example.edu", role=role)
+        assert (notices | activity).isdisjoint(effective_capabilities(actor))
+    assert effective_capabilities(make_user("empty-officer@example.edu")) == frozenset()
 
 
 @pytest.mark.django_db
-def test_inactive_or_removed_dpo_has_no_privacy_authority():
+def test_inactive_admin_and_removed_head_designation_have_no_privacy_authority():
     sync_policy()
-    dpo = make_dpo("removed-dpo@example.edu")
-    assignment = UserDesignation.objects.get(user=dpo, designation__code="DPO")
-
-    assignment.delete()
-    assert "privacy_governance.view" not in effective_capabilities(dpo)
-    assert "privacy_governance.manage" not in effective_capabilities(dpo)
-
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    dpo.is_active = False
-    dpo.save(update_fields=["is_active", "updated_at"])
-    assert effective_capabilities(dpo) == frozenset()
+    admin = make_privacy_admin(active=False)
+    assert effective_capabilities(admin) == frozenset()
+    head = make_head()
+    UserDesignation.objects.filter(user=head).delete()
+    assert "privacy_governance.activity.view" not in effective_capabilities(head)
 
 
 @pytest.mark.django_db
-def test_dpo_reads_and_drafts_without_step_up_but_publication_requires_it():
+def test_privacy_admin_reads_and_drafts_without_step_up_but_publication_requires_it():
     sync_policy()
-    dpo = make_dpo("mfa-dpo@example.edu")
-    client = auth_client(dpo, recent_mfa=False)
+    privacy_admin = make_privacy_admin("mfa-privacy_admin@example.edu")
+    client = auth_client(privacy_admin, recent_mfa=False)
 
     assert client.get("/api/v1/privacy/notices").status_code == 200
     assert client.get("/api/v1/privacy/activity").status_code == 200
@@ -183,39 +147,133 @@ def test_dpo_reads_and_drafts_without_step_up_but_publication_requires_it():
     assert denied.status_code == 403
     assert denied.json()["error"]["code"] == "mfa_setup_required"
 
-    recent = auth_client(dpo, recent_mfa=True)
+    recent = auth_client(privacy_admin, recent_mfa=True)
     published = post_json(recent, f"/api/v1/privacy/notice-revisions/{revision_id}/publish", {})
     assert published.status_code == 200
 
 
 @pytest.mark.django_db
-def test_non_dpo_baselines_are_denied_retained_routes_and_dpo_is_denied_operational_routes():
+def test_direct_api_defaults_separate_notice_administration_activity_and_export():
     sync_policy()
-    admin = make_user("privacy-admin@example.edu", role="IT_ADMIN")
-    counselor = make_user("privacy-counselor@example.edu", role="COUNSELOR")
-    dpo = make_dpo("boundary-dpo@example.edu")
+    admin = auth_client(make_privacy_admin())
+    head = auth_client(make_head())
+    assert admin.get("/api/v1/privacy/notices").status_code == 200
+    assert admin.get("/api/v1/privacy/activity").status_code == 200
+    assert admin.get("/api/v1/privacy/activity/export").status_code == 200
+    assert head.get("/api/v1/privacy/activity").status_code == 200
+    assert head.get("/api/v1/privacy/activity/export").status_code == 403
+    from tests.test_privacy_governance_expansion import notice_payload
 
-    for actor in (admin, counselor):
-        client = auth_client(actor)
-        assert client.get("/api/v1/privacy/notices").status_code == 403
-        assert client.get("/api/v1/privacy/activity").status_code == 403
-
-    dpo_client = auth_client(dpo)
-    assert dpo_client.get("/api/v1/accounts").status_code == 403
-    assert dpo_client.get("/api/v1/platform/health").status_code == 403
-    assert dpo_client.get("/api/v1/reports/student-profile").status_code == 403
+    notice = post_json(admin, "/api/v1/privacy/notices", notice_payload())
+    assert notice.status_code == 201
+    notice_id = notice.json()["id"]
+    revision_id = notice.json()["draft_revision"]["id"]
+    for path in (
+        "/api/v1/privacy/notices",
+        f"/api/v1/privacy/notices/{notice_id}",
+        f"/api/v1/privacy/notices/{notice_id}/revisions",
+        f"/api/v1/privacy/notice-revisions/{revision_id}",
+    ):
+        assert head.get(path).status_code == 403
+    assert post_json(head, "/api/v1/privacy/notices", notice_payload()).status_code == 403
+    for role in (
+        "INSTITUTIONAL_OFFICER",
+        "COUNSELOR",
+        "GUIDANCE_OFFICE_ASSISTANT",
+        "STUDENT",
+        "FACULTY",
+    ):
+        c = auth_client(make_user(f"denied-{role}@example.edu", role=role))
+        for path in (
+            "/api/v1/privacy/notices",
+            "/api/v1/privacy/activity",
+            "/api/v1/privacy/activity/export",
+        ):
+            assert c.get(path).status_code == 403
 
 
 @pytest.mark.django_db
 def test_removed_privacy_workflow_routes_are_not_addressable():
     sync_policy()
-    client = auth_client(make_dpo("removed-routes@example.edu"), recent_mfa=True)
+    client = auth_client(make_privacy_admin("removed-routes@example.edu"), recent_mfa=True)
 
     for path in (
         "/api/v1/privacy/processing-activities",
         "/api/v1/privacy/reviews",
         "/api/v1/privacy/incidents",
         "/api/v1/privacy/retention-policies",
+        "/api/v1/privacy/retention/policies",
     ):
         assert client.get(path).status_code == 404
         assert post_json(client, path, {}).status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "grants,notice_status,activity_status,export_status",
+    [
+        ({"privacy_governance.notices.view"}, 200, 403, 403),
+        ({"privacy_governance.notices.manage"}, 403, 403, 403),
+        ({"privacy_governance.activity.view"}, 403, 200, 403),
+        ({"privacy_governance.activity.export"}, 403, 403, 403),
+        ({"privacy_governance.notices.view", "privacy_governance.notices.manage"}, 200, 403, 403),
+        ({"privacy_governance.activity.view", "privacy_governance.activity.export"}, 403, 200, 200),
+    ],
+)
+def test_independent_privacy_grants_and_dependencies(
+    grants, notice_status, activity_status, export_status
+):
+    from compass.accounts.models import Capability, UserCapabilityOverride
+    from tests.test_privacy_governance_expansion import notice_payload
+
+    sync_policy()
+    actor = make_user("explicit-privacy@example.edu")
+    for code in grants:
+        UserCapabilityOverride.objects.create(
+            user=actor,
+            capability=Capability.objects.get(code=code),
+            effect="GRANT",
+            reason="Synthetic independent authorization test",
+        )
+    client = auth_client(actor)
+    assert client.get("/api/v1/privacy/notices").status_code == notice_status
+    assert client.get("/api/v1/privacy/activity").status_code == activity_status
+    assert client.get("/api/v1/privacy/activity/export").status_code == export_status
+    can_manage = {"privacy_governance.notices.view", "privacy_governance.notices.manage"} <= grants
+    assert post_json(client, "/api/v1/privacy/notices", notice_payload()).status_code == (
+        201 if can_manage else 403
+    )
+    assert client.get("/api/v1/privacy/my-notices").status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role",
+    [
+        "IT_ADMIN",
+        "COUNSELOR",
+        "INSTITUTIONAL_OFFICER",
+        "GUIDANCE_OFFICE_ASSISTANT",
+        "STUDENT",
+        "FACULTY",
+    ],
+)
+def test_all_roles_keep_published_readership_and_own_exact_revision_acknowledgment(role):
+    from tests.test_privacy_governance_expansion import notice_payload
+
+    sync_policy()
+    admin = auth_client(make_privacy_admin(), recent_mfa=True)
+    notice = post_json(admin, "/api/v1/privacy/notices", notice_payload())
+    revision = notice.json()["draft_revision"]["id"]
+    assert (
+        post_json(admin, f"/api/v1/privacy/notice-revisions/{revision}/publish", {}).status_code
+        == 200
+    )
+    reader = auth_client(make_user(f"reader-{role}@example.edu", role=role))
+    published = reader.get("/api/v1/privacy/my-notices")
+    assert published.status_code == 200
+    assert published.json()["items"][0]["revision_id"] == revision
+    assert (
+        post_json(reader, f"/api/v1/privacy/my-notices/{revision}/acknowledge", {}).status_code
+        == 200
+    )

@@ -684,13 +684,9 @@ def test_head_reads_only_submitted_and_other_operational_roles_are_denied():
         make_user("goa-gts@example.edu", role="GUIDANCE_OFFICE_ASSISTANT", lifecycle=None)
     )
     admin = auth_client(make_user("admin-gts@example.edu", role="IT_ADMIN", lifecycle=None))
-    dpo_user = make_user("dpo-gts@example.edu", role="COUNSELOR", lifecycle=None)
-    UserDesignation.objects.create(
-        user=dpo_user,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    dpo = auth_client(dpo_user)
-    for denied in (counselor, goa, admin, dpo):
+    officer_user = make_user("officer-gts@example.edu", role="COUNSELOR", lifecycle=None)
+    officer = auth_client(officer_user)
+    for denied in (counselor, goa, admin, officer):
         assert denied.get("/api/v1/graduate-tracer/responses").status_code == 403
 
 

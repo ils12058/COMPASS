@@ -37,7 +37,7 @@ from compass.privacy_governance.activity import PrivacyActivityType
 from compass.privacy_governance.activity_export import MAX_EXPORT_ROWS
 
 EXPORT = "privacy_governance.activity.export"
-VIEW = "privacy_governance.view"
+VIEW = "privacy_governance.activity.view"
 SUP_PATH = "/api/v1/me/supervised-staff-activity"
 PRIV_PATH = "/api/v1/privacy/activity"
 PLAT_PATH = "/api/v1/platform/activity"
@@ -63,10 +63,10 @@ def users(db):
         "other": make("OtherStaff", "GUIDANCE_OFFICE_ASSISTANT"),
         "student": make("Student", "STUDENT"),
         "it": make("IT", "IT_ADMIN"),
-        "dpo": make("DPO", "INSTITUTIONAL_OFFICER"),
+        "privacy_admin": make("PrivacyAdmin", "IT_ADMIN"),
         "head": make("Head", "COUNSELOR"),
     }
-    for key, designation in (("dpo", "DPO"), ("head", "HEAD_GUIDANCE_COUNSELOR")):
+    for key, designation in (("head", "HEAD_GUIDANCE_COUNSELOR"),):
         UserDesignation.objects.create(
             user=result[key], designation=Designation.objects.get(code=designation)
         )
@@ -123,7 +123,7 @@ def ids(response):
         ("staff", False),
         ("student", False),
         ("it", False),
-        ("dpo", False),
+        ("privacy_admin", False),
     ],
 )
 def test_supervised_capability_baselines_and_routes(users, key, allowed):
@@ -286,7 +286,12 @@ def test_supervised_search_staff_dates_and_projected_pagination_compose(users):
 
 @pytest.mark.parametrize(
     "path,key",
-    [(SUP_PATH, "a"), (PLAT_PATH, "it"), (PRIV_PATH, "dpo"), (PRIV_PATH + "/export", "dpo")],
+    [
+        (SUP_PATH, "a"),
+        (PLAT_PATH, "it"),
+        (PRIV_PATH, "privacy_admin"),
+        (PRIV_PATH + "/export", "privacy_admin"),
+    ],
 )
 @pytest.mark.parametrize(
     "criteria",
@@ -337,7 +342,7 @@ def test_platform_matches_only_safe_presentation_and_operator_before_paging(user
         rows += ids(c.get(PLAT_PATH, {**criteria, "page": page}))
     assert rows == [str(item.pk) for item in sorted(good, key=lambda x: x.pk, reverse=True)]
     assert ids(c.get(PLAT_PATH, {"search": "HIDDEN-CONFIDENTIAL"})) == []
-    assert ids(c.get(PLAT_PATH, {"operator": users["dpo"].get_full_name()})) == []
+    assert ids(c.get(PLAT_PATH, {"operator": users["privacy_admin"].get_full_name()})) == []
     assert c.get(PLAT_PATH + "/export").status_code == 404
 
 
@@ -365,7 +370,7 @@ def test_privacy_filtered_paging_skips_malformed_without_duplicates_and_actor_su
             metadata={"from_role": "INVALID", "to_role": "COUNSELOR"},
         )
     event(users["it"], AUTH_LOGIN_FAILED, "accounts.user", outcome="DENIED")
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     criteria = {
         "search": "COUNSELOR",
         "actor": "IT",
@@ -398,7 +403,7 @@ def test_privacy_search_supports_visible_scope_artifact_format_and_reference(use
             "college_code": "CCMS",
         },
     )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     for search in (
         "CCMS",
         "XLSX",
@@ -417,12 +422,12 @@ def test_retention_policy_events_survive_search_filter_and_export(users):
         actions.PRIVACY_RETENTION_RETIRED,
     ):
         event(
-            users["dpo"],
+            users["privacy_admin"],
             action,
             "privacy.retention",
             metadata={"internal_note": "HIDDEN-CONFIDENTIAL"},
         )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     listed = c.get(PRIV_PATH, {"category": "PRIVACY_GOVERNANCE", "page_size": 50})
     assert len(ids(listed)) == 3
     for item in listed.json()["items"]:
@@ -436,17 +441,17 @@ def test_retention_policy_events_survive_search_filter_and_export(users):
     assert "HIDDEN-CONFIDENTIAL" not in exported.content.decode()
 
 
-@pytest.mark.parametrize("key", ["a", "head", "student", "staff", "it"])
+@pytest.mark.parametrize("key", ["a", "head", "student", "staff"])
 def test_export_default_denial(users, key):
     assert not users[key].has_capability(EXPORT)
     assert client(users[key]).get(PRIV_PATH + "/export").status_code == 403
 
 
 def test_export_capability_dependency_overrides_and_browse_only(users):
-    assert users["dpo"].has_capability(EXPORT)
-    override(users["dpo"], EXPORT, "REVOKE")
-    assert client(users["dpo"]).get(PRIV_PATH).status_code == 200
-    assert client(users["dpo"]).get(PRIV_PATH + "/export").status_code == 403
+    assert users["privacy_admin"].has_capability(EXPORT)
+    override(users["privacy_admin"], EXPORT, "REVOKE")
+    assert client(users["privacy_admin"]).get(PRIV_PATH).status_code == 200
+    assert client(users["privacy_admin"]).get(PRIV_PATH + "/export").status_code == 403
     override(users["it"], VIEW, "GRANT")
     override(users["it"], EXPORT, "GRANT")
     assert client(users["it"]).get(PRIV_PATH + "/export").status_code == 200
@@ -464,7 +469,7 @@ def test_export_all_matching_not_page_and_safe_minimized_audit(users):
             "privacy.retention",
             at=now - timedelta(seconds=n),
         )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     criteria = {
         "category": "PRIVACY_GOVERNANCE",
         "event_type": actions.PRIVACY_RETENTION_UPDATED,
@@ -529,7 +534,7 @@ def test_export_snapshot_excludes_own_append_and_supports_unicode_formula_safety
             "academic_year_label": "@INJECTION",
         },
     )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     response = c.get(PRIV_PATH + "/export")
     rows = list(csv.DictReader(StringIO(response.content.decode("utf-8"))))
     assert len(rows) == 1
@@ -566,7 +571,7 @@ def test_export_real_maximum_without_silent_truncation(users):
         ],
         batch_size=1000,
     )
-    response = client(users["dpo"]).get(
+    response = client(users["privacy_admin"]).get(
         PRIV_PATH + "/export", {"event_type": actions.ACCOUNT_ENABLED}
     )
     assert response.status_code == 422
@@ -583,7 +588,7 @@ def test_export_audit_failure_releases_no_csv(users, monkeypatch):
         raise RuntimeError("unavailable")
 
     monkeypatch.setattr(releases, "record_event", unavailable)
-    response = client(users["dpo"]).get(PRIV_PATH + "/export")
+    response = client(users["privacy_admin"]).get(PRIV_PATH + "/export")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "release_audit_unavailable"
     assert response["Content-Type"].startswith("application/json")
@@ -601,7 +606,7 @@ def test_bounded_scan_fails_clearly_for_sparse_malformed_feed(users, monkeypatch
             "accounts.user",
             metadata={"from_role": "bad", "to_role": "bad"},
         )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     assert c.get(PRIV_PATH).status_code == 422
     assert c.get(PRIV_PATH + "/export").status_code == 422
 
@@ -658,7 +663,7 @@ def test_malformed_metadata_shapes_fail_closed_for_list_and_export(users, metada
             )
         ]
     )
-    c = client(users["dpo"])
+    c = client(users["privacy_admin"])
     assert ids(c.get(PRIV_PATH)) == []
     response = c.get(PRIV_PATH + "/export")
     assert response.status_code == 200

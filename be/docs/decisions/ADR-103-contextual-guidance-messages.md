@@ -32,7 +32,7 @@ chat channel or WebSocket. The full workspace stays the canonical place for ever
    `open_counseling_thread` (canonical Counseling service, SCHEDULED or COMPLETED, active exact
    Student or provider Counselor, provider with Messages view, actor with manage authority). Then
    `{thread: null, can_start: true}`; nothing is created.
-3. Anything else, including GSS supervision, Head designation, IT Admin, DPO, an unrelated actor
+3. Anything else, including GSS supervision, Head designation, IT Admin, Institutional Officer, an unrelated actor
    and a guessed Appointment, is concealed with the ordinary 404.
 
 The response is structural (the existing thread schema, never a body, preview, email or

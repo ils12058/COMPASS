@@ -177,20 +177,16 @@ def test_graduate_tracer_aggregate_requires_global_report_scope():
     )
     student = make_user("gts-student@example.edu")
     admin = make_user("gts-admin@example.edu", role="IT_ADMIN", lifecycle=None)
-    dpo = make_user(
-        "gts-dpo@example.edu",
+    officer = make_user(
+        "gts-officer@example.edu",
         role="INSTITUTIONAL_OFFICER",
         lifecycle=None,
-    )
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
     )
 
     assert counselor.has_capability("reports.view")
     assert auth_client(head).get("/api/v1/reports/graduate-tracer").status_code == 200
     assert auth_client(head).get("/api/v1/reports/graduate-tracer/xlsx").status_code == 200
-    for denied in (counselor, staff, student, admin, dpo):
+    for denied in (counselor, staff, student, admin, officer):
         client = auth_client(denied)
         assert client.get("/api/v1/reports/graduate-tracer").status_code == 403
         assert client.get("/api/v1/reports/graduate-tracer/xlsx").status_code == 403

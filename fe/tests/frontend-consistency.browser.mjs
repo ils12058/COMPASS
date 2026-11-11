@@ -127,7 +127,7 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
   release();
 }
 for (const width of [320, 1440]) await check(`privacy-notice-actions-${width}`, "/portal/privacy/notices/notice", { viewport: { width, height: 1000 }, overrides: {
-  "/api/v1/auth/session": session({ ...user("INSTITUTIONAL_OFFICER"), capabilities: ["privacy_governance.view", "privacy_governance.manage"] }),
+  "/api/v1/auth/session": session({ ...user("IT_ADMIN"), capabilities: ["privacy_governance.notices.view", "privacy_governance.notices.manage", "privacy_governance.activity.view"] }),
   "/api/v1/privacy/notices/notice": { id: "notice", name: "Synthetic Privacy Notice", code: "NOTICE", is_active: true, updated_at: "2026-10-08T00:00:00Z", current_revision: null, draft_revision: null },
   "/api/v1/privacy/notices/notice/revisions": empty,
 } }, async (page) => {

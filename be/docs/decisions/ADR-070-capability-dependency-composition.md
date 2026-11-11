@@ -61,7 +61,8 @@ counseling.manage_assigned         → counseling.view_assigned
 referrals.manage                   → referrals.view
 call_slips.manage                  → call_slips.view
 availability.manage_self           → availability.view
-privacy_governance.manage          → privacy_governance.view
+privacy_governance.notices.manage  → privacy_governance.notices.view
+privacy_governance.activity.export → privacy_governance.activity.view
 platform_operations.manage         → platform_operations.view
 ```
 

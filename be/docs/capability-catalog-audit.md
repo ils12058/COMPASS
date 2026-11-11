@@ -4,7 +4,7 @@ This is a review of all 67 canonical definitions in `compass/accounts/policy.py`
 `institutional_forms.manage`; the current canonical catalog therefore contains 66 capabilities,
 and Institutional Forms are read-only through `institutional_forms.view`. Names and full descriptions live in that policy file. The table records each definition, its baseline grant source, direct backend consumers, direct frontend checks, authority class, and rename decision. A dash means no direct literal-code consumer; generic access inspection and capability resolution still enumerate all canonical definitions. Frontend paths are audit evidence only; this backend PR does not edit `fe/`.
 
-Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistant, S = Student, IO = Institutional Officer. Head and DPO are designations layered on compatible roles. Backend consumer names are modules under `be/compass/`; frontend names are features under `fe/src/features/`.
+Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistant, S = Student, IO = Institutional Officer. Head are designations layered on compatible roles. Backend consumer names are modules under `be/compass/`; frontend names are features under `fe/src/features/`.
 
 | Capability | Name | Class | Baseline grant | Backend direct consumer | Frontend direct check | Decision |
 |---|---|---|---|---|---|---|
@@ -13,8 +13,6 @@ Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistan
 | `institutional_designations.manage` | Manage institutional designations | Management/configuration | IT | account_management | accounts | Retained |
 | `platform_operations.view` | View platform operations | Reporting/oversight | IT | overview, platform_ops | platform, portal | Retained |
 | `platform_operations.manage` | Manage platform operations | Management/configuration | IT | platform_ops | platform | Retained |
-| `privacy_governance.view` | View privacy governance | Reporting/oversight | DPO | privacy_governance | — | Retained |
-| `privacy_governance.manage` | Manage privacy governance | Management/configuration | DPO | privacy_governance | — | Retained |
 | `organization.structure.view` | View organizational structure | Reference/discovery | IT, C, GOA, S | organization | institution-configuration, inventory, organization | Renamed in place |
 | `organization.manage` | Manage organization | Management/configuration | IT, Head | organization | institution-configuration, organization | Retained |
 | `academic_years.view` | View academic years | Reference/discovery | C, Head | organization | institution-configuration, inventory | Retained |
@@ -92,3 +90,12 @@ Role abbreviations: IT = IT Admin, C = Counselor, GOA = Guidance Office Assistan
 The remaining 61 definitions have action-specific names or are bounded by self, assigned, scoped operational, management/configuration, or oversight guards. Direct backend consumers are listed above. Cross-domain use of reference data includes Student booking through Service and effective Availability lookup, Program selection in Inventory, Academic Year filters in Inventory and reports, and controlled-form metadata in document workflows. These consumers do not gain management authority from the two renamed reads. All baseline role/designation grant sets and route scope/state checks stay the same.
 
 `Capability` remains a scope-free action class. Role/designation gives actor identity and baseline grants; routes/services enforce record scope, lifecycle eligibility, and recent MFA. A frontend workspace is a composition of usable actions, not a capability code. Unknown or legacy codes are filtered by `CAPABILITY_CODES` and receive no runtime alias.
+
+Current privacy capabilities (fresh canonical baseline):
+
+| Capability | Default grants | Dependency |
+| --- | --- | --- |
+| `privacy_governance.notices.view` | IT_ADMIN | None |
+| `privacy_governance.notices.manage` | IT_ADMIN | `privacy_governance.notices.view` |
+| `privacy_governance.activity.view` | IT_ADMIN, HEAD_GUIDANCE_COUNSELOR designation | None |
+| `privacy_governance.activity.export` | IT_ADMIN | `privacy_governance.activity.view` |

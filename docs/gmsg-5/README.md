@@ -138,7 +138,7 @@ only (`policy.py:729-730`):
 
 The live Counseling grant, not the capability, is the authority. Counts after this slice: 104
 capability definitions, 113 role grants, 24 designation grants. GSS, IT Admin, Institutional
-Officer, Head and DPO gain nothing.
+Officer, Head gain nothing.
 
 ## 7. Frontend
 

@@ -97,7 +97,7 @@ timestamps, ciphertext or audits.
 
 `assessment_records.manage` depends on `assessment_records.view`. Both are granted through the
 HEAD_GUIDANCE_COUNSELOR designation only, never any baseline role. All operations require a current
-active canonical COUNSELOR plus effective capability. GSS, Students, IT Admin and DPO/Institutional
+active canonical COUNSELOR plus effective capability. GSS, Students, IT Admin and Institutional Officer/Institutional
 Officers stay denied even with unusual grants. Technical/governance authority creates no content
 access. Head authority is institution-wide explicitly within this domain (ADR-099).
 

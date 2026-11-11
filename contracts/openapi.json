@@ -5109,9 +5109,9 @@
           "platform_operations.manage",
           "platform_operations.view",
           "privacy_governance.activity.export",
-          "privacy_governance.manage",
-          "privacy_governance.retention.view",
-          "privacy_governance.view",
+          "privacy_governance.activity.view",
+          "privacy_governance.notices.manage",
+          "privacy_governance.notices.view",
           "referrals.manage",
           "referrals.submit_self",
           "referrals.view",
@@ -10624,7 +10624,6 @@
       },
       "DesignationCode": {
         "enum": [
-          "DPO",
           "GENERAL_GUIDANCE_INTAKE",
           "HEAD_GUIDANCE_COUNSELOR"
         ],
@@ -27551,98 +27550,6 @@
         "title": "ResourceUpdateRequest",
         "type": "object"
       },
-      "RetentionAdoptionStatus": {
-        "enum": [
-          "NOT_ADOPTED",
-          "ADOPTED"
-        ],
-        "title": "RetentionAdoptionStatus",
-        "type": "string"
-      },
-      "RetentionPolicyCategory": {
-        "enum": [
-          "GRADUATE_TRACER",
-          "ECOUNSELING_RECORDING"
-        ],
-        "title": "RetentionPolicyCategory",
-        "type": "string"
-      },
-      "RetentionPolicyEntryResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "adoption_status": {
-            "$ref": "#/components/schemas/RetentionAdoptionStatus"
-          },
-          "category_code": {
-            "$ref": "#/components/schemas/RetentionPolicyCategory"
-          },
-          "category_label": {
-            "title": "Category Label",
-            "type": "string"
-          },
-          "effective_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Date"
-          },
-          "policy_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Policy Reference"
-          },
-          "retention_period": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retention Period"
-          }
-        },
-        "required": [
-          "category_code",
-          "category_label",
-          "adoption_status",
-          "retention_period",
-          "policy_reference",
-          "effective_date"
-        ],
-        "title": "RetentionPolicyEntryResponse",
-        "type": "object"
-      },
-      "RetentionPolicyRegisterResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/RetentionPolicyEntryResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "RetentionPolicyRegisterResponse",
-        "type": "object"
-      },
       "RevisionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -33253,9 +33160,9 @@
                 "platform_operations.manage",
                 "platform_operations.view",
                 "privacy_governance.activity.export",
-                "privacy_governance.manage",
-                "privacy_governance.retention.view",
-                "privacy_governance.view",
+                "privacy_governance.activity.view",
+                "privacy_governance.notices.manage",
+                "privacy_governance.notices.view",
                 "referrals.manage",
                 "referrals.submit_self",
                 "referrals.view",
@@ -33454,9 +33361,9 @@
                 "platform_operations.manage",
                 "platform_operations.view",
                 "privacy_governance.activity.export",
-                "privacy_governance.manage",
-                "privacy_governance.retention.view",
-                "privacy_governance.view",
+                "privacy_governance.activity.view",
+                "privacy_governance.notices.manage",
+                "privacy_governance.notices.view",
                 "referrals.manage",
                 "referrals.submit_self",
                 "referrals.view",
@@ -33674,7 +33581,6 @@
             "required": true,
             "schema": {
               "enum": [
-                "DPO",
                 "GENERAL_GUIDANCE_INTAKE",
                 "HEAD_GUIDANCE_COUNSELOR"
               ],
@@ -33774,7 +33680,6 @@
             "required": true,
             "schema": {
               "enum": [
-                "DPO",
                 "GENERAL_GUIDANCE_INTAKE",
                 "HEAD_GUIDANCE_COUNSELOR"
               ],
@@ -66354,53 +66259,6 @@
           }
         },
         "summary": "Public Notices",
-        "tags": [
-          "privacy-governance"
-        ]
-      }
-    },
-    "/api/v1/privacy/retention/policies": {
-      "get": {
-        "operationId": "privacyGovernanceListRetentionPolicies",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetentionPolicyRegisterResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Retention Policies",
         "tags": [
           "privacy-governance"
         ]
