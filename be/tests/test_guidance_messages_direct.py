@@ -144,10 +144,10 @@ def test_peer_directory_is_bounded_name_only_and_manage_scoped(world):
 
     with (
         overrides(world.admin, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
-        overrides(world.dpo, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
+        overrides(world.officer, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
         overrides(world.goa, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
     ):
-        for outsider in (world.admin, world.dpo, world.goa):
+        for outsider in (world.admin, world.officer, world.goa):
             assert auth_client(outsider).get(BASE + "/counselor-peers").status_code == 403
 
 
@@ -432,7 +432,7 @@ def test_dto_exposes_only_name_pair_and_nulls_every_legacy_field(world):
 def test_role_gate_precedes_a_granted_narrow_capability(world):
     thread, _ = open_direct(world)
     faculty = faculty_actor()
-    outsiders = [world.goa, world.admin, world.dpo, world.student, faculty]
+    outsiders = [world.goa, world.admin, world.officer, world.student, faculty]
 
     for outsider in outsiders:
         with overrides(outsider, "GRANT", DIRECT_VIEW, DIRECT_MANAGE):

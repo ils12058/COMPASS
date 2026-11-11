@@ -232,8 +232,10 @@ def test_account_listing_filters_and_pagination_are_bounded():
     client, _admin, _session = make_admin_client()
     make_user(email="active-counselor@example.edu", role="COUNSELOR")
     inactive = make_user(email="inactive-student@example.edu", active=False)
-    dpo = make_user(email="dpo-officer@example.edu", role="INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
+    head = make_user(email="head-filter@example.edu", role="COUNSELOR")
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
 
     page = client.get("/api/v1/accounts?page=1&page_size=1")
     assert page.status_code == 200
@@ -242,15 +244,15 @@ def test_account_listing_filters_and_pagination_are_bounded():
 
     role = client.get("/api/v1/accounts?role=COUNSELOR")
     assert role.status_code == 200
-    assert [item["role"] for item in role.json()["items"]] == ["COUNSELOR"]
+    assert [item["role"] for item in role.json()["items"]] == ["COUNSELOR", "COUNSELOR"]
 
     active = client.get("/api/v1/accounts?is_active=false")
     assert active.status_code == 200
     assert [item["id"] for item in active.json()["items"]] == [str(inactive.pk)]
 
-    designation = client.get("/api/v1/accounts?designation=DPO")
+    designation = client.get("/api/v1/accounts?designation=HEAD_GUIDANCE_COUNSELOR")
     assert designation.status_code == 200
-    assert [item["id"] for item in designation.json()["items"]] == [str(dpo.pk)]
+    assert [item["id"] for item in designation.json()["items"]] == [str(head.pk)]
 
     too_large = client.get("/api/v1/accounts?page_size=51")
     assert too_large.status_code == 422
@@ -830,30 +832,28 @@ def test_effective_access_inspector_uses_canonical_truth_and_explains_provenance
 
 
 @pytest.mark.django_db
-def test_effective_access_inspector_preserves_dpo_and_disabled_account_semantics():
+def test_effective_access_inspector_preserves_privacy_admin_and_disabled_account_semantics():
     sync_policy()
     client, _admin, _session = make_admin_client()
 
-    dpo = make_user(email="access-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
+    privacy_admin = make_user(email="access-privacy_admin@example.edu", role="IT_ADMIN")
+    privacy_admin_response = client.get(f"/api/v1/accounts/{privacy_admin.pk}/access")
+    assert privacy_admin_response.status_code == 200
+    privacy_admin_body = privacy_admin_response.json()
+    assert privacy_admin_body["designations"] == []
+    assert privacy_admin_body["effective_capabilities"] == sorted(
+        effective_capabilities(privacy_admin)
     )
-    dpo_response = client.get(f"/api/v1/accounts/{dpo.pk}/access")
-    assert dpo_response.status_code == 200
-    dpo_body = dpo_response.json()
-    assert dpo_body["designations"] == ["DPO"]
-    assert dpo_body["effective_capabilities"] == sorted(effective_capabilities(dpo))
     privacy = {
         row["code"]: row
-        for row in dpo_body["capabilities"]
+        for row in privacy_admin_body["capabilities"]
         if row["code"].startswith("privacy_governance.")
     }
-    assert privacy["privacy_governance.view"]["baseline_sources"] == [
-        {"type": "DESIGNATION", "code": "DPO"}
+    assert privacy["privacy_governance.notices.view"]["baseline_sources"] == [
+        {"type": "ROLE", "code": "IT_ADMIN"}
     ]
-    assert privacy["privacy_governance.manage"]["effective"] is True
-    assert "accounts.manage" not in dpo_body["effective_capabilities"]
+    assert privacy["privacy_governance.notices.manage"]["effective"] is True
+    assert "accounts.manage" in privacy_admin_body["effective_capabilities"]
 
     disabled = make_user(
         email="access-disabled-counselor@example.edu",
@@ -1134,43 +1134,41 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
         )
         assert denied.status_code == 403
 
-    dpo = make_user(email="dpo-lifecycle@example.edu", role="COUNSELOR")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    dpo_session = create_auth_session(
-        dpo,
+    officer = make_user(email="officer-lifecycle@example.edu", role="INSTITUTIONAL_OFFICER")
+    officer_session = create_auth_session(
+        officer,
         mfa_verified_at=timezone.now(),
         now=timezone.now(),
     )
-    dpo_client = Client()
-    dpo_client.cookies["compass_session"] = dpo_session.token
-    dpo_denied = dpo_client.put(
+    officer_client = Client()
+    officer_client.cookies["compass_session"] = officer_session.token
+    officer_denied = officer_client.put(
         f"/api/v1/accounts/{new_student.pk}/student-lifecycle",
         data=json.dumps({"status": "FORMER"}),
         content_type="application/json",
-        **csrf_headers(dpo_client),
+        **csrf_headers(officer_client),
     )
-    assert dpo_denied.status_code == 403
+    assert officer_denied.status_code == 403
 
 
 @pytest.mark.django_db
 def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cleans_it_up():
     sync_policy()
     client, _admin, _session = make_admin_client()
-    student = make_user(email="student-dpo@example.edu", role="STUDENT")
+    student = make_user(email="student-officer@example.edu", role="STUDENT")
     goa = make_user(email="goa-head@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
-    admin_target = make_user(email="admin-dpo@example.edu", role="IT_ADMIN")
-    officer = make_user(email="officer-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
+    admin_target = make_user(email="admin-officer@example.edu", role="IT_ADMIN")
+    officer = make_user(email="generic-officer@example.edu", role="INSTITUTIONAL_OFFICER")
     counselor = make_user(email="counselor-head@example.edu", role="COUNSELOR")
     headers = csrf_headers(client)
 
     for target, designation_code in (
-        (student, "DPO"),
+        (student, "GENERAL_GUIDANCE_INTAKE"),
         (student, "HEAD_GUIDANCE_COUNSELOR"),
         (goa, "HEAD_GUIDANCE_COUNSELOR"),
-        (admin_target, "DPO"),
+        (admin_target, "HEAD_GUIDANCE_COUNSELOR"),
+        (officer, "HEAD_GUIDANCE_COUNSELOR"),
+        (officer, "GENERAL_GUIDANCE_INTAKE"),
     ):
         response = post_json(
             client,
@@ -1181,14 +1179,14 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "designation_role_conflict"
 
-    valid_dpo = post_json(
+    valid_intake = post_json(
         client,
-        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        f"/api/v1/accounts/{goa.pk}/designations/GENERAL_GUIDANCE_INTAKE",
         {},
         headers=headers,
     )
-    assert valid_dpo.status_code == 200
-    assert valid_dpo.json()["designations"] == ["DPO"]
+    assert valid_intake.status_code == 200
+    assert valid_intake.json()["designations"] == ["GENERAL_GUIDANCE_INTAKE"]
 
     valid_head = post_json(
         client,
@@ -1198,17 +1196,17 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
     )
     assert valid_head.status_code == 200
 
-    blocked_officer_role = client.put(
-        f"/api/v1/accounts/{officer.pk}/role",
-        data=json.dumps({"role": "COUNSELOR"}),
+    blocked_intake_role = client.put(
+        f"/api/v1/accounts/{goa.pk}/role",
+        data=json.dumps({"role": "IT_ADMIN"}),
         content_type="application/json",
         **headers,
     )
-    assert blocked_officer_role.status_code == 409
-    assert blocked_officer_role.json()["error"]["code"] == "designation_role_conflict"
-    officer.refresh_from_db()
-    assert officer.role.code == "INSTITUTIONAL_OFFICER"
-    assert officer.designations.filter(code="DPO").exists()
+    assert blocked_intake_role.status_code == 409
+    assert blocked_intake_role.json()["error"]["code"] == "designation_role_conflict"
+    goa.refresh_from_db()
+    assert goa.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+    assert goa.designations.filter(code="GENERAL_GUIDANCE_INTAKE").exists()
 
     blocked_head_role = client.put(
         f"/api/v1/accounts/{counselor.pk}/role",
@@ -1236,11 +1234,11 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
     issued = create_auth_session(actor, mfa_verified_at=now, now=now)
     client = Client()
     client.cookies["compass_session"] = issued.token
-    officer = make_user(email="target-officer@example.edu", role="INSTITUTIONAL_OFFICER")
+    target = make_user(email="target-counselor@example.edu", role="COUNSELOR")
 
     denied = post_json(
         client,
-        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        f"/api/v1/accounts/{target.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
         {},
         headers=csrf_headers(client),
     )
@@ -1248,23 +1246,23 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
     assert denied.json()["error"]["code"] == "institutional_designation_permission_denied"
 
     UserDesignation.objects.create(
-        user=officer,
-        designation=Designation.objects.get(code="DPO"),
+        user=target,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
     remove_denied = client.delete(
-        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        f"/api/v1/accounts/{target.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
         **csrf_headers(client),
     )
     assert remove_denied.status_code == 403
     assert remove_denied.json()["error"]["code"] == "institutional_designation_permission_denied"
-    assert officer.designations.filter(code="DPO").exists()
+    assert target.designations.filter(code="HEAD_GUIDANCE_COUNSELOR").exists()
 
     admin_client, admin, _session = make_admin_client(email="designation-admin@example.edu")
     no_step_up = create_auth_session(admin)
     admin_client.cookies["compass_session"] = no_step_up.token
     recent_required = post_json(
         admin_client,
-        f"/api/v1/accounts/{officer.pk}/designations/DPO",
+        f"/api/v1/accounts/{target.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
         {},
         headers=csrf_headers(admin_client),
     )
@@ -1274,7 +1272,7 @@ def test_designation_mutation_requires_dedicated_capability_recent_mfa_and_is_ne
     admin_client, admin, _session = make_admin_client(email="self-designation-admin@example.edu")
     self_target = post_json(
         admin_client,
-        f"/api/v1/accounts/{admin.pk}/designations/DPO",
+        f"/api/v1/accounts/{admin.pk}/designations/HEAD_GUIDANCE_COUNSELOR",
         {},
         headers=csrf_headers(admin_client),
     )

@@ -17,7 +17,6 @@ import { institutionalFormsHelpSections } from "../src/features/institution-conf
 import { responsibilitiesHelpSections } from "../src/features/organization/responsibilities/responsibilities-help.tsx";
 import { serviceHelpSections } from "../src/features/services/service-help.tsx";
 import { platformHelpSections } from "../src/features/platform/platform-help.tsx";
-import { retentionHelpSections } from "../src/features/privacy-governance/retention/retention-help.tsx";
 import { getECounselingListAssignedConsentsQueryKey, getECounselingListMyConsentsQueryKey } from "../src/lib/api/generated/e-counseling/e-counseling.ts";
 import { appointmentId, workspace, consents, user, appointment } from "./support/ui-hierarchy-fixtures.mjs";
 
@@ -88,12 +87,8 @@ test("Responsibilities Help includes safe fallback, confidential access and GOA 
   assert.match(html, /do not gain the Head Guidance Counselor&#x27;s oversight permissions/);
 });
 
-test("operator Help retains diagnostic limitations and the retention oversight boundary", () => {
+test("operator Help retains diagnostic limitations ", () => {
   assert.match(help(platformHelpSections), /doesn&#x27;t check the worker, scheduler, Daily.co or Turnstile/);
-  assert.match(help(retentionHelpSections), /Retention periods follow the University’s records retention schedule/);
-  assert.match(help(retentionHelpSections), /can’t be created or edited in COMPASS/);
-  assert.match(help(retentionHelpSections), /doesn’t schedule, approve or carry out deletion or anonymization/);
-  assert.doesNotMatch(help(retentionHelpSections), /Eligibility|holds?\b|retry/i);
 });
 
 test("an active recording is visible on the call without opening Help and without relying on color", () => {

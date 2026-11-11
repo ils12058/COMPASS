@@ -141,7 +141,7 @@ grant `:635`) holds no Guidance Messages capability; IT_ADMIN and INSTITUTIONAL_
 and the role gate at `policy.py:33-38` would still deny them if `UserCapabilityOverride`
 (`be/compass/accounts/models.py:337`, consulted by `has_capability` `:260-263`) granted one.**
 
-Head/designation note: `HEAD_GUIDANCE_COUNSELOR` and `DPO` are designations
+Head/designation note: `HEAD_GUIDANCE_COUNSELOR` and `GENERAL_GUIDANCE_INTAKE` are designations
 (`accounts/policy.py:65-76`), and Head widens *College scope* via
 `be/compass/organization/access_scope.py:109-154` (Head → all active Colleges, `:143-151`), while
 COUNSELING rows stay restricted to the exact persisted counselor
@@ -323,7 +323,7 @@ Gate `guidance-messages-access.ts:27-47` (read in full): `isStudent = role==="ST
 `isStaff = COUNSELOR || GUIDANCE_SERVICES_STAFF` (`:29`), each flag AND-ed with its capability
 (`:30-34`), `hasWorkspace = canViewSelf || canViewStaff` (`:43`); anything else renders
 `WorkspaceUnavailable "Messages unavailable"` (`guidance-messages-workspace.tsx:57-62`). Its header
-comment (`:3-6`) states IT Admin, Institutional Officer, Head and DPO add nothing. **Verified: the FE
+comment (`:3-6`) states IT Admin, Institutional Officer, Head add nothing. **Verified: the FE
 already pairs identity with capability for presentation only; the backend decides.**
 
 Responsibilities worth naming: `guidance-appointment-context.ts:27-29` (backend, never the browser,

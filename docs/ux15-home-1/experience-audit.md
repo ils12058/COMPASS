@@ -26,7 +26,7 @@ the summary. This same composition serves all roles.
   context, not schedules or new obligations. Non-Current Routine draft counts are null.
 - Counselor and Guidance Services Staff attention reads My work. Head Guidance Counselor remains
   a Counselor designation. IT Administrator email status/attention uses the Overview platform
-  section and capability; Institutional Officer/DPO has no added confidential queue or metrics.
+  section and capability; Institutional Officer has no added confidential queue or metrics.
 - Announcements reads the visible-audience endpoint at page 1/size 3. The backend controls
   recommended publication order and pinning. Links open public reader routes with signed-in
   visibility checks; there is no Home-specific audience filtering.

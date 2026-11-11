@@ -28,7 +28,7 @@ IT_ADMIN_2 = AccountSpec(
     middle_name="Bernal",
     last_name="Arevalo",
     role="IT_ADMIN",
-    summary="Second IT Administrator for a parallel evaluator; same authority as it_admin.",
+    summary="Second IT Administrator for a parallel evaluator; manages approved Privacy Notices.",
     limitations="No access to confidential guidance records.",
 )
 HEAD_GUIDANCE = AccountSpec(
@@ -109,32 +109,6 @@ GOA_B = AccountSpec(
     summary="Operational assistance within counselor_b's caseload: referrals, Call Slips, queue.",
     limitations="No counseling, Routine Interview or Student Session Summary content.",
 )
-DPO = AccountSpec(
-    key="dpo",
-    label="Data Protection Officer",
-    institutional_id="STG-E-0009",
-    email_local_part="stg-dpo",
-    first_name="Grace",
-    middle_name="Fernandez",
-    last_name="Magbanua",
-    role="INSTITUTIONAL_OFFICER",
-    designations=("DPO",),
-    summary="Privacy Notices, privacy activity export and read-only retention oversight.",
-    limitations="No confidential guidance content; no disposition operations exist.",
-)
-DPO_2 = AccountSpec(
-    key="dpo_2",
-    label="Data Protection Officer (second evaluator)",
-    institutional_id="STG-E-0010",
-    email_local_part="stg-dpo-2",
-    first_name="Noel",
-    middle_name="Agustin",
-    last_name="Pimentel",
-    role="INSTITUTIONAL_OFFICER",
-    designations=("DPO",),
-    summary="Second DPO account so two privacy evaluators do not share one identity.",
-    limitations="Shares the same Privacy Notice catalog as dpo.",
-)
 FORMER_STAFF = AccountSpec(
     key="former_staff",
     label="Former Guidance Office Assistant (disabled)",
@@ -177,16 +151,15 @@ IT_ADMIN_3 = AccountSpec(
 )
 OFFICER_NO_DESIGNATION = AccountSpec(
     key="officer_no_designation",
-    label="Institutional Officer without DPO designation",
+    label="Institutional Officer",
     institutional_id="STG-E-0013",
     email_local_part="stg-officer",
     first_name="Leonardo",
     middle_name="Cruz",
     last_name="Salonga",
     role="INSTITUTIONAL_OFFICER",
-    suitability=Suitability.RESTRICTED,
-    summary="An Institutional Officer with no designation: no effective capabilities.",
-    limitations="Negative-authorization testing only: every protected workspace is refused.",
+    summary="Generic Institutional Officer: own account and published Privacy Notice readership.",
+    limitations="Zero default domain capabilities; administrative workspaces are refused.",
 )
 
 STAFF = (
@@ -198,8 +171,6 @@ STAFF = (
     COUNSELOR_C,
     GOA_A,
     GOA_B,
-    DPO,
-    DPO_2,
     FORMER_STAFF,
     UNASSIGNED_COUNSELOR,
     OFFICER_NO_DESIGNATION,
@@ -244,8 +215,6 @@ __all__ = [
     "COUNSELOR_B",
     "COUNSELOR_C",
     "COUNSELOR_RESPONSIBILITIES",
-    "DPO",
-    "DPO_2",
     "FORMER_STAFF",
     "GOA_A",
     "GOA_B",

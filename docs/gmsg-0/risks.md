@@ -156,7 +156,7 @@ only way to keep the four proposed families separately narrowable, but minting t
 explicit participation predicate **in addition to** a capability.
 
 **Acceptance test.** For each new kind, assert 404 on list and get for each of
-{IT_ADMIN, INSTITUTIONAL_OFFICER, HEAD designation, DPO designation, FACULTY, non-participant
+{IT_ADMIN, INSTITUTIONAL_OFFICER, HEAD designation, Institutional Officer role, FACULTY, non-participant
 STUDENT}; plus one assertion that a `UserCapabilityOverride` granting a guidance code to an
 out-of-role user still yields 404 (the role gate fires first).
 

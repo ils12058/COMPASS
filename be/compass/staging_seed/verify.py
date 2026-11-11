@@ -9,7 +9,7 @@ transaction, so verification and report generation cannot change the database. I
 * organization: Counselor responsibilities and staff supervision exactly as declared;
 * scenarios: every executable scenario's documented initial state, via named predicates;
 * workflow integrity: ownership, Counselor assignment, notifications, Work Queue projections;
-* privacy and security: ciphertext-only storage, role scopes, DPO scope, disabled accounts;
+* privacy and security: ciphertext-only storage, role scopes, empty officers, disabled accounts;
 * side effects: no outbound email/push intents and no E-Counseling rooms created by seeding.
 
 During active UAT, ``allow_uat_changes`` reports evaluator-changed scenario states (and the email
@@ -409,10 +409,15 @@ def _predicate(lookup: Lookup, key: str, name: str) -> bool:
         return not _counseling_content(capabilities)
     if kind == "capability":
         return {
-            "retention_view": "privacy_governance.retention.view" in capabilities,
             "activity_export": "privacy_governance.activity.export" in capabilities,
         }[arg]
     if kind == "privacy":
+        if arg == "activity_only":
+            return "privacy_governance.activity.view" in effective_capabilities(user) and not {
+                "privacy_governance.notices.view",
+                "privacy_governance.notices.manage",
+                "privacy_governance.activity.export",
+            }.intersection(effective_capabilities(user))
         return PrivacyNoticeRevision.objects.filter(status="DRAFT").exists()
     raise KeyError(f"Unknown verification predicate {name}")
 
@@ -776,10 +781,10 @@ def _privacy(section: Section, lookup: Lookup) -> None:
                 not any(code.startswith(GUIDANCE_RECORD_PREFIXES) for code in capabilities),
                 f"{account.key}: holds guidance-record capabilities.",
             )
-        if "DPO" in account.designations:
+
+        if account.role == "INSTITUTIONAL_OFFICER":
             section.check(
-                capabilities == frozenset(DESIGNATION_CAPABILITY_GRANTS["DPO"]),
-                f"{account.key}: DPO scope differs from the DPO designation.",
+                not capabilities, f"{account.key}: Institutional Officer has capabilities."
             )
         if not account.active:
             section.check(not user.is_active, f"{account.key}: a disabled account is active.")

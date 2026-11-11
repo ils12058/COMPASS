@@ -63,7 +63,7 @@ explicit `sync_identity_policy` operational step, after institutional approval.
 
 GSS handles operational items only within live supervision and College scope.
 Counselor-confidential records require exact source relationship and Counselor role;
-Head, IT Admin, DPO, Student and unrelated Counselors cannot gain content through
+Head, IT Admin, Institutional Officer, Student and unrelated Counselors cannot gain content through
 designation, assignment or capability override. No global 'list all' route exists.
 A lost supervision, role, College or capability boundary removes ongoing access. Recovery
 of an inaccessible pending record must use a separate reviewed, audited authority and

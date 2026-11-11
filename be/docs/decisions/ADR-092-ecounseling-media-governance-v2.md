@@ -5,12 +5,12 @@
 - Status: Proposed
 - Date: 2026-10-08
 - Refines: [ADR-026](ADR-026-ecounseling-media-consent.md) and
-  [ADR-072](ADR-072-operational-retention-and-disposition.md), for persisted V2 sessions only
+  historical disposition evidence, for persisted V2 sessions only
 - Preserves: historical V1 evidence, ADR-024 Daily Prebuilt, ADR-005 S3-compatible storage,
   ADR-011 append-only audit, ADR-025 human-authored shared summaries, ADR-091 contextual Help
 - Superseded in part by: [ADR-114](ADR-114-decommission-in-app-disposition.md) ("Versioned retention
   and verified disposition" only; consent, custody, provider cleanup and assigned access remain in force)
-  and [ADR-115](ADR-115-code-owned-retention-oversight.md) (retention routes, capabilities and UI retired)
+  and [current privacy baseline](../privacy-governance.md) (retention routes, capabilities and UI retired)
 
 ## Authority and version boundary
 
@@ -158,7 +158,7 @@ operator reconciliation is required for that exceptional split-connection scenar
 
 `ecounseling.access_media_assigned` depends on `ecounseling.view_assigned`. Only the Counselor role
 receives a baseline grant. Effective authority still requires an active Counselor who is the saved
-Appointment provider for ONLINE canonical Counseling. An unrelated Head, DPO, IT Admin, Guidance
+Appointment provider for ONLINE canonical Counseling. An unrelated Head, Institutional Officer, IT Admin, Guidance
 Services Staff, Student or exceptional capability grant cannot bypass that relationship.
 Retention authority never grants media access.
 
@@ -179,38 +179,11 @@ The access audit records authority issuance, not proof that bytes were downloade
 capabilities until expiry; copies already downloaded to a user device cannot be recalled. Object
 removal invalidates existing links to that live object. No per-link revocation registry is introduced.
 
-## Versioned retention and verified disposition
+## Historical disposition evidence
 
-Rules and cases persist `contract_version`. Existing rules/cases become 1 without changing action,
-approval, claim, state, source membership or timestamps. PostgreSQL uniqueness is now one ACTIVE
-rule per `(category, contract_version)`. Graduate Tracer remains contract 1; V1 media keeps
-`DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE`; V2 media uses `DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE`.
-The DPO creates and activates each policy separately using existing recent-MFA/revision checks.
-
-Discovery filters by persisted room version, never artifact presence. Cases keep their original
-contract and one frozen member. `MEDIA_READY_AT` remains the original provider readiness anchor;
-storage completion does not restart the clock. Incomplete custody, missing local evidence or an
-active cleanup claim blocks V2 execution. A remaining provider copy after failed cleanup can be
-handled by reviewed disposition once there is no active cleanup claim.
-
-The V1 executor is unchanged. V2 claims a case locally, acquires the shared artifact guard, snapshots
-source/artifact revisions, and performs external deletion outside SQL transactions. It validates the
-unversioned private storage policy, deletes the live object if present, verifies its absence, and
-verifies deletion of any remaining Daily copy. Only after every governed live copy is verified absent
-does the final transaction minimize key/hash/content metadata, mark artifact/capture disposed,
-clear the provider reference, complete the case and append the disposition audit.
-
-Storage error, uncertain absence, uncertain provider deletion or changed source produces a truthful
-blocker/reconciliation outcome, never `COMPLETED`. Location/evidence remain for explicit reviewed
-retry. Existing holds revoke queued approval; releasing a hold requires a new approval. No pending
-or late webhook, ingestion or cleanup job can restore a disposed artifact. Delayed V2 READY receipts
-cannot replace the provider artifact or move the original readiness anchor; verified provider cleanup
-also fences late reference resurrection.
-
-Live disposition makes no promise about database/object backups or previously downloaded files.
-Backups follow actual infrastructure policy, not an invented duration. Restoring a backup requires
-reconciling completed cases against the live-copy namespace before enabling workers, access or
-provider processing. See the deployment/runbook additions for the controlled restoration procedure.
+The former disposition engine is absent from the canonical baseline. Independent provider-copy
+cleanup after verified private storage, consent and disposal/terminal-state fences remain owned by
+E-Counseling. No policy register or in-app records-disposal authority is provided.
 
 ## Explicit next slice
 

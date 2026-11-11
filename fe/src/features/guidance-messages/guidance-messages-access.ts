@@ -5,7 +5,7 @@ import type { GuidanceViewer } from "./guidance-messages-presentation";
 // fallback and exact Counseling participation are never repeated here. A Student reads their own
 // conversations; Counselors and Guidance Office Assistant read the ones their workload allows; a
 // Faculty member reads the Guidance Office inquiries they wrote and the referral conversations
-// they started. IT Admin, Institutional Officers, Head and DPO designations add nothing.
+// they started. IT Admin, Institutional Officers, Head designations add nothing.
 export type GuidanceMessagesAccess = {
   isStudent: boolean;
   isStaff: boolean;

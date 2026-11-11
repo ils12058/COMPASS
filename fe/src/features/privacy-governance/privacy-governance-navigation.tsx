@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/workspace-tabs";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
-  canViewPrivacyGovernance,
-  canViewRetention,
+  canViewPrivacyNotices,
+  canViewPrivacyActivity,
 } from "./privacy-governance-access";
 
 const links: { href: string; label: string; related?: string }[] = [
@@ -19,7 +19,6 @@ const links: { href: string; label: string; related?: string }[] = [
     label: "Privacy notices",
     related: "/portal/privacy/notice-revisions",
   },
-  { href: "/portal/privacy/retention", label: "Retention policies" },
   { href: "/portal/privacy/activity", label: "Privacy and security activity" },
 ];
 
@@ -35,9 +34,9 @@ export function PrivacyGovernanceNavigation() {
     <WorkspaceTabs label="Privacy Governance navigation">
       {links
         .filter(({ href }) =>
-          href === "/portal/privacy/retention"
-            ? canViewRetention(user)
-            : canViewPrivacyGovernance(user),
+          href === "/portal/privacy/activity"
+            ? canViewPrivacyActivity(user)
+            : canViewPrivacyNotices(user),
         )
         .map(({ href, label, related }) => {
           const current =

@@ -40,7 +40,7 @@ python manage.py sync_identity_policy
 ```
 
 This keeps Student consent authority and assigned-Counselor media authority consistent with the
-version-controlled policy. Guidance Office Assistants, IT Admin, and DPO receive no media-control grant,
+version-controlled policy. Guidance Office Assistants, IT Admin, and Institutional Officer receive no media-control grant,
 and Head Guidance receives no designation-wide confidential-session bypass.
 
 ## Daily feature/account prerequisites
@@ -221,7 +221,7 @@ Before enabling the new worker or issuing downloads:
    operator reconciliation. Preserve the provider reference when evidence is uncertain.
 
 The new `ecounseling.access_media_assigned` baseline grant belongs only to Counselors and requires
-`ecounseling.view_assigned` plus active assigned relationship. DPO, IT, GOA, Students and unrelated
+`ecounseling.view_assigned` plus active assigned relationship. Institutional Officer, IT, GOA, Students and unrelated
 Head Guidance gain no media access. Confirm identity-policy synchronization before exposing access.
 
 In-app retention rules and disposition are decommissioned (ADR-114); on the reset-only canonical

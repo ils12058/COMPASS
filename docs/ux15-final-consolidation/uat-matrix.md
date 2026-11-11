@@ -218,12 +218,12 @@ Not Run`), evidence reference, comments, and defect reference. A blank field doe
 - **Expected:** Existing Overview remains; no Counselor/Student confidential content is exposed by UX15 Home.
 - **Actual result:** ____ · **Status:** ____ · **Evidence:** ____ · **Comments:** ____ · **Defect:** ____
 
-### OTH-03 — DPO-designated Institutional Officer
+### OTH-03 — Generic Institutional Officer
 
-- **Role:** Institutional Officer with approved DPO designation, where supported.
-- **Preconditions:** Institution-approved account and documented DPO-authorized resources.
-- **Steps:** Verify privacy oversight destinations and attempt no unrelated clinical access.
-- **Expected:** Existing privacy-specific authority remains correctly scoped; designation does not create Guidance clinical access.
+- **Role:** Institutional Officer with zero default domain capabilities.
+- **Preconditions:** Institution-approved account and an applicable published Notice.
+- **Steps:** Open Account Privacy, read and acknowledge the current revision, then try administrative Notices and Privacy Activity directly.
+- **Expected:** Own readership and acknowledgment work; privacy administration and Activity are refused; no privacy workspace appears in navigation or Home.
 - **Actual result:** ____ · **Status:** ____ · **Evidence:** ____ · **Comments:** ____ · **Defect:** ____
 
 ## Accessibility and interaction

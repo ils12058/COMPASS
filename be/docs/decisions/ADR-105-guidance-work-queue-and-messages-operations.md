@@ -94,6 +94,6 @@ refresh. Same-tab successful domain actions invalidate the same query family whe
 Work disappears because its source domain changes. There is no queue dismiss, snooze, manual
 priority, reminder, completion state, SLA or AI. Future Call Slips remain schedule context.
 Appointments and Referrals acquire no invented task/follow-up states. Student Action Center is
-deferred; existing Student attention remains. Messages retention/disposition remains governed
-by ADR-072/102 and requires adopted human policy; encryption rotation establishes no retention
+deferred; existing Student attention remains. Messages retention/disposition requires adopted
+institutional policy; no in-app retention executor exists. Encryption rotation establishes no retention
 duration or deletion behavior. No deployment is performed by this implementation.

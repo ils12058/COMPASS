@@ -156,7 +156,7 @@ test("Messages access pairs each identity with its own capability", () => {
   assert.equal(getGuidanceMessagesAccess(account("IT_ADMIN", ["guidance_messages.intake"])).canIntake, false, "Only Guidance staff hold intake");
   for (const other of [
     account("IT_ADMIN", ["accounts.manage", "platform_operations.view"]),
-    account("IT_ADMIN", ["privacy.governance.view"], { designations: ["DPO"] }),
+    account("IT_ADMIN", ["privacy_governance.activity.view"], { designations: [] }),
     account("INSTITUTIONAL_OFFICER", ["reports.view"]),
     account("COUNSELOR", ["appointments.manage"], { designations: ["HEAD_GUIDANCE_COUNSELOR"] }),
   ]) {

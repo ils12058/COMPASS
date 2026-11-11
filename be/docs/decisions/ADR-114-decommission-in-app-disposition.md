@@ -1,5 +1,7 @@
 # ADR-114: Decommission in-app records disposition
 
+Historical evidence: the recorded outcomes below describe their original revision, not current privacy permissions or supported features. Current policy is in `be/docs/privacy-governance.md`.
+
 - Status: Proposed (PG-1A PR 1). Becomes Accepted on owner approval.
 - Date: 2026-10-16
 - Completed on the reset-only canonical baseline by [ADR-116](ADR-116-canonical-baseline-and-staging-dataset-v1.md): the ledger tables, tombstone tasks, fallback services and preflight command are removed there. The compatible staging runtime keeps them until its operator cutover.

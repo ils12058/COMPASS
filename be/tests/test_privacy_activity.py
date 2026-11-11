@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import Role, User
 from compass.audit.actions import (
     ACCOUNT_CAPABILITY_OVERRIDE_SET,
     ACCOUNT_DESIGNATION_ASSIGNED,
@@ -46,13 +46,8 @@ def make_user(email: str, role: str = "INSTITUTIONAL_OFFICER") -> User:
     )
 
 
-def make_dpo(email: str = "activity-dpo@example.edu") -> User:
-    user = make_user(email)
-    UserDesignation.objects.create(
-        user=user,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    return user
+def make_privacy_admin(email: str = "privacy-activity-admin@example.edu") -> User:
+    return make_user(email, "IT_ADMIN")
 
 
 def auth_client(user: User) -> Client:
@@ -71,20 +66,20 @@ def audited_context(actor: User) -> AuditContext:
 
 
 @pytest.mark.django_db
-def test_privacy_activity_requires_dpo_view_capability():
+def test_privacy_activity_requires_privacy_admin_view_capability():
     sync_policy()
-    dpo = make_dpo()
+    privacy_admin = make_privacy_admin()
     admin = make_user("activity-admin@example.edu", "IT_ADMIN")
 
     assert Client().get("/api/v1/privacy/activity").status_code == 401
-    assert auth_client(admin).get("/api/v1/privacy/activity").status_code == 403
-    assert auth_client(dpo).get("/api/v1/privacy/activity").status_code == 200
+    assert auth_client(admin).get("/api/v1/privacy/activity").status_code == 200
+    assert auth_client(privacy_admin).get("/api/v1/privacy/activity").status_code == 200
 
 
 @pytest.mark.django_db
 def test_privacy_activity_data_release_presenters_are_content_free():
     sync_policy()
-    dpo = make_dpo("release-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("release-activity-privacy_admin@example.edu")
     actor = make_user("release-actor@example.edu", "COUNSELOR")
     academic_year_id = uuid4()
     good_moral_id = uuid4()
@@ -127,7 +122,7 @@ def test_privacy_activity_data_release_presenters_are_content_free():
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=DATA_RELEASE")
+    response = auth_client(privacy_admin).get("/api/v1/privacy/activity?category=DATA_RELEASE")
 
     assert response.status_code == 200
     items = response.json()["items"]
@@ -158,7 +153,7 @@ def test_privacy_activity_data_release_presenters_are_content_free():
 @pytest.mark.django_db
 def test_access_control_projection_allowlists_only_safe_authority_facts():
     sync_policy()
-    dpo = make_dpo("access-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("access-activity-privacy_admin@example.edu")
     operator = make_user("account-admin-operator@example.edu", "IT_ADMIN")
     target_id = uuid4()
     now = timezone.now()
@@ -183,7 +178,7 @@ def test_access_control_projection_allowlists_only_safe_authority_facts():
         target_type="accounts.user",
         target_id=target_id,
         occurred_at=now - timedelta(seconds=1),
-        metadata={"designation": "DPO"},
+        metadata={"designation": "HEAD_GUIDANCE_COUNSELOR"},
     )
     override_event = record_event(
         context=audited_context(operator),
@@ -193,13 +188,13 @@ def test_access_control_projection_allowlists_only_safe_authority_facts():
         target_id=target_id,
         occurred_at=now - timedelta(seconds=2),
         metadata={
-            "capability": "privacy_governance.view",
+            "capability": "privacy_governance.activity.view",
             "effect": "GRANT",
             "has_expiry": False,
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=ACCESS_CONTROL")
+    response = auth_client(privacy_admin).get("/api/v1/privacy/activity?category=ACCESS_CONTROL")
 
     assert response.status_code == 200
     items = response.json()["items"]
@@ -210,16 +205,16 @@ def test_access_control_projection_allowlists_only_safe_authority_facts():
     ]
     assert items[0]["actor_display_name"] == "Privacy Observer"
     assert items[0]["description"] == "Changed from Counselor to Institutional Officer."
-    assert items[1]["description"] == "Data Protection Officer was assigned to an account."
-    assert "View privacy governance" in items[2]["description"]
-    assert "privacy_governance.view" not in items[2]["description"]
+    assert items[1]["description"] == "Head Guidance Counselor was assigned to an account."
+    assert "View privacy and security activity" in items[2]["description"]
+    assert "privacy_governance.activity.view" not in items[2]["description"]
     assert "SENTINEL_PRIVATE_EMAIL" not in response.content.decode()
 
 
 @pytest.mark.django_db
 def test_account_security_projection_does_not_misattribute_failed_login_or_mfa():
     sync_policy()
-    dpo = make_dpo("security-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("security-activity-privacy_admin@example.edu")
     target = make_user("known-target@example.edu", "STUDENT")
     now = timezone.now()
 
@@ -251,7 +246,7 @@ def test_account_security_projection_does_not_misattribute_failed_login_or_mfa()
         metadata={"method": "email_otp"},
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=ACCOUNT_SECURITY")
+    response = auth_client(privacy_admin).get("/api/v1/privacy/activity?category=ACCOUNT_SECURITY")
 
     assert response.status_code == 200
     items = response.json()["items"]
@@ -277,10 +272,10 @@ def test_account_security_projection_does_not_misattribute_failed_login_or_mfa()
 @pytest.mark.django_db
 def test_privacy_governance_projection_never_copies_incident_narrative():
     sync_policy()
-    dpo = make_dpo("governance-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("governance-activity-privacy_admin@example.edu")
     incident_id = uuid4()
     event = record_event(
-        context=audited_context(dpo),
+        context=audited_context(privacy_admin),
         action=PRIVACY_INCIDENT_CREATED,
         outcome="SUCCESS",
         target_type="privacy.incident",
@@ -292,7 +287,9 @@ def test_privacy_governance_projection_never_copies_incident_narrative():
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
+    response = auth_client(privacy_admin).get(
+        "/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE"
+    )
 
     assert response.status_code == 200
     item = response.json()["items"][0]
@@ -305,10 +302,10 @@ def test_privacy_governance_projection_never_copies_incident_narrative():
 @pytest.mark.django_db
 def test_historical_removed_workflow_audit_event_remains_safely_presentable():
     sync_policy()
-    dpo = make_dpo("historical-review-dpo@example.edu")
+    privacy_admin = make_privacy_admin("historical-review-privacy_admin@example.edu")
     review_id = uuid4()
     event = record_event(
-        context=audited_context(dpo),
+        context=audited_context(privacy_admin),
         action=PRIVACY_REVIEW_RESOLVED,
         outcome="SUCCESS",
         target_type="privacy.review",
@@ -319,7 +316,9 @@ def test_historical_removed_workflow_audit_event_remains_safely_presentable():
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
+    response = auth_client(privacy_admin).get(
+        "/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE"
+    )
 
     assert response.status_code == 200
     item = next(row for row in response.json()["items"] if row["id"] == str(event.pk))
@@ -333,10 +332,10 @@ def test_historical_removed_workflow_audit_event_remains_safely_presentable():
 @pytest.mark.django_db
 def test_historical_retention_audit_event_remains_readable_without_live_policy():
     sync_policy()
-    dpo = make_dpo("historical-retention-dpo@example.edu")
+    privacy_admin = make_privacy_admin("historical-retention-privacy_admin@example.edu")
     policy_id = uuid4()
     event = record_event(
-        context=audited_context(dpo),
+        context=audited_context(privacy_admin),
         action=PRIVACY_RETENTION_CREATED,
         outcome="SUCCESS",
         target_type="privacy.retention",
@@ -344,7 +343,9 @@ def test_historical_retention_audit_event_remains_readable_without_live_policy()
         metadata={"policy_body": "SENTINEL HISTORICAL POLICY PROSE"},
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE")
+    response = auth_client(privacy_admin).get(
+        "/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE"
+    )
     assert response.status_code == 200
     item = next(row for row in response.json()["items"] if row["id"] == str(event.pk))
     assert item["title"] == "Retention policy created"
@@ -355,7 +356,7 @@ def test_historical_retention_audit_event_remains_readable_without_live_policy()
 @pytest.mark.django_db
 def test_privacy_activity_excludes_unrelated_domains_unknown_actions_and_malformed_rows():
     sync_policy()
-    dpo = make_dpo("closed-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("closed-activity-privacy_admin@example.edu")
     actor = make_user("ordinary-actor@example.edu", "COUNSELOR")
     now = timezone.now()
 
@@ -391,7 +392,7 @@ def test_privacy_activity_excludes_unrelated_domains_unknown_actions_and_malform
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity")
+    response = auth_client(privacy_admin).get("/api/v1/privacy/activity")
 
     assert response.status_code == 200
     assert response.json()["items"] == []
@@ -404,7 +405,7 @@ def test_privacy_activity_excludes_unrelated_domains_unknown_actions_and_malform
 @pytest.mark.django_db
 def test_privacy_activity_pagination_and_category_filter_are_bounded_and_deterministic():
     sync_policy()
-    dpo = make_dpo("pagination-privacy-dpo@example.edu")
+    privacy_admin = make_privacy_admin("pagination-privacy-privacy_admin@example.edu")
     actor = make_user("pagination-actor@example.edu", "IT_ADMIN")
     now = timezone.now()
 
@@ -420,7 +421,7 @@ def test_privacy_activity_pagination_and_category_filter_are_bounded_and_determi
         )
         for index in range(4)
     ]
-    client = auth_client(dpo)
+    client = auth_client(privacy_admin)
 
     first = client.get("/api/v1/privacy/activity?category=ACCESS_CONTROL&page=1&page_size=2")
     second = client.get("/api/v1/privacy/activity?category=ACCESS_CONTROL&page=2&page_size=2")
@@ -441,7 +442,7 @@ def test_privacy_activity_pagination_and_category_filter_are_bounded_and_determi
 @pytest.mark.django_db
 def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route():
     sync_policy()
-    dpo = make_dpo("no-global-audit-dpo@example.edu")
+    privacy_admin = make_privacy_admin("no-global-audit-privacy_admin@example.edu")
     actor = make_user("no-global-audit-actor@example.edu", "IT_ADMIN")
     event = record_event(
         context=AuditContext.user(actor),
@@ -451,7 +452,7 @@ def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route()
         target_id=uuid4(),
         metadata={"from_role": "COUNSELOR", "to_role": "INSTITUTIONAL_OFFICER"},
     )
-    client = auth_client(dpo)
+    client = auth_client(privacy_admin)
 
     normal = client.get("/api/v1/privacy/activity")
     unknown_query = client.get("/api/v1/privacy/activity?action=counseling.encounter.updated")
@@ -465,7 +466,7 @@ def test_privacy_activity_has_no_arbitrary_action_filter_or_global_audit_route()
 @pytest.mark.django_db
 def test_privacy_activity_projects_graduate_tracer_release_without_report_contents():
     sync_policy()
-    dpo = make_dpo("gts-activity-dpo@example.edu")
+    privacy_admin = make_privacy_admin("gts-activity-privacy_admin@example.edu")
     actor = make_user("gts-release-actor@example.edu", "COUNSELOR")
     now = timezone.now()
 
@@ -502,7 +503,7 @@ def test_privacy_activity_projects_graduate_tracer_release_without_report_conten
         },
     )
 
-    response = auth_client(dpo).get("/api/v1/privacy/activity?category=DATA_RELEASE")
+    response = auth_client(privacy_admin).get("/api/v1/privacy/activity?category=DATA_RELEASE")
 
     assert response.status_code == 200
     items = response.json()["items"]

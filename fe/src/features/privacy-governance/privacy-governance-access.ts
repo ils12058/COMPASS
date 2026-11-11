@@ -2,22 +2,23 @@ import type { CapabilityCode } from "@/lib/api/generated/model";
 
 type CapabilityUser = { capabilities: readonly CapabilityCode[] };
 
-// Privacy Governance follows effective capabilities, never the DPO designation
-// itself (ADR-045, ADR-061). The backend still authorizes every operation.
-export function canViewPrivacyGovernance(user: CapabilityUser): boolean {
-  return user.capabilities.includes("privacy_governance.view");
+// Independent administrative capabilities; the backend authorizes every operation.
+export function canViewPrivacyNotices(user: CapabilityUser): boolean {
+  return user.capabilities.includes("privacy_governance.notices.view");
 }
 
-export function canManagePrivacyGovernance(user: CapabilityUser): boolean {
-  return user.capabilities.includes("privacy_governance.manage");
+export function canManagePrivacyNotices(user: CapabilityUser): boolean {
+  return canViewPrivacyNotices(user) && user.capabilities.includes("privacy_governance.notices.manage");
+}
+
+export function canViewPrivacyActivity(user: CapabilityUser): boolean {
+  return user.capabilities.includes("privacy_governance.activity.view");
+}
+
+export function canExportPrivacyActivity(user: CapabilityUser): boolean {
+  return canViewPrivacyActivity(user) && user.capabilities.includes("privacy_governance.activity.export");
 }
 
 export function hasPrivacyGovernanceWorkspace(user: CapabilityUser): boolean {
-  return canViewPrivacyGovernance(user) || canViewRetention(user);
-}
-
-// Read-only oversight of the code-owned retention policy register (ADR-115). No capability
-// manages retention or approves disposition in COMPASS.
-export function canViewRetention(user: CapabilityUser): boolean {
-  return user.capabilities.includes("privacy_governance.retention.view");
+  return canViewPrivacyNotices(user) || canViewPrivacyActivity(user);
 }

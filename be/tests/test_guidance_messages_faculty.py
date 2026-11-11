@@ -109,7 +109,7 @@ def test_faculty_opens_an_inquiry_by_service_and_http(world):
 
 @pytest.mark.parametrize(
     "name",
-    ["student", "counselor", "goa", "head", "admin", "dpo"],
+    ["student", "counselor", "goa", "head", "admin", "officer"],
 )
 def test_only_faculty_may_open_an_inquiry(world, name):
     with_intake(world.other)
@@ -208,7 +208,7 @@ def test_five_open_inquiries_is_the_cap(world):
     assert GuidanceThread.objects.filter(requester=actor, status=ThreadStatus.OPEN).count() == 6
 
 
-@pytest.mark.parametrize("name", ["counselor", "goa", "head", "admin", "dpo"])
+@pytest.mark.parametrize("name", ["counselor", "goa", "head", "admin", "officer"])
 def test_inquiries_are_concealed_from_staff_without_intake(world, name):
     _, _, thread, _ = open_inquiry(world)
     actor = getattr(world, name)

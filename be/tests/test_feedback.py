@@ -774,12 +774,6 @@ def test_only_head_guidance_has_raw_feedback_review_by_default():
     goa = auth_client(
         make_user("goa-feedback@example.edu", role="GUIDANCE_OFFICE_ASSISTANT", lifecycle=None)
     )
-    dpo_user = make_user("dpo-feedback@example.edu", role="COUNSELOR", lifecycle=None)
-    UserDesignation.objects.create(
-        user=dpo_user,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    dpo = auth_client(dpo_user)
     officer = auth_client(
         make_user("officer-feedback@example.edu", role="INSTITUTIONAL_OFFICER", lifecycle=None)
     )
@@ -791,7 +785,7 @@ def test_only_head_guidance_has_raw_feedback_review_by_default():
     assert detail.status_code == 200
     assert detail.json()["sqd5"] == 0
 
-    for denied in (client, counselor, admin, goa, dpo, officer):
+    for denied in (client, counselor, admin, goa, officer):
         assert denied.get("/api/v1/feedback/customer-feedback/responses").status_code == 403
         assert (
             denied.get(f"/api/v1/feedback/customer-feedback/responses/{f14_id}").status_code == 403

@@ -11,7 +11,6 @@ from django.core.management import call_command
 from django.test import Client
 from pypdf import PdfReader
 
-from compass.accounts.models import Designation, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.documents.rendering import DocumentRenderError, render_document_html
 from compass.exit_interviews.confidential_content import (
@@ -169,9 +168,8 @@ def test_pdf_endpoints_enforce_owner_head_scope_and_fail_closed_release(monkeypa
         .status_code
         == 403
     )
-    dpo = make_user("exit-pdf-dpo@example.edu", role="COUNSELOR")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
-    assert auth_client(dpo).get(head_url).status_code == 403
+    officer = make_user("exit-pdf-officer@example.edu", role="INSTITUTIONAL_OFFICER")
+    assert auth_client(officer).get(head_url).status_code == 403
 
     head = auth_client(make_head("exit-pdf-head@example.edu"))
     reviewed = head.get(head_url)

@@ -191,7 +191,7 @@ reconstructed from today's current Student accounts.
 Add the scope-free capability \`reports.view\`.
 
 The initial default grant is HEAD_GUIDANCE_COUNSELOR designation only. It is not granted by default
-to ordinary Counselors, Guidance Services Staff, Students, IT Admin, or DPO. Existing explicit
+to ordinary Counselors, Guidance Services Staff, Students, IT Admin, or Institutional Officer. Existing explicit
 per-user capability override behavior continues to apply.
 
 The endpoint is aggregate-only. It returns no Student/User identifier, student number, name, email,

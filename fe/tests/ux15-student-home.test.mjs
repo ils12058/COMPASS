@@ -105,7 +105,7 @@ test("Student composition excludes unexpected professional sections and email da
 
 test("professional roles and designations retain their composition without Student discovery", () => {
   for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
-    const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : role === "INSTITUTIONAL_OFFICER" ? ["DPO"] : [] });
+    const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : [] });
     const html = renderWorld(state);
     assert.doesNotMatch(html, /student-home-services-heading|View all actions|Book Appointment/);
     assert.deepEqual(getStudentHomeDestinations(state.account), []);

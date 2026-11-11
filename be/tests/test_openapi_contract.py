@@ -141,7 +141,6 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesUpdateTemplate",
     "guidanceMessagesArchiveTemplate",
     "guidanceMessagesRestoreTemplate",
-    "privacyGovernanceListRetentionPolicies",
     "healthLive",
     "systemMetadata",
     "healthReady",
@@ -2129,7 +2128,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "STUDENT",
     ]
     assert schemas["DesignationCode"]["enum"] == [
-        "DPO",
         "GENERAL_GUIDANCE_INTAKE",
         "HEAD_GUIDANCE_COUNSELOR",
     ]
@@ -2215,10 +2213,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "organization.structure.view",
             "platform_operations.manage",
             "platform_operations.view",
-            "privacy_governance.manage",
+            "privacy_governance.notices.manage",
             "privacy_governance.activity.export",
-            "privacy_governance.retention.view",
-            "privacy_governance.view",
+            "privacy_governance.activity.view",
+            "privacy_governance.notices.view",
             "reports.view",
             "resources.manage",
             "referrals.submit_self",
@@ -3292,7 +3290,9 @@ def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_r
     assert "RetentionPolicyResponse" not in schemas
     assert "RetentionRuleResponse" not in schemas
     assert "DispositionCaseResponse" not in schemas
-    assert "RetentionPolicyEntryResponse" in schemas
+    assert "RetentionPolicyEntryResponse" not in schemas
+    assert "RetentionPolicyRegisterResponse" not in schemas
+    assert not any("/privacy/retention/policies" in path for path in schema["paths"])
     assert not any("/privacy/retention-policies" in path for path in schema["paths"])
     for path in (
         "/api/v1/privacy/notices/{notice_id}",

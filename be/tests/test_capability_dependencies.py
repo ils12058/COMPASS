@@ -106,15 +106,8 @@ def test_normal_role_and_designation_baselines_remain_dependency_coherent():
     )
     assert effective_capabilities(head) == expected_head
 
-    dpo = make_user("baseline-dpo@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    expected_dpo = (
-        ROLE_CAPABILITY_GRANTS["INSTITUTIONAL_OFFICER"] | DESIGNATION_CAPABILITY_GRANTS["DPO"]
-    )
-    assert effective_capabilities(dpo) == expected_dpo
+    officer = make_user("baseline-officer@example.edu", "INSTITUTIONAL_OFFICER")
+    assert effective_capabilities(officer) == frozenset()
 
     for designation_code, compatible_roles in DESIGNATION_ROLE_COMPATIBILITY.items():
         for role_code in compatible_roles:

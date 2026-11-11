@@ -1,31 +1,31 @@
-# ADR-073: Curated activity retrieval, DPO export and direct staff supervision
+# ADR-073: Curated activity retrieval, Activity export and direct staff supervision
 
 - Status: Proposed
 - Date: 2026-10-04
 - Refines: ADR-006 capability and organizational scope; ADR-011 append-only Audit Trail
-- Preserves: ADR-013 self activity, ADR-069 historical retention registry, ADR-070 capability dependencies and ADR-072 operational retention/disposition
+- Preserves: ADR-013 self activity, ADR-070 capability dependencies and append-only historical audit evidence
 
 ## Purpose and projection boundary
 
 Activity surfaces remain closed, purpose-specific projections of internal evidence. An event is
 invisible unless the surface's explicit action, target, outcome and presenter policy admits it.
 No raw AuditEvent API/browser/export, arbitrary metadata query, IP address, User-Agent or request ID
-is introduced. AuditEvent mutation/deletion protections and retention/disposition semantics are
-unchanged. Curated activity is not the complete Audit Trail.
+is introduced. AuditEvent mutation/deletion protections remain. Historical retention/disposition
+events remain readable after removal of their owning feature. Curated activity is not the complete Audit Trail.
 
 My activity and Security activity retain their existing self-only presenter allowlists and
 page/page_size contracts. Neither accepts another person's scope or gains search, filters or
 export. A separate Supervised staff view provides operational oversight, not staff security history.
 Platform Technical Activity gains retrieval tools without expanding its existing five-action
 allowlist or `platform_operations.view` authority. Privacy & Security Activity keeps all its existing
-safe presentations, including the eleven ADR-072 retention/disposition actions and three historical
+safe presentations, including the eleven historical retention/disposition actions and three historical
 removed-registry actions; CSV uses exactly that same safe projection.
 
 ## Capability plus current direct supervision
 
 `activity.supervised_staff.view` is baseline-granted only to Counselors. Head Guidance receives it
 through the Counselor role, without any designation-based global scope. Student, GSS, IT Admin and
-Institutional Officer/DPO gain no baseline grant. Existing explicit overrides remain effective.
+Institutional Officer gain no baseline grant. Existing explicit overrides remain effective.
 
 The authenticated actor must have the effective capability. Every event additionally requires a
 current StaffSupervision row whose supervisor is that actor and whose staff is the event's actor.
@@ -82,7 +82,7 @@ contents, attached file names and internal delivery/provider details are never p
 | --- | --- | --- |
 | Supervised staff | `search`, `staff_id`, closed `event_type`, `date_from`, `date_to` | None |
 | Platform Technical Activity | `search`, closed `event_type`, `operator` display-name text, `date_from`, `date_to` | None |
-| Privacy & Security Activity | `search`, existing closed `category`, closed `event_type`, `actor` display-name text, `date_from`, `date_to` | DPO CSV with these same criteria |
+| Privacy & Security Activity | `search`, existing closed `category`, closed `event_type`, `actor` display-name text, `date_from`, `date_to` | IT Administrator CSV with these same criteria |
 
 Criteria combine with AND. Search/name text is at most 100 characters, rejects control characters,
 normalizes whitespace and case-folds. Search only evaluates presented fields: supervised static
@@ -113,13 +113,12 @@ empty states, safe validation errors and retry are explicit. Transient refresh f
 last-known data with a warning; access loss hides it. CSV is disabled during pending/refresh/error
 states and is never offered on self, supervised or Platform activity.
 
-## DPO CSV authority, snapshot and audit
+## IT Administrator CSV authority, snapshot and audit
 
-`privacy_governance.activity.export` is baseline-granted only to the DPO designation, and requires
-effective `privacy_governance.view` through ADR-070 dependencies. A view-only account cannot export;
+`privacy_governance.activity.export` is baseline-granted only to IT_ADMIN, and requires
+effective `privacy_governance.activity.view` through ADR-070 dependencies. A view-only account cannot export;
 an export-only grant cannot create view authority; revoking view also disables export. No additional
-MFA step is introduced for this read/export operation. Existing recent-MFA retention mutations are
-unchanged.
+MFA step is introduced for this read/export operation. Notice publication and retirement retain recent MFA.
 
 `GET /api/v1/privacy/activity/export` (`privacyGovernanceExportActivity`) accepts exactly the list's
 six criteria and no paging. One canonical PrivacyActivitySpec supplies both list and export. A

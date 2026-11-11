@@ -435,8 +435,7 @@ def test_denied_actors_and_draft_intakes_are_never_decrypted(world, decryptions)
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
     goa = make_user("enc-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
-    dpo = make_user("enc-dpo@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
+    officer = make_user("enc-officer@example.edu", "INSTITUTIONAL_OFFICER")
     other_student = make_user("enc-other-student@example.edu", "STUDENT")
     decryptions.calls.clear()
 
@@ -445,7 +444,7 @@ def test_denied_actors_and_draft_intakes_are_never_decrypted(world, decryptions)
         (head, 404),
         (goa, 403),
         (world["admin"], 403),
-        (dpo, 403),
+        (officer, 403),
     ):
         client = auth_client(actor)
         assert client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == status

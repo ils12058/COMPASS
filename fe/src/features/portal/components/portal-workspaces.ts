@@ -100,7 +100,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
   const hasReminders = getAppointmentAccess(user).canManage || getGraduateTracerAccess(user).canViewOperational;
   const hasGroupSessions = hasGroupSessionsWorkspace(user);
   // Students with their own Messages, and Guidance staff with Messages for their workload. No other
-  // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.
+  // role or designation (IT Admin, Institutional Officer, Head) adds it.
   const hasMessages = getGuidanceMessagesAccess(user).hasWorkspace;
   const hasAssessmentRecords = getAssessmentRecordsAccess(user).canView;
   const hasInventory = getInventoryAccess(user).hasWorkspace;
@@ -283,10 +283,10 @@ const navigationOrder = {
   },
   "IT Admin": {
     daily: ["accounts", "platform/health", "organization"],
-    more: ["availability", "services"],
+    more: ["availability", "services", "privacy"],
   },
-  "DPO": {
-    daily: ["privacy"],
+  "Institutional Officer": {
+    daily: [],
     more: [],
   },
 } as const;
@@ -297,7 +297,7 @@ export function portalNavigationGroups(user: UserSummary, facultyAvailability?: 
     : user.role === "COUNSELOR" ? (user.designations.includes("HEAD_GUIDANCE_COUNSELOR") ? "Head" : "Counselor")
       : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? "GOA"
         : user.role === "IT_ADMIN" ? "IT Admin"
-          : user.role === "FACULTY" ? "Faculty" : "DPO";
+          : user.role === "FACULTY" ? "Faculty" : "Institutional Officer";
   const order = navigationOrder[profile];
   const remaining = new Map(links.map((link) => [link.href, { ...link, label: portalNavigationLabel(link) }]));
   const take = (slugs: readonly string[]) => slugs.flatMap((slug) => {

@@ -2,6 +2,8 @@
 
 # Resolved CI failure matrix
 
+Historical evidence: the recorded outcomes below describe their original revision, not current privacy permissions or supported features. Current policy is in `be/docs/privacy-governance.md`.
+
 Baseline is FAC-4 implementation `2aed08ac` / integration squash `d9971e89`.
 Hosted failures were inspected at backend run [41252323738](https://github.com/ils12058/COMPASS/actions/runs/41252323738)
 and frontend run [41252325881](https://github.com/ils12058/COMPASS/actions/runs/41252325881),

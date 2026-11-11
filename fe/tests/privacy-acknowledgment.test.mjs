@@ -26,7 +26,7 @@ const notice = (overrides = {}) => ({
   acknowledged: false,
   acknowledged_at: null,
   audiences: ["STUDENT"],
-  body: "Notice text as written by the Data Protection Officer.",
+  body: "Institutionally approved Notice text.",
   code: "PN-1",
   effective_on: "2026-09-01",
   name: "Student Privacy Notice",
@@ -103,7 +103,7 @@ test("a pending notice opens one prompt with its text, the acknowledgment meanin
   assert.match(html, /Privacy notice update/);
   assert.match(html, /Student Privacy Notice/);
   assert.match(html, /Effective/);
-  assert.match(html, /Notice text as written by the Data Protection Officer\./);
+  assert.match(html, /Institutionally approved Notice text\./);
   assert.ok(html.includes(ACKNOWLEDGMENT_HELP.replace(/'/g, "&#x27;")));
   assert.match(html, /It is not consent to all data processing\./);
   assert.match(html, />Acknowledge notice</);

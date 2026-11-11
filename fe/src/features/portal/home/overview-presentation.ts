@@ -180,7 +180,6 @@ export function formatOverviewDate(now: Date): string {
 // The roles that may hold each designation, mirroring the backend's designation compatibility.
 const DESIGNATION_ROLES: Record<DesignationCode, readonly RoleCode[]> = {
   [DesignationCode.HEAD_GUIDANCE_COUNSELOR]: [RoleCode.COUNSELOR],
-  [DesignationCode.DPO]: [RoleCode.INSTITUTIONAL_OFFICER],
   [DesignationCode.GENERAL_GUIDANCE_INTAKE]: [RoleCode.COUNSELOR, RoleCode.GUIDANCE_OFFICE_ASSISTANT],
 };
 

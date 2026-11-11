@@ -14,8 +14,8 @@ import { useStepUpContinuation } from "@/features/account/security/step-up-conti
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
-  canManagePrivacyGovernance,
-  canViewPrivacyGovernance,
+  canManagePrivacyNotices,
+  canViewPrivacyNotices,
 } from "@/features/privacy-governance/privacy-governance-access";
 import {
   privacyErrorMessage,
@@ -38,8 +38,8 @@ export const textLinkClass =
 export function usePrivacyAccess() {
   const { user } = usePortalSession();
   return {
-    canView: canViewPrivacyGovernance(user),
-    canManage: canManagePrivacyGovernance(user),
+    canView: canViewPrivacyNotices(user),
+    canManage: canManagePrivacyNotices(user),
   };
 }
 

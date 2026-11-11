@@ -94,13 +94,9 @@ records this as unresolved (`docs/org-4/institutional-decision-register.md:24`).
 
 ### S10 — No adopted retention category for academic records
 
-**Verified.** The code-owned retention register covers only Graduate Tracer responses and
-E-Counseling recordings/transcripts; all three are `NOT_ADOPTED`
-(`be/compass/privacy_governance/retention_policy_register.py:96-118`). Student affiliation,
-Inventory and Good Moral are not categories in the register.
+COMPASS has no code-owned Retention Policies register. Academic-record retention remains an
+external institutional decision; source deletion does not establish an adopted schedule.
 
-**Consequence:** SAR cannot claim an approved retention period, disposition rule or deletion
-behavior. This is a DPO/Records decision.
 
 ## 2. Duplicates and orphans
 

@@ -34,7 +34,7 @@ capability is not a backend menu instruction.
   recent MFA. The existing independent read-revocation behavior is preserved when requesting an
   inactive-inclusive list.
 - Preserve the Student, GSS, Counselor, and IT Admin baseline read grants. Head Guidance Counselor
-  inherits Counselor reads and retains its management designation grants. DPO grants do not change.
+  inherits Counselor reads and retains its management designation grants. Institutional Officer remains empty by default.
 - Rename persisted `Capability.code` values in place in an explicit data migration. The primary key,
   role/designation grants, and every user override including reason, expiry, and creator survive.
   If old and new rows coexist, migration fails for operator reconciliation instead of merging or

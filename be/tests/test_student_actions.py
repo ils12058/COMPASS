@@ -429,7 +429,7 @@ def test_unexpected_source_failure_propagates_and_no_false_empty(world):
 )
 def test_endpoint_denies_nonstudents(world, role):
     actor = next(
-        u for u in [world.counselor, world.goa, world.admin, world.dpo] if u.role.code == role
+        u for u in [world.counselor, world.goa, world.admin, world.officer] if u.role.code == role
     )
     assert auth_client(actor).get("/api/v1/student-actions").status_code == 403
 

@@ -993,24 +993,20 @@ def test_student_self_api_is_safe_and_operational_api_keeps_referral_content_sep
 
 
 @pytest.mark.django_db
-def test_student_it_admin_and_dpo_cannot_create_or_read_operational_content():
+def test_student_it_admin_and_officer_cannot_create_or_read_operational_content():
     sync_policy()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo@example.edu", "IT_ADMIN")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
     item = create_for(head, student, key="authorization", fingerprint="a" * 64)
 
     assert student.has_capability("call_slips.view_self")
     assert not student.has_capability("call_slips.manage")
     assert not admin.has_capability("call_slips.view")
-    assert not dpo.has_capability("call_slips.view")
+    assert not officer.has_capability("call_slips.view")
 
-    for user in (admin, dpo):
+    for user in (admin, officer):
         client = auth_client(user)
         assert client.get("/api/v1/call-slips").status_code == 403
         assert client.get(f"/api/v1/call-slips/{item.pk}").status_code == 403

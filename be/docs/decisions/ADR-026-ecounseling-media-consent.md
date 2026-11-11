@@ -83,7 +83,7 @@ The Student capability is `ecounseling.consent_self`; the assigned Counselor med
 decide, and withdraw only their own session consent. A Counselor may request consent and control media
 only for their assigned Appointment. Head Guidance receives no designation-wide bypass; a Head who is
 the assigned Counselor acts through ordinary Counselor authority. Guidance Services Staff, IT Admin,
-and DPO receive no media-control or consent-decision authority by default.
+and Institutional Officer receive no media-control or consent-decision authority by default.
 
 A consent request is atomic across the requested scopes. Duplicate scopes are rejected. Existing
 pending/approved rows are returned idempotently, while denied or withdrawn scopes cannot be silently
@@ -194,7 +194,7 @@ separates institutional consent truth from provider capture state, supports dura
 provider failures, and stores only minimal lifecycle metadata.
 
 The remaining provider-level recording-enablement limitation is documented rather than hidden. Media
-access, retention, deletion, institutional object storage, DPO privacy-governance workflows, frontend
+access, retention, deletion, institutional object storage, administrative privacy workflows, frontend
 consent notice text, and any stronger trusted-participant/bot provider architecture remain separate
 future decisions.
 

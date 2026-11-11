@@ -13,8 +13,7 @@
   [ADR-068](ADR-068-staging-demo-dataset-seeder.md) and
   [ADR-095](ADR-095-staging-demo-dataset-v2-and-pre-deployment-validation-baseline.md) (kept as
   history).
-- Preserves: ADR-011 append-only Audit Trail and historical action vocabulary; ADR-045/061
-  Privacy Notices; ADR-115 code-owned retention oversight; ADR-092 custody transfer; every
+- Preserves: ADR-011 append-only Audit Trail and historical action vocabulary; Privacy Notices and exact-revision acknowledgments; ADR-092 custody transfer; every
   encryption envelope, keyring and rotation contract; all authorization, consent and lifecycle
   rules.
 

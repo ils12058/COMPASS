@@ -69,7 +69,7 @@ def world():
         "head": "COUNSELOR",
         "goa": "GUIDANCE_OFFICE_ASSISTANT",
         "it": "IT_ADMIN",
-        "dpo": "INSTITUTIONAL_OFFICER",
+        "officer": "INSTITUTIONAL_OFFICER",
     }
     people = {
         name: User.objects.create_user(
@@ -81,7 +81,7 @@ def world():
         )
         for name, role in roles.items()
     }
-    for name, designation in (("head", "HEAD_GUIDANCE_COUNSELOR"), ("dpo", "DPO")):
+    for name, designation in (("head", "HEAD_GUIDANCE_COUNSELOR"),):
         UserDesignation.objects.create(
             user=people[name], designation=Designation.objects.get(code=designation)
         )
@@ -236,7 +236,7 @@ def test_allowlisted_actions_have_exact_viewer_relationships(world, action):
         assert ids(world["head"]) == []
     assert ids(world["unrelated"]) == []
     assert ids(world["goa"]) == []
-    assert ids(world["dpo"]) == []
+    assert ids(world["officer"]) == []
     assert ids(world["it"]) == []
     assert get_security_activity(actor).items == ()
 
@@ -384,7 +384,7 @@ def test_revoked_read_capabilities_hide_previously_eligible_events(world, viewer
     assert ids(actor) == []
 
 
-@pytest.mark.parametrize("viewer", ["dpo", "it"])
+@pytest.mark.parametrize("viewer", ["officer", "it"])
 def test_administrative_roles_cannot_gain_domain_feed_through_capability_override(world, viewer):
     actor = world[viewer]
     for code in (

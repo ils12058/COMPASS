@@ -9,7 +9,7 @@ import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { canManageOrganization, canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
-import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
+import { canManagePrivacyNotices, canViewPrivacyNotices, canViewPrivacyActivity } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { canImportStudentAcademics, canViewStudentAcademics } from "@/features/student-academics/student-academics-access";
 import { portalNavigationLabel, portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
@@ -93,12 +93,10 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
   deep("/portal/organization", "/student-academics/import", "Import academic roster", canImportStudentAcademics(user), ["student roster", "import placement", "csv"]);
   deep("/portal/accounts", "/new", "Create account"); // Accounts layout requires accounts.manage.
   deep("/portal/accounts", "/import", "Import accounts");
-  const privacyView = canViewPrivacyGovernance(user);
-  const retentionView = canViewRetention(user);
+  const privacyView = canViewPrivacyNotices(user);
   deep("/portal/privacy", "/notices", "Privacy Notices", privacyView, ["privacy notice"]);
-  deep("/portal/privacy", "/notices/new", "Create Privacy Notice", privacyView && canManagePrivacyGovernance(user));
-  deep("/portal/privacy", "/retention", "Retention Policies", retentionView, ["retention", "retention policy"]);
-  deep("/portal/privacy", "/activity", "Privacy & Security Activity", privacyView, ["privacy activity"]);
+  deep("/portal/privacy", "/notices/new", "Create Privacy Notice", privacyView && canManagePrivacyNotices(user));
+  deep("/portal/privacy", "/activity", "Privacy & Security Activity", canViewPrivacyActivity(user), ["privacy activity"]);
   // Platform Operations' root already opens Health. Keep its dock label and a canonical Health
   // entry; both address the same stable route (as Organization and Structure do).
   const platform = roots.find((root) => root.href === "/portal/platform/health");

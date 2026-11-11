@@ -69,11 +69,6 @@ DESIGNATION_DEFINITIONS = (
         description="Institutional designation for the head guidance counselor appointment.",
     ),
     DesignationDefinition(
-        code="DPO",
-        name="Data Protection Officer",
-        description="Institutional designation for the data protection officer appointment.",
-    ),
-    DesignationDefinition(
         code="GENERAL_GUIDANCE_INTAKE",
         name="General Guidance Intake",
         description="Institutional designation for general Guidance Office intake.",
@@ -251,17 +246,14 @@ CAPABILITY_DEFINITIONS = (
         description="View selected operational activity within current direct StaffSupervision.",
     ),
     CapabilityDefinition(
+        code="privacy_governance.activity.view",
+        name="View privacy and security activity",
+        description="View curated privacy/security events without administrative Notice access.",
+    ),
+    CapabilityDefinition(
         code="privacy_governance.activity.export",
         name="Export privacy and security activity",
         description="Export the bounded curated privacy/security activity dataset as CSV.",
-    ),
-    CapabilityDefinition(
-        code="privacy_governance.retention.view",
-        name="View retention policy oversight",
-        description=(
-            "View the retention periods recorded in COMPASS. Grants no rule, hold, "
-            "approval, or disposition authority."
-        ),
     ),
     CapabilityDefinition(
         code="accounts.view",
@@ -298,15 +290,13 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
-        code="privacy_governance.view",
-        name="View privacy governance",
-        description=(
-            "View COMPASS Privacy Notices and curated privacy/security oversight activity."
-        ),
+        code="privacy_governance.notices.view",
+        name="View administrative Privacy Notices",
+        description="View administrative Privacy Notices, drafts and revision history.",
     ),
     CapabilityDefinition(
-        code="privacy_governance.manage",
-        name="Manage privacy governance",
+        code="privacy_governance.notices.manage",
+        name="Manage Privacy Notices",
         description="Manage COMPASS Privacy Notices.",
     ),
     CapabilityDefinition(
@@ -707,6 +697,10 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "FACULTY": FACULTY_CAPABILITY_CEILING,
     "IT_ADMIN": frozenset(
         {
+            "privacy_governance.notices.view",
+            "privacy_governance.notices.manage",
+            "privacy_governance.activity.view",
+            "privacy_governance.activity.export",
             "accounts.view",
             "accounts.manage",
             "institutional_designations.manage",
@@ -848,6 +842,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset(
         {
+            "privacy_governance.activity.view",
             "assessment_records.view",
             "assessment_records.manage",
             "organization.manage",
@@ -869,20 +864,11 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "reports.view",
         }
     ),
-    "DPO": frozenset(
-        {
-            "privacy_governance.activity.export",
-            "privacy_governance.retention.view",
-            "privacy_governance.view",
-            "privacy_governance.manage",
-        }
-    ),
     "GENERAL_GUIDANCE_INTAKE": frozenset({"guidance_messages.intake"}),
 }
 
 DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset({"COUNSELOR"}),
-    "DPO": frozenset({"INSTITUTIONAL_OFFICER"}),
     "GENERAL_GUIDANCE_INTAKE": frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}),
 }
 
@@ -927,7 +913,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.case_coordination.manage": frozenset(
         {"guidance_messages.case_coordination.view"}
     ),
-    "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
+    "privacy_governance.activity.export": frozenset({"privacy_governance.activity.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
     "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
     "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),
@@ -945,7 +931,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "referrals.manage": frozenset({"referrals.view"}),
     "call_slips.manage": frozenset({"call_slips.view"}),
     "availability.manage_self": frozenset({"availability.view"}),
-    "privacy_governance.manage": frozenset({"privacy_governance.view"}),
+    "privacy_governance.notices.manage": frozenset({"privacy_governance.notices.view"}),
     "platform_operations.manage": frozenset({"platform_operations.view"}),
 }
 

@@ -108,7 +108,7 @@ for (const [role, label] of [["STUDENT", "Student with view_self"], ["GUIDANCE_O
 
 for (const [label, account] of [
   ["IT Admin", messagesAccount("IT_ADMIN")],
-  ["DPO designation", messagesAccount("IT_ADMIN", { designations: ["DPO"] })],
+  ["Institutional Officer", messagesAccount("IT_ADMIN", { designations: [] })],
   ["Head designation without the capability", messagesAccount("COUNSELOR", { designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: ["appointments.view_self"] })],
 ]) {
   const world = messagesWorld(staffWorld(), account);

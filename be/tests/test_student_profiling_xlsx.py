@@ -10,7 +10,6 @@ import pytest
 from django.test import Client
 from openpyxl import load_workbook
 
-from compass.accounts.models import Designation, UserDesignation
 from compass.inventory.models import CivilStatusCategory, Sex
 from compass.organization.models import (
     AcademicYear,
@@ -135,11 +134,7 @@ def test_xlsx_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     staff = make_user("staff-xlsx@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student-xlsx@example.edu", "STUDENT")
     admin = make_user("admin-xlsx@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo-xlsx@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("officer-xlsx@example.edu", "INSTITUTIONAL_OFFICER")
 
     response = auth_client(head).get("/api/v1/reports/student-profile/xlsx")
     assert response.status_code == 200
@@ -149,7 +144,7 @@ def test_xlsx_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     )
     assert response.content == b"synthetic-xlsx-payload"
 
-    for user in (counselor, staff, student, admin, dpo):
+    for user in (counselor, staff, student, admin, officer):
         assert auth_client(user).get("/api/v1/reports/student-profile/xlsx").status_code == 403
     assert Client().get("/api/v1/reports/student-profile/xlsx").status_code == 401
 

@@ -61,7 +61,7 @@ snapshots; later profile updates do not rewrite responses. No new audit answer/s
 content or notification/email/export/PDF pipeline is introduced.
 
 Existing feedback.view_customer_feedback and feedback.view_csm checks precede selection/decryption.
-Student, ordinary Counselor, GSS, Admin, Institutional Officer and DPO have no raw response access.
+Student, ordinary Counselor, GSS, Admin, Institutional Officer have no raw response access.
 Head list/search/filter/pagination selects only queryable metadata without decryption. Detail decrypts
 only the selected authorized row and retains the existing logical API shape. Revoked capabilities
 remain decisive. Required unreadable detail returns generic 500 feedback_confidential_content_unavailable,

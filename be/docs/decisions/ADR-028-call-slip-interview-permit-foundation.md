@@ -110,7 +110,7 @@ importing Referral private helpers or treating
 - Guidance Services Staff: scope inherited from the current supervising Counselor.
 - Staff supervised by Head inherit Head's institution-wide operational scope.
 - Student: self-view only.
-- IT Admin and DPO: no Call Slip content access by default.
+- IT Admin and Institutional Officer: no Call Slip content access by default.
 
 ### Optional Referral provenance
 
@@ -176,7 +176,7 @@ Capabilities:
 - Counselor: `call_slips.view`, `call_slips.manage`
 - Guidance Services Staff: `call_slips.view`, `call_slips.manage`
 - Student: `call_slips.view_self`
-- IT Admin/DPO: none
+- IT Admin/Institutional Officer: none
 
 Deployments continue to run `python manage.py sync_identity_policy`.
 

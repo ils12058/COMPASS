@@ -7,7 +7,7 @@ import pytest
 from django.db import IntegrityError
 
 from compass.privacy_governance import expansion
-from tests.test_privacy_governance import auth_client, make_dpo, post_json, sync_policy
+from tests.test_privacy_governance import auth_client, make_privacy_admin, post_json, sync_policy
 from tests.test_privacy_governance_expansion import notice_payload
 
 
@@ -20,9 +20,9 @@ def _integrity_error(cause: Exception) -> IntegrityError:
 @pytest.mark.django_db
 def test_value_the_database_cannot_store_is_a_validation_error():
     sync_policy()
-    dpo = auth_client(make_dpo(), recent_mfa=True)
+    admin = auth_client(make_privacy_admin(), recent_mfa=True)
     response = post_json(
-        dpo,
+        admin,
         "/api/v1/privacy/notices",
         notice_payload() | {"name": "Contains a NUL\u0000byte"},
     )
@@ -43,14 +43,14 @@ def test_value_the_database_cannot_store_is_a_validation_error():
 )
 def test_uncaught_integrity_errors_are_classified_by_sqlstate(monkeypatch, cause, status, code):
     sync_policy()
-    dpo = auth_client(make_dpo())
-    dpo.raise_request_exception = False
+    admin = auth_client(make_privacy_admin())
+    admin.raise_request_exception = False
 
     def reject(**kwargs):
         raise _integrity_error(cause)
 
     monkeypatch.setattr(expansion, "list_notices", reject)
-    response = dpo.get("/api/v1/privacy/notices")
+    response = admin.get("/api/v1/privacy/notices")
 
     assert response.status_code == status
     body = response.json()["error"]

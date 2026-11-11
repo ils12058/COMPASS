@@ -241,7 +241,7 @@ def test_global_interleaved_rank_and_pages(world):
     assert [i.id for i in action] == sorted(i.id for i in action)
 
 
-@pytest.mark.parametrize("actor", ["student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["student", "admin", "officer"])
 def test_other_roles_are_denied(world, actor):
     assert auth_client(getattr(world, actor)).get("/api/v1/work").status_code == 403
 

@@ -20,7 +20,7 @@ from django.test import override_settings
 from django.utils import timezone
 from pypdf import PdfReader
 
-from compass.accounts.models import Capability, Designation, UserCapabilityOverride, UserDesignation
+from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.exit_interviews import api, documents, services
@@ -386,7 +386,8 @@ def test_lists_search_history_status_and_good_moral_prerequisite_need_no_decrypt
 
 
 @pytest.mark.parametrize(
-    "actor_kind", ["other-student", "head-draft", "goa", "counselor", "it", "dpo", "revoked-owner"]
+    "actor_kind",
+    ["other-student", "head-draft", "goa", "counselor", "it", "officer", "revoked-owner"],
 )
 def test_unauthorized_detail_pdf_and_draft_edits_fail_before_decryption(
     world, monkeypatch, actor_kind
@@ -408,13 +409,9 @@ def test_unauthorized_detail_pdf_and_draft_edits_fail_before_decryption(
             "goa": "GUIDANCE_OFFICE_ASSISTANT",
             "counselor": "COUNSELOR",
             "it": "IT_ADMIN",
-            "dpo": "INSTITUTIONAL_OFFICER",
+            "officer": "INSTITUTIONAL_OFFICER",
         }[actor_kind]
         actor = make_user(f"denied-{actor_kind}@example.edu", role=role)
-        if actor_kind == "dpo":
-            UserDesignation.objects.create(
-                user=actor, designation=Designation.objects.get(code="DPO")
-            )
     patch_readers(monkeypatch)
     prefix = (
         "/api/v1/exit-interviews/me"
@@ -539,8 +536,6 @@ def test_full_draft_put_does_not_repair_corrupt_existing_content(world):
 @pytest.mark.parametrize("role", ["STUDENT", "COUNSELOR", "IT_ADMIN", "INSTITUTIONAL_OFFICER"])
 def test_opportunity_manager_authorization_precedes_note_decryption(world, monkeypatch, role):
     actor = make_user(f"note-denied-{role}@example.edu", role=role)
-    if role == "INSTITUTIONAL_OFFICER":
-        UserDesignation.objects.create(user=actor, designation=Designation.objects.get(code="DPO"))
     monkeypatch.setattr(api, "read_opportunity_note", fail_decrypt)
     client = auth_client(actor)
     assert client.get("/api/v1/exit-interviews/opportunities").status_code == 403

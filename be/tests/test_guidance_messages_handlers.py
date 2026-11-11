@@ -136,7 +136,7 @@ def test_capability_override_removing_manage_makes_a_candidate_ineligible(world,
 
 
 # H. Unauthorized requesters and I. Counseling threads are concealed.
-@pytest.mark.parametrize("actor", ["student", "other_student", "other", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["student", "other_student", "other", "admin", "officer"])
 def test_unauthorized_requesters_are_concealed(world, actor):
     thread, _ = office(world)
     response = auth_client(getattr(world, actor)).get(

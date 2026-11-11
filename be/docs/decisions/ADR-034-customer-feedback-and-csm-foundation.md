@@ -124,7 +124,7 @@ Head Guidance receives the raw-review capabilities through the
 - `feedback.view_customer_feedback`
 - `feedback.view_csm`
 
-Ordinary Counselors, Guidance Services Staff, IT Admin, and the DPO designation receive no raw
+Ordinary Counselors, Guidance Services Staff, IT Admin, and the Institutional Officer role receive no raw
 Feedback content access by default. Read APIs are summary/detail separated so list responses avoid
 unnecessary long free text and optional CSM email.
 

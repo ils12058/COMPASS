@@ -106,7 +106,7 @@ institution has not approved any wording.
 
 There is no `TemplateMessage`, automated reply, scheduled or delayed send, broadcast, bulk send,
 reminder, rule, AI choice, merge variable or template DSL, and no Task, Case, FollowUp, work queue or
-approval workflow. Templates are not added to retention executors (ADR-072) and get no retention
+approval workflow. Templates have no in-app retention executor and get no retention
 category. No Notification is sent per Message or template. One migration adds the template table;
 `GuidanceThread`, `GuidanceMessage` and existing Message data are unchanged.
 

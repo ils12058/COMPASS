@@ -66,7 +66,7 @@ unique constraint and transactional service guarantee at most one current Academ
 Academic Year is normal business/institutional configuration, not deployment-only configuration.
 The narrow API lists years, creates a year, and sets one current. Head Guidance Counselor receives
 explicit `academic_years.view` and `academic_years.manage`; ordinary Counselor receives view only.
-Mutations require recent MFA. IT Admin, Student, GSS, and DPO do not receive manage authority by
+Mutations require recent MFA. IT Admin, Student, GSS, and Institutional Officer do not receive manage authority by
 default. Changing the current year does not move or rewrite any historical Inventory. Audit records
 only safe year labels through `academic_year.created` and `academic_year.current_changed`.
 
@@ -88,7 +88,7 @@ form values therefore live explicitly in the Inventory. Student age is not redun
 of birth is stored instead. The Student FK remains the canonical person relationship.
 
 Student self-service receives only `inventory.view_self` and `inventory.manage_self`. No Counselor,
-Head, GSS, DPO, or IT Admin Inventory-content endpoint is introduced in this slice because the
+Head, GSS, Institutional Officer, or IT Admin Inventory-content endpoint is introduced in this slice because the
 resource/time assignment rule for such highly sensitive baseline data is not sufficiently grounded.
 Submitted records are locked; there is no delete or administrative reopen workflow yet.
 

@@ -1,4 +1,4 @@
-"""Closed DPO privacy/security activity projection over the shared Audit Trail."""
+"""Closed privacy/security activity projection over the shared Audit Trail."""
 
 from __future__ import annotations
 

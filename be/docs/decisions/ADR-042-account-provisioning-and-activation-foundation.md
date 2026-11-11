@@ -11,7 +11,7 @@ Designations are separate many-to-many appointments.
 
 Before this change, the canonical primary roles were IT Administrator, Counselor, Guidance
 Services Staff, and Student. This created an identity problem for a university-level officer such
-as a Data Protection Officer: assigning IT_ADMIN solely because the account required a primary role
+with a generic Institutional Officer identity: assigning IT_ADMIN solely because the account required a primary role
 would falsely imply platform-administration authority.
 
 The account-management service already provided a serialized administrative mutation boundary,
@@ -53,7 +53,7 @@ Designation/Role compatibility is code-owned:
 | Designation | Allowed primary Role |
 | --- | --- |
 | `HEAD_GUIDANCE_COUNSELOR` | `COUNSELOR` |
-| `DPO` | `INSTITUTIONAL_OFFICER` |
+| `GENERAL_GUIDANCE_INTAKE` | `COUNSELOR`, `GUIDANCE_OFFICE_ASSISTANT` |
 
 Every canonical Designation must have a compatibility definition and every referenced Role must be
 canonical. Unknown combinations fail closed.
@@ -62,7 +62,7 @@ Normal Account Management services reject incompatible assignment and reject a R
 would invalidate an existing Designation. They never silently remove the Designation.
 
 The existing Head Guidance routing fallback remains explicitly
-`COUNSELOR + HEAD_GUIDANCE_COUNSELOR`. DPO and INSTITUTIONAL_OFFICER status do not create GCO
+`COUNSELOR + HEAD_GUIDANCE_COUNSELOR`. INSTITUTIONAL_OFFICER status do not create GCO
 routing scope.
 
 No database-editable compatibility table is introduced.
@@ -85,8 +85,7 @@ Designation assignment and removal require all of:
 - compatibility validation where assigning
 - synchronous audit
 
-DPO receives no capabilities from the DPO Designation and specifically does not receive designation
-management authority by virtue of being DPO.
+Institutional Officer receives zero default domain capabilities, including designation management.
 
 Existing designation assignment/removal audit action codes remain authoritative.
 
@@ -126,7 +125,7 @@ The first slice deliberately rejects every other header. In particular, CSV cann
 - staff supervision
 - confidential/profile data
 
-High-trust DPO and Head Guidance appointments therefore cannot be assigned through CSV.
+Head Guidance and General Guidance Intake appointments therefore cannot be assigned through CSV.
 
 ### Bounds and parsing
 
@@ -284,7 +283,7 @@ must first resolve any relationship state that the existing validators already p
 Availability and active/future Appointment blockers likewise remain authoritative.
 
 No relationship row is automatically deleted and no GCO scope is inferred from
-INSTITUTIONAL_OFFICER or DPO.
+INSTITUTIONAL_OFFICER.
 
 The generated OpenAPI contract remains committed source and exact-head CI must validate the
 contract together with the implementation before merge.
@@ -301,7 +300,7 @@ remains intact.
 
 This ADR deliberately does not add:
 
-- DPO privacy-governance feature set
+- Privacy Notice administration and Activity permission policy
 - COP modeling
 - Student organizational-affiliation import
 - SIS/HR synchronization

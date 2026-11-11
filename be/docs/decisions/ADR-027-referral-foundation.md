@@ -97,7 +97,7 @@ Referral defines a resource-scope rule using current Organization relationships:
 - Head Guidance Counselor: institution-wide Referral scope.
 - ordinary Counselor: Students currently affiliated with colleges assigned to that Counselor.
 - Guidance Services Staff: scope inherited from the currently supervising Counselor.
-- Student, IT Admin, and DPO: no Referral-content capability by default.
+- Student, IT Admin, and Institutional Officer: no Referral-content capability by default.
 
 The domain deliberately does not reuse `effective_responsibility_colleges()` as an authorization
 decision because that Organization helper documents itself as routing/default responsibility only.

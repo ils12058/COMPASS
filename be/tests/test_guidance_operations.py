@@ -62,7 +62,7 @@ def test_active_staff_access_without_new_capability(world, actor):
     assert not Capability.objects.filter(code__startswith="guidance_dashboard.").exists()
 
 
-@pytest.mark.parametrize("actor", ["student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["student", "admin", "officer"])
 def test_unsupported_identity_is_403_even_with_capability_override(world, actor):
     user = getattr(world, actor)
     UserCapabilityOverride.objects.create(

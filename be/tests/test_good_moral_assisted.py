@@ -11,7 +11,7 @@ import pytest
 from django.db import close_old_connections, transaction
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import Role, User
 from compass.accounts.services import set_user_capability_override
 from compass.activity.projections import get_my_activity, get_security_activity
 from compass.audit.context import AuditContext
@@ -56,7 +56,7 @@ def world():
         "other": "STUDENT",
         "unrelated": "COUNSELOR",
         "it": "IT_ADMIN",
-        "dpo": "INSTITUTIONAL_OFFICER",
+        "officer": "INSTITUTIONAL_OFFICER",
     }
     people = {
         key: User.objects.create_user(
@@ -71,9 +71,6 @@ def world():
     }
     people["graduate"].student_lifecycle_status = "GRADUATED"
     people["graduate"].save(update_fields=["student_lifecycle_status"])
-    UserDesignation.objects.create(
-        user=people["dpo"], designation=Designation.objects.get(code="DPO")
-    )
     year = make_academic_year()
     make_placement(people["student"])
     people["inventory"] = make_inventory(people["student"], year)
@@ -139,7 +136,7 @@ def test_operational_creation_and_student_ownership(world, actor):
     assert auth_client(world["other"]).get(f"/api/v1/good-moral/me/{item.pk}").status_code == 404
 
 
-@pytest.mark.parametrize("actor", ["student", "graduate", "it", "dpo"])
+@pytest.mark.parametrize("actor", ["student", "graduate", "it", "officer"])
 @pytest.mark.parametrize("override", [False, True])
 def test_non_operational_roles_cannot_initiate_even_with_override(world, actor, override):
     if override:
@@ -473,7 +470,7 @@ def test_activity_relationships_and_current_authority(world, actor):
         world["student"]
     )
     assert "You started a Good Moral request for a Student." in descriptions(world[actor])
-    for key in ["other", "unrelated", "it", "dpo"]:
+    for key in ["other", "unrelated", "it", "officer"]:
         assert not any("Good Moral" in row for row in descriptions(world[key]))
     assert not get_security_activity(world["student"]).items
     assert not get_security_activity(world[actor]).items
