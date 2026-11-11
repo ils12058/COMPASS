@@ -13,6 +13,7 @@ import { useFacultyAvailability } from "@/features/faculty-referrals/availabilit
 import { FacultySubmissionList } from "@/features/faculty-referrals/records";
 import { FacultyLoading } from "@/features/faculty-referrals/shared";
 import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
+import { HomeGuideAction } from "@/features/portal/orientation/portal-orientation";
 
 export function FacultyHome({ user }: { user: UserSummary }) {
   const query = useFacultyAvailability(user);
@@ -24,13 +25,13 @@ export function FacultyHome({ user }: { user: UserSummary }) {
 export function FacultyHomeView({ user, availability, children }: { user: UserSummary; availability?: FacultyReferralAvailability; children: ReactNode }) {
   const home = user.faculty_affiliation;
   return <section className={`${pageSheetWidth} @container/faculty-home`} aria-labelledby="faculty-home-heading">
-    <PageHeader title="Faculty Home" headingId="faculty-home-heading" description={`Welcome, ${user.first_name || "Faculty"}.`} actions={facultyReferralAccess(user).submit && facultySubmissionAvailable(availability) ? <PageActionLink href={facultySubmitPath} label="Submit Referral" icon={Forward} /> : undefined} />
+    <div data-orientation="home"><PageHeader title="Faculty Home" headingId="faculty-home-heading" description={`Welcome, ${user.first_name || "Faculty"}.`} actions={<><HomeGuideAction />{facultyReferralAccess(user).submit && facultySubmissionAvailable(availability) ? <PageActionLink href={facultySubmitPath} label="Submit Referral" icon={Forward} /> : null}</>} /></div>
     <div className="grid items-start gap-5 @[54rem]/faculty-home:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="min-w-0">{children}</div>
       <Panel><PanelHeader title="Your Faculty account" /><PanelBody className="space-y-4 text-sm">
         <dl><dt className="text-muted">Home College</dt><dd className="mt-1 font-medium [overflow-wrap:anywhere]">{home?.college_name ? `${home.campus_name} · ${home.college_name}` : "Not assigned"}</dd></dl>
         {!home?.active ? <p className="text-muted">Contact the Guidance Office to confirm your institutional affiliation.</p> : null}
-        <nav aria-label="Your account" className="flex flex-wrap gap-x-5 gap-y-1">
+        <nav data-orientation-shortcuts="" aria-label="Your account" className="flex flex-wrap gap-x-5 gap-y-1">
           <GuardedPortalLink href="/portal/notifications" className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline"><Bell size={18} aria-hidden="true" />Notifications</GuardedPortalLink>
           <GuardedPortalLink href="/portal/account/profile" className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline"><UserRound size={18} aria-hidden="true" />My profile</GuardedPortalLink>
         </nav>

@@ -8,7 +8,7 @@ export function HomeShortcuts({ title, titleId, destinations, illustration }: {
   illustration?: string;
 }) {
   if (!destinations.length) return null;
-  return <Panel className="@container" aria-labelledby={titleId}>
+  return <Panel data-orientation-shortcuts="" className="@container" aria-labelledby={titleId}>
     {illustration ? <div className="flex items-center gap-3 pb-1 pr-4 pt-3 sm:pr-5">
       <PanelHeader className="min-w-0 flex-1 border-b-0 py-0" title={title} titleId={titleId} />
       <Image src={illustration} width={512} height={512} alt="" aria-hidden="true" sizes="80px"

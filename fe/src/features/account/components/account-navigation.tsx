@@ -10,6 +10,7 @@ const sections = [
   { href: "/portal/account/security", label: "Security" },
   { href: "/portal/account/activity", label: "Activity" },
   { href: "/portal/account/preferences", label: "Preferences" },
+  { href: "/portal/account/help", label: "Help & guides" },
   { href: "/portal/account/privacy", label: "Privacy" },
 ] as const;
 

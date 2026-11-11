@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, UserRound } from "lucide-react";
+import { Compass, LogOut, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -80,6 +80,12 @@ export function PortalUserMenu() {
         <GuardedPortalLink href="/portal/account/profile">
           <UserRound size={17} className="mr-2" aria-hidden="true" />
           Account
+        </GuardedPortalLink>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <GuardedPortalLink href="/portal/account/help" prefetch={false}>
+          <Compass size={17} className="mr-2" aria-hidden="true" />
+          Help & guides
         </GuardedPortalLink>
       </DropdownMenuItem>
       <DropdownMenuSeparator className="my-1 h-px bg-border" />

@@ -41,7 +41,8 @@ for (const [name, account] of Object.entries({ student, staff, counselor, head, 
       for (const root of group.links) assert.ok(index.some((item) => item.href === root.href && item.label === portalNavigationLabel(root)));
     }
     assert.equal(index[0].label, "Home");
-    assert.equal(index.filter((item) => item.group === "Account").length, 5);
+    assert.equal(index.filter((item) => item.group === "Account").length, 6);
+    assert.ok(index.some(item => item.href === "/portal/account/help" && item.label === "Help & guides"));
     for (const item of index) {
       assert.ok(existsSync(new URL(`../src/app/(portal)${item.href}/page.tsx`, import.meta.url)), item.href);
       assert.doesNotMatch(item.href, /\[|\]|\?|[0-9a-f]{8}-/);

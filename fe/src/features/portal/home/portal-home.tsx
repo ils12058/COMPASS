@@ -5,6 +5,7 @@ import { CalendarPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PageActionLink } from "@/components/ui/page-action";
+import { HomeGuideAction } from "@/features/portal/orientation/portal-orientation";
 import { PageHeader } from "@/components/ui/page-header";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
@@ -85,6 +86,7 @@ function OperationalPortalHome() {
 
   return (
     <section aria-labelledby="portal-overview-heading" className={`${pageSheetWidth} ${user.role === "STUDENT" ? scriptFontVariable : ""}`}>
+      <div data-orientation="home">
       <PageHeader
         title={user.role === "STUDENT"
           ? <span className="inline-block max-w-full font-script text-3xl font-semibold leading-[1.1] [overflow-wrap:anywhere] sm:text-4xl">{getOverviewGreeting(user, now)}</span>
@@ -92,15 +94,18 @@ function OperationalPortalHome() {
         headingId="portal-overview-heading"
         context={user.role === "STUDENT" ? "Home" : undefined}
         description={[formatOverviewDate(now), user.role === "GUIDANCE_OFFICE_ASSISTANT" ? null : roleContext].filter(Boolean).join(" · ")}
-        actions={primaryAction ? (
+        actions={<>
+          <HomeGuideAction />
+          {primaryAction ? (
           <PageActionLink
             href={primaryAction.href}
             icon={CalendarPlus}
             label={user.role === "STUDENT" ? "Book Appointment" : primaryAction.shortLabel}
             labelDetail={user.role === "STUDENT" ? undefined : primaryAction.labelDetail}
           />
-        ) : undefined}
+        ) : null}</>}
       />
+      </div>
 
       {user.role === "STUDENT" ? (
         <StudentHome user={user} attention={attention} summary={summaryPanel} />

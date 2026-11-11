@@ -10,7 +10,7 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
   if (!data.isVisible) return null;
 
   return (
-    <Panel aria-labelledby="overview-attention-heading">
+    <Panel data-orientation-attention="Needs your attention" aria-labelledby="overview-attention-heading">
       <PanelHeader title="Needs your attention" titleId="overview-attention-heading" />
       {data.viewAllWork ? <div className="border-b border-border px-4 sm:px-5"><Link href="/portal/work" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View all work</Link></div> : null}
       {data.viewAllActions ? <div className="border-b border-border px-4 sm:px-5"><Link href="/portal/actions" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View all actions</Link></div> : null}

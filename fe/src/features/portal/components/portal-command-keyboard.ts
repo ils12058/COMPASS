@@ -7,7 +7,7 @@ export function isPortalCommandShortcut(event: ShortcutEvent): boolean {
 
 export function hasOtherPortalModal(document: Document, ownDialog: HTMLElement | null): boolean {
   // Radix dialogs and confirmations carry data-state; FloatingListTools uses native <dialog>.
-  return [...document.querySelectorAll('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], dialog[open]')]
+  return [...document.querySelectorAll('[role="dialog"][data-state="open"]:not([aria-modal="false"]), [role="alertdialog"][data-state="open"], dialog[open]')]
     .some((element) => element !== ownDialog);
 }
 

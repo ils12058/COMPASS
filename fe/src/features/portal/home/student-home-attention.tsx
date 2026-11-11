@@ -12,7 +12,7 @@ import type { OverviewAttentionData } from "@/features/portal/home/overview-work
 // order. Only a successful empty read can establish that no current actions need attention.
 export function StudentHomeAttention({ data }: { data: OverviewAttentionData }) {
   return (
-    <Panel className="@container [overflow-wrap:anywhere]" aria-labelledby="overview-attention-heading">
+    <Panel data-orientation-attention="Needs your attention" className="@container [overflow-wrap:anywhere]" aria-labelledby="overview-attention-heading">
       <PanelHeader
         title="Needs your attention"
         titleId="overview-attention-heading"

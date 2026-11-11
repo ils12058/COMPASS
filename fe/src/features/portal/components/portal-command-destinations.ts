@@ -53,6 +53,7 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
     ["security", "Security", ["password", "mfa", "2fa", "authenticator", "sessions", "sign in"]],
     ["activity", "Activity", ["my activity", "security activity", "supervised staff activity"]],
     ["preferences", "Preferences", ["settings"]],
+    ["help", "Help & guides", ["guide", "tour", "orientation"]],
     ["privacy", "Privacy", ["my privacy notices"]],
   ] as const) {
     destinations.push({ href: `/portal/account/${slug}`, label, breadcrumb: `Account › ${label}`, group: "Account", icon: UserRound, keywords });

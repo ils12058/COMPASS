@@ -126,7 +126,7 @@ function CounselorMyWork({ data }: { data: OverviewAttentionData }) {
   const initialError = data.items.some((item) => item.id === "work-unavailable");
 
   return (
-    <Panel aria-labelledby="counselor-work-heading">
+    <Panel data-orientation-attention="My work" aria-labelledby="counselor-work-heading">
       <PanelHeader
         title="My work"
         titleId="counselor-work-heading"

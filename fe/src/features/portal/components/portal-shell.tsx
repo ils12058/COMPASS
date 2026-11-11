@@ -17,6 +17,7 @@ import { PortalCommandPalette } from "@/features/portal/components/portal-comman
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { cn } from "@/lib/utils/cn";
+import { PortalOrientationProvider } from "@/features/portal/orientation/portal-orientation";
 
 const DOCK_NAVIGATION_ID = "portal-dock-navigation";
 
@@ -52,6 +53,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const [dockExpanded, setDockExpanded] = useState(true);
 
   return (
+    <PortalOrientationProvider key={user.id}>
     <div ref={shell}
       data-dock={dockExpanded ? "expanded" : "collapsed"}
       className={cn(
@@ -79,6 +81,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           {/* The dock's own control stays outside its list of destinations. */}
           <button
             type="button"
+            data-orientation="desktop-navigation"
             aria-expanded={dockExpanded}
             aria-controls={DOCK_NAVIGATION_ID}
             aria-label={dockExpanded ? "Collapse navigation" : "Expand navigation"}
@@ -93,6 +96,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <DialogTrigger asChild>
                 <button
                   type="button"
+                  data-orientation="mobile-navigation"
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   aria-label="Open portal navigation"
                 >
@@ -120,14 +124,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
               </span>
             </GuardedPortalLink>
           </div>
-          <div className="flex min-w-11 flex-1 justify-start">
+          <div data-orientation="search" className="flex min-w-11 flex-1 justify-start">
             <PortalCommandPalette />
           </div>
-          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1 sm:gap-2">
-            <AccessibilityControl placement="header" />
-            <NotificationBell />
+          <div data-orientation="account-controls" className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1 sm:gap-2">
+            <div data-orientation="accessibility"><AccessibilityControl placement="header" /></div>
+            <div data-orientation="notifications"><NotificationBell /></div>
             <NotificationHeadsUp key={user.id} />
-            <PortalUserMenu />
+            <div data-orientation="account"><PortalUserMenu /></div>
           </div>
         </header>
 
@@ -146,5 +150,6 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </div>
       <PrivacyNoticePrompt />
     </div>
+    </PortalOrientationProvider>
   );
 }

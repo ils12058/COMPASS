@@ -63,7 +63,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
   });
 
   return (
-    <Panel aria-labelledby="goa-work-heading">
+    <Panel data-orientation-attention="My work" aria-labelledby="goa-work-heading">
       <PanelHeader
         title="My work"
         titleId="goa-work-heading"
