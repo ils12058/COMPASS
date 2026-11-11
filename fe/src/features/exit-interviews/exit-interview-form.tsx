@@ -363,7 +363,7 @@ export function ExitInterviewForm({
         ]}
         onSelect={selectSection}
       />
-      <form onSubmit={handleSubmit} aria-busy={pending} className="@container/exit min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus">
+      <form data-guide-target="exit-sections" onSubmit={handleSubmit} aria-busy={pending} className="@container/exit min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus">
         <Panel as="div">
         <ExitInterviewReviewProvider value={reviewHints}>
         <ExitInterviewFormSections
@@ -388,7 +388,7 @@ export function ExitInterviewForm({
         />
         </ExitInterviewReviewProvider>
 
-        <PanelSection title="Review and submit" titleId="exit-interview-review-submit">
+        <PanelSection title="Review and submit" titleId="exit-interview-review-submit" data-guide-target="exit-review">
           <div aria-live="polite" aria-atomic="true" className="space-y-1 text-sm text-muted">
             <p>Self-Assessment: {selfAnswered} of {SELF_ASSESSMENT_ITEMS.length} answered</p>
             <p>College Feedback: {collegeAnswered} of {collegeItems.length} answered</p>
@@ -437,7 +437,7 @@ export function ExitInterviewForm({
             <Button type="button" variant="secondary" onClick={() => void saveDraft()} disabled={pending || submissionUncertain || writesUnavailable}>
               {save.isPending ? "Saving…" : "Save draft"}
             </Button>
-            <Button type="submit" disabled={!allRatingsComplete || isDirty || pending || submissionUncertain || writesUnavailable}>
+            <Button data-guide-target="exit-submit" type="submit" disabled={!allRatingsComplete || isDirty || pending || submissionUncertain || writesUnavailable}>
               Submit Exit Interview
             </Button>
             <a href="#exit-interview-section-links" className={buttonVariants({ variant: "quiet", className: "min-h-11" })} onClick={(event) => {

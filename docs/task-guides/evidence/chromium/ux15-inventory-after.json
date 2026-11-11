@@ -1,0 +1,58 @@
+{
+  "baseURL": "http://127.0.0.1:3217",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "Inventory constrained-content geometry after",
+      "passed": true
+    },
+    {
+      "name": "Submitted Inventory reflow after at 1024px/200%, expanded dock",
+      "passed": true
+    },
+    {
+      "name": "Submitted Inventory reflow after at 1024px/200%, collapsed dock",
+      "passed": true
+    },
+    {
+      "name": "Inventory after desktop screenshots",
+      "passed": true
+    },
+    {
+      "name": "Inventory after phone screenshots",
+      "passed": true
+    },
+    {
+      "name": "Section jumps, Back and Continue preserve unsaved answers on desktop",
+      "passed": true
+    },
+    {
+      "name": "Section jumps, Back and Continue preserve unsaved answers on narrowPhone",
+      "passed": true
+    },
+    {
+      "name": "Every section fits desktop, including larger text",
+      "passed": true
+    },
+    {
+      "name": "Every section fits narrowPhone, including larger text",
+      "passed": true
+    },
+    {
+      "name": "Failed save retains edits; pending save prevents duplicates; Save & continue persists once",
+      "passed": true
+    },
+    {
+      "name": "Validation summary focuses original error and final review submits once on desktop",
+      "passed": true
+    },
+    {
+      "name": "Validation summary focuses original error and final review submits once on phone",
+      "passed": true
+    },
+    {
+      "name": "Inventory protects sidebar navigation, browser Back and unload; saved work leaves without warning",
+      "passed": true
+    }
+  ]
+}

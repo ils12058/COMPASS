@@ -1,5 +1,7 @@
 "use client";
 
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -242,7 +244,7 @@ export function AppointmentsPageHeading({
   headingId?: string;
 }) {
   return (
-    <PageHeader title={title} headingId={headingId} description={description} actions={action} help={help} context={context} meta={meta}>
+    <PageHeader title={title} headingId={headingId} description={description} actions={<>{action}<TaskGuideAction /></>} help={help} context={context} meta={meta}>
       {children}
     </PageHeader>
   );

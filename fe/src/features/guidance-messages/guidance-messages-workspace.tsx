@@ -1,5 +1,7 @@
 "use client";
 
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
+
 import { FileText, SquarePen } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
 import {
@@ -146,10 +148,11 @@ function MessagesFrame({
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-line px-4 py-3">
-              <h1 id={MESSAGES_HEADING_ID} className="font-heading text-xl font-bold leading-tight text-ink">
+              <h1 data-guide-target="message-directory" id={MESSAGES_HEADING_ID} className="font-heading text-xl font-bold leading-tight text-ink">
                 Messages
               </h1>
               <div className="flex flex-wrap gap-2">
+                {!conversationOpen ? <TaskGuideAction /> : null}
                 {access.canManageTemplates ? (
                   <GuardedPortalLink
                     href="/portal/messages/templates"

@@ -185,7 +185,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       </form>
 
       <div hidden={presentation !== "list"}>
-      <Panel aria-labelledby="my-appointments-results-heading">
+      <Panel data-guide-target="appointments-list" aria-labelledby="my-appointments-results-heading">
         <PanelHeader
           title="Appointments"
           titleId="my-appointments-results-heading"

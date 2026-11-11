@@ -1,0 +1,310 @@
+{
+  "baseURL": "http://127.0.0.1:3217",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "book-appointment-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "send-message-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "my-appointments-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "good-moral-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "my-actions-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "exit-interview-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "feedback-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "faculty-submit-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "faculty-track-page-controls-replay-and-no-guide-requests",
+      "passed": true
+    },
+    {
+      "name": "book-appointment-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "my-appointments-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "my-actions-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-completed-finishable",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-read-only-finishable",
+      "passed": true
+    },
+    {
+      "name": "exit-interview-ineligible-finishable",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-completed-finishable",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-read-only-finishable",
+      "passed": true
+    },
+    {
+      "name": "feedback-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "feedback-completed-finishable",
+      "passed": true
+    },
+    {
+      "name": "faculty-submit-ineligible-finishable",
+      "passed": true
+    },
+    {
+      "name": "faculty-track-empty-finishable",
+      "passed": true
+    },
+    {
+      "name": "narrow-short-enlarged-390-100",
+      "passed": true
+    },
+    {
+      "name": "narrow-short-enlarged-320-200",
+      "passed": true
+    },
+    {
+      "name": "narrow-short-enlarged-1280-200",
+      "passed": true
+    },
+    {
+      "name": "book-appointment-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "book-appointment-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "send-message-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "send-message-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "my-appointments-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "my-appointments-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "individual-inventory-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "good-moral-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "good-moral-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "my-actions-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "my-actions-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "exit-interview-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "exit-interview-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "graduate-tracer-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "feedback-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "feedback-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "faculty-submit-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "faculty-submit-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "faculty-track-layout-390-100",
+      "passed": true
+    },
+    {
+      "name": "faculty-track-layout-1280-200",
+      "passed": true
+    },
+    {
+      "name": "good-moral-detail-form-available-request",
+      "passed": true
+    },
+    {
+      "name": "feedback-detail-form-available-customer-feedback?opportunity=bb111111-1111-4111-8111-111111111111",
+      "passed": true
+    },
+    {
+      "name": "feedback-detail-form-available-csm?opportunity=bb111111-1111-4111-8111-111111111111",
+      "passed": true
+    },
+    {
+      "name": "exit-interview-detail-form-form-e3000000-0000-4000-8000-000000000001",
+      "passed": true
+    },
+    {
+      "name": "faculty-track-detail-form-available-f3000000-0000-4000-8000-000000000001",
+      "passed": true
+    },
+    {
+      "name": "route-change-dismissal",
+      "passed": true
+    },
+    {
+      "name": "message-layout-new-retains-draft",
+      "passed": true
+    },
+    {
+      "name": "message-layout-a0000000-0000-4000-8000-000000000001-retains-draft",
+      "passed": true
+    },
+    {
+      "name": "message-layout-a0000000-0000-4000-8000-000000000003-retains-draft",
+      "passed": true
+    },
+    {
+      "name": "booking-review-prerequisite-retains-choices",
+      "passed": true
+    },
+    {
+      "name": "booking-no-slots-retains-choices",
+      "passed": true
+    },
+    {
+      "name": "my-appointments-calendar-target",
+      "passed": true
+    },
+    {
+      "name": "appointment-detail-actions-available",
+      "passed": true
+    },
+    {
+      "name": "appointment-detail-actions-unavailable",
+      "passed": true
+    },
+    {
+      "name": "session-change-dismissal",
+      "passed": true
+    },
+    {
+      "name": "access-change-dismissal",
+      "passed": true
+    },
+    {
+      "name": "task-guide-blocked-storage-and-compass-motion",
+      "passed": true
+    },
+    {
+      "name": "missing-targets-storage-version-and-independent-completion",
+      "passed": true
+    },
+    {
+      "name": "catalog-access-Student",
+      "passed": true
+    },
+    {
+      "name": "catalog-access-Alumni",
+      "passed": true
+    },
+    {
+      "name": "catalog-access-Faculty",
+      "passed": true
+    },
+    {
+      "name": "catalog-access-Counselor",
+      "passed": true
+    },
+    {
+      "name": "catalog-access-IT Admin",
+      "passed": true
+    },
+    {
+      "name": "catalog-screenshot-1440",
+      "passed": true
+    },
+    {
+      "name": "catalog-screenshot-390",
+      "passed": true
+    },
+    {
+      "name": "catalog-navigation-guard-and-competing-dialog",
+      "passed": true
+    }
+  ]
+}

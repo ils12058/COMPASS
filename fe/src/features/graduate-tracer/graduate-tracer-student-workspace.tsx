@@ -122,7 +122,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
         <p className="text-sm leading-6 text-muted">Your response is confidential and will be available only to Guidance Office reviewers with permission after submission. Starting creates a private draft; it does not submit answers.</p>
         {access.canManageSelf ? (
           <>
-            <Button className="mt-4" disabled={start.isPending || needsStatusCheck} onClick={() => void beginSurvey()}>
+            <Button data-guide-target="tracer-entry" className="mt-4" disabled={start.isPending || needsStatusCheck} onClick={() => void beginSurvey()}>
               {start.isPending ? "Starting…" : "Start Graduate Tracer Survey"}
             </Button>
             {startError ? <p role="alert" className="mt-3 text-sm leading-6 text-danger">{startError}</p> : null}

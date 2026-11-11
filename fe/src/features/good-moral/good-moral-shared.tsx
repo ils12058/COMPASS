@@ -1,3 +1,4 @@
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -196,7 +197,7 @@ export function GoodMoralHeading({
       headingId={headingId}
       description={description}
       back={back}
-      actions={action}
+      actions={<>{action}<TaskGuideAction /></>}
     />
   );
 }

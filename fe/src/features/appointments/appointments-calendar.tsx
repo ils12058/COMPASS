@@ -431,7 +431,7 @@ export function AppointmentsCalendar({
   }
 
   return (
-    <Panel hidden={!active} aria-labelledby="appointment-calendar-heading">
+    <Panel hidden={!active} data-guide-target={source === "my" ? "appointments-list" : undefined} aria-labelledby="appointment-calendar-heading">
       <PanelHeader
         title="Calendar"
         titleId="appointment-calendar-heading"

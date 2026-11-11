@@ -576,7 +576,7 @@ function RecipientOption({
   showAvatar?: boolean;
 }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
+    <label data-guide-target="message-recipient" className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
       <input className="mt-1 size-4 shrink-0 accent-brand" type="radio" name={name} checked={checked} onChange={onSelect} />
       {showAvatar ? <GuidanceIdentityAvatar name={title} office={office} /> : null}
       <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">

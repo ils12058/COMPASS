@@ -68,7 +68,7 @@ export function MessageComposerView({
   return (
     <>
       <form
-        data-guidance-fixed
+        data-guidance-fixed data-guide-target="message-composer"
         ref={attachForm}
         onSubmit={(event) => void submit(event)}
         aria-busy={sendState.kind === "sending"}
@@ -137,7 +137,7 @@ export function MessageComposerView({
               (pending || unavailable) && "bg-surface-muted",
             )}
           />
-          <Button type="submit" className="shrink-0" disabled={pending || blocked}>
+          <Button data-guide-target="message-send" type="submit" className="shrink-0" disabled={pending || blocked}>
             {sendState.kind === "sending" ? "Sending…" : "Send"}
           </Button>
         </div>

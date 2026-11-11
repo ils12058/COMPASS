@@ -209,7 +209,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
 
   return (
     <section aria-labelledby="graduate-tracer-form-heading">
-      <form onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="@container/tracer min-w-0 [overflow-wrap:anywhere]">
+      <form data-guide-target="tracer-sections" onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="@container/tracer min-w-0 [overflow-wrap:anywhere]">
         <Panel as="div">
           <PanelHeader
             title="Your response"
@@ -232,7 +232,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
             <GraduateTracerCurriculumSection draft={draft} onChange={updateDraft} />
           </fieldset>
 
-          <PanelSection title="Review and submit" titleId="graduate-tracer-review-heading">
+          <PanelSection title="Review and submit" titleId="graduate-tracer-review-heading" data-guide-target="tracer-review">
             <p className="max-w-3xl text-sm leading-6 text-muted">
               You can save a partial draft. Save your changes before submitting; submission uses your saved answers and makes this response read-only.
             </p>
@@ -265,7 +265,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
               <Button type="button" variant="secondary" className="whitespace-normal" disabled={!dirty || pending} onClick={() => void saveDraft()}>
                 {save.isPending ? "Saving…" : "Save draft"}
               </Button>
-              <Button type="button" className="whitespace-normal" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
+              <Button data-guide-target="tracer-submit" type="button" className="whitespace-normal" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
               <ConsequentialActionDialog
                 open={confirmSubmit}
                 title="Submit Graduate Tracer Survey?"

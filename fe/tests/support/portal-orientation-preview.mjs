@@ -1,13 +1,14 @@
 // A safe local Safari/manual preview: every /api/v1 request is synthetic, writes are rejected,
 // and the browser's CSP prevents connections to any external service. Run a local Next server
 // first, then node tests/support/portal-orientation-preview.mjs and open the printed URL.
+import { guideWorld } from "./task-guide-fixtures.mjs";
 import { createServer } from "node:http";
 import { navigationWorld, profiles } from "./f2-navigation-fixtures.mjs";
 
 const upstream = new URL(process.env.COMPASS_UI_BASE_URL ?? "http://127.0.0.1:3217");
 if (!["localhost", "127.0.0.1", "[::1]"].includes(upstream.hostname)) throw new Error("Use a local Next server.");
 const port = Number(process.env.COMPASS_PREVIEW_PORT ?? 3219);
-const world = navigationWorld(profiles.Student);
+const world = process.env.COMPASS_PREVIEW_GUIDE ? guideWorld(process.env.COMPASS_PREVIEW_GUIDE) : navigationWorld(profiles.Student);
 const empty = { items: [], page: 1, page_size: 20, has_next: false };
 const reads = {
   "/api/v1/platform/status": { status: "operational", starts_at: null, ends_at: null, message: null },
@@ -25,7 +26,7 @@ const server = createServer(async (request, response) => {
   };
   if (url.pathname.startsWith("/api/v1/")) {
     if (request.method !== "GET") return reply({ error: { code: "synthetic_write_blocked", message: "Preview writes are disabled." } }, 405);
-    if (await world.handler({ pathname: url.pathname, url, reply })) return;
+    if (await world.handler({ pathname: url.pathname, method: request.method, url, reply })) return;
     return reply(reads[url.pathname] ?? { error: { code: "synthetic_unavailable", message: "No preview fixture." } }, url.pathname in reads ? 200 : 404);
   }
   // A preview never installs a persistent worker in the reader's browser.

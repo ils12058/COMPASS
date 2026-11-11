@@ -531,7 +531,7 @@ export function ServiceFixedSlotsStudentPanel({ service, checkService }: { servi
   };
 
   return (
-    <PanelSection title="Available Appointment slots" titleId="student-fixed-slots-heading">
+    <PanelSection title="Available Appointment slots" titleId="student-fixed-slots-heading" data-guide-target="booking-fixed-time">
       <p className="text-sm text-muted">
         Choose a published date and time to reserve an individual Appointment directly.
       </p>

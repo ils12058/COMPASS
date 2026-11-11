@@ -1,0 +1,78 @@
+{
+  "baseURL": "http://127.0.0.1:3217",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "desktop identity and distinct conversation starts",
+      "passed": true
+    },
+    {
+      "name": "short desktop: composer and reminder remain reachable",
+      "passed": true
+    },
+    {
+      "name": "narrow: composer and reminder remain reachable",
+      "passed": true
+    },
+    {
+      "name": "enlarged text: composer and reminder remain reachable",
+      "passed": true
+    },
+    {
+      "name": "reduced viewport: composer and reminder remain reachable",
+      "passed": true
+    },
+    {
+      "name": "CSS zoom simulation: composer and reminder remain reachable",
+      "passed": true
+    },
+    {
+      "name": "recipient identity, supplied dates, keyboard focus and existing draft behavior",
+      "passed": true
+    },
+    {
+      "name": "resize preserves uncertain Retry and duplicate protection",
+      "passed": true
+    },
+    {
+      "name": "Guidance staff student choices use initials and wrap",
+      "passed": true
+    },
+    {
+      "name": "staff long-name header wraps actions without squeezing identity",
+      "passed": true
+    },
+    {
+      "name": "FACULTY_INQUIRY: authorized conversation identity",
+      "passed": true
+    },
+    {
+      "name": "REFERRAL_COORDINATION: authorized conversation identity",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR_DIRECT: authorized conversation identity",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR_CASE_COORDINATION: authorized conversation identity",
+      "passed": true
+    },
+    {
+      "name": "deliberate conversation navigation resets the existing composer",
+      "passed": true
+    },
+    {
+      "name": "empty, load error and concealed states retain their meaning",
+      "passed": true
+    },
+    {
+      "name": "loading keeps identity concealed until the thread response arrives",
+      "passed": true
+    },
+    {
+      "name": "stale refresh keeps confirmed content and access loss conceals it",
+      "passed": true
+    }
+  ]
+}

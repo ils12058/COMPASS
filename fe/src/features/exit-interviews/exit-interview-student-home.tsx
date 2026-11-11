@@ -71,7 +71,7 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
   return (
     <section className="space-y-5" aria-labelledby="exit-interview-home-heading">
       <ExitInterviewHeading id="exit-interview-home-heading" title="Exit Interview"
-        action={canStart ? <PageAction icon={DoorOpen} label="Start" labelDetail="Exit Interview" onClick={() => void handleStart()} disabled={start.isPending} /> : undefined} />
+        action={canStart ? <PageAction data-guide-target="exit-entry" icon={DoorOpen} label="Start" labelDetail="Exit Interview" onClick={() => void handleStart()} disabled={start.isPending} /> : undefined} />
       <Panel aria-labelledby="exit-interview-current-heading">
         <PanelHeader title={state?.academic_year?.label ?? "Current Exit Interview"} titleId="exit-interview-current-heading" />
         {current.isPending ? (

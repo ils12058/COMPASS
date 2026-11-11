@@ -143,6 +143,10 @@ export function inspectHeaderContracts(program, root) {
       // Portalled confirmation/dialog content is a separate interaction context; its triggers are
       // checked through children when asChild is used, never the confirmation's ordinary Buttons.
       if (named(node, "/components/ui/dialog.tsx", "DialogTrigger")) { children.forEach((c) => examine(c, role, seen)); return; }
+      // A shared task-guide chooser is a page command with a portalled menu. Inspect the root
+      // and trigger, including the canonical visible command; menu contents have their own role.
+      if (named(node, "/components/ui/dropdown-menu.tsx", "DropdownMenu") || named(node, "/components/ui/dropdown-menu.tsx", "DropdownMenuTrigger")) { children.forEach((c) => examine(c, role, seen)); return; }
+      if (named(node, "/components/ui/dropdown-menu.tsx", "DropdownMenuContent")) return;
       if (named(node, "/components/ui/dialog.tsx", "Dialog") || named(node, "/components/ui/consequential-action-dialog.tsx", "ConsequentialActionDialog") || named(node, "/features/content/content-shared.tsx", "ContentConfirmDialog")) return;
       // The only audited live-workspace exception: a named view preset selector, not a record command.
       if (named(node, "/features/ecounseling/session-layout.tsx", "LayoutPresetControl")) return;

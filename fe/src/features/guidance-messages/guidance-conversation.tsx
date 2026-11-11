@@ -1,5 +1,7 @@
 "use client";
 
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
+
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
@@ -201,7 +203,7 @@ export function ConversationFrame({
   useGuidancePaneLayout(pane);
   return (
     <div ref={pane} className="flex min-h-[calc(var(--guidance-controls-height,0px)+6rem)] flex-1 flex-col">
-      <header data-guidance-fixed className="shrink-0 border-b border-brand-line px-4 py-3">
+      <header data-guide-target="message-identity" data-guidance-fixed className="shrink-0 border-b border-brand-line px-4 py-3">
         <GuardedPortalLink
           href="/portal/messages"
           aria-label="Back to Messages"
@@ -224,7 +226,7 @@ export function ConversationFrame({
               {details}
             </div>
           </div>
-          {actions}
+          <div className="flex flex-wrap gap-2"><TaskGuideAction />{actions}</div>
         </div>
       </header>
       {children}

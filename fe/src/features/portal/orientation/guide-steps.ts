@@ -1,4 +1,4 @@
-export type GuideStep = { id: string; title: string; description: string; target: HTMLElement };
+export type GuideStep = { id: string; title: string; description: string; target: HTMLElement; highlight?: boolean };
 
 // Targets belong to the current shell and Home sources. Read only rendered UI; access remains
 // owned by the existing role/capability gates, including Faculty availability.

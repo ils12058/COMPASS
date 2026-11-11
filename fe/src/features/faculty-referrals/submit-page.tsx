@@ -1,5 +1,7 @@
 "use client";
 
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
+
 import { useEffect, useRef, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +37,7 @@ function FacultySubmitContent() {
   const submit = (event: FormEvent) => { event.preventDefault(); flow.review(); };
   const checkedStudent = flow.confirmed?.student;
   return <section className={pageSheetWidth} aria-labelledby="faculty-submit-heading">
-    <PageHeader title={flow.result ? "Referral submitted" : "Submit Referral"} headingId="faculty-submit-heading" />
+    <PageHeader title={flow.result ? "Referral submitted" : "Submit Referral"} headingId="faculty-submit-heading" actions={<TaskGuideAction />} />
     {flow.result ? <>
       <Notice tone="success" role="status">Your Referral has been submitted to the Guidance Office.</Notice>
       <Panel className="mt-4"><SubmissionFacts item={flow.result} /><PanelFooter>
@@ -46,7 +48,7 @@ function FacultySubmitContent() {
       {!available ? <div className="mb-4"><Notice role="alert" action={<Button variant="secondary" onClick={() => void availability.refetch()}>Check Availability</Button>}>You can&apos;t submit a digital Referral right now. Your input is kept, and no request will be repeated automatically.</Notice></div> : null}
       {flow.error ? <Notice tone="warning" role="alert" className="mb-4">{flow.error}</Notice> : null}
       {flow.expired && checkedStudent ? <Notice role="status" className="mb-4">The Student confirmation has expired. Confirm the Student again before a new submission. An uncertain submission can still be retried with its original information.</Notice> : null}
-      {flow.reviewing ? <Panel className="[overflow-wrap:anywhere]">
+      {flow.reviewing ? <Panel data-guide-target="faculty-review" className="[overflow-wrap:anywhere]">
         <PanelBody><ReviewHeading /><p className="mt-2 text-sm text-muted">Review the Student and reason before submitting.</p></PanelBody>
         <PanelSection title="Student" titleId="faculty-review-student"><p className="text-sm font-medium [overflow-wrap:anywhere]">{checkedStudent?.display_name}</p></PanelSection>
         <PanelSection title="Referral information" titleId="faculty-review-information"><dl className="space-y-4 text-sm">
@@ -61,7 +63,7 @@ function FacultySubmitContent() {
         </PanelFooter>
       </Panel> : <form onSubmit={submit} noValidate aria-label="Faculty Referral" autoComplete="off">
         <Panel>
-          <PanelSection title="1. Confirm Student" titleId="faculty-confirm-heading">
+          <PanelSection data-guide-target="faculty-student" title="1. Confirm Student" titleId="faculty-confirm-heading">
             <div className="max-w-xl space-y-3">
               <div><label htmlFor="faculty-student-id" className="block text-sm font-semibold text-ink">Student institutional ID</label>
                 <Input id="faculty-student-id" name="institutional_id" className="mt-2" value={flow.identifier} onChange={(event) => flow.changeIdentifier(event.target.value)} aria-invalid={!!flow.errors.identifier} aria-describedby={`faculty-id-help${flow.errors.identifier ? " Faculty-id-error" : ""}`} disabled={flow.pending} autoComplete="off" autoCapitalize="characters" spellCheck={false} />
@@ -72,7 +74,7 @@ function FacultySubmitContent() {
               {checkedStudent ? <div role="status" className="text-sm"><p className="font-semibold [overflow-wrap:anywhere]">{checkedStudent.display_name}</p><p className="mt-1 text-muted">{flow.expired ? "Confirmation expired." : `Confirmation expires ${formatInstitutionalDateTime(flow.confirmed?.expires_at)} · Philippine Time.`}</p></div> : null}
             </div>
           </PanelSection>
-          <PanelSection title="2. Referral information" titleId="faculty-information-heading">
+          <PanelSection data-guide-target="faculty-information" title="2. Referral information" titleId="faculty-information-heading">
             <fieldset disabled={flow.pending} className="min-w-0 space-y-4 [overflow-wrap:anywhere]">
               <legend className="sr-only">Referral information</legend>
               <div><label htmlFor="faculty-course" className="block text-sm font-semibold text-ink">Course/Year/Block</label><Input id="faculty-course" name="course_year_block" className="mt-2" value={flow.course} onChange={(event) => flow.changeCourse(event.target.value)} aria-invalid={!!flow.errors.course} aria-describedby={`faculty-course-help${flow.errors.course ? " Faculty-course-error" : ""}`} />
@@ -83,7 +85,7 @@ function FacultySubmitContent() {
                 {flow.errors.reason ? <p id="faculty-reason-error" role="alert" className="mt-1 text-sm text-danger">{flow.errors.reason}</p> : null}</div>
             </fieldset>
           </PanelSection>
-          <PanelFooter><Button type="submit" disabled={flow.pending || !available}>Review Referral</Button></PanelFooter>
+          <PanelFooter data-guide-target="faculty-review"><Button type="submit" disabled={flow.pending || !available}>Review Referral</Button></PanelFooter>
         </Panel>
       </form>}
       <div className="mt-3"><Button type="button" variant="secondary" onClick={flow.discard} disabled={flow.pending || !flow.dirty}>Discard draft</Button></div>

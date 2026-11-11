@@ -417,7 +417,7 @@ export function CustomerFeedbackForm() {
       <div className="mb-5">
         <FormSectionLinks id="customer-feedback-section-links" label="Customer Feedback sections" sections={customerFeedbackSectionLinks} onSelect={selectSection} />
       </div>
-      <form className="min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus" onSubmit={prepareSubmission} noValidate>
+      <form data-guide-target="feedback-form" className="min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus" onSubmit={prepareSubmission} noValidate>
         {error && !confirmationOpen && !isUncertain ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
         {isUncertain ? (
           <Notice
@@ -522,7 +522,7 @@ export function CustomerFeedbackForm() {
           </FeedbackSection>
         </fieldset>
 
-        <PanelFooter>
+        <PanelFooter data-guide-target="feedback-review">
           {create.isPending ? <p role="status" aria-live="polite" className="w-full text-sm text-muted">Submitting Customer Feedback…</p> : null}
           <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
           <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet", className: "min-h-11 w-full justify-start sm:w-auto sm:justify-center" })}>Back to Feedback</GuardedPortalLink>

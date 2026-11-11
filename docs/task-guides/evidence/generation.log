@@ -1,0 +1,4 @@
+$ orval --config orval.config.ts
+🍻 orval v8.29.0 - A swagger client generator for typescript
+compass Cleaning output folder
+🎉 compass - Your OpenAPI spec has been converted into ready to use orval!

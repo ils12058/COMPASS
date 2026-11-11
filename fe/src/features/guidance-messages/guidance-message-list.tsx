@@ -149,6 +149,7 @@ export function GuidanceMessageList({
       <div
         ref={scroller}
         role="region"
+        data-guide-target="message-history"
         aria-label="Conversation history"
         tabIndex={0}
         onScroll={onScroll}

@@ -1,3 +1,4 @@
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ export function InventoryHeading({
   // A "Back to …" text link, styled with pageBackLinkClass.
   back?: ReactNode;
 }) {
-  return <PageHeader title={title} description={description} back={back} actions={action} />;
+  return <PageHeader title={title} description={description} back={back} actions={<>{action}<TaskGuideAction /></>} />;
 }
 
 export function InventoryNotice({

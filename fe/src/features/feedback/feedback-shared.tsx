@@ -1,3 +1,4 @@
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,7 @@ export function FeedbackPageHeading({
       context={eyebrow}
       back={back}
       description={description}
-      actions={action}
+      actions={<>{action}<TaskGuideAction /></>}
     />
   );
 }

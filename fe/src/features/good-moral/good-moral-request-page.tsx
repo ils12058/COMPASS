@@ -260,7 +260,7 @@ function CurrentStudentRequestChoices() {
         <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       </IllustratedIntroduction>
       <Panel as="div">
-        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="Choose the current Student certificate for a Bachelor's program. Choose the UCN Bachelor's graduate certificate for a completed degree, even after postgraduate study.">
+        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" data-guide-target="good-moral-type" description="Choose the current Student certificate for a Bachelor's program. Choose the UCN Bachelor's graduate certificate for a completed degree, even after postgraduate study.">
           {context.isPending ? <LoadingRegion label="Checking the current Student certificate requirements…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
           {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check the current Student certificate requirements. You can still request a Good Moral Certificate for UCN Bachelor&apos;s graduates.</Notice> : null}
           {academicContext && !f4Eligible ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
@@ -305,7 +305,7 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
         <Panel as="div">
         <PanelSection
           title="Request details"
-          titleId="good-moral-current-request-details"
+          titleId="good-moral-current-request-details" data-guide-target="good-moral-inputs"
           description="We'll fill in your details from your COMPASS records."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
@@ -332,7 +332,7 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
         </fieldset>
         </PanelSection>
         {!create.uncertainIntent ? (
-          <PanelFooter>
+          <PanelFooter data-guide-target="good-moral-submit">
             <Button type="submit" disabled={create.isPending || blocked}>
               {create.isPending ? "Submitting request…" : "Submit request"}
             </Button>
@@ -366,7 +366,7 @@ function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) 
         <Panel as="div">
         <PanelSection
           title="Graduation details"
-          titleId="good-moral-graduate-request-details"
+          titleId="good-moral-graduate-request-details" data-guide-target="good-moral-inputs"
           description="Enter the UCN Bachelor's degree you completed. You can type an older program name."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
@@ -382,7 +382,7 @@ function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) 
         </fieldset>
         </PanelSection>
         {!create.uncertainIntent ? (
-          <PanelFooter>
+          <PanelFooter data-guide-target="good-moral-submit">
             <Button type="submit" disabled={create.isPending}>
               {create.isPending ? "Submitting request…" : "Submit request"}
             </Button>

@@ -14,6 +14,7 @@ const launch = async page => {
   await page.waitForFunction(() => document.activeElement?.matches("[data-orientation-next]"));
 };
 async function bounds(page) {
+  await shown(page.locator('[data-guide-placed="true"]'));
   const metrics = await page.evaluate(() => {
     const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, height: r.height }; };
     return { panel: rect("[data-orientation-panel]"), target: rect("[data-orientation-highlight]"), width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth };

@@ -35,7 +35,7 @@ export function AppointmentFixedDateBooking({ initialServiceId, initialSearch, i
     <AppointmentsPageHeading title="Scheduled Appointment slots" description="Choose a Service to view its published individual Appointment slots." />
     <Link href="/portal/appointments/book" className={pageBackLinkClass}>Back to booking choices</Link>
     <Panel className="mt-5">
-      <PanelSection title="Choose a Service" titleId="scheduled-slot-service-heading">
+      <PanelSection title="Choose a Service" titleId="scheduled-slot-service-heading" data-guide-target="booking-service">
         {initialServiceId && !validInitialId ? <Notice role="alert">The Service link is invalid. Choose a Service below.</Notice> : null}
         {!canRead ? <Notice role="alert">Service catalog and Appointment viewing access are needed to find scheduled Appointment slots.</Notice> : <div className="space-y-3">
           <Label htmlFor="scheduled-service-search">Search Services</Label>

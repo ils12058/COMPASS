@@ -131,7 +131,7 @@ function StudentInventoryHome() {
                 ) : access.canManageSelf ? (
                   <div className="mt-4"><IllustratedIntroduction src={!startError && !ensure.isPending && !history.isPending && !history.isError && records.length === 0 ? "/illustrations/individual-inventory-3d.png" : undefined}>
                     {startError ? <div className="mb-3"><InventoryNotice tone="danger" role="alert">{startError}</InventoryNotice></div> : null}
-                    <Button disabled={ensure.isPending} onClick={() => void startInventory()}>
+                    <Button data-guide-target="inventory-entry" disabled={ensure.isPending} onClick={() => void startInventory()}>
                       {ensure.isPending ? "Starting…" : "Start Individual Inventory"}
                     </Button>
                   </IllustratedIntroduction></div>

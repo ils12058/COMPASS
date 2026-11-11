@@ -67,10 +67,11 @@ export function PageActionLink({
   as: LinkComponent = Link,
   href,
   className,
+  "data-guide-target": guideTarget,
   ...content
-}: PageActionContent & { href: string; className?: string; as?: ComponentType<ComponentProps<typeof Link>> }) {
+}: PageActionContent & { href: string; className?: string; "data-guide-target"?: string; as?: ComponentType<ComponentProps<typeof Link>> }) {
   return (
-    <LinkComponent href={href} className={cn(root, surface[content.variant ?? "primary"], hover[content.variant ?? "primary"], className)}>
+    <LinkComponent href={href} data-guide-target={guideTarget} className={cn(root, surface[content.variant ?? "primary"], hover[content.variant ?? "primary"], className)}>
       <PageActionFace {...content} />
     </LinkComponent>
   );

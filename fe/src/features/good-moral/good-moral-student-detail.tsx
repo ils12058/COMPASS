@@ -74,7 +74,7 @@ export function GoodMoralStudentDetail({
         back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>}
       />
 
-      <Panel aria-labelledby="good-moral-student-applicant">
+      <Panel data-guide-target="good-moral-status" aria-labelledby="good-moral-student-applicant">
         <RecordSummary
           label="Applicant name"
           title={item.applicant_name?.trim() || "Not provided"}

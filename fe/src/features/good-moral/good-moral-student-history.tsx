@@ -31,12 +31,12 @@ export function GoodMoralStudentHistory({
         headingId="good-moral-student-heading"
         title="Good Moral"
         action={requestHref && requestLabel ? (
-          <PageActionLink href={requestHref} icon={FileBadge} label="Request" labelDetail="Good Moral Certificate" />
+          <PageActionLink data-guide-target="good-moral-start" href={requestHref} icon={FileBadge} label="Request" labelDetail="Good Moral Certificate" />
         ) : undefined}
       />
 
       {canView ? (
-        <Panel aria-labelledby="good-moral-my-requests-heading">
+        <Panel data-guide-target="good-moral-history" aria-labelledby="good-moral-my-requests-heading">
           <PanelHeader title="My requests" titleId="good-moral-my-requests-heading" />
           {history.isError && confirmed ? <div className="px-4 sm:px-5"><RefreshFailureNotice onRetry={() => void history.refetch()} retrying={history.isFetching} /></div> : null}
           {history.isPending ? (

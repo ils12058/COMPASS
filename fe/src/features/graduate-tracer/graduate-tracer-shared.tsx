@@ -1,3 +1,4 @@
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export function GraduateTracerHeading({
   meta?: ReactNode;
   back?: ReactNode;
 }) {
-  return <PageHeader title={title} headingId={id} description={description} actions={action} meta={meta} back={back} />;
+  return <PageHeader title={title} headingId={id} description={description} actions={<>{action}<TaskGuideAction /></>} meta={meta} back={back} />;
 }
 
 export function GraduateTracerError({

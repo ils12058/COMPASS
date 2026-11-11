@@ -1,0 +1,118 @@
+{
+  "baseURL": "http://127.0.0.1:3217",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "home-next-back-skip-completion-replay-and-no-extra-requests",
+      "passed": true
+    },
+    {
+      "name": "keyboard-desktop-expanded-navigation-state",
+      "passed": true
+    },
+    {
+      "name": "keyboard-desktop-collapsed-navigation-state",
+      "passed": true
+    },
+    {
+      "name": "responsive-390-844-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-320-640-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-320-420-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-1280-420-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-1024-600-200",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-Student",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-Alumni",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-Faculty",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-Head",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-Counselor",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-GOA",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-IT Admin",
+      "passed": true
+    },
+    {
+      "name": "supported-profile-DPO",
+      "passed": true
+    },
+    {
+      "name": "help-start-replay-storage-malformed",
+      "passed": true
+    },
+    {
+      "name": "help-start-replay-storage-old-version",
+      "passed": true
+    },
+    {
+      "name": "help-start-replay-storage-future-version",
+      "passed": true
+    },
+    {
+      "name": "help-start-replay-storage-completed",
+      "passed": true
+    },
+    {
+      "name": "help-start-replay-storage-blocked",
+      "passed": true
+    },
+    {
+      "name": "capabilities-missing-targets-and-live-resize",
+      "passed": true
+    },
+    {
+      "name": "reduced-motion-system-and-other-dialog-priority",
+      "passed": true
+    },
+    {
+      "name": "reduced-motion-compass-and-other-dialog-priority",
+      "passed": true
+    },
+    {
+      "name": "mobile-drawer-and-native-dialog-keep-priority",
+      "passed": true
+    },
+    {
+      "name": "missing-all-targets-does-not-block-home",
+      "passed": true
+    },
+    {
+      "name": "active-maintenance-keeps-orientation-unmounted",
+      "passed": true
+    },
+    {
+      "name": "help-navigation-keeps-unsaved-changes",
+      "passed": true
+    }
+  ]
+}

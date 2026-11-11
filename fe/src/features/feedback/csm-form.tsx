@@ -382,7 +382,7 @@ export function CsmForm() {
   return (
     <section aria-labelledby="csm-page-heading">
       <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description={`Feedback for ${opportunityData.service_label}. Taking part is optional. Questions marked * are required; suggestions and email are optional.`} />
-      <form className="mt-5 min-w-0 [overflow-wrap:anywhere]" onSubmit={prepareSubmission} noValidate>
+      <form data-guide-target="feedback-form" className="mt-5 min-w-0 [overflow-wrap:anywhere]" onSubmit={prepareSubmission} noValidate>
         {error && !confirmationOpen && !isUncertain ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
         {isUncertain ? (
           <Notice
@@ -448,7 +448,7 @@ export function CsmForm() {
             <div className="max-w-xl"><FeedbackFieldLabel htmlFor="csm-email">Email address (optional)</FeedbackFieldLabel><Input id="csm-email" className="mt-2" type="email" autoComplete="email" value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} /></div>
           </FeedbackSection>
         </fieldset>
-        <PanelFooter>
+        <PanelFooter data-guide-target="feedback-review">
           {create.isPending ? <p role="status" aria-live="polite" className="w-full text-sm text-muted">Submitting Client Satisfaction Measurement…</p> : null}
           <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
           <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet", className: "min-h-11 w-full justify-start sm:w-auto sm:justify-center" })}>Back to Feedback</GuardedPortalLink>

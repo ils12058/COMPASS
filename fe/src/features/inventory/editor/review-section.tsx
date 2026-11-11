@@ -36,7 +36,7 @@ export function ReviewSection({
       !selectedProgram.applicable_year_levels.includes(draft.year_level),
   );
   return (
-    <div className="space-y-7">
+    <div data-guide-target="inventory-review" className="space-y-7">
       <FieldGroup legend="Record details">
         <dl className="grid gap-x-6 @md/inventory:grid-cols-2">
           <div className="border-b border-border py-3">

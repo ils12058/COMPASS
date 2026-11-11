@@ -298,7 +298,7 @@ export function InventoryEditor({
 
       <div data-inventory-workspace="" className="@container/inventory-workspace mt-5 min-w-0">
         <div className="grid min-w-0 items-start gap-4 @[42rem]/inventory-workspace:grid-cols-[13rem_minmax(0,1fr)] @[42rem]/inventory-workspace:gap-6">
-        <div data-inventory-navigation="" className="min-w-0 mb-0 @[42rem]/inventory-workspace:sticky @[42rem]/inventory-workspace:top-5">
+        <div data-inventory-navigation="" data-guide-target="inventory-navigation" className="min-w-0 mb-0 @[42rem]/inventory-workspace:sticky @[42rem]/inventory-workspace:top-5">
           <FormSectionNavigation
             id="inventory-section-select"
             label="Inventory section"
@@ -360,7 +360,7 @@ export function InventoryEditor({
             </InventoryReviewProvider>
           </fieldset>
 
-          <PanelFooter className="block space-y-3">
+          <PanelFooter data-guide-target="inventory-draft" className="block space-y-3">
             <FormSaveStatus dirty={dirty} saving={save.isPending} savedMessage={notice} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap gap-2 *:max-w-full">

@@ -729,7 +729,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ) : null}
 
       <div className="space-y-5">
-      <Panel aria-labelledby="appointment-service-heading">
+      <Panel data-guide-target="appointment-details" aria-labelledby="appointment-service-heading">
         <RecordSummary
           label="Service"
           title={appointment.service.name}
@@ -772,7 +772,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       </Panel>
 
       {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || finishOffered || displayedUnavailable.length > 0 || (access.canManage && user.role !== "STUDENT")) ? (
-        <Panel aria-labelledby="appointment-actions-heading">
+        <Panel data-guide-target="appointment-actions" aria-labelledby="appointment-actions-heading">
           <PanelHeader title="Actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || finishOffered ? (

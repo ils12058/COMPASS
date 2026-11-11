@@ -128,7 +128,7 @@ export function FeedbackEntryPage() {
       />
 
       {access.hasStudentSubmissionAccess ? (
-        <Panel className="mt-5" aria-labelledby="feedback-services-heading">
+        <Panel data-guide-target="feedback-opportunities" className="mt-5" aria-labelledby="feedback-services-heading">
           <PanelHeader title="Completed Services" titleId="feedback-services-heading" />
 
           {invalidSelected ? (

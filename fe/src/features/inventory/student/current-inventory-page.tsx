@@ -107,7 +107,7 @@ function StudentCurrentInventory() {
             Return to annual status
           </Link>
           {access.canManageSelf ? (
-            <Button disabled={ensure.isPending} onClick={() => void start()}>
+            <Button disabled={ensure.isPending} onClick={() => void start()} data-guide-target="inventory-entry">
               {ensure.isPending ? "Starting…" : "Start Individual Inventory"}
             </Button>
           ) : (

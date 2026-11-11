@@ -22,6 +22,7 @@ function fixture(source, extra = {}) {
     "components/ui/page-header.tsx": "export function PageHeader(props) { return null; } export const pageBackLinkClass = 'shared';",
     "components/ui/page-action.tsx": "export function PageAction(props) { return null; } export function PageActionLink(props) { return null; } export function PageActionGroup(props) { return null; }",
     "components/ui/dialog.tsx": "export function Dialog(props){return null;} export function DialogTrigger(props){return null;}",
+    "components/ui/dropdown-menu.tsx": "export function DropdownMenu(props){return null;} export function DropdownMenuTrigger(props){return null;} export function DropdownMenuContent(props){return null;}",
     "components/ui/icon-action.tsx": "export function IconAction(props){return <button aria-label={props.label}/>;}",
     "components/ui/panel.tsx": "export function PanelHeader(props) { return null; }",
     "features/example.tsx": `import {PageHeader as Header, pageBackLinkClass} from '../components/ui/page-header'; import {PageAction as Command, PageActionGroup as Group} from '../components/ui/page-action'; import {PanelHeader} from '../components/ui/panel'; ${source}`,
@@ -58,6 +59,12 @@ for (const [name, source, expected] of [
   ["repeated heading", "function Page(){return <><Header title='Records'/><PanelHeader title='Records'/></>;}", /repeats page title/],
   ["back arrow and label", "function Page(){return <Header title='Records' back={<a href='/records' className={pageBackLinkClass}>← Records</a>}/>;}", /arrow must be decoration/],
 ]) test(`negative: detects ${name}`, () => assert.ok(fixture(source).some((issue) => expected.test(issue))));
+
+test("shared chooser checks the trigger while allowing portalled menu content", () => {
+  const imports = "import {DropdownMenu, DropdownMenuTrigger, DropdownMenuContent} from '../components/ui/dropdown-menu';";
+  assert.deepEqual(fixture(imports + "function Page(){return <Header title='Records' actions={<DropdownMenu><DropdownMenuTrigger asChild><Command icon={Icon} label='Guide'/></DropdownMenuTrigger><DropdownMenuContent><button>Start guide</button></DropdownMenuContent></DropdownMenu>}/>;}"), []);
+  assert.ok(fixture(imports + "function Page(){return <Header title='Records' actions={<DropdownMenu><DropdownMenuTrigger asChild><button>Guide</button></DropdownMenuTrigger></DropdownMenu>}/>;}").some(issue => /noncanonical button/.test(issue)));
+});
 
 test("negative: follows an imported alias through a re-export, without PageAction imports at its header", () => {
   const issues = fixture("import {Save as Export} from './barrel'; function Page(){return <Header title='Records' actions={<Export/>}/>;}", {

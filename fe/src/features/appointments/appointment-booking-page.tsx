@@ -358,7 +358,7 @@ function BookingWorkspace() {
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with
           the booking action. */}
       <Panel as="div">
-        <PanelSection title="1. Choose a Service" titleId="booking-service-heading">
+        <PanelSection title="1. Choose a Service" titleId="booking-service-heading" data-guide-target="booking-service">
           {serviceError ? (
             <p role="alert" className="mb-4 text-sm leading-6 text-danger">{serviceError}</p>
           ) : null}
@@ -439,7 +439,7 @@ function BookingWorkspace() {
         </PanelSection>
 
         {service ? (
-          <PanelSection title="2. Choose delivery mode" titleId="booking-delivery-heading">
+          <PanelSection title="2. Choose delivery mode" titleId="booking-delivery-heading" data-guide-target="booking-delivery">
             <BookingDeliveryModeChoice
               service={service}
               value={deliveryMode}
@@ -450,7 +450,7 @@ function BookingWorkspace() {
         ) : null}
 
         {service && deliveryMode ? (
-          <PanelSection title="3. Choose a Counselor" titleId="booking-counselor-heading">
+          <PanelSection title="3. Choose a Counselor" titleId="booking-counselor-heading" data-guide-target="booking-counselor">
             {counselors.isPending ? (
               <LoadingRegion label="Loading Counselors…">
                 <Skeleton className="h-10 w-full max-w-xl" />
@@ -469,7 +469,7 @@ function BookingWorkspace() {
         ) : null}
 
         {service && deliveryMode && selectedCounselor ? (
-          <PanelSection title="4. Choose date and time" titleId="booking-time-heading">
+          <PanelSection title="4. Choose date and time" titleId="booking-time-heading" data-guide-target="booking-time">
             <div className="@container">
               <div className="grid items-start gap-5 @min-[42rem]:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
                 <AppointmentDateCalendar key={`${service.id}:${deliveryMode}:${counselorId}`} min={institutionalDateInputValue()} value={date} onChange={changeDate} disabled={submitting} />
@@ -486,7 +486,7 @@ function BookingWorkspace() {
 
         {service && deliveryMode && selectedCounselor && selectedSlot ? (
           <>
-            <PanelSection title="5. Review Appointment" titleId="booking-review-heading">
+            <PanelSection title="5. Review Appointment" titleId="booking-review-heading" data-guide-target="booking-review">
               <dl className="grid max-w-3xl gap-x-8 gap-y-4 sm:grid-cols-2">
                 <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned Counselor" : ""}</dd></div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 import { TaskLink } from "@/components/ui/task-link";
 import { useState } from "react";
 
@@ -30,8 +31,8 @@ function ActionList({ user }: { user: UserSummary }) {
   const data = safeQueryData(query)?.data;
   const forbidden = query.error instanceof CompassApiError && query.error.status === 403;
   return (
-    <section aria-labelledby="my-actions-heading" className="min-w-0">
-      <PageHeader title="My actions" headingId="my-actions-heading" description="Tasks that need your attention." />
+    <section data-guide-target="actions-list" aria-labelledby="my-actions-heading" className="min-w-0">
+      <PageHeader title="My actions" headingId="my-actions-heading" description="Tasks that need your attention." actions={<TaskGuideAction />} />
       {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <Panel>
         {query.isPending ? <PanelMessage role="status">Loading your actions…</PanelMessage> : null}
@@ -42,7 +43,7 @@ function ActionList({ user }: { user: UserSummary }) {
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">
           {data.items.map((item) => {
             const row = presentStudentAction(item);
-            return <li key={item.id}><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} detail={row.detail} timing={row.timing ?? undefined} priority={row.priorityLabel} /></li>;
+            return <li key={item.id} data-guide-target="actions-item"><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} detail={row.detail} timing={row.timing ?? undefined} priority={row.priorityLabel} /></li>;
           })}
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My actions pages" className="px-4 sm:px-5" /> : null}
