@@ -31,6 +31,8 @@ import {
   latestCounterpartSequence,
   seenReceipt,
   threadRoutingFacts,
+  threadStartedLabel,
+  threadUsesOfficeIdentity,
   threadStatusLabel,
   threadSubtitle,
   threadTitle,
@@ -82,6 +84,22 @@ const message = (sequence, sender = person("staff", "Lea Ramos")) => ({
 const page = (sequences, has_older) => ({ items: sequences.map((sequence) => message(sequence)), has_older });
 const sequences = (history) => history.messages.map((item) => item.sequence);
 const apiError = (status, code = "synthetic") => new CompassApiError({ status, body: { error: { code, message: "x" } }, headers: {}, method: "POST", url: "/api/v1/x" });
+
+test("shared office identity follows the viewer and genuine thread starts never become appointment dates", () => {
+  for (const kind of ["OFFICE", "FACULTY_INQUIRY", "REFERRAL_COORDINATION"]) {
+    assert.equal(threadUsesOfficeIdentity(thread({ kind }), "student"), true);
+    assert.equal(threadUsesOfficeIdentity(thread({ kind }), "faculty"), true);
+    assert.equal(threadUsesOfficeIdentity(thread({ kind }), "staff"), false);
+  }
+  for (const kind of ["COUNSELING", "COUNSELOR_DIRECT", "COUNSELOR_CASE_COORDINATION"]) {
+    assert.equal(threadUsesOfficeIdentity(thread({ kind }), "staff"), false);
+    assert.equal(threadUsesOfficeIdentity(thread({ kind }), "student"), false);
+  }
+  assert.match(threadStartedLabel(thread()), /^Started Oct 9, 2026/);
+  assert.equal(threadStartedLabel(thread({ created_at: "invalid" })), null);
+  assert.equal(threadStartedLabel(thread({ created_at: "" })), null);
+  assert.equal(threadStartedLabel(thread({ last_message_at: "2099-01-01T00:00:00Z" })), threadStartedLabel(thread()));
+});
 
 // ── Access and navigation ─────────────────────────────────────────────────────────────────────
 

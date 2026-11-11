@@ -6,6 +6,7 @@ import type {
   ThreadKind,
   ThreadStatus,
 } from "@/lib/api/generated/model";
+import { guidanceDateTime } from "@/features/guidance-messages/guidance-message-time";
 
 // Human wording for Guidance Messages. Backend enums, IDs and sequence cursors never reach the
 // screen; a Student addresses the Guidance Office as an office, while staff see the Student.
@@ -48,6 +49,17 @@ export function threadStatusLabel(status: ThreadStatus): string {
 export function personName(person: GuidancePerson | null | undefined, fallback: string): string {
   const name = person?.display_name.trim();
   return name ? name : fallback;
+}
+
+export function threadUsesOfficeIdentity(thread: GuidanceThreadResponse, viewer: GuidanceViewer): boolean {
+  return viewer !== "staff" &&
+    (thread.kind === "OFFICE" || thread.kind === "FACULTY_INQUIRY" || thread.kind === "REFERRAL_COORDINATION");
+}
+
+/** The contract has no appointment time on a thread. Never label its creation as an appointment. */
+export function threadStartedLabel(thread: GuidanceThreadResponse): string | null {
+  if (!thread.created_at || Number.isNaN(new Date(thread.created_at).getTime())) return null;
+  return `Started ${guidanceDateTime(thread.created_at)}`;
 }
 
 /** Who the conversation is with, from the reader's side. */

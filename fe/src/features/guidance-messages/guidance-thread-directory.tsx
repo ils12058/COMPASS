@@ -9,6 +9,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { isTransientRefreshError } from "@/features/freshness/query-freshness";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { threadActivityTime } from "@/features/guidance-messages/guidance-message-time";
+import { ConversationIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
 import type { GuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import {
   DIRECTORY_PAGE_SIZE,
@@ -17,6 +18,7 @@ import {
 } from "@/features/guidance-messages/guidance-messages-cache";
 import {
   threadRoutingFacts,
+  threadStartedLabel,
   threadStatusLabel,
   threadSubtitle,
   threadTitle,
@@ -169,6 +171,8 @@ function ThreadRow({
     ? thread.assigned_to?.id === currentUserId ? "Assigned to you" : `Assigned to ${assignedTo}`
     : null;
   const time = threadActivityTime(thread.last_message_at ?? thread.created_at);
+  const title = threadTitle(thread, viewer, currentUserId);
+  const started = threadStartedLabel(thread);
 
   return (
     <GuardedPortalLink
@@ -180,22 +184,26 @@ function ThreadRow({
         current && "bg-brand-wash ring-1 ring-inset ring-brand-line hover:bg-brand-wash",
       )}
     >
-      <span className="flex items-baseline justify-between gap-3">
-        <span className={cn("min-w-0 break-words text-ink", unread ? "font-bold" : "font-semibold")}>
-          {threadTitle(thread, viewer, currentUserId)}
+      <span className="flex items-start gap-2.5">
+        <ConversationIdentityAvatar thread={thread} viewer={viewer} title={title} />
+        <span className={cn("min-w-0 flex-1 [overflow-wrap:anywhere] text-ink", unread ? "font-bold" : "font-semibold")}>
+          {title}
         </span>
+      </span>
+      <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        {subtitle || college ? (
+          <span className="min-w-0 text-xs text-muted [overflow-wrap:anywhere]">
+            {[subtitle, college].filter(Boolean).join(" · ")}
+          </span>
+        ) : null}
         {time ? (
-          <time dateTime={thread.last_message_at ?? thread.created_at} className="shrink-0 text-xs text-muted">
+          <time aria-label={`Last activity ${time}`} dateTime={thread.last_message_at ?? thread.created_at} className="text-xs text-muted">
             {time}
           </time>
         ) : null}
       </span>
-      {subtitle || college ? (
-        <span className="mt-0.5 block break-words text-xs text-muted">
-          {[subtitle, college].filter(Boolean).join(" · ")}
-        </span>
-      ) : null}
-      {assignedLabel ? <span className="mt-0.5 block break-words text-xs text-muted">{assignedLabel}</span> : null}
+      {started ? <span className="mt-0.5 block text-xs text-muted [overflow-wrap:anywhere]">{started}</span> : null}
+      {assignedLabel ? <span className="mt-0.5 block text-xs text-muted [overflow-wrap:anywhere]">{assignedLabel}</span> : null}
       {unread || resolved ? (
         <span className="mt-1.5 flex flex-wrap gap-1.5">
           {unread ? (

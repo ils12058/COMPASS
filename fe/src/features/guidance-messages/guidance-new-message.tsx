@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
 import { cacheThread } from "@/features/guidance-messages/guidance-conversation-data";
+import { GuidanceIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
 import { ConversationFrame } from "@/features/guidance-messages/guidance-conversation";
 import { GuidanceCounselorPeerPicker } from "@/features/guidance-messages/guidance-counselor-peer-picker";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
@@ -44,6 +45,7 @@ import type {
   GuidanceRelationshipOption,
 } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
+import { cn } from "@/lib/utils/cn";
 
 // A conversation starts with its first Message; there is no empty conversation. The recipient
 // travels inside the send intent's target, so a retry always goes where the first attempt went.
@@ -198,7 +200,7 @@ function ReferralNewMessage({ referralId }: { referralId: string }) {
                 checked
                 onSelect={() => undefined}
                 title={GUIDANCE_OFFICE_LABEL}
-                detail="Guidance Office"
+                office
               />
             </li>
           </ul>
@@ -267,7 +269,7 @@ function StudentNewMessage() {
                 checked={recipient === OFFICE_TARGET}
                 onSelect={() => setRecipient(OFFICE_TARGET)}
                 title={officeLabel}
-                detail="Guidance Office"
+                office
               />
             </li>
           </ul>
@@ -356,7 +358,7 @@ function FacultyNewMessage() {
                 checked
                 onSelect={() => undefined}
                 title={GUIDANCE_OFFICE_LABEL}
-                detail="Guidance Office"
+                office
               />
             </li>
           </ul>
@@ -454,6 +456,7 @@ function StaffNewMessage() {
                     checked={recipientType === "student"}
                     onSelect={() => setRecipientType("student")}
                     title="Student"
+                    showAvatar={false}
                     detail="The Student's Guidance Office conversation"
                   />
                 </li>
@@ -463,6 +466,7 @@ function StaffNewMessage() {
                     checked={recipientType === "counselor"}
                     onSelect={() => setRecipientType("counselor")}
                     title="Counselor"
+                    showAvatar={false}
                     detail="A direct conversation between Counselors"
                   />
                 </li>
@@ -470,7 +474,10 @@ function StaffNewMessage() {
             </>
           ) : null}
           {recipientType === "student" && access.canManageStaff ? (
-            <div className={access.canManageStaff && access.canManageDirect ? "mt-5" : undefined}>
+            <div className={cn(
+              "[overflow-wrap:anywhere] [&_label:has(:focus)]:ring-2 [&_label:has(:focus)]:ring-inset [&_label:has(:focus)]:ring-focus",
+              access.canManageStaff && access.canManageDirect && "mt-5",
+            )}>
               <EligibleStudentPicker
                 label="Student"
                 search={studentSearch}
@@ -557,19 +564,24 @@ function RecipientOption({
   onSelect,
   title,
   detail,
+  office = false,
+  showAvatar = true,
 }: {
   name: string;
   checked: boolean;
   onSelect: () => void;
   title: string;
-  detail: string;
+  detail?: string;
+  office?: boolean;
+  showAvatar?: boolean;
 }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed">
-      <input className="mt-1 h-4 w-4 shrink-0 accent-brand" type="radio" name={name} checked={checked} onChange={onSelect} />
-      <span className="min-w-0">
-        <span className="block break-words font-semibold">{title}</span>
-        <span className="mt-0.5 block break-words text-xs text-muted">{detail}</span>
+    <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
+      <input className="mt-1 size-4 shrink-0 accent-brand" type="radio" name={name} checked={checked} onChange={onSelect} />
+      {showAvatar ? <GuidanceIdentityAvatar name={title} office={office} /> : null}
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        <span className="block font-semibold">{title}</span>
+        {detail ? <span className="mt-0.5 block text-sm text-muted">{detail}</span> : null}
       </span>
     </label>
   );

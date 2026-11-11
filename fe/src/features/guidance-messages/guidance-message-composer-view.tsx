@@ -40,6 +40,7 @@ export function MessageComposerView({
   const templatesButtonRef = useRef<HTMLButtonElement>(null);
   const textareaId = useId();
   const hintId = useId();
+  const reminderId = useId();
   const counterId = useId();
   const errorId = useId();
   const {
@@ -62,15 +63,16 @@ export function MessageComposerView({
   const length = messageLength(draft);
   const tooLong = length > MESSAGE_BODY_LIMIT;
   const showCounter = length >= COUNTER_FROM;
-  const describedBy = [error ? errorId : null, hintId, showCounter ? counterId : null].filter(Boolean).join(" ");
+  const describedBy = [error ? errorId : null, reminderId, hintId, showCounter ? counterId : null].filter(Boolean).join(" ");
 
   return (
     <>
       <form
+        data-guidance-fixed
         ref={attachForm}
         onSubmit={(event) => void submit(event)}
         aria-busy={sendState.kind === "sending"}
-        className={cn("border-t border-brand-line bg-surface px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4", className)}
+        className={cn("min-w-0 shrink-0 border-t border-brand-line bg-surface px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4", className)}
       >
         {sendState.kind === "uncertain" ? (
           <div role="alert" className="mb-3 rounded-sm border border-warning/40 bg-surface-raised px-3 py-2.5 text-sm">
@@ -113,7 +115,7 @@ export function MessageComposerView({
         <label htmlFor={textareaId} className="sr-only">
           {label}
         </label>
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <Textarea
             ref={attachTextarea}
             id={textareaId}
@@ -131,7 +133,7 @@ export function MessageComposerView({
               if (error && sendState.kind === "idle") clearError();
             }}
             className={cn(
-              "max-h-48 min-h-11 flex-1 resize-none [field-sizing:content]",
+              "max-h-28 min-h-11 min-w-0 flex-[1_1_12rem] resize-none [field-sizing:content]",
               (pending || unavailable) && "bg-surface-muted",
             )}
           />
@@ -139,6 +141,9 @@ export function MessageComposerView({
             {sendState.kind === "sending" ? "Sending…" : "Send"}
           </Button>
         </div>
+        <p id={reminderId} className="mt-2 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
+          Share only the details needed for your concern. Never send passwords, verification codes, or payment card details.
+        </p>
         <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
           {/* Touch keyboards have no shortcut; Send is the way there. */}
           <span id={hintId} className="[@media(pointer:coarse)]:hidden">Enter adds a line. {shortcut} sends.</span>

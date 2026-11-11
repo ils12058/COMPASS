@@ -1,0 +1,118 @@
+{
+  "baseURL": "http://127.0.0.1:3127",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "Office thread: Assigned to + Change opens the thread's eligible staff, never Accounts",
+      "passed": true
+    },
+    {
+      "name": "choosing the current assignee keeps Assign disabled; Cancel changes nothing",
+      "passed": true
+    },
+    {
+      "name": "a stale candidate is refused, the list refreshes and nothing is retried",
+      "passed": true
+    },
+    {
+      "name": "Counseling threads have no assignment control",
+      "passed": true
+    },
+    {
+      "name": "Students see no assignment, no Templates and make no template request",
+      "passed": true
+    },
+    {
+      "name": "long staff names wrap in the header and picker from 320px to 1440px",
+      "passed": true
+    },
+    {
+      "name": "losing Messages manage hides Change and Templates after the session refreshes",
+      "passed": true
+    },
+    {
+      "name": "Office reply: a template fills a blank draft, appends to text, stays editable and never sends",
+      "passed": true
+    },
+    {
+      "name": "a template that would pass 4,000 characters is refused and the draft is unchanged",
+      "passed": true
+    },
+    {
+      "name": "an unconfirmed send locks Templates; Retry keeps the exact ID and body",
+      "passed": true
+    },
+    {
+      "name": "Edit message sets the unconfirmed intent aside; a template then starts a new Message",
+      "passed": true
+    },
+    {
+      "name": "the exact Counselor's Counseling reply offers the same Templates",
+      "passed": true
+    },
+    {
+      "name": "staff New message: Templates wait for a Student, then fill the first Office Message",
+      "passed": true
+    },
+    {
+      "name": "picker search is explicit, never submits the Message, and loads more on request",
+      "passed": true
+    },
+    {
+      "name": "an empty picker says so and offers the templates page to managers",
+      "passed": true
+    },
+    {
+      "name": "an account change drops the previous account's templates and template-filled draft",
+      "passed": true
+    },
+    {
+      "name": "stale template preserves draft, reads latest separately and requires review",
+      "passed": true
+    },
+    {
+      "name": "E-Counseling: a template fills the first contextual Message while the call keeps running",
+      "passed": true
+    },
+    {
+      "name": "a Student's contextual panel has no Templates",
+      "passed": true
+    },
+    {
+      "name": "managers reach Templates beside New message; empty state; create with validation",
+      "passed": true
+    },
+    {
+      "name": "edit, archive with confirmation, archived view and restore",
+      "passed": true
+    },
+    {
+      "name": "unsaved template edits ask before closing the editor or leaving the page",
+      "passed": true
+    },
+    {
+      "name": "IT Admin cannot open the templates page",
+      "passed": true
+    },
+    {
+      "name": "DPO designation cannot open the templates page",
+      "passed": true
+    },
+    {
+      "name": "a Counselor whose template management was revoked cannot open the templates page",
+      "passed": true
+    },
+    {
+      "name": "a Counselor whose template management was revoked has no Templates management link",
+      "passed": true
+    },
+    {
+      "name": "a Counselor whose template management was revoked can still use Templates in an Office conversation",
+      "passed": true
+    },
+    {
+      "name": "templates page and editor have no horizontal overflow from 320px to 1440px",
+      "passed": true
+    }
+  ]
+}

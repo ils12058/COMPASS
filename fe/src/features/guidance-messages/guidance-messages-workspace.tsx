@@ -121,16 +121,18 @@ function MessagesFrame({
 
   return (
     <GuidanceWorkspaceContext.Provider value={value}>
-      <div className="@container/messages">
+      <div data-guidance-layout className="@container/messages">
         {/* One page heading at every width: beside the directory, or for assistive technology while a
             narrow screen shows only the conversation. */}
         {conversationOpen ? <h1 className="sr-only @[42rem]/messages:hidden">Messages</h1> : null}
         <Panel
           as="div"
           className={cn(
-            "grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden @[42rem]/messages:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]",
+            "grid min-h-[calc(var(--guidance-controls-height,0px)+6rem)] grid-rows-[minmax(0,1fr)] overflow-hidden @[42rem]/messages:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]",
             // The workspace fills the screen below the top bar, so the conversation and its composer
-            // stay in view while the history scrolls. A call dock keeps its own clearance.
+            // stay in view while the history scrolls. Measured minimum sizing lets the document
+            // grow when enlarged text, a short window or a keyboard needs more room for controls.
+            // A call dock keeps its own clearance.
             "h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,6.25rem)-2.5rem)] lg:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-3rem)]",
             "[:root:has([data-call-dock])_&]:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,6.25rem)-1.25rem-var(--call-dock-clearance))]",
             "lg:[:root:has([data-call-dock])_&]:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-1.5rem-var(--call-dock-clearance))]",

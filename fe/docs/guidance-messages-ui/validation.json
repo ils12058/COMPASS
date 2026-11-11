@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-11",
+  "base_commit": "ed73c8ff32b81f2cbb248d5238c4bbf9f17298b1",
+  "frontend_checks": {
+    "api:generate": "passed",
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "unit_tests": {
+    "all": {
+      "passed": 1170,
+      "total": 1170
+    },
+    "focused_messaging_case_avatar": {
+      "passed": 57,
+      "total": 57
+    }
+  },
+  "browsers": {
+    "chromium": {
+      "guidance-messages-layout": {
+        "passed": 18,
+        "total": 18,
+        "report": "screenshots/chromium/guidance-messages-layout/results.json"
+      },
+      "guidance-messages": {
+        "passed": 42,
+        "total": 42,
+        "report": "screenshots/chromium/guidance-messages/results.json"
+      },
+      "guidance-messages-contextual": {
+        "passed": 29,
+        "total": 29,
+        "report": "screenshots/chromium/guidance-messages-contextual/results.json"
+      },
+      "guidance-messages-staff-operations": {
+        "passed": 28,
+        "total": 28,
+        "report": "screenshots/chromium/guidance-messages-staff-operations/results.json"
+      }
+    },
+    "webkit": {
+      "guidance-messages-layout": {
+        "passed": 18,
+        "total": 18,
+        "report": "screenshots/webkit/guidance-messages-layout/results.json"
+      },
+      "guidance-messages": {
+        "passed": 42,
+        "total": 42,
+        "report": "screenshots/webkit/guidance-messages/results.json"
+      },
+      "guidance-messages-contextual": {
+        "passed": 29,
+        "total": 29,
+        "report": "screenshots/webkit/guidance-messages-contextual/results.json"
+      },
+      "guidance-messages-staff-operations": {
+        "passed": 28,
+        "total": 28,
+        "report": "screenshots/webkit/guidance-messages-staff-operations/results.json"
+      }
+    }
+  },
+  "native_safari": {
+    "synthetic_production_preview": "rendered",
+    "short_window": "not verified: active Safari window changed during control",
+    "mobile_keyboard": "not verified"
+  }
+}

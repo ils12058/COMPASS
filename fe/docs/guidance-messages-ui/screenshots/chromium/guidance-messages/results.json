@@ -1,0 +1,174 @@
+{
+  "baseURL": "http://127.0.0.1:3127",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "Student with view_self sees the Messages destination",
+      "passed": true
+    },
+    {
+      "name": "Guidance staff with view sees the Messages destination",
+      "passed": true
+    },
+    {
+      "name": "IT Admin has no Messages destination or content",
+      "passed": true
+    },
+    {
+      "name": "DPO designation has no Messages destination or content",
+      "passed": true
+    },
+    {
+      "name": "Head designation without the capability has no Messages destination or content",
+      "passed": true
+    },
+    {
+      "name": "Student desktop split: directory labels, no previews, current thread, chronological chat",
+      "passed": true
+    },
+    {
+      "name": "staff directory: Student, kind, College and handler; Counseling for Counseling",
+      "passed": true
+    },
+    {
+      "name": "opening a visible thread marks it read once through the latest loaded sequence",
+      "passed": true
+    },
+    {
+      "name": "a hidden tab does not mark read; becoming visible does",
+      "passed": true
+    },
+    {
+      "name": "view-only staff can read but not write, start, or mark read",
+      "passed": true
+    },
+    {
+      "name": "opens at the newest Message; Load older keeps the reader's place",
+      "passed": true
+    },
+    {
+      "name": "plain-text bodies stay contained at 320px",
+      "passed": true
+    },
+    {
+      "name": "plain-text bodies stay contained at 1440px",
+      "passed": true
+    },
+    {
+      "name": "one Send: one client_message_id, cleared after canonical success, focus kept",
+      "passed": true
+    },
+    {
+      "name": "an unconfirmed send retries with the same ID and body and shows one Message",
+      "passed": true
+    },
+    {
+      "name": "editing after an unconfirmed send is explicit and uses a new ID",
+      "passed": true
+    },
+    {
+      "name": "a rapid double click sends one intended Message",
+      "passed": true
+    },
+    {
+      "name": "a send refused because the thread was resolved keeps the draft",
+      "passed": true
+    },
+    {
+      "name": "staff resolve disables the composer; reopen restores it",
+      "passed": true
+    },
+    {
+      "name": "reopening while another Office conversation is open shows the conflict",
+      "passed": true
+    },
+    {
+      "name": "a guessed or malformed thread URL shows only an unavailable state",
+      "passed": true
+    },
+    {
+      "name": "Message bodies never reach the URL, history state or browser storage",
+      "passed": true
+    },
+    {
+      "name": "another account never sees the previous account's conversation",
+      "passed": true
+    },
+    {
+      "name": "a send that completes after the account changed cannot reach the new account",
+      "passed": true
+    },
+    {
+      "name": "hints reconcile over HTTP: the open thread fully, another thread only in the directory",
+      "passed": true
+    },
+    {
+      "name": "a new Message while reading older history offers New messages without moving the reader",
+      "passed": true
+    },
+    {
+      "name": "a fresh ready reconciles the directory, the open thread and its newest page",
+      "passed": true
+    },
+    {
+      "name": "a burst of hints collapses into a bounded reconciliation",
+      "passed": true
+    },
+    {
+      "name": "realtime disabled: Messages poll about every 8 seconds and pause while hidden",
+      "passed": true
+    },
+    {
+      "name": "realtime unavailable: Messages poll about every 8 seconds and pause while hidden",
+      "passed": true
+    },
+    {
+      "name": "a live socket keeps only a 60-second safety poll",
+      "passed": true
+    },
+    {
+      "name": "two tabs of one account: a send reaches the other tab over HTTP; reads stay private",
+      "passed": true
+    },
+    {
+      "name": "two tabs of one staff account: resolving in one closes the composer in the other",
+      "passed": true
+    },
+    {
+      "name": "phone: directory, then conversation with Back to Messages; focus follows",
+      "passed": true
+    },
+    {
+      "name": "an E-Counseling call dock keeps the composer in reach (desktop)",
+      "passed": true
+    },
+    {
+      "name": "an E-Counseling call dock keeps the composer in reach (phone)",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow from 320px to 1440px",
+      "passed": true
+    },
+    {
+      "name": "Student: a first Message to the Guidance Office, then to a Counseling relationship",
+      "passed": true
+    },
+    {
+      "name": "staff: explicit Student search, first Office Message, reply in the returned thread",
+      "passed": true
+    },
+    {
+      "name": "staff: a Student with an open Office conversation continues in it",
+      "passed": true
+    },
+    {
+      "name": "a nonblank draft asks before leaving; an empty one does not",
+      "passed": true
+    },
+    {
+      "name": "Seen by Guidance Office, a typing hint that expires on reply, and a content-free typing signal",
+      "passed": true
+    }
+  ]
+}

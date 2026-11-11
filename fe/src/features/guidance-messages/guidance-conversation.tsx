@@ -8,6 +8,7 @@ import { pageBackLinkClass } from "@/components/ui/page-header";
 import { PanelMessage } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useSendThreadMessage } from "@/features/guidance-messages/guidance-conversation-data";
+import { ConversationIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
 import {
   ComposerNote,
   ConversationHistoryRegion,
@@ -28,17 +29,17 @@ import { describeSendError } from "@/features/guidance-messages/guidance-message
 import {
   COUNSELOR_DIRECT_NOTICE,
   threadRoutingFacts,
+  threadStartedLabel,
   threadSubtitle,
   threadTitle,
   type GuidanceViewer,
 } from "@/features/guidance-messages/guidance-messages-presentation";
 import { CONVERSATION_HEADING_ID, ConversationSkeleton } from "@/features/guidance-messages/guidance-messages-shared";
 import { useGuidanceWorkspace } from "@/features/guidance-messages/guidance-messages-workspace";
+import { useGuidancePaneLayout } from "@/features/guidance-messages/use-guidance-pane-layout";
 import type { GuidanceThreadResponse } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
 import { cn } from "@/lib/utils/cn";
-
-const STUDENT_OFFICE_CONTEXT = "Guidance Office";
 
 /** One conversation: who it is with, its Messages in order, and the composer. */
 export function GuidanceConversation({ threadId }: { threadId: string }) {
@@ -134,6 +135,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   return (
     <ConversationFrame
       title={threadTitle(thread, viewer, currentUserId)}
+      avatar={<ConversationIdentityAvatar thread={thread} viewer={viewer} title={threadTitle(thread, viewer, currentUserId)} />}
       details={
         <ThreadDetails
           thread={thread}
@@ -152,7 +154,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
     >
       <ConversationHistoryRegion state={state} currentUserId={currentUserId} viewer={viewer} />
       {thread.kind === "COUNSELOR_DIRECT" ? (
-        <p className="border-t border-brand-line bg-surface px-4 py-3 text-sm text-muted">
+        <p data-guidance-fixed className="shrink-0 border-t border-brand-line bg-surface px-4 py-3 text-sm text-muted">
           {COUNSELOR_DIRECT_NOTICE}
         </p>
       ) : null}
@@ -184,18 +186,22 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
  */
 export function ConversationFrame({
   title,
+  avatar,
   details,
   actions,
   children,
 }: {
   title: string;
+  avatar?: ReactNode;
   details?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const pane = useRef<HTMLDivElement>(null);
+  useGuidancePaneLayout(pane);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-brand-line px-4 py-3">
+    <div ref={pane} className="flex min-h-[calc(var(--guidance-controls-height,0px)+6rem)] flex-1 flex-col">
+      <header data-guidance-fixed className="shrink-0 border-b border-brand-line px-4 py-3">
         <GuardedPortalLink
           href="/portal/messages"
           aria-label="Back to Messages"
@@ -205,15 +211,18 @@ export function ConversationFrame({
           Back to Messages
         </GuardedPortalLink>
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            <h2
-              id={CONVERSATION_HEADING_ID}
-              tabIndex={-1}
-              className="break-words font-heading text-lg font-semibold leading-snug text-ink focus:outline-none"
-            >
-              {title}
-            </h2>
-            {details}
+          <div className="flex min-w-0 flex-[1_1_14rem] items-start gap-2.5">
+            {avatar}
+            <div className="min-w-0 flex-1">
+              <h2
+                id={CONVERSATION_HEADING_ID}
+                tabIndex={-1}
+                className="font-heading text-lg font-semibold leading-snug text-ink [overflow-wrap:anywhere] focus:outline-none"
+              >
+                {title}
+              </h2>
+              {details}
+            </div>
           </div>
           {actions}
         </div>
@@ -236,18 +245,20 @@ function ThreadDetails({
   canAssign: boolean;
   onAssigned: (text: string) => void;
 }) {
-  const subtitle = viewer === "student" && thread.kind === "OFFICE" ? STUDENT_OFFICE_CONTEXT : threadSubtitle(thread, viewer);
+  const subtitle = threadSubtitle(thread, viewer);
   const { college, assignedTo } = threadRoutingFacts(thread, viewer);
+  const started = threadStartedLabel(thread);
   const resolved = thread.status === "RESOLVED";
   const referralVoided =
     thread.kind === "REFERRAL_COORDINATION" && thread.relationship_referral_voided === true;
   return (
-    <div className="mt-0.5 space-y-0.5 text-sm text-muted">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="mt-0.5 space-y-0.5 text-sm text-muted [overflow-wrap:anywhere]">
+      {subtitle || college || resolved || referralVoided ? <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="break-words">{[subtitle, college].filter(Boolean).join(" · ")}</span>
         {resolved ? <ResolvedBadge /> : null}
         {referralVoided ? <ReferralVoidedBadge /> : null}
-      </p>
+      </p> : null}
+      {started ? <p>{started}</p> : null}
       {assignedTo || canAssign ? (
         <ThreadAssignment thread={thread} currentUserId={currentUserId} canChange={canAssign} onAssigned={onAssigned} />
       ) : null}

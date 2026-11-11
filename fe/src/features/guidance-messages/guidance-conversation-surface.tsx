@@ -117,7 +117,7 @@ export function ConversationHistoryRegion({
   return (
     <>
       {history.isError && conversation ? (
-        <div className="px-3 sm:px-4">
+        <div data-guidance-fixed className="shrink-0 px-3 sm:px-4">
           <RefreshFailureNotice
             message={
               isContentUnavailable(history.error)
@@ -129,7 +129,7 @@ export function ConversationHistoryRegion({
           />
         </div>
       ) : threadQuery.isError ? (
-        <div className="px-3 sm:px-4">
+        <div data-guidance-fixed className="shrink-0 px-3 sm:px-4">
           <RefreshFailureNotice retrying={threadQuery.isFetching} onRetry={() => void threadQuery.refetch()} />
         </div>
       ) : null}
@@ -178,7 +178,7 @@ export function ConversationHistoryRegion({
  */
 function TypingIndicator({ label }: { label: string | null }) {
   return (
-    <p role="status" aria-live="polite" className={cn("px-4 text-xs text-muted", label ? "py-1.5" : "sr-only")}>
+    <p data-guidance-fixed={label ? "" : undefined} role="status" aria-live="polite" className={cn("shrink-0 px-4 text-xs text-muted", label ? "py-1.5" : "sr-only")}>
       {label ? (
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-flex gap-0.5">
@@ -224,7 +224,7 @@ export function ReferralVoidedNote() {
 
 export function ComposerNote({ children }: { children: ReactNode }) {
   return (
-    <div className="border-t border-brand-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm text-muted">
+    <div data-guidance-fixed className="shrink-0 border-t border-brand-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm text-muted">
       {children}
     </div>
   );

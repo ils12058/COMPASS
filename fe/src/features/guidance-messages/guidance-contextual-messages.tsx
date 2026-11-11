@@ -39,6 +39,8 @@ import {
 } from "@/features/guidance-messages/guidance-conversation-surface";
 import { useMessageComposer, type MessageComposerController } from "@/features/guidance-messages/guidance-message-composer";
 import { MessageComposerView } from "@/features/guidance-messages/guidance-message-composer-view";
+import { ConversationIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
+import { useGuidancePaneLayout } from "@/features/guidance-messages/use-guidance-pane-layout";
 import {
   getGuidanceMessagesAccess,
   messageTemplatesFor,
@@ -388,14 +390,14 @@ function ContextualHost({
         <div className="min-w-0">{children}</div>
         {open && docked ? (
           <aside
+            data-guidance-layout
             id={panelId}
             aria-labelledby={`${panelId}-heading`}
             className={cn(
-              "sticky top-4 flex min-h-[20rem] min-w-0 flex-col overflow-hidden rounded-sm border border-brand-line bg-surface-raised",
+              "sticky top-4 flex min-h-[calc(var(--guidance-controls-height,0px)+6rem)] min-w-0 flex-col overflow-hidden rounded-sm border border-brand-line bg-surface-raised",
               // Below the top bar, clear of an E-Counseling call dock, the composer always in view.
-              "h-[calc(100dvh-6rem-1px)] lg:h-[calc(100dvh-6.5rem-1px)]",
-              "[:root:has([data-call-dock])_&]:h-[calc(100dvh-4.75rem-1px-var(--call-dock-clearance))]",
-              "lg:[:root:has([data-call-dock])_&]:h-[calc(100dvh-5rem-1px-var(--call-dock-clearance))]",
+              "h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-3rem)]",
+              "[:root:has([data-call-dock])_&]:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-1.5rem-var(--call-dock-clearance))]",
             )}
           >
             {panel("docked")}
@@ -405,11 +407,12 @@ function ContextualHost({
       {open && !docked ? (
         <Dialog open onOpenChange={(next) => { if (!next) close(); }}>
           <DialogContent
+            data-guidance-layout
             id={panelId}
             closeLabel="Close Messages"
             aria-labelledby={`${panelId}-heading`}
             aria-describedby={undefined}
-            className="left-0 top-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden overflow-y-hidden rounded-none border-0 p-0"
+            className="left-0 top-0 flex h-[var(--portal-viewport-height,100dvh)] max-h-[var(--portal-viewport-height,100dvh)] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-y-auto rounded-none border-0 p-0"
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               document.getElementById(`${panelId}-heading`)?.focus();
@@ -475,6 +478,8 @@ function ContextualPanel({
   latestPinRef: RefObject<number | null>;
   onClose: () => void;
 }) {
+  const pane = useRef<HTMLDivElement>(null);
+  useGuidancePaneLayout(pane);
   const headingId = `${useContext(ContextualMessagesContext)?.panelId ?? "messages"}-heading`;
   const [status, setStatus] = useState("");
   const state = useThreadConversation({
@@ -513,25 +518,31 @@ function ContextualPanel({
 
   const Heading = mode === "drawer" ? DialogTitle : "h2";
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div ref={pane} className="flex min-h-[calc(var(--guidance-controls-height,0px)+6rem)] flex-1 flex-col">
       <header
+        data-guidance-fixed
         className={cn(
-          "flex items-start justify-between gap-3 border-b border-brand-line px-4 py-3",
+          "flex shrink-0 items-start justify-between gap-3 border-b border-brand-line px-4 py-3",
           mode === "drawer" && "pt-[max(0.75rem,env(safe-area-inset-top))] pr-16",
         )}
       >
-        <div className="min-w-0">
-          <Heading
-            id={headingId}
-            tabIndex={-1}
-            className="pr-0 font-heading text-lg font-semibold leading-snug text-ink focus:outline-none"
-          >
-            {target.panelTitle}
-          </Heading>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-            {target.subtitle(shown ?? null, target.counterpartName)}
-            {resolved && !ended ? <ResolvedBadge /> : null}
-          </p>
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+          {shown && !concealed && !ended ? (
+            <ConversationIdentityAvatar thread={shown} viewer={target.viewer} title={threadTitle(shown, target.viewer, target.currentUserId)} />
+          ) : null}
+          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+            <Heading
+              id={headingId}
+              tabIndex={-1}
+              className="pr-0 font-heading text-lg font-semibold leading-snug text-ink focus:outline-none"
+            >
+              {target.panelTitle}
+            </Heading>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+              {target.subtitle(shown ?? null, target.counterpartName)}
+              {resolved && !ended ? <ResolvedBadge /> : null}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-start gap-1">
           {shown && !ended && target.viewer === "staff" && target.canWrite ? (
@@ -576,7 +587,7 @@ function ContextualPanel({
         />
       )}
       {target.threadId && !concealed && !ended ? (
-        <div className="border-t border-border bg-surface px-4 py-2">
+        <div data-guidance-fixed className="shrink-0 border-t border-border bg-surface px-4 py-2">
           <GuardedPortalLink
             href={`/portal/messages/${target.threadId}`}
             className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"

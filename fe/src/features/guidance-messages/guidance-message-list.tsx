@@ -145,14 +145,14 @@ export function GuidanceMessageList({
   const groups = groupByDay(messages, new Date());
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative min-h-24 flex-1">
       <div
         ref={scroller}
         role="region"
         aria-label="Conversation history"
         tabIndex={0}
         onScroll={onScroll}
-        className="absolute inset-0 overflow-y-auto overscroll-contain px-3 py-3 [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-4"
+        className="absolute inset-0 overflow-y-auto px-3 py-3 [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-4"
       >
         {/* A short conversation sits at the end, next to the composer. */}
         <div className="flex min-h-full flex-col justify-end">

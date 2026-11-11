@@ -69,7 +69,7 @@ export function GuidanceCounselorPeerPicker({
       {selectedPeer ? (
         <div className="mt-3 flex items-center gap-2 rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
           <PersonAvatar displayName={selectedPeer.display_name} size="compact" />
-          <p>
+          <p className="min-w-0 [overflow-wrap:anywhere]">
             Selected: <span className="font-semibold">{selectedPeer.display_name}</span>
           </p>
         </div>
@@ -91,9 +91,9 @@ export function GuidanceCounselorPeerPicker({
         <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
           {items.map((peer) => (
             <li key={peer.id}>
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash">
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
                 <input
-                  className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                  className="mt-1 size-4 shrink-0 accent-brand"
                   type="radio"
                   name="guidance-counselor-peer"
                   value={peer.id}
@@ -101,7 +101,7 @@ export function GuidanceCounselorPeerPicker({
                   onChange={() => onSelect(peer)}
                 />
                 <PersonAvatar displayName={peer.display_name} size="compact" />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   <span className="block font-semibold">{peer.display_name}</span>
                 </span>
               </label>
