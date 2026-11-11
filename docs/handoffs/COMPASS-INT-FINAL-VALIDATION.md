@@ -64,7 +64,7 @@ be/.venv/bin/pytest \
 
 2. **FUP-1A–1E Shared Guidance Follow-Up Management (`be/tests/test_guidance_followups.py` — 32 passed)**
    - Standalone Student, Counseling Encounter, Referral, and Routine Interview source linking.
-   - Server-side `OPERATIONAL` vs `COUNSELOR_CONFIDENTIAL` classification and strict isolation from GSS, unassigned Counselors, Head Guidance, IT Admin, and DPO.
+   - Server-side `OPERATIONAL` vs `COUNSELOR_CONFIDENTIAL` classification and strict isolation from GSS, unassigned Counselors, Head Guidance, IT Admin, and Institutional Officer.
    - Reassignment, rescheduling, activity recording, completion, cancellation, and overdue derivation.
    - My Work `/api/v1/work/items` integration (`WORK_DOMAIN_FOLLOW_UP`), staff notifications, and scoped operational reporting.
    - Encrypted text storage and key rotation readiness.

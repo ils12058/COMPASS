@@ -124,7 +124,7 @@ Capabilities are narrow:
 - STUDENT: `graduate_tracer.view_self`, `graduate_tracer.manage_self`
 - HEAD_GUIDANCE_COUNSELOR designation: `graduate_tracer.view`
 
-Ordinary Counselor, Guidance Services Staff, IT_ADMIN, and DPO receive no raw GTS content access
+Ordinary Counselor, Guidance Services Staff, IT_ADMIN, and Institutional Officer receive no raw GTS content access
 by default.
 
 ## Draft and submission validation

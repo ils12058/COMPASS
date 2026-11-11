@@ -41,7 +41,7 @@ An independent, zero-trust code and runtime audit was conducted across all eight
 - **No My Work Pollution**: Reminders do not create My Work items.
 
 ### Part B — FUP-1A–1E Shared Guidance Follow-Up Management (Verified Sound)
-- **Confidentiality Enforcement**: Server-side enforcement of `OPERATIONAL` vs `COUNSELOR_CONFIDENTIAL` in `be/compass/followups/services.py`. `GUIDANCE_SERVICES_STAFF` cannot create, view, or be assigned `COUNSELOR_CONFIDENTIAL` follow-ups. Head Guidance, IT Admin, and DPO do not receive blanket confidential access.
+- **Confidentiality Enforcement**: Server-side enforcement of `OPERATIONAL` vs `COUNSELOR_CONFIDENTIAL` in `be/compass/followups/services.py`. `GUIDANCE_SERVICES_STAFF` cannot create, view, or be assigned `COUNSELOR_CONFIDENTIAL` follow-ups. Head Guidance, IT Admin, and Institutional Officer do not receive blanket confidential access.
 - **Source Authorization & De-duplication**: Supports Standalone Student, Counseling Encounter (including E-Counseling via canonical Encounter), Referral, and Routine Interview without creating duplicate domain records.
 - **Encryption & Rotation**: `summary` and `Constraint` fields use `EncryptedTextField` (`enc:v1:`); `verify_followup_encryption` and `rotate_followup_encryption` management commands are implemented and tested.
 - **My Work & Notifications**: Integrated into `be/compass/operations/services.py` and `be/compass/notifications/policy.py` behind `GUIDANCE_FOLLOWUPS_ENABLED` and `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` (default `False`).

@@ -51,7 +51,7 @@ fabricating a new admission.
 `exit_interviews.manage_opportunities` was initially granted only to the existing
 HEAD_GUIDANCE_COUNSELOR designation. ADR-076 extends that bounded baseline to
 Guidance Services Staff. It requires `accounts.view` for Student selection, and
-does not grant identifiable answer access. Ordinary Counselors, IT Admin, DPO,
+does not grant identifiable answer access. Ordinary Counselors, IT Admin, Institutional Officer,
 and Students receive no new admission baseline. Existing `exit_interviews.view`
 and `exit_interviews.reopen` boundaries stay intact.
 

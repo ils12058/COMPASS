@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-15
 - Scope: Academic graduation classification and report filtering across the Graduate Tracer Survey, authorized roster, aggregate reports, and XLSX export
-- Refines/supersedes: Narrowly supersedes the submission-period-only filtering constraint in ADR-047; preserves ADR-035 (Foundation), ADR-072 (Operational Retention and Disposition), and ADR-084 (Confidential-Content Encryption)
+- Refines/supersedes: Narrowly supersedes the submission-period-only filtering constraint in ADR-047; preserves ADR-035 (Foundation), historical anonymous-contribution integrity, and ADR-084 (Confidential-Content Encryption)
 
 ## Context
 
@@ -74,8 +74,7 @@ To prevent deanonymization and attribute disclosure in small academic cohorts:
 
 ## Operational Anonymization Invariant
 
-In compliance with ADR-072 and ADR-084:
-
-When an identifiable submitted Graduate Tracer response reaches operational retention disposition and is anonymized:
+The canonical baseline has no in-app disposition operation. Historical anonymized Graduate Tracer
+responses retain the following integrity boundary alongside ADR-084's confidentiality protections:
 - The quasi-identifiers `graduated_college`, `graduated_program`, and `graduation_year` are **dropped (set to NULL)** alongside student identity pointers.
 - The CHED survey responses (`ANALYTICAL_FIELDS`) are preserved intact for institution-level historical research.

@@ -325,18 +325,11 @@ def test_raw_storage_removed_private_columns_and_queryable_search_and_e1(world, 
         "IT_ADMIN",
         "INSTITUTIONAL_OFFICER",
         "STUDENT",
-        "DPO",
     ],
 )
 def test_unauthorized_raw_detail_never_decrypts(world, monkeypatch, role):
     item = filled(world, submit=True)
-    user = make_user(
-        f"denied-{role}@example.edu", role="INSTITUTIONAL_OFFICER" if role == "DPO" else role
-    )
-    if role == "DPO":
-        from compass.accounts.models import Designation, UserDesignation
-
-        UserDesignation.objects.create(user=user, designation=Designation.objects.get(code="DPO"))
+    user = make_user(f"denied-{role}@example.edu", role=role)
     monkeypatch.setattr(content, "decrypt_bound_json", forbid)
     client = auth_client(user)
     assert client.get(f"/api/v1/graduate-tracer/responses/{item.pk}").status_code == 403

@@ -29,7 +29,7 @@ No GCO/UCN approval record was supplied or verified. Head approval, backup deleg
 
 CONT-1A implements the explicitly requested narrowing of Student-summary readership and needs no continuity policy to remove that automatic disclosure. CONT-1B can be prepared/reviewed before a live cutover decision; **actual reset/provisioning/deployment is separately authorized**. CONT-2A may establish a denied-by-default foundation after its authority/state contract is reviewed, but no new professional read activates without D01–D10 and relevant D13–D18 decisions. No new feature flag or emergency switch is proposed as a substitute for policy.
 
-CONT-3 Handoff and Student transparency require D08/D11/D14/D15. An acknowledgment checkbox cannot substitute for a legal/institutional disclosure basis. Approval authority and professional content access remain independent even where one person holds both roles for different valid reasons. No DPO/IT designation implies confidential-content readership.
+CONT-3 Handoff and Student transparency require D08/D11/D14/D15. An acknowledgment checkbox cannot substitute for a legal/institutional disclosure basis. Approval authority and professional content access remain independent even where one person holds both roles for different valid reasons. No application identity implies confidential-content readership.
 
 ## Policy provenance to record
 

@@ -580,16 +580,18 @@ def test_duplicate_jobs_on_separate_database_sessions_upload_only_once():
 
 
 @pytest.mark.parametrize(
-    "designation,role", [("HEAD_GUIDANCE_COUNSELOR", "COUNSELOR"), ("DPO", "INSTITUTIONAL_OFFICER")]
+    "designation,role",
+    [("HEAD_GUIDANCE_COUNSELOR", "COUNSELOR"), (None, "INSTITUTIONAL_OFFICER")],
 )
 def test_unrelated_designated_staff_cannot_bypass_saved_relationship(designation, role):
     from compass.accounts.models import Designation, UserDesignation
 
     _, _, appointment, _, _, storage = ready_artifact(pending=False)
     other = make_user("designated@example.edu", role)
-    UserDesignation.objects.create(
-        user=other, designation=Designation.objects.get(code=designation)
-    )
+    if designation:
+        UserDesignation.objects.create(
+            user=other, designation=Designation.objects.get(code=designation)
+        )
     for code in ("ecounseling.view_assigned", "ecounseling.access_media_assigned"):
         UserCapabilityOverride.objects.create(
             user=other,

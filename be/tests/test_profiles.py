@@ -14,12 +14,10 @@ from compass.account_management.services import serialize_account
 from compass.accounts.confidential_profile import read_account_profile_confidential_content
 from compass.accounts.models import (
     Capability,
-    Designation,
     DesignationCapability,
     Role,
     RoleCapability,
     User,
-    UserDesignation,
 )
 from compass.accounts.policy import (
     CAPABILITY_DEFINITIONS,
@@ -207,19 +205,15 @@ def test_every_active_primary_role_can_get_only_its_own_profile(role_code):
 
 
 @pytest.mark.django_db
-def test_dpo_designation_has_self_profile_only_and_no_generic_profile_directory():
+def test_officer_designation_has_self_profile_only_and_no_generic_profile_directory():
     sync_policy()
-    dpo = make_user("dpo@example.edu", role="INSTITUTIONAL_OFFICER")
+    officer = make_user("officer@example.edu", role="INSTITUTIONAL_OFFICER")
     other = make_user("other@example.edu")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
-    client, _session = auth_client(dpo)
+    client, _session = auth_client(officer)
 
     own = client.get("/api/v1/me/profile")
     assert own.status_code == 200
-    assert own.json()["user_id"] == str(dpo.pk)
+    assert own.json()["user_id"] == str(officer.pk)
 
     assert client.get(f"/api/v1/accounts/{other.pk}/profile").status_code == 404
     assert (

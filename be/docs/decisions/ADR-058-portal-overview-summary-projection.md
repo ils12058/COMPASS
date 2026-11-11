@@ -46,7 +46,7 @@ institution-wide through the canonical organizational resolver.
 Platform metrics are limited to the compatible IT_ADMIN platform-operations identity and reuse the
 existing EmailDelivery summary service.
 
-ADR-065 removes the earlier Privacy Review/Incident counters. Privacy Governance remains a
+The earlier Privacy Review/Incident counters are absent. Privacy Governance remains a
 capability-based workspace but does not expose an Overview metric section without a concrete,
 actionable retained population.
 

@@ -105,7 +105,6 @@ STAKEHOLDER_ORDER = (
     "Guidance Office Assistant",
     "Head Guidance Counselor",
     "IT Administrator",
-    "Data Protection Officer",
     "Institutional Officer",
 )
 # Patterns that would indicate credential or key material leaked into a document.
@@ -328,10 +327,6 @@ GUIDE_NOTES = {
         "Three equivalent accounts let three ITSO evaluators work independently. Use newly created "
         "synthetic accounts for account-management changes; never edit dataset accounts."
     ),
-    "Data Protection Officer": (
-        "Two DPO accounts share one Privacy Notice catalog. Publishing a revision prompts every "
-        "signed-in user, so schedule DPO-NOT-01 with the UAT lead."
-    ),
     "Institutional Officer": (
         "The undesignated officer exists only to prove refusals; issue its credential explicitly."
     ),
@@ -467,7 +462,7 @@ def _guide(result) -> str:
         "- `bg_54`: CNS-GM-04 (counselor_c starts an assisted Good Moral request) must precede "
         "STU-GM-08; the Student must not request a certificate first, because an open request "
         "blocks the assisted one.",
-        "- `head_guidance`, `dpo`/`dpo_2`: shared catalogs; serialize mutating scenarios.",
+        "- `head_guidance`, `it_admin`/`it_admin_2`: shared catalogs; serialize mutations.",
         "- Changing Counselor responsibilities, Availability or the current Academic Year affects "
         "most scenarios; keep those out of UAT or run them last.",
         "",
@@ -660,7 +655,7 @@ def _summary(result) -> str:
         f"{counts['staff']} staff).",
         "- UAT allocation: **50 independent participants** — 1 Head, 3 Counselors, "
         "2 Guidance Office Assistant, 30 current Students, 5 Faculty, "
-        "5 graduated Alumni, 3 ITSO and 1 DPO. "
+        "5 graduated Alumni, 3 ITSO and 1 generic Institutional Officer. "
         "Current Students by College: "
         + ", ".join(
             f"{_college_label(college)} {len(keys)}"

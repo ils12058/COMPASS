@@ -77,7 +77,7 @@ def test_existing_thread_resolves_for_persisted_participants(world, actor):  # n
 
 
 @pytest.mark.parametrize(
-    "actor", ["goa", "other", "head", "head_goa", "other_student", "admin", "dpo"]
+    "actor", ["goa", "other", "head", "head_goa", "other_student", "admin", "officer"]
 )
 def test_existing_thread_is_concealed_from_everyone_else(world, actor):  # noqa: F811
     counseling(world)
@@ -154,7 +154,7 @@ def test_eligible_participant_may_start_without_creating_anything(world, actor):
 
 
 @pytest.mark.parametrize(
-    "actor", ["goa", "other", "head", "head_goa", "other_student", "admin", "dpo"]
+    "actor", ["goa", "other", "head", "head_goa", "other_student", "admin", "officer"]
 )
 def test_unrelated_actor_cannot_learn_a_startable_relationship(world, actor):  # noqa: F811
     with pytest.raises(ThreadNotFound):

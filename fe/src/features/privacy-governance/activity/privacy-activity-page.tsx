@@ -7,6 +7,8 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Button } from "@/components/ui/button";
 import { ActivityFilterTools, activityTypeLabel, enumValue, useActivitySearchParams } from "@/features/activity/activity-filters";
 import { activityErrorMessage } from "@/features/activity/activity-errors";
+import { canViewPrivacyActivity, canExportPrivacyActivity } from "@/features/privacy-governance/privacy-governance-access";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -101,7 +103,8 @@ export function PrivacyActivityPage() {
   const { searchParams, page, update, setPage } = useActivitySearchParams();
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
-  const canExport = user.capabilities.includes("privacy_governance.activity.export");
+  const canView = canViewPrivacyActivity(user);
+  const canExport = canExportPrivacyActivity(user);
   const category = categoryFrom(searchParams.get("category"));
   const search = searchParams.get("search") || undefined;
   const event_type = enumValue(searchParams.get("event_type"), Object.values(PrivacyActivityType));
@@ -113,7 +116,7 @@ export function PrivacyActivityPage() {
   const clear = () => update(Object.fromEntries(Object.keys(criteria).map((key) => [key, null])));
   const query = usePrivacyGovernanceListActivity(
     { ...criteria, page, page_size: PRIVACY_PAGE_SIZE },
-    { query: { retry: false, placeholderData: keepPreviousData } },
+    { query: { enabled: canView, retry: false, placeholderData: keepPreviousData } },
   );
   const result = query.isError && !canShowLastKnownData(query) ? undefined : query.data?.data;
 
@@ -125,6 +128,8 @@ export function PrivacyActivityPage() {
       void queryClient.invalidateQueries({ queryKey: getPrivacyGovernanceListActivityQueryKey() });
     },
   });
+
+  if (!canView) return <WorkspaceUnavailable title="Access restricted">This account can’t view Privacy and Security Activity.</WorkspaceUnavailable>;
 
   return (
     <section>

@@ -54,11 +54,11 @@ def test_privacy_validation_cases_have_stable_field_issues(validate, identifier,
 
 @pytest.mark.django_db
 def test_privacy_http_validation_keeps_code_and_adds_identifier():
-    from tests.test_privacy_governance import auth_client, make_dpo, sync_policy
+    from tests.test_privacy_governance import auth_client, make_privacy_admin, sync_policy
     from tests.test_privacy_governance_expansion import ROOT, notice_payload, post_json
 
     sync_policy()
-    client = auth_client(make_dpo("privacy-validation@example.edu"))
+    client = auth_client(make_privacy_admin("privacy-validation@example.edu"))
     response = post_json(
         client, f"{ROOT}/notices", notice_payload() | {"audiences": ["STAFF", "STAFF"]}
     )

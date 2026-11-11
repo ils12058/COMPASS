@@ -425,11 +425,7 @@ def test_pdf_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     staff = make_user("staff-pdf@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student-pdf@example.edu", "STUDENT")
     admin = make_user("admin-pdf@example.edu", "IT_ADMIN")
-    dpo = make_user("dpo-pdf@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("officer-pdf@example.edu", "INSTITUTIONAL_OFFICER")
 
     allowed = auth_client(head).get("/api/v1/reports/student-profile/pdf")
     assert allowed.status_code == 200
@@ -439,7 +435,7 @@ def test_pdf_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
     )
     assert allowed.content.startswith(b"%PDF-")
 
-    for user in (counselor, staff, student, admin, dpo):
+    for user in (counselor, staff, student, admin, officer):
         assert auth_client(user).get("/api/v1/reports/student-profile/pdf").status_code == 403
     assert Client().get("/api/v1/reports/student-profile/pdf").status_code == 401
 

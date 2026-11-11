@@ -75,8 +75,7 @@ def world():
     goa = user("goa", "GUIDANCE_OFFICE_ASSISTANT")
     head_goa = user("head-goa", "GUIDANCE_OFFICE_ASSISTANT")
     admin = user("admin", "IT_ADMIN")
-    dpo = user("dpo", "INSTITUTIONAL_OFFICER")
-    dpo.designations.add(Designation.objects.get(code="DPO"))
+    officer = user("officer", "INSTITUTIONAL_OFFICER")
     campus = Campus.objects.create(code="GM", name="Synthetic Campus")
     colleges = [
         College.objects.create(campus=campus, code=f"GM-{i}", name=f"Synthetic College {i}")
@@ -212,7 +211,7 @@ def test_office_current_handled_scope_allows(world, actor):
     assert services.get_thread(actor=getattr(world, actor), thread_id=thread.pk).pk == thread.pk
 
 
-@pytest.mark.parametrize("actor", ["other_student", "other", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["other_student", "other", "admin", "officer"])
 def test_office_conceals_other_workload_and_role(world, actor):
     thread, _ = office(world)
     with pytest.raises(ThreadNotFound):
@@ -486,7 +485,7 @@ def test_counseling_exact_participants_and_canonical_anchor(world, actor):
 
 
 @pytest.mark.parametrize(
-    "actor", ["goa", "head", "head_goa", "other", "other_student", "admin", "dpo"]
+    "actor", ["goa", "head", "head_goa", "other", "other_student", "admin", "officer"]
 )
 def test_counseling_creation_and_content_are_relationship_only(world, actor):
     with pytest.raises((ThreadNotFound, MessagesPermissionDenied)):
@@ -722,7 +721,7 @@ def test_assignment_transfer_provenance_is_not_ownership(world, handler):
     assert services.get_thread(actor=world.student, thread_id=thread.pk).pk == thread.pk
 
 
-@pytest.mark.parametrize("handler", ["student", "other", "admin", "dpo", "inactive"])
+@pytest.mark.parametrize("handler", ["student", "other", "admin", "officer", "inactive"])
 def test_invalid_handlers_rejected(world, handler):
     thread, _ = office(world)
     candidate = world.other if handler == "inactive" else getattr(world, handler)
@@ -985,7 +984,7 @@ def test_count_unread_conversations_semantics_and_api(world):
     with pytest.raises(MessagesPermissionDenied):
         services.count_unread_conversations(actor=world.admin)
     with pytest.raises(MessagesPermissionDenied):
-        services.count_unread_conversations(actor=world.dpo)
+        services.count_unread_conversations(actor=world.officer)
 
     student_client = auth_client(world.student)
     counselor_client = auth_client(world.counselor)

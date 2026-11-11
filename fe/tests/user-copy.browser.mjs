@@ -33,11 +33,7 @@ for (const width of [320, 1440]) {
         await shown(page.getByRole('button', { name: 'Retry', exact: true }));
         await hidden(page.getByRole('button', { name: 'Start Exit Interview', exact: true }));
     });
-    await check(`retention-unavailable-${width}`, '/portal/privacy/retention', { viewport, overrides: { '/api/v1/auth/session': session({ ...user('INSTITUTIONAL_OFFICER'), capabilities: ['privacy_governance.retention.view'] }), '/api/v1/privacy/retention/policies': error('permission_denied', 403) } }, async (page) => {
-        await oneAlert(page, "You don't have permission to perform this privacy action.");
-        await shown(page.getByRole('button', { name: 'Retry', exact: true }));
-        await hidden(page.getByText('Not set', { exact: true }));
-    });
+;
     await check(`referral-create-rejection-${width}`, '/portal/referrals/new', { viewport, overrides: { '/api/v1/auth/session': session(staff), '/api/v1/referrals/students': { ...empty, items: [student] }, 'POST /api/v1/referrals': error('invalid_referral_request') } }, async (page, { requests }) => {
         await page.getByRole('radio', { name: /Maria Santos/ }).check();
         await page.getByLabel('Course / Year / Block', { exact: true }).fill('BSIT / 4 / A');

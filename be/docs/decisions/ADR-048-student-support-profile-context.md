@@ -206,7 +206,7 @@ The capability is:
 Default grant is only the `COUNSELOR` role.
 
 It is not granted by default to Student, Guidance Services Staff, IT Admin, Institutional Officer, or
-DPO.
+Institutional Officer.
 
 Capability and resource scope are independent checks. A non-Counselor does not gain operational access
 merely because of an unusual capability override.

@@ -184,7 +184,6 @@
  "test_request_context.py": 0.0,
  "test_resources.py": 8.3,
  "test_resources_validation.py": 0.8,
- "test_retention_policy_register.py": 23.3,
  "test_routine_crypto_compatibility.py": 0.1,
  "test_routine_encounter_linking.py": 15.2,
  "test_routine_interview_encryption.py": 9.5,

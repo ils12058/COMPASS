@@ -97,7 +97,7 @@ timestamps, ciphertext or audits.
 
 `assessment_records.manage` depends on `assessment_records.view`. Both are granted through the
 HEAD_GUIDANCE_COUNSELOR designation only, never any baseline role. All operations require a current
-active canonical COUNSELOR plus effective capability. GSS, Students, IT Admin and DPO/Institutional
+active canonical COUNSELOR plus effective capability. GSS, Students, IT Admin and Institutional Officer/Institutional
 Officers stay denied even with unusual grants. Technical/governance authority creates no content
 access. Head authority is institution-wide explicitly within this domain (ADR-099).
 
@@ -132,6 +132,6 @@ This slice generates no real key, accesses no Droplet secret directory and perfo
 ## Deferred governance
 
 No hard delete, archive/void state, Student reassignment, automated purge or retention duration is
-invented. Assessment Records are not registered with ADR-072's retention executor. Disposition,
+invented. The canonical baseline has no in-app retention executor. Disposition,
 controlled correction of erroneous ownership, graduate backfill, Student disclosure, attachments
 and analytics require separate institutional governance decisions.

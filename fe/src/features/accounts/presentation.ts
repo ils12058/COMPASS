@@ -22,7 +22,6 @@ export const roleLabels: Record<RoleCode, string> = {
 
 export const designationLabels: Record<DesignationCode, string> = {
   [DesignationCode.HEAD_GUIDANCE_COUNSELOR]: "Head Guidance Counselor",
-  [DesignationCode.DPO]: "Data Protection Officer",
   [DesignationCode.GENERAL_GUIDANCE_INTAKE]: "General Guidance Intake",
 };
 
@@ -72,6 +71,5 @@ export function compatibleDesignations(role: RoleCode): DesignationCode[] {
     return [DesignationCode.HEAD_GUIDANCE_COUNSELOR, DesignationCode.GENERAL_GUIDANCE_INTAKE];
   }
   if (role === RoleCode.GUIDANCE_OFFICE_ASSISTANT) return [DesignationCode.GENERAL_GUIDANCE_INTAKE];
-  if (role === RoleCode.INSTITUTIONAL_OFFICER) return [DesignationCode.DPO];
   return [];
 }

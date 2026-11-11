@@ -13,7 +13,7 @@ from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 
 from compass.accounts import confidential_profile as account_content
-from compass.accounts.models import Designation, User, UserDesignation
+from compass.accounts.models import User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.feedback import api, services
@@ -233,16 +233,11 @@ def test_raw_storage_queryable_metadata_content_free_audit_and_authorized_detail
         "GUIDANCE_OFFICE_ASSISTANT",
         "IT_ADMIN",
         "INSTITUTIONAL_OFFICER",
-        "DPO",
     ],
 )
 def test_denied_detail_never_decrypts(world, family, role, monkeypatch):
     item = submitted(world, family)
-    user = make_user(
-        f"denied-{role}@example.edu", role="INSTITUTIONAL_OFFICER" if role == "DPO" else role
-    )
-    if role == "DPO":
-        UserDesignation.objects.create(user=user, designation=Designation.objects.get(code="DPO"))
+    user = make_user(f"denied-{role}@example.edu", role=role)
     monkeypatch.setattr(api, "read_feedback_confidential_content", forbid)
     monkeypatch.setattr(content.crypto, "decrypt_bound_json", forbid)
     path = "customer-feedback" if family == NAMES[0] else "csm"

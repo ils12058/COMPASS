@@ -39,7 +39,7 @@ The canonical Counselor baseline receives:
 - `inventory.view`
 - `inventory.reopen`
 
-Students retain `inventory.view_self` and `inventory.manage_self`. Guidance Services Staff, IT Admin, DPO, and Institutional Officer receive no raw Inventory capability by default.
+Students retain `inventory.view_self` and `inventory.manage_self`. Guidance Services Staff, IT Admin, Institutional Officer, and Institutional Officer receive no raw Inventory capability by default.
 
 Inventory authorization is owned by the Inventory domain:
 

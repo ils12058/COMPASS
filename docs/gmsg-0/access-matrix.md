@@ -137,7 +137,6 @@ Counselor is absent, the system must not forge their reply or mark them Seen (pr
 | `IT_ADMIN` | — | — | — | — | — | — |
 | `INSTITUTIONAL_OFFICER` | — | — | — | — | — | — |
 | Head designation (`HEAD_GUIDANCE_COUNSELOR`) | widens **College scope** only (`organization/access_scope.py:143-151`) | no effect (`:51,63`) | no effect | no effect | no effect | no effect |
-| `DPO` designation | no messaging effect (`accounts/policy.py:65-76`) | no effect | no effect | no effect | no effect | no effect |
 
 **Verified structural guarantee:** the deny for the last two roles is a role check that runs *before*
 the capability check (`policy.py:33-40`), so an accidental `UserCapabilityOverride`
@@ -197,4 +196,4 @@ Surfaces are those enumerated at proposal line 8239.
 | `FACULTY_INQUIRY` | **Blocked on policy, not on code** | needs GCO intake routing decision (D-GMSG-01) and a requester field that §1.4 requires; role/capability substrate exists (`accounts/policy.py:31,79`) |
 | `REFERRAL_COORDINATION` | **Ready conditionally** | provenance substrate verified (`referrals/models.py:13-16,54-61,227-253`, `faculty_services.py:307-313`); needs a Referral link + unique constraint and the D-GMSG-09 closure policy |
 | `COUNSELOR_DIRECT` | **Ready** | needs pair columns + canonical-pair unique index and one narrow capability; no external domain dependency |
-| `COUNSELOR_CASE_COORDINATION` | **Implemented (GMSG-5), dormant** | live grant predicate shipped (`case_communication.py:96`); D-GMSG-08 institutional approval remains **Open — GCO/DPO**, and the production provider returns `None`, so no case conversation can exist. GSS, IT Admin, Institutional Officer, Head and DPO excluded; the Student is a subject, never a participant |
+| `COUNSELOR_CASE_COORDINATION` | **Implemented (GMSG-5), dormant** | live grant predicate shipped (`case_communication.py:96`); D-GMSG-08 institutional approval remains **Open — GCO/DPO**, and the production provider returns `None`, so no case conversation can exist. GSS, IT Admin, Institutional Officer, Head excluded; the Student is a subject, never a participant |

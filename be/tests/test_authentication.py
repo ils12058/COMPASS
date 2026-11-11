@@ -297,7 +297,7 @@ def test_session_refreshes_current_designations_and_override_aware_capabilities(
     # of insertion order. Normal management services still enforce role compatibility.
     UserDesignation.objects.create(
         user=user,
-        designation=Designation.objects.get(code="DPO"),
+        designation=Designation.objects.get(code="GENERAL_GUIDANCE_INTAKE"),
     )
     set_user_capability_override(
         user=user,
@@ -328,7 +328,7 @@ def test_session_refreshes_current_designations_and_override_aware_capabilities(
     assert refreshed.status_code == 200
     auth_user = refreshed.json()["user"]
 
-    assert auth_user["designations"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
+    assert auth_user["designations"] == ["GENERAL_GUIDANCE_INTAKE", "HEAD_GUIDANCE_COUNSELOR"]
     assert auth_user["designations"] == sorted(set(auth_user["designations"]))
     assert auth_user["capabilities"] == sorted(effective_capabilities(user))
     assert auth_user["capabilities"] == sorted(set(auth_user["capabilities"]))
@@ -339,37 +339,23 @@ def test_session_refreshes_current_designations_and_override_aware_capabilities(
     assert {
         "organization.manage",
         "academic_years.manage",
-        "privacy_governance.view",
+        "privacy_governance.activity.view",
     } <= set(auth_user["capabilities"])
 
 
 @pytest.mark.django_db
-def test_dpo_session_exposes_designation_identity_and_only_effective_dpo_authority():
+def test_officer_session_exposes_generic_identity_with_zero_capabilities():
     sync_policy()
     officer = make_user(
-        email="auth-contract-dpo@example.edu",
-        role_code="INSTITUTIONAL_OFFICER",
-    )
-    UserDesignation.objects.create(
-        user=officer,
-        designation=Designation.objects.get(code="DPO"),
+        email="auth-contract-officer@example.edu", role_code="INSTITUTIONAL_OFFICER"
     )
     client = Client()
-
     response = login(client, email=officer.email, password="correct-password")
     assert response.status_code == 200
-    auth_user = response.json()["user"]
-
-    assert auth_user["role"] == "INSTITUTIONAL_OFFICER"
-    assert auth_user["designations"] == ["DPO"]
-    assert auth_user["capabilities"] == [
-        "privacy_governance.activity.export",
-        "privacy_governance.manage",
-        "privacy_governance.retention.view",
-        "privacy_governance.view",
-    ]
-    assert "accounts.manage" not in auth_user["capabilities"]
-    assert "reports.view" not in auth_user["capabilities"]
+    user = response.json()["user"]
+    assert user["role"] == "INSTITUTIONAL_OFFICER"
+    assert user["designations"] == []
+    assert user["capabilities"] == []
 
 
 @pytest.mark.django_db

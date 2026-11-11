@@ -49,9 +49,9 @@ one filter implementation:
 - Call Slip `state`
 - Appointment `upcoming` (SCHEDULED and not yet started)
 
-Retention Policies accept a bounded `search`. Review detail includes a small Processing Activity
-identity. Notice detail includes current and draft revision summaries. Clients do not scan pages
-to find these.
+Notice detail includes current and draft revision summaries. Clients do not scan pages to find
+these. The former Retention Policies and Processing Activity review projections are no longer
+supported; see [Privacy Governance](../privacy-governance.md) for the current scope.
 
 **Provenance is recorded, not inferred.** Call Slips store an `issuance_mode`: `LIVE`,
 `HISTORICAL`, or `LEGACY_UNKNOWN`.

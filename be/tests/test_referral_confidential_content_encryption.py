@@ -20,7 +20,7 @@ from django.test import override_settings
 from django.utils import timezone
 from pypdf import PdfReader
 
-from compass.accounts.models import Capability, Designation, UserCapabilityOverride, UserDesignation
+from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.audit.models import AuditEvent
 from compass.counseling.context_services import list_context_history
 from compass.notifications.models import EmailDelivery, Notification
@@ -419,8 +419,7 @@ def test_denied_roles_inactive_and_missing_capability_never_decrypt(world, monke
     item = create(world)
     student = world[1]
     admin = make_user("crypto-admin@example.edu", "IT_ADMIN")
-    dpo = make_user("crypto-dpo@example.edu", "IT_ADMIN")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
+    officer = make_user("crypto-officer@example.edu", "INSTITUTIONAL_OFFICER")
     revoked = make_head("revoked@example.edu")
     UserCapabilityOverride.objects.create(
         user=revoked,
@@ -429,7 +428,7 @@ def test_denied_roles_inactive_and_missing_capability_never_decrypt(world, monke
         reason="synthetic",
     )
     inactive = make_head("inactive@example.edu")
-    clients = [auth_client(u) for u in (student, admin, dpo, revoked, inactive)]
+    clients = [auth_client(u) for u in (student, admin, officer, revoked, inactive)]
     inactive.is_active = False
     inactive.save(update_fields=["is_active", "updated_at"])
     monkeypatch.setattr(content, "_decrypt", forbidden)

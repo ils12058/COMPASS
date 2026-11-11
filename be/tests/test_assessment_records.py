@@ -70,8 +70,7 @@ def world():
     ordinary = user("ordinary", "COUNSELOR")
     goa = user("staff", "GUIDANCE_OFFICE_ASSISTANT")
     admin = user("admin", "IT_ADMIN")
-    dpo = user("dpo", "INSTITUTIONAL_OFFICER")
-    dpo.designations.add(Designation.objects.get(code="DPO"))
+    officer = user("officer", "INSTITUTIONAL_OFFICER")
     student = user("student", "STUDENT")
     other_student = user("other", "STUDENT")
     campus = Campus.objects.create(code="AS", name="Synthetic Campus")
@@ -119,7 +118,7 @@ def test_head_designation_grants_and_dependency_only(world):
     assert auth_client(world.head).get(BASE).status_code == 200
 
 
-@pytest.mark.parametrize("actor", ["ordinary", "goa", "student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["ordinary", "goa", "student", "admin", "officer"])
 def test_baseline_unsupported_access_denied(world, actor):
     user = getattr(world, actor)
     item = record(world)
@@ -131,7 +130,7 @@ def test_baseline_unsupported_access_denied(world, actor):
         services.get_record(actor=user, record_id=item.pk)
 
 
-@pytest.mark.parametrize("actor", ["goa", "student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["goa", "student", "admin", "officer"])
 def test_role_fence_survives_unusual_override(world, actor):
     user = getattr(world, actor)
     grant(user)
@@ -329,7 +328,7 @@ def test_staff_with_override_and_supervision_never_manages_assessment_types(worl
     assert world.assessment_type.is_active
 
 
-@pytest.mark.parametrize("actor_name", ["student", "admin", "dpo"])
+@pytest.mark.parametrize("actor_name", ["student", "admin", "officer"])
 def test_unsupported_roles_cannot_mutate_types_even_with_direct_grants(world, actor_name):
     actor = getattr(world, actor_name)
     grant(actor)

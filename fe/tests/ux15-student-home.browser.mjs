@@ -262,7 +262,7 @@ if (!baseline) {
     });
   }
   for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
-    const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : role === "INSTITUTIONAL_OFFICER" ? ["DPO"] : [] });
+    const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : [] });
     await check(`professional-home-${role}-preserves-queues-metrics-and-role-boundaries`, "/portal", state.options(), async (page, { requests }) => {
       await shown(page.getByText(state.announcements[0].title, { exact: true }));
       assert.equal(await page.locator("#student-home-services-heading").count(), 0);

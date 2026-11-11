@@ -630,7 +630,7 @@ async function choose(page, name) {
 
 for (const [label, account] of [
   ["IT Admin", messagesAccount("IT_ADMIN")],
-  ["DPO designation", messagesAccount("INSTITUTIONAL_OFFICER", { designations: ["DPO"] })],
+  ["Institutional Officer", messagesAccount("INSTITUTIONAL_OFFICER", { designations: [] })],
   ["a Counselor whose template management was revoked", messagesAccount("COUNSELOR", { capabilities: ["guidance_messages.view", "guidance_messages.manage"] })],
 ]) {
   const backend = withTemplates(staffWorld());

@@ -159,15 +159,11 @@ def test_student_support_capability_is_counselor_only_by_default_and_head_inheri
     staff = make_user("support-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("support-student@example.edu")
     admin = make_user("support-admin@example.edu", "IT_ADMIN")
-    dpo = make_user("support-dpo@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
-    )
+    officer = make_user("support-officer@example.edu", "INSTITUTIONAL_OFFICER")
 
     assert counselor.has_capability("student_support.view")
     assert head.has_capability("student_support.view")
-    for denied in (staff, student, admin, dpo):
+    for denied in (staff, student, admin, officer):
         assert not denied.has_capability("student_support.view")
 
 

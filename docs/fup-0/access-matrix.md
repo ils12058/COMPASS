@@ -49,7 +49,7 @@ on source/Student/assignment facts; **—** = not applicable.
 | Creator who is not assignee | N for that task | N; create response is a minimized receipt only | Y | N | N | N via creation | N | N via task |
 | `FACULTY` | N | N | N | N | N | N | N | N (own Referral via Referral API only) |
 | Student | N | N | N | N | N | N | N | N via Follow-Up |
-| `DPO` / IT administrator | N merely from role | N | N | N | N | N | N | N merely from role |
+| Institutional Officer / IT administrator | N merely from role | N | N | N | N | N | N | N merely from role |
 | Anonymous / unauthenticated | N (session auth required) | N | N | N | N | N | N | N |
 
 Evidence for the actor columns: `policy.py:18-29,42-48,138-183,186-245,248-251`; `recovery.py:49-119`;
@@ -173,7 +173,7 @@ side-channel analysis was performed.
 - No `HEAD_GUIDANCE_COUNSELOR` override for confidential tasks.
 - No `GUIDANCE_SERVICES_STAFF` confidential access.
 - No Faculty/Student Follow-Up route.
-- No global admin/DPO content access.
+- No global administrator/Institutional Officer content access.
 - No recovery of confidential tasks.
 - No creator backdoor after creation.
 - No direct `source_id` authorization.

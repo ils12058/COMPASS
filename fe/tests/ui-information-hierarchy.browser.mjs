@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { chooseAppointmentDate } from "./support/appointment-calendar.mjs";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
-import { appointmentId, serviceId, appointment, user, slip } from "./support/ui-hierarchy-fixtures.mjs";
+import { appointmentId, serviceId, appointment, slip } from "./support/ui-hierarchy-fixtures.mjs";
 
 const { check, navigate, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ui-information-hierarchy");
 
@@ -184,46 +184,6 @@ await check("mobile-icon-action-label", `/portal/call-slips/${slip.id}`, { mobil
   await noHorizontalOverflow(page);
 });
 
-const retentionAuth = {
-  "/api/v1/auth/session": { user: { ...user("INSTITUTIONAL_OFFICER"), designations: ["DPO"], capabilities: ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.activity.export", "privacy_governance.retention.view"] }, session: { id: "synthetic", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
-  "/api/v1/privacy/retention/policies": { items: [
-    ["GRADUATE_TRACER", "Graduate Tracer responses"],
-    ["ECOUNSELING_RECORDING", "E-Counseling recordings"],
-  ].map(([category_code, category_label]) => ({ category_code, category_label, adoption_status: "NOT_ADOPTED", retention_period: null, policy_reference: null, effective_date: null })) },
-};
-for (const device of ["desktop", "phone"]) {
-  await check(`retention-policies-read-only-${device}`, "/portal/privacy/retention", { role: "INSTITUTIONAL_OFFICER", device, overrides: retentionAuth }, async (page, { requests }) => {
-    await shown(page.getByRole("heading", { level: 1, name: "Retention policies", exact: true }));
-    await shown(page.getByRole("link", { name: "Retention policies", exact: true }));
-    for (const name of ["Graduate Tracer responses", "E-Counseling recordings"]) await shown(page.getByRole("heading", { name, exact: true }));
-    assert.equal(await page.getByText("Not set", { exact: true }).count(), 2, "Both current record categories show policy status");
-    assert.equal(await page.getByText("No retention period is set in COMPASS for this category.", { exact: true }).count(), 2, "Both current record categories explain the missing policy");
-    assert.doesNotMatch(await page.locator("main").innerText(), /transcri/i);
-    const main = await page.locator("main").innerText();
-    assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
-    const buttons = page.locator("main").getByRole("button");
-    assert.equal(await buttons.count(), 1, "Read-only oversight has only contextual Help");
-    assert.equal(await buttons.getAttribute("aria-label"), "Help: About retention policies");
-    const helpTarget = await buttons.boundingBox();
-    assert.ok(helpTarget && helpTarget.width >= 44 && helpTarget.height >= 44);
-    await page.getByRole("button", { name: "Help: About retention policies", exact: true }).click();
-    const help = page.getByRole("dialog", { name: "About retention policies", exact: true });
-    assert.match(await help.innerText(), /Retention periods follow the University’s records retention schedule[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
-    await page.keyboard.press("Escape");
-    await hidden(help);
-    const privacy = requests.filter((item) => item.pathname.startsWith("/api/v1/privacy/"));
-    assert.ok(privacy.length > 0 && privacy.every((item) => item.method === "GET"), "the oversight page never mutates");
-    assert.ok(!requests.some((item) => /\/retention\/(rules|cases|summary|categories)/.test(item.pathname)));
-    await noHorizontalOverflow(page);
-    await screenshot(page, `retention-policies-${device}`);
-  });
-}
-for (const legacy of ["/portal/privacy/retention/rules", "/portal/privacy/retention/rules/new", "/portal/privacy/retention/cases/dd93953c-e82b-4d07-b3cf-79b204cdb0f3"]) {
-  await check(`retention-legacy-bookmark-${legacy.split("/").slice(4).join("-")}`, legacy, { role: "INSTITUTIONAL_OFFICER", overrides: retentionAuth }, async (page) => {
-    await shown(page.getByRole("heading", { level: 1, name: "Page not found", exact: true }));
-    assert.equal(new URL(page.url()).pathname, legacy, "Retired URLs are no longer compatibility redirects");
-    await hidden(page.getByRole("button", { name: /Create draft rule|Approve disposition|Place hold/ }));
-  });
-}
+
 
 await finish();

@@ -2,7 +2,7 @@
 
 The reset-only baseline removes the retired ADR-072 ledger (rules, cases, holds), its tombstone
 tasks, fallback services and preflight command. These tests prove the absence, and that the
-surviving canonical boundaries still hold: canonical oversight for the DPO and the
+surviving canonical boundaries still hold: privacy authorization and the
 E-Counseling disposal and unknown-room fences. All data is synthetic; nothing exercises a
 destructive path.
 """
@@ -21,7 +21,6 @@ from django.db import connection
 from django.test import override_settings
 from django.utils import timezone
 
-from compass.accounts.services import effective_capabilities
 from compass.ecounseling.media import process_media_webhook_event
 from compass.ecounseling.models import DailyWebhookReceipt as Receipt
 from compass.ecounseling.models import (
@@ -40,19 +39,9 @@ from tests.historical_outcome_fixtures import (
     legacy_media_source,
 )
 from tests.test_ecounseling_webhook_security import body_for, reservation, signed
-from tests.test_privacy_governance import (
-    auth_client,
-    make_dpo,
-    make_head,
-    make_user,
-    post_json,
-    sync_policy,
-)
+from tests.test_privacy_governance import make_user
 
 pytestmark = pytest.mark.django_db
-ROOT = "/api/v1/privacy/retention"
-CAPS = {"privacy_governance.retention.view"}
-RETIRED_CAPS = {"privacy_governance.retention.manage", "privacy_governance.retention.approve"}
 RETIRED_TASK_NAMES = (
     "compass.privacy_governance.discover_retention",
     "compass.privacy_governance.execute_disposition",
@@ -70,12 +59,6 @@ RETIRED_TABLES = (
 )
 RETIRED_MODELS = ("OperationalRetentionRule", "DispositionCase", "DispositionHold")
 COMPASS = Path(__file__).resolve().parents[1] / "compass"
-
-
-@pytest.fixture
-def dpo():
-    sync_policy()
-    return make_dpo()
 
 
 def tracer(email="graduate@example.edu", **values):
@@ -186,49 +169,6 @@ def test_no_production_module_references_the_retired_engine():
                 if node.value in RETIRED_TASK_NAMES or node.value == "retention_decommissioned":
                     offenders.append((rel, node.value))
     assert offenders == []
-
-
-# --- Canonical oversight boundary ---------------------------------------------------------------
-
-
-def test_dpo_keeps_only_retention_view_and_no_confidential_content(dpo):
-    assert CAPS <= effective_capabilities(dpo)
-    assert RETIRED_CAPS.isdisjoint(effective_capabilities(dpo))
-    assert (CAPS | RETIRED_CAPS).isdisjoint(effective_capabilities(make_head()))
-    assert not any(
-        code.startswith(
-            (
-                "counseling.",
-                "inventory.",
-                "graduate_tracer.",
-                "ecounseling.",
-                "exit_interviews.",
-                "referrals.",
-                "routine_interviews.",
-            )
-        )
-        for code in effective_capabilities(dpo)
-    )
-    assert auth_client(dpo).get("/api/v1/graduate-tracer/responses").status_code == 403
-
-
-def test_retired_ledger_routes_are_unreachable_and_the_register_is_served(dpo):
-    client = auth_client(dpo, recent_mfa=True)
-    for path in (
-        f"{ROOT}/summary",
-        f"{ROOT}/rules",
-        f"{ROOT}/cases",
-        f"{ROOT}/cases/00000000-0000-4000-8000-000000000001",
-    ):
-        assert client.get(path).status_code == 404
-    for path in (
-        f"{ROOT}/rules/00000000-0000-4000-8000-000000000001/activate",
-        f"{ROOT}/cases/00000000-0000-4000-8000-000000000001/approve",
-    ):
-        assert post_json(client, path, {"expected_revision": 1}).status_code == 404
-    response = client.get(f"{ROOT}/policies")
-    assert response.status_code == 200
-    assert {item["adoption_status"] for item in response.json()["items"]} == {"NOT_ADOPTED"}
 
 
 # --- Surviving historical-outcome readers -------------------------------------------------------

@@ -303,7 +303,7 @@ def test_manifest_population_and_uat_rules():
     students = [a for a in ACCOUNTS if a.is_student]
     staff = [a for a in ACCOUNTS if not a.is_student]
     groups = {group: sum(s.group == group for s in students) for group in StudentGroup}
-    assert (len(students), len(staff)) == (103, 19)
+    assert (len(students), len(staff)) == (103, 17)
     assert groups == {
         StudentGroup.RICH: 11,
         StudentGroup.ACTION_READY: 27,
@@ -338,24 +338,19 @@ def identity(account) -> dict:
 
 
 def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
-    # Frozen from staging 8684ea10 (113 accounts, 91 scenarios) and b917e0c8 (116 accounts,
-    # 94 scenarios). The College promotion changes only catalog text and suitability. The
-    # graduating Student's one unsupported fifth-year value is normalized back to the frozen
-    # snapshot here; the dedicated seed regression below verifies the corrected fourth year.
-    # The GOA rename intentionally changes the two assistant personas, emails, handles and
-    # scenario ids. P12 removes only DPO-NEG-01; the scenario counts and hashes below
-    # reflect that deletion, verified against the base manifest with only that item removed.
-    # R4 changes only the retention scenario description; identities and selectors stay frozen.
+    # Rebased canonical snapshots: two obsolete privacy personas removed; Notice scenarios
+    # owned by IT, with Head Activity and generic Officer self-service scenarios added.
+    # Other Student identities and record selectors retain the previous baseline.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS | E5_KEYS]
     original_scenarios = [
         pre_cont1b_catalog_snapshot(asdict(s))
         for s in SCENARIOS
         if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS | E5_SCENARIOS
     ]
-    assert len(original_accounts) == 113
+    assert len(original_accounts) == 111
     assert len(original_scenarios) == 90
     assert fingerprint([identity(a) for a in ACCOUNTS if a.key not in E5_KEYS]) == (
-        "c9346f81bc288d917ab88cf576121d40adfb8b5ead0a3b0761da627078efc4e5"
+        "af963fb52ad9b57f39fc60ec68f26a29a71739c306239578324f997a5b69f53a"
     )
     assert (
         fingerprint(
@@ -365,10 +360,10 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
                 if a.key not in (PROMOTED_KEYS - {"bg_61"})
             ]
         )
-        == "5d6b54777ff7017154c84fc023fca6aa1dc9d844683916c69c8130b814504a23"
+        == "9ffc8c16343223541ab31b164a3c8747bc9bb853e96754a1cda5db2d14ecdb3b"
     )
     assert fingerprint(original_scenarios) == (
-        "6e66ef6a9754124bf9e8e589d46de5f46b1f272b49f7499a9550678adcf9c81b"
+        "1b48db221e03acf9faf0b157761b51592b259f60825d3efb7ed815825d8793e3"
     )
     assert fingerprint(
         [
@@ -376,8 +371,8 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
             for s in SCENARIOS
             if s.id not in COLLEGE_SCENARIOS | E5_SCENARIOS
         ]
-    ) == ("6215d406948d0c090b157bceaca344fddd7299e1e127f23bdd9f6386b2c4a35e")
-    assert len(ACCOUNTS) == 122 and len(SCENARIOS) == 113
+    ) == ("3113200538ae57011e3ecd98f4344e3c254b616e6217d36311c2a2d63e203334")
+    assert len(ACCOUNTS) == 120 and len(SCENARIOS) == 113
     for key in PROMOTED_KEYS - {"bg_61"}:
         student = STUDENTS_BY_KEY[key]
         assert student.group == StudentGroup.BACKGROUND
@@ -389,22 +384,22 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
             assert names.count(account.full_name) == 1
 
 
-def test_e5_preserves_all_116_baseline_identity_and_record_selectors():
+def test_e5_preserves_current_baseline_identity_and_record_selectors():
     original = [
         {k: v for k, v in asdict(a).items() if k not in CATALOG_ONLY_FIELDS}
         for a in ACCOUNTS
         if a.key not in E5_KEYS
     ]
-    assert len(original) == 116
+    assert len(original) == 114
     assert (
-        fingerprint(original) == "731916a5318c456a243b45c0921240cfaac982346d84ecfd491ba846eb90e5c3"
+        fingerprint(original) == "9d9d66c4bb6b87d8874e62cf5cc4154fe635c8467aa93eb6abe0d09135e1f022"
     )
     # R4 rewords the retention description; no baseline identity or record selector changes.
     old_scenarios = [asdict(s) for s in SCENARIOS if s.id not in E5_SCENARIOS]
     assert len(old_scenarios) == 101
     assert (
         fingerprint(old_scenarios)
-        == "47dc62dfe6b7681df05e4cf161549aa47da1b89d91934b0fc83ffe83a756cabd"
+        == "4cb420b2aa8309bb1ff16230f28aab576fc2a342a791724b37c3b15c18afa16c"
     )
 
 
@@ -417,7 +412,7 @@ def test_50_person_allocation_has_independent_eligible_account_owners():
         "Faculty": 5,
         "Alumni": 5,
         "ITSO Personnel": 3,
-        "Data Protection Officer": 1,
+        "Institutional Officer": 1,
     }
     assert UAT_50_STAKEHOLDER_COUNTS == {k: len(v) for k, v in UAT_50_ALLOCATION.items()}
     assert len(UAT_50_KEYS) == len(set(UAT_50_KEYS)) == 50
@@ -475,7 +470,7 @@ def test_50_person_staff_roles_designations_and_scenario_ownership():
         "Faculty": ("FACULTY", set()),
         "Guidance Office Assistant": ("GUIDANCE_OFFICE_ASSISTANT", set()),
         "ITSO Personnel": ("IT_ADMIN", set()),
-        "Data Protection Officer": ("INSTITUTIONAL_OFFICER", {"DPO"}),
+        "Institutional Officer": ("INSTITUTIONAL_OFFICER", set()),
     }
     for category, (role, designations) in expected_staff.items():
         for key in UAT_50_ALLOCATION[category]:
@@ -619,11 +614,11 @@ class SeededDatasetTests(TestCase):
         assert self.report.dataset_name == DATASET_NAME == "COMPASS Staging Dataset v1"
         assert self.report.dataset_version == DATASET_VERSION == 1
         assert self.report.anchor == ANCHOR
-        assert (self.report.account_count, self.report.student_count) == (122, 103)
+        assert (self.report.account_count, self.report.student_count) == (120, 103)
 
     def test_population_accounts_and_authentication_state(self):
         seeded = User.objects.filter(institutional_id__startswith="STG-")
-        assert seeded.count() == 122
+        assert seeded.count() == 120
         assert not any(user.has_usable_password() for user in seeded)
         assert dataset_user("onboarding").email_verified_at is None
         assert not dataset_user("former_staff").is_active
@@ -950,7 +945,7 @@ class SeededDatasetTests(TestCase):
         assert sum(row["role"] == "STUDENT" for row in rows) == 103
         for account in ACCOUNTS:
             assert f"| {account.key} |" in documents[CATALOG]
-        assert "**122** (103 Students, 19 staff)" in documents[SUMMARY]
+        assert "**120** (103 Students, 17 staff)" in documents[SUMMARY]
         assert "50 independent participants" in documents[SUMMARY]
         executable = sum(s.readiness == Readiness.EXECUTABLE for s in SCENARIOS)
         assert f"Executable UAT scenarios: **{executable}**" in documents[SUMMARY]
@@ -1268,7 +1263,7 @@ class SeededDatasetTests(TestCase):
 
 
 class IncrementalParticipantExpansionTests(TestCase):
-    def test_existing_116_account_dataset_expands_without_rewriting_uat(self):
+    def test_existing_baseline_dataset_expands_without_rewriting_uat(self):
         from compass.referrals.models import ReferralReferenceCounter
 
         # Run the original population through the same unchanged units, then upgrade it.
@@ -1288,7 +1283,7 @@ class IncrementalParticipantExpansionTests(TestCase):
             ):
                 stack.enter_context(patch(f"compass.staging_seed.{module}.{name}", value))
             original = seed_once()
-        assert original.account_count == User.objects.count() == 116
+        assert original.account_count == User.objects.count() == 114
         assert User.objects.filter(role__code="STUDENT").count() == 102
 
         student = dataset_user("ar_03")
@@ -1347,8 +1342,8 @@ class IncrementalParticipantExpansionTests(TestCase):
 
         expanded = seed_once()
         assert expanded.created["Accounts"] == 6
-        assert (expanded.account_count, expanded.student_count) == (122, 103)
-        assert User.objects.count() == 122
+        assert (expanded.account_count, expanded.student_count) == (120, 103)
+        assert User.objects.count() == 120
         counters_after = dict(ReferralReferenceCounter.objects.values_list("year", "next_value"))
         assert counters_after == {
             year: value + (5 if year == ANCHOR.year else 0)

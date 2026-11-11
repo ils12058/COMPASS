@@ -101,7 +101,7 @@ resolved through the Student's own relationship or the assigned Counselor relati
 - Student paths decrypt only the Student's own Intake, never the Counselor Evaluation.
 - The assigned Counselor's detail decrypts the Evaluation. It decrypts the Intake only after
   submission; a draft Intake returns `intake: null` without being decrypted.
-- Other Counselors, a Head Guidance designation alone, GSS, IT Admin, and DPO are denied before any
+- Other Counselors, a Head Guidance designation alone, GSS, IT Admin, and Institutional Officer are denied before any
   content is loaded or decrypted, exactly as before.
 
 Nothing decrypts implicitly. There are no encrypted model fields or decrypting properties, so

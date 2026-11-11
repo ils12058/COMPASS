@@ -8,7 +8,7 @@ Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualific
 
 COMPASS needs a canonical record that Counseling actually occurred. Appointment remains a scheduled reservation; Availability remains potential scheduling time; Organization remains default routing/responsibility; Service Catalog remains the source of Service identity, delivery-mode support, and provider-role eligibility. Counseling must not collapse those domains or pre-build Routine Interview, Referral, Call Slip, Case Record, ServiceDelivery, e-Counseling delivery, or a generic workflow/form engine.
 
-Counseling occurrence is sensitive even before narrative notes exist. Ordinary access therefore needs both a Counseling capability and assignment to the specific Encounter. College responsibility, Head designation, DPO designation, technical administration, or Student identity do not imply confidential-record access.
+Counseling occurrence is sensitive even before narrative notes exist. Ordinary access therefore needs both a Counseling capability and assignment to the specific Encounter. College responsibility, Head designation, Institutional Officer role, technical administration, or Student identity do not imply confidential-record access.
 
 ## Decision
 
@@ -26,7 +26,7 @@ Appointment-linked creation locks only the base Appointment row with `select_for
 
 Correction is a narrow assigned-Counselor PATCH. Student, Counselor, Service, creator, and creation time are immutable. Entry mode, Appointment link, delivery mode, and actual timestamps may be corrected with complete resulting-state validation. The Encounter row is locked first; when Appointment links are involved, old/new Appointment rows are locked in deterministic UUID order. Historical correction is not blocked merely because the Counseling Service was later disabled. If a direct Encounter's delivery mode is actually changed, the newly proposed mode must still be configured for the Counseling Service. No-op corrections produce no fake Audit event.
 
-Add `counseling.view_assigned` and `counseling.manage_assigned`. COUNSELOR receives both. Guidance Services Staff, Student, IT Admin, DPO, and Head designation receive no Counseling-specific grant by default. Head remains a Counselor and therefore has normal access only to their own assigned Encounters. Capability overrides retain existing GRANT/REVOKE semantics, but capability alone never bypasses the primary-role COUNSELOR and `Encounter.counselor_id == actor.id` resource relationship.
+Add `counseling.view_assigned` and `counseling.manage_assigned`. COUNSELOR receives both. Guidance Services Staff, Student, IT Admin, Institutional Officer, and Head designation receive no Counseling-specific grant by default. Head remains a Counselor and therefore has normal access only to their own assigned Encounters. Capability overrides retain existing GRANT/REVOKE semantics, but capability alone never bypasses the primary-role COUNSELOR and `Encounter.counselor_id == actor.id` resource relationship.
 
 The existing Organization people endpoint is not reused for Student selection because it requires organization-management authority and exposes broader account fields. Counseling therefore adds a narrow `/counseling/students` lookup for active Students, bounded search/pagination, deterministic ordering, and only `id` plus `display_name`. It does not apply College scope as a hard wall.
 

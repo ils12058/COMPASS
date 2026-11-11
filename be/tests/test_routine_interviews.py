@@ -435,8 +435,7 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     unrelated = make_user("unrelated@example.edu", "COUNSELOR")
     goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
-    dpo = make_user("dpo@example.edu", "INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
@@ -453,7 +452,7 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     goa_client = auth_client(goa)
     head_client = auth_client(head)
     admin_client = auth_client(admin)
-    dpo_client = auth_client(dpo)
+    officer_client = auth_client(officer)
 
     student_update = student_client.put(
         f"/api/v1/routine-interviews/me/{item.pk}/intake",
@@ -476,7 +475,7 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     assert unrelated_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
     assert goa_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
     assert head_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
-    for operational_client in (goa_client, admin_client, dpo_client):
+    for operational_client in (goa_client, admin_client, officer_client):
         assert operational_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
         assert operational_client.get(f"/api/v1/routine-interviews/me/{item.pk}").status_code == 403
 

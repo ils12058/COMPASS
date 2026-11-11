@@ -348,8 +348,8 @@ class SelectionTests(unittest.TestCase):
         ):
             self.assertIn(name, result.files)
 
-    def test_privacy_governance_change_reaches_retention_and_media(self):
-        result = selected("be/compass/privacy_governance/retention_policy_register.py")
+    def test_privacy_governance_change_reaches_notice_and_media_boundaries(self):
+        result = selected("be/compass/privacy_governance/expansion_api.py")
         for name in (
             "test_disposition_decommission.py",
             "test_ecounseling_media_v2.py",

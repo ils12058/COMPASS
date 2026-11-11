@@ -52,7 +52,7 @@ for (const [perspective, role, event] of [
   ["head", "COUNSELOR", item("exit_interview.reopened", "Exit Interview returned for correction", "You returned an Exit Interview for correction.", 0)],
   ["goa", "GUIDANCE_OFFICE_ASSISTANT", item("good_moral.prepared", "Good Moral certificate prepared", "You prepared a Good Moral certificate.", 0)],
   ["it", "IT_ADMIN", account],
-  ["dpo", "INSTITUTIONAL_OFFICER", account],
+  ["officer", "INSTITUTIONAL_OFFICER", account],
 ]) {
   await check(`${perspective}-safe-projection`, "/portal/account/activity", {
     role, overrides: { "/api/v1/me/activity": { items: [event], page: 1, page_size: 20, has_next: false } },

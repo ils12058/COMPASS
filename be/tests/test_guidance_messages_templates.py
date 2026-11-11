@@ -122,8 +122,8 @@ def test_without_messages_manage_templates_are_unavailable(world, code):
         create(world, name="Another")
 
 
-@pytest.mark.parametrize("actor", ["student", "admin", "dpo"])
-def test_students_it_admin_and_dpo_are_denied(world, actor):
+@pytest.mark.parametrize("actor", ["student", "admin", "officer"])
+def test_students_it_admin_and_officer_are_denied(world, actor):
     template = create(world)
     client = auth_client(getattr(world, actor))
     assert client.get(BASE + "/templates").status_code == 403

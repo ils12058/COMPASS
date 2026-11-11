@@ -322,7 +322,7 @@ def test_student_drafts_and_other_students_filtered_before_decryption(world, mon
 
 
 @pytest.mark.parametrize(
-    "kind", ["other", "head", "goa", "admin", "dpo", "inactive", "revoked", "student-revoked"]
+    "kind", ["other", "head", "goa", "admin", "officer", "inactive", "revoked", "student-revoked"]
 )
 def test_denied_actors_never_decrypt(world, monkeypatch, kind):
     item = draft(world)
@@ -331,7 +331,7 @@ def test_denied_actors_never_decrypt(world, monkeypatch, kind):
         "GUIDANCE_OFFICE_ASSISTANT"
         if kind == "goa"
         else "IT_ADMIN"
-        if kind in {"admin", "dpo"}
+        if kind in {"admin", "officer"}
         else "STUDENT"
         if kind == "student-revoked"
         else "COUNSELOR"
@@ -343,12 +343,10 @@ def test_denied_actors_never_decrypt(world, monkeypatch, kind):
         if kind == "student-revoked"
         else make_user(f"denied-{kind}@example.edu", role)
     )
-    if kind in {"head", "dpo"}:
+    if kind == "head":
         UserDesignation.objects.create(
             user=actor,
-            designation=Designation.objects.get(
-                code="DPO" if kind == "dpo" else "HEAD_GUIDANCE_COUNSELOR"
-            ),
+            designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
         )
     capability = (
         "student_session_summaries.view_self"

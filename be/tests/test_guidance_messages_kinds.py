@@ -77,7 +77,15 @@ def actors(world):
         capability=Capability.objects.get(code="guidance_messages.manage"),
         defaults={"effect": "GRANT", "reason": "Synthetic probe: grants do not widen a role"},
     )
-    return [world.student, world.counselor, world.goa, world.head, world.admin, world.dpo, faculty]
+    return [
+        world.student,
+        world.counselor,
+        world.goa,
+        world.head,
+        world.admin,
+        world.officer,
+        faculty,
+    ]
 
 
 def legacy_authorized_pks(actor):
@@ -215,7 +223,7 @@ def test_legacy_shapes_still_insert_with_all_new_columns_null(world):
                     manage,
                 )
 
-    for actor in (world.admin, world.dpo):
+    for actor in (world.admin, world.officer):
         for thread in (office_thread, counseling_thread):
             # The role gate is concealed: an outside role sees the same denial as a missing thread.
             assert (

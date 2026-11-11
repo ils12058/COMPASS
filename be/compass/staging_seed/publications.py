@@ -46,7 +46,7 @@ from compass.resources.services import archive_resource, create_resource, publis
 from .content import narratives, publication_data
 from .content.feedback_matching import matching_customer_feedback, matching_feedback
 from .content.publication_data import AnnouncementSpec, ResourceSpec
-from .staff import DPO, HEAD_GUIDANCE
+from .staff import HEAD_GUIDANCE, IT_ADMIN
 from .students import SECOND_YEAR
 from .support import SeedSession, StagingSeedError, align_timestamps
 
@@ -167,7 +167,7 @@ def _date(parts: tuple[int, int, int] | None) -> date | None:
 
 
 def seed_privacy_governance(session: SeedSession) -> None:
-    dpo_context = session.as_user(DPO.key)
+    notice_context = session.as_user(IT_ADMIN.key)
     t = session.timeline
     with transaction.atomic():
         notice_spec = publication_data.PRIVACY_NOTICE
@@ -176,14 +176,16 @@ def seed_privacy_governance(session: SeedSession) -> None:
             published = dict(publication_data.PRIVACY_NOTICE_PUBLISHED)
             published["effective_on"] = _date(published["effective_on"])
             notice = create_notice(
-                actor=session.user(DPO.key),
-                context=dpo_context,
+                actor=session.user(IT_ADMIN.key),
+                context=notice_context,
                 code=notice_spec["code"],
                 name=notice_spec["name"],
                 **published,
             )
             first = notice.revisions.get(revision_number=1)
-            publish_revision(revision_id=first.pk, actor=session.user(DPO.key), context=dpo_context)
+            publish_revision(
+                revision_id=first.pk, actor=session.user(IT_ADMIN.key), context=notice_context
+            )
             drafted_at = t.on(2026, 7, 29, 10)
             published_at = t.on(2026, 8, 3, 9)
             align_timestamps(notice, created_at=drafted_at, updated_at=drafted_at)
@@ -202,8 +204,8 @@ def seed_privacy_governance(session: SeedSession) -> None:
         ):
             draft = create_revision(
                 notice_id=notice.pk,
-                actor=session.user(DPO.key),
-                context=dpo_context,
+                actor=session.user(IT_ADMIN.key),
+                context=notice_context,
                 **publication_data.PRIVACY_NOTICE_DRAFT,
             )
             align_timestamps(draft, created_at=t.past(5, 15), updated_at=t.past(5, 15))

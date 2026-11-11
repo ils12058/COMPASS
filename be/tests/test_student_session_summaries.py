@@ -280,15 +280,11 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     other = make_user("other@example.edu", "COUNSELOR")
     head = make_user("head@example.edu", "COUNSELOR")
     goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
-    dpo = make_user("dpo@example.edu", "IT_ADMIN")
+    officer = make_user("officer@example.edu", "INSTITUTIONAL_OFFICER")
     student = make_user("student@example.edu", "STUDENT")
     UserDesignation.objects.create(
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
-    )
-    UserDesignation.objects.create(
-        user=dpo,
-        designation=Designation.objects.get(code="DPO"),
     )
     create_counseling_service(admin)
     encounter = make_encounter(counselor=counselor, student=student)
@@ -304,7 +300,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     assert head.has_capability("student_session_summaries.view_assigned")
     assert not goa.has_capability("student_session_summaries.view_assigned")
     assert not admin.has_capability("student_session_summaries.view_assigned")
-    assert not dpo.has_capability("student_session_summaries.view_assigned")
+    assert not officer.has_capability("student_session_summaries.view_assigned")
 
     for actor in (other, head):
         response = auth_client(actor).get(
@@ -312,7 +308,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
         )
         assert response.status_code == 404
 
-    for actor in (goa, admin, dpo):
+    for actor in (goa, admin, officer):
         response = auth_client(actor).get(
             f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary"
         )

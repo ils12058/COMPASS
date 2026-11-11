@@ -129,9 +129,7 @@ def test_policy_grants_service_catalog_capabilities_and_preserves_overrides():
     staff = make_user("staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
-    dpo = Designation.objects.get(code="DPO")
     UserDesignation.objects.create(user=counselor, designation=head)
-    UserDesignation.objects.create(user=student, designation=dpo)
 
     assert admin.has_capability("services.catalog.view")
     assert admin.has_capability("services.manage")

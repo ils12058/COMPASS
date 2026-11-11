@@ -149,7 +149,7 @@ All active authenticated primary roles can access only their own profile:
 - Guidance Services Staff
 - IT Admin
 
-Designations, including Head Guidance Counselor and DPO, do not create broader profile browsing
+Designations, including Head Guidance Counselor, do not create broader profile browsing
 rights.
 
 Ordinary profile edits do not require recent MFA. They do not revoke sessions, rotate credentials,
@@ -227,7 +227,7 @@ new profile fields.
 Existing Organization person summaries remain minimal and do not gain the five profile fields.
 
 `accounts.manage`, Counselor/GSS responsibilities, Head Guidance designation, IT Admin role, and
-DPO designation do not create a generic personal-profile browsing right.
+Institutional Officer role do not create a generic personal-profile browsing right.
 
 Future domain services may consume only the current data genuinely required after their own
 domain-specific authorization.
@@ -257,7 +257,7 @@ Focused coverage verifies:
 - direct User fields/defaults and absence of PersonalProfile
 - no policy-count changes
 - self GET/PATCH across all primary roles
-- DPO remains self-only
+- Institutional Officer remains self-only
 - strict read-only identity/security/photo fields
 - true partial updates and explicit nullable DOB
 - conservative validation and bounded multiline addresses

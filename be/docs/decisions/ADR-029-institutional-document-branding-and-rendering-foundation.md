@@ -64,7 +64,7 @@ Capabilities are:
 - `document_branding.manage`
 
 They are granted only by the `HEAD_GUIDANCE_COUNSELOR` designation. They are not role grants for
-ordinary Counselor, Guidance Services Staff, Student, IT Admin, or DPO.
+ordinary Counselor, Guidance Services Staff, Student, IT Admin, or Institutional Officer.
 
 The management API exposes only:
 
