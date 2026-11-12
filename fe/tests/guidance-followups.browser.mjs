@@ -35,7 +35,7 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
         student: { id: studentId, display_name: "Synthetic Student", profile_photo_url: null, profile_photo_updated_at: null },
         counselor: { id: staff.id, display_name: "Synthetic Counselor", profile_photo_url: null, profile_photo_updated_at: null },
         service: { id: "service-source-unavailable", code: "COUNSELING", name: "Counseling" },
-        appointment: null, entry_mode: "WALK_IN", delivery_mode: "IN_PERSON",
+        appointment: null, entry_mode: "WALK_IN", delivery_mode: "IN_PERSON", in_case: false, case: null,
         started_at: "2026-10-17T01:00:00Z", ended_at: "2026-10-17T02:00:00Z",
         created_at: "2026-10-17T02:00:00Z", updated_at: "2026-10-17T02:00:00Z",
       });

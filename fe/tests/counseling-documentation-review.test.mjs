@@ -23,7 +23,7 @@ import { withNextRouter } from "./support/next-router.mjs";
 import { counselor, session } from "./support/cont1a-summary-fixtures.mjs";
 
 const ok = (data) => ({ data, status: 200, headers: { date: new Date().toUTCString() } });
-const PATHNAME = "/portal/counseling";
+const PATHNAME = "/portal/counseling/encounters";
 const PAGE_SIZE = 5;
 
 function person(id, displayName, institutionalId = null) {
@@ -140,11 +140,11 @@ test("the review page parameter is safe and only moves its own list", () => {
   const current = new URLSearchParams("page=3&search=ana&entry_mode=WALK_IN&ordering=LATEST_ENCOUNTER");
   assert.equal(
     reviewHref(PATHNAME, current, 2),
-    "/portal/counseling?page=3&search=ana&entry_mode=WALK_IN&ordering=LATEST_ENCOUNTER&review_page=2",
+    "/portal/counseling/encounters?page=3&search=ana&entry_mode=WALK_IN&ordering=LATEST_ENCOUNTER&review_page=2",
   );
   assert.equal(
     reviewHref(PATHNAME, new URLSearchParams("review_page=2&page=3"), 1),
-    "/portal/counseling?page=3",
+    "/portal/counseling/encounters?page=3",
   );
   assert.equal(reviewHref(PATHNAME, new URLSearchParams(), 1), PATHNAME);
   assert.equal(appointmentDetailHref("a-1"), "/portal/appointments/a-1");
@@ -198,7 +198,7 @@ test("an empty worklist is silent, and a stale page explains itself", () => {
     seed: (client, key) => seeded(client, key, [], { page: 2 }),
   });
   assert.match(stranded, /No Appointments on this page need documentation\./);
-  assert.match(stranded, /href="\/portal\/counseling"/);
+  assert.match(stranded, /href="\/portal\/counseling\/encounters"/);
   assert.match(stranded, /Back to the first page/);
 });
 

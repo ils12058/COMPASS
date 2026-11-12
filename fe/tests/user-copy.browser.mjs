@@ -23,7 +23,7 @@ for (const width of [320, 1440]) {
         ['referral-validation', '/portal/referrals', { '/api/v1/referrals': error('invalid_referral_request') }, 'Some Referral details need attention. Review them and try again.'],
         ['call-slip-validation', '/portal/call-slips', { '/api/v1/call-slips': error('invalid_call_slip_request') }, 'Some Call Slip details need attention. Review them and try again.'],
         ['appointment-validation', '/portal/appointments/manage', { '/api/v1/appointments': error('invalid_appointment_request') }, 'Some Appointment details need attention. Review them and try again.'],
-        ['counseling-validation', '/portal/counseling', { '/api/v1/counseling/me/encounters': error('counseling_invalid_request') }, 'Some counseling details need attention. Review them and try again.'],
+        ['counseling-validation', '/portal/counseling/encounters', { '/api/v1/counseling/me/encounters': error('counseling_invalid_request') }, 'Some counseling details need attention. Review them and try again.'],
         ['hidden-referral', '/portal/referrals/long', { '/api/v1/referrals/long': error('referral_not_permitted', 404) }, 'You don\'t have access to this Referral.'],
         ['hidden-call-slip', '/portal/call-slips/slip-density-test', { '/api/v1/call-slips/slip-density-test': error('call_slip_not_permitted', 404) }, 'You don\'t have access to this Call Slip.'],
     ])

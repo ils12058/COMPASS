@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointment, appointmentId, workspace } from "./support/ui-hierarchy-fixtures.mjs";
+import { casePath, casesFixture, student as caseStudent } from "./support/counseling-cases-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("counseling-encounter-consistency");
 const ePath = `/portal/e-counseling/${appointmentId}`;
@@ -33,6 +34,8 @@ function savedEncounter(overrides = {}) {
     ended_at: "2026-10-08T02:55:15Z",
     created_at: "2026-10-08T03:10:00Z",
     updated_at: "2026-10-08T03:10:00Z",
+    in_case: false,
+    case: null,
     ...overrides,
   };
 }
@@ -244,7 +247,10 @@ await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ 
 });
 
 const connectedSession = session();
-await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession, overrides: {
+const connectedCase = casesFixture();
+await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession,
+  handler: (args) => args.pathname.startsWith("/api/v1/counseling/cases") ? connectedCase.handler(args) : false,
+  overrides: {
   ...connectedSession.overrides,
   "/api/v1/counseling/me/encounters": { items: [], page: 1, page_size: 20, has_next: false, ordering: "LATEST_ENCOUNTER" },
   "/api/v1/counseling/appointment-candidates": {
@@ -255,13 +261,25 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await shown(stage(page).getByText(`Waiting for ${STUDENT}…`, { exact: true }).first());
   await page.getByRole("link", { name: "Counseling", exact: true }).first().click();
+  await shown(page.getByRole("heading", { name: "My cases", exact: true }));
+  await page.getByRole("link", { name: caseStudent.display_name, exact: true }).click();
+  await page.waitForURL((url) => url.pathname === casePath);
+  await shown(page.getByRole("heading", { name: caseStudent.display_name, exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Opening a case keeps the same Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Opening a case does not rejoin the call");
+  assert.equal(await fakeCount(page, "leave"), 0, "Opening a case does not leave the call");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Opening a case does not destroy the call");
+  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await page.getByRole("link", { name: "Back to Counseling", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "My cases", exact: true }));
+  await page.getByRole("link", { name: "Session records", exact: true }).click();
   await page.getByRole("button", { name: "Record Counseling Encounter" }).click();
   await page.getByRole("button", { name: "From Counseling Appointment", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(`${appointment.reference_code} · ${STUDENT}`) }).click();
   const record = await openRecordPage(page);
   await fillTimes(record, "2026-01-06T09:00", "2026-01-06T10:00");
   await record.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.waitForURL((url) => url.pathname === "/portal/counseling");
+  await page.waitForURL((url) => url.pathname === "/portal/counseling/encounters");
   assert.equal(await fakeCount(page, "createCallObject"), 1, "The call object is never recreated");
   assert.equal(await fakeCount(page, "destroy"), 0, "Opening and leaving the record page never ends the call");
   await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
@@ -330,7 +348,7 @@ await check("correction-form-consistency", `/portal/counseling/encounters/${ENCO
   await hidden(form);
 });
 
-await check("standalone-appointment-recording", "/portal/counseling", { overrides: {
+await check("standalone-appointment-recording", "/portal/counseling/encounters", { overrides: {
   "/api/v1/counseling/me/encounters": { items: [], page: 1, page_size: 20, has_next: false, ordering: "LATEST_ENCOUNTER" },
   "/api/v1/counseling/appointment-candidates": {
     items: [{ id: appointmentId, reference_code: appointment.reference_code, student: { id: "student", display_name: STUDENT, institutional_id: SYNTH_ID }, delivery_mode: "ONLINE", starts_at: appointment.starts_at, ends_at: appointment.ends_at, status: "SCHEDULED" }],
