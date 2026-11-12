@@ -3,7 +3,7 @@
 **Date:** 12 November 2026 · Philippine Time
 **Branch:** `codex/counseling-cw1-case-foundation`, cut from `origin/staging` at `751f31ea`
 **Specification:** [COMPASS counseling workflow plan](../counseling-workflow-plan.md) — CASE-01 to CASE-07, UX-01, UX-07, the backend and migration decisions, and package CW-1
-**Status:** Implemented in source. Backend verified locally. Frontend typechecks and lints, but its tests, build and browser journeys have **not** been run; see [What still has to be run](#what-still-has-to-be-run). Not committed, pushed, reviewed, deployed or tried by anyone at the Guidance and Counseling Office.
+**Status:** Implemented and verified locally on 12–13 November 2026: backend tests, frontend unit tests, build, the affected browser suites in Chromium and WebKit, and an upgrade rehearsal. Hosted CI has not run, nothing is deployed, and nobody at the Guidance and Counseling Office has tried it. See [Verification](#verification).
 
 ## What a counselor can do now
 
@@ -114,24 +114,40 @@ Backend commands ran from `be/` with `POSTGRES_DB=compass_cw1` and Redis databas
 | `pnpm typecheck` | clean |
 | `pnpm lint` | clean |
 
-### What still has to be run
+### Frontend and upgrade verification (local, 12–13 November 2026)
 
-Deferred at the owner's instruction for another agent. None of these has been run on this branch.
+Run in the worktree `../COMPASS-CW1-T` on `codex/counseling-cw1-tests`. Browser suites ran against a local Next dev server serving that worktree, with installed Chrome (`COMPASS_UI_BROWSER_CHANNEL=chrome`) and Playwright WebKit.
 
-1. **`pnpm test`** (frontend unit tests). A run was started and stopped before it reported. Expect failures in tests that assumed the Encounter list lives at `/portal/counseling`; these were found by search, not by running:
-   - `fe/tests/counseling-documentation-review.test.mjs` — `PATHNAME` and the two expected hrefs should become `/portal/counseling/encounters`.
-   - Any test that calls `encounterCreatePayload` still passes three arguments; the fourth (`caseId`) is optional.
-2. **`pnpm build`** (and so `pnpm validate`). Restore `fe/next-env.d.ts` afterwards if Next rewrites it.
-3. **Existing browser specs** that open the Encounter list or record form at `/portal/counseling` and should open `/portal/counseling/encounters`:
-   - `fe/tests/counseling-encounter-consistency.browser.mjs` (`waitForURL` on `/portal/counseling`, and the `standalone-appointment-recording` check)
-   - `fe/tests/user-copy.browser.mjs` (`counseling-validation`; the list now also calls `/api/v1/counseling/cases`)
-   - `fe/tests/case-coverage.browser.mjs` (`counseling-navigation`; "Case coverage" is now a page action link on My cases, same accessible name)
-   - `fe/tests/faculty-foundation.browser.mjs` and `fe/tests/counseling-context-confidentiality.browser.mjs` reference `/portal/counseling` for non-Counselor audiences and should be unaffected, but were not run.
-   - Encounter fixtures in browser specs need `in_case: false, case: null` to match the contract.
-4. **New frontend tests, not written:** unit tests for `cases/case-presentation.ts`, and browser journeys for opening a case (each origin), the review-required refusal, adding and removing a session, recording from a case, the stale-version notice, denied access, phone width and keyboard use.
-5. **Migration rehearsal, not run:** a fresh install was exercised only through pytest's test database. An upgrade rehearsal (apply the baseline, load legacy Encounters, Follow-ups, published summaries and coverage grants, then apply `0003`, confirm nothing changed and no case was created) is still owed.
-6. **Full backend suite and browser matrix:** GitHub CI on the pull request head is the full run.
-7. **No screen was opened in a browser.** Layout, focus order, and behaviour during an active E-Counseling call are unverified.
+| Check | Outcome |
+|---|---|
+| `pnpm test` | 1,247 passed, 0 failed |
+| `pnpm lint` | clean |
+| `pnpm validate` (api:generate, lint, typecheck, build) | passed |
+| `tests/counseling-cases.browser.mjs` (new) | 41 of 41 checks passed in Chromium and in WebKit |
+| `tests/counseling-encounter-consistency.browser.mjs`, including an active E-Counseling call while My cases and a case are opened (same Call Object, no leave, rejoin or destroy) | 14 of 14 in Chromium and WebKit |
+| `tests/case-coverage.browser.mjs` | 41 of 41 in Chromium and WebKit |
+| `tests/user-copy.browser.mjs` | 42 checks passed in Chromium and WebKit |
+| `tests/guidance-followups.browser.mjs` | 28 of 28 in Chromium and WebKit |
+| `tests/counseling-context-confidentiality.browser.mjs` | 20 checks passed in Chromium and WebKit |
+| Upgrade rehearsal on a new scratch database (below) | passed, twice, on two separate databases |
+| Backend: `test_canonical_baseline.py`, both case test files, `test_openapi_contract.py` | passed |
+| `python3 -m unittest discover -s .github/scripts` | OK |
+
+**Upgrade rehearsal.** Every app was migrated to its leaf except Counseling, which stopped at `0002_database_guards`. Legacy rows were loaded with no case: 7 accounts, 1 Appointment, 3 Encounters, a published Student Session Summary, a Routine Interview linked to an Encounter, a coverage grant with 2 scopes and a submitted handoff, and 3 pending Follow-ups with their events. Before migrating, `database_preflight.validate_operations` accepted the pending plan, which was only `counseling.0003_counseling_cases`. After `migrate`, only that migration was applied; every legacy table had the same row count and the same content checksum (byte-identical); the four new case tables were empty; and `manage.py check --database default` and `makemigrations --check --dry-run` were clean. The migration's SHA-256 matched `be/deploy/staging/additive-migrations.json`. The rehearsal script is kept outside the repository, in `Claude outputs/cw-1/migration_rehearsal.py`.
+
+**Stale tests repaired.** All were stale because of the planned route move or the two new Encounter fields, not because of defects:
+
+- `counseling-documentation-review.test.mjs`, `counseling-finish.test.mjs`, `user-copy.browser.mjs`: the Encounter list moved from `/portal/counseling` to `/portal/counseling/encounters`.
+- `case-coverage.browser.mjs` and its fixture: `/portal/counseling` is now My cases, which calls `GET /api/v1/counseling/cases`; "Case coverage" is a page action link there.
+- `counseling-encounter-consistency.browser.mjs` and `.test.mjs`, `guidance-followups.browser.mjs`, `support/cont1a-summary-fixtures.mjs`: Encounter fixtures gained `in_case` and `case`, and the recording flow returns to Session records.
+
+**Defects found by the new tests and fixed.**
+
+- After a session was removed, focus fell to the page because its Remove button was gone. Focus now moves to the Sessions heading.
+- Adding a session from a later page of candidates reopened the dialog on that later, possibly empty, page. The dialog now returns to the first page after an add or a stale-version refusal.
+- At 320 and 390 pixels wide, the whole case page scrolled sideways (page width 731 pixels): the Sessions table's visually hidden "Actions" header label is absolutely positioned and escaped the table's scroll container. The container is now its positioning context. Removing the fix makes both phone-width checks fail again; restoring it makes them pass.
+
+**Not covered.** The full backend suite and the full browser matrix are left to CI on the pull request. `faculty-foundation.browser.mjs` was not run; it only checks that Faculty cannot reach `/portal/counseling`, which this change does not affect. No real backend was used in a browser: every browser check uses mocked API responses. Nobody has used the screens with real data.
 
 ### New test files to keep in CI
 
