@@ -110,6 +110,13 @@ class CounselingPage:
     ordering: CounselingEncounterOrdering | None = None
 
 
+class CounselingEncounterCaseLink(StrEnum):
+    """Whether a session record currently belongs to a Counseling case."""
+
+    LINKED = "LINKED"
+    UNLINKED = "UNLINKED"
+
+
 class CounselingEncounterOrdering(StrEnum):
     """Closed orderings for a Counselor's Encounter history (ADR-090); the latest comes first."""
 
@@ -576,6 +583,7 @@ def create_encounter(
     delivery_mode: str | None = None,
     appointment_id: UUID | None = None,
     routine_interview_id: UUID | None = None,
+    case_id: UUID | None = None,
     context: AuditContext,
     now: datetime | None = None,
 ) -> CounselingEncounter:
@@ -586,9 +594,15 @@ def create_encounter(
     or nothing is recorded. An Appointment Encounter is linked to the same Appointment's Routine
     Interview automatically. Without either, the Encounter is independent; COMPASS never links it
     by similarity.
+
+    With ``case_id`` the interaction is recorded from that Counseling case, which must be the
+    Counselor's own Active case for the same Student: the Encounter is linked to it in the same
+    transaction, or nothing is recorded. Without it the Encounter joins no case.
     """
 
     from compass.routine_interviews.services import lock_routine_for_encounter_recording
+
+    from .case_services import link_recorded_session, lock_case_for_recording
 
     normalized_entry = _normalize_entry_mode(entry_mode)
     normalized_start, normalized_end = _normalize_actual_times(started_at, ended_at, now=now)
@@ -601,6 +615,12 @@ def create_encounter(
 
     if appointment_id is not None:
         with _routine_link_errors(), transaction.atomic():
+            # The case is always the first lock, before any record it will be linked to.
+            case = (
+                lock_case_for_recording(actor=counselor, case_id=case_id)
+                if case_id is not None
+                else None
+            )
             routine = lock_routine_for_encounter_recording(
                 counselor=counselor,
                 routine_interview_id=routine_interview_id,
@@ -669,6 +689,10 @@ def create_encounter(
                 routine_context=routine_context,
                 context=context,
             )
+            if case is not None:
+                link_recorded_session(
+                    case=case, encounter=encounter, actor=locked_counselor, context=context
+                )
         return _encounter_queryset().get(pk=encounter.pk)
 
     if normalized_entry == CounselingEntryMode.APPOINTMENT:
@@ -680,6 +704,11 @@ def create_encounter(
     normalized_mode = _normalize_delivery_mode(delivery_mode)
 
     with _routine_link_errors(), transaction.atomic():
+        case = (
+            lock_case_for_recording(actor=counselor, case_id=case_id)
+            if case_id is not None
+            else None
+        )
         routine = lock_routine_for_encounter_recording(
             counselor=counselor,
             routine_interview_id=routine_interview_id,
@@ -724,6 +753,10 @@ def create_encounter(
             routine_context=routine_context,
             context=context,
         )
+        if case is not None:
+            link_recorded_session(
+                case=case, encounter=encounter, actor=locked_counselor, context=context
+            )
     return _encounter_queryset().get(pk=encounter.pk)
 
 
@@ -971,6 +1004,7 @@ def list_my_encounters(
     from_date: date | None = None,
     to_date: date | None = None,
     student_id: UUID | None = None,
+    case_link: str | CounselingEncounterCaseLink | None = None,
     search: str | None = None,
     ordering: str | CounselingEncounterOrdering | None = None,
     page: int = 1,
@@ -990,6 +1024,20 @@ def list_my_encounters(
         qs = qs.filter(delivery_mode=_normalize_delivery_mode(delivery_mode))
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
+    if case_link is not None:
+        from .case_models import CounselingCaseSession
+
+        try:
+            wanted = CounselingEncounterCaseLink(case_link)
+        except ValueError:
+            raise InvalidCounselingInput("case_link must be LINKED or UNLINKED") from None
+        qs = qs.annotate(
+            _in_case=Exists(
+                CounselingCaseSession.objects.filter(
+                    encounter_id=OuterRef("pk"), removed_at__isnull=True
+                )
+            )
+        ).filter(_in_case=wanted is CounselingEncounterCaseLink.LINKED)
     start, end = _date_bounds(from_date, to_date)
     if start is not None:
         qs = qs.filter(started_at__gte=start)

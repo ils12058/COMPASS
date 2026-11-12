@@ -62,11 +62,16 @@ export type EncounterOriginPreset = {
 
 export type EncounterTimes = { startedAt: string; endedAt: string };
 
+// Recording from a Counseling case: the Student is the case's, and the recorded session is linked
+// to that case with the recording, or nothing is recorded.
+export type EncounterCaseContext = { caseId: string; student: CounselingStudentResponse };
+
 type RecordEncounterFormProps = {
   initialTimes?: EncounterTimes;
   onTimesChange?: (times: EncounterTimes) => void;
   onBusyChange?: (busy: boolean) => void;
   preset?: EncounterOriginPreset;
+  caseContext?: EncounterCaseContext;
   // False inside a dialog, which supplies the title and the provenance note itself.
   framed?: boolean;
   onCancel?: () => void;
@@ -88,8 +93,12 @@ export function encounterCreatePayload(
   origin: EncounterOriginPreset,
   startedAt: string,
   endedAt: string,
+  caseId?: string,
 ): CounselingCreateRequest {
-  const routine = origin.routineInterviewId ? { routine_interview_id: origin.routineInterviewId } : {};
+  const routine = {
+    ...(origin.routineInterviewId ? { routine_interview_id: origin.routineInterviewId } : {}),
+    ...(caseId ? { case_id: caseId } : {}),
+  };
   return origin.entryMode === "APPOINTMENT"
     ? {
         appointment_id: origin.appointmentId,
@@ -112,13 +121,16 @@ function statusLabel(value: string): string {
   return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated, onUncertain, onAlreadyRecorded, initialTimes, onTimesChange, onBusyChange }: RecordEncounterFormProps) {
+export function RecordEncounterForm({ preset, caseContext, framed = true, onCancel, onCreated, onUncertain, onAlreadyRecorded, initialTimes, onTimesChange, onBusyChange }: RecordEncounterFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [source, setSource] = useState<Source | null>(null);
-  const [candidateSearch, setCandidateSearch] = useState("");
+  // In a case, the Appointment choices start at the case's Student. The backend still refuses an
+  // Appointment for anyone else.
+  const caseSearch = caseContext ? caseContext.student.institutional_id ?? caseContext.student.display_name : "";
+  const [candidateSearch, setCandidateSearch] = useState(caseSearch);
   const [studentSearch, setStudentSearch] = useState("");
-  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState(caseSearch);
   const [studentQuery, setStudentQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
@@ -148,7 +160,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
   });
   const students = useCounselingListStudents(
     { ...(studentQuery ? { search: studentQuery } : {}), page, page_size: 20 },
-    { query: { enabled: !preset && source === "direct", retry: false } },
+    { query: { enabled: !preset && !caseContext && source === "direct", retry: false } },
   );
 
   const appointments = appointmentCandidates.data?.data.items ?? [];
@@ -156,7 +168,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
   const options = creationOptions.data?.data;
   const selectedAppointment = appointments.find((item) => item.id === selectedAppointmentId) ??
     (selectedAppointmentRecord?.id === selectedAppointmentId ? selectedAppointmentRecord : undefined);
-  const selectedStudent = studentItems.find((item) => item.id === selectedStudentId) ??
+  const selectedStudent = caseContext?.student ?? studentItems.find((item) => item.id === selectedStudentId) ??
     (selectedStudentRecord?.id === selectedStudentId ? selectedStudentRecord : undefined);
   const selectedDeliveryMode = preset?.deliveryMode ?? (
     source === "appointment" && selectedAppointment
@@ -230,7 +242,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
     const ended = institutionalDateTimeInputToISO(endedAt);
     if (!started || !ended) return;
 
-    const payload = encounterCreatePayload(selectedOrigin, started, ended);
+    const payload = encounterCreatePayload(selectedOrigin, started, ended, caseContext?.caseId);
 
     setSubmitting(true);
     // Lock the containing dialog in the submission event, before Escape can dismiss it.
@@ -344,7 +356,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
                   ...(selectedOrigin.entryMode === "APPOINTMENT" ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })] : []),
                 ])}>Refresh encounters</Button>
               ) : null}
-              <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View encounters</Link>
+              <Link href="/portal/counseling/encounters" className={buttonVariants({ variant: "secondary" })}>View encounters</Link>
               {!framed && onCancel ? <Button variant="secondary" onClick={onCancel}>Close</Button> : null}
             </>
           )}
@@ -368,7 +380,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
       <PanelHeader
         title="Record Counseling Encounter"
         titleId="record-encounter-heading"
-        description={preset ? undefined : source === "appointment" ? "Choose an Appointment." : "Choose a Student."}
+        description={preset ? undefined : source === "appointment" ? "Choose an Appointment." : caseContext ? undefined : "Choose a Student."}
         actions={!preset && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={() => changeSource(source === "appointment" ? "direct" : "appointment")}>Change source</Button> : undefined}
       />
 
@@ -407,6 +419,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
           {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Couldn't load Counseling recording options.")}</p> : options ? (
             <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is available for this counseling Service.</p> : null}</div>
           ) : null}
+          {caseContext ? null : (
           <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); clearTimes(); setError(null); }}>
             <Label htmlFor="counseling-student-search">Search for a Student</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -414,7 +427,8 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Students…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Couldn't load Students.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No Students match this search.</p> : (
+          )}
+          {caseContext ? null : students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Students…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Couldn't load Students.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No Students match this search.</p> : (
             <>
               <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Students">
                 {studentItems.map((student) => (
@@ -430,7 +444,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
             </>
           )}
           {selectedStudent && options ? (
-            <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
+            <div className={`grid gap-4 sm:grid-cols-2 ${caseContext ? "" : "border-t border-border pt-5"}`}>
               <div className="grid gap-2">
                 <Label htmlFor="counseling-entry-mode">Interaction origin</Label>
                 <Select id="counseling-entry-mode" value={entryMode} onChange={(event) => setEntryMode(event.target.value as CounselingEntryMode)} disabled={submitting}>

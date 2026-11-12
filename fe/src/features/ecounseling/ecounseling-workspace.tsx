@@ -462,7 +462,7 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
               return <Link key={action} className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${encounter.id}`}>View encounter</Link>;
             }
             if (action === "view-encounters") {
-              return <Link key={action} className={buttonVariants({ variant: view.state === "UNCERTAIN" ? "quiet" : "secondary" })} href="/portal/counseling#encounters">View encounters</Link>;
+              return <Link key={action} className={buttonVariants({ variant: view.state === "UNCERTAIN" ? "quiet" : "secondary" })} href="/portal/counseling/encounters">View encounters</Link>;
             }
             if (action === "view-appointment") {
               return <Link key={action} className={buttonVariants({ variant: "secondary" })} href={`/portal/appointments/${appointmentId}`}>View Appointment</Link>;

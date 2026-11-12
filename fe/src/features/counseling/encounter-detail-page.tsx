@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
+import { caseHref, openCaseHref, SESSION_RECORDS_PATH } from "@/features/counseling/cases/case-presentation";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
 import {
@@ -38,14 +39,14 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Counseling Encounter" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "You don't have access to this Counseling Encounter.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href={SESSION_RECORDS_PATH} className={pageBackLinkClass}>Back to session records</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "You don't have access to this Counseling Encounter.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>
       <CounselingPageHeading
         title="Counseling Encounter"
         description={`${encounter.student.display_name} · ${counselingEntryModeLabel(encounter.entry_mode)}`}
-        back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>}
+        back={<Link href={SESSION_RECORDS_PATH} className={pageBackLinkClass}>Back to session records</Link>}
       />
 
       <Panel aria-labelledby="encounter-details-heading">
@@ -60,6 +61,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
           <Metadata label="Counselor" value={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={encounter.counselor.display_name} photoUrl={encounter.counselor.profile_photo_url} photoUpdatedAt={encounter.counselor.profile_photo_updated_at} size="compact" />{encounter.counselor.display_name}</span>} />
           <Metadata label="Service" value={<>{encounter.service.name}</>} />
           <Metadata label="Appointment" value={encounter.appointment ? <Link href={`/portal/appointments/${encounter.appointment.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.appointment.reference_code}</Link> : "No linked Appointment"} />
+          <Metadata label="Case" value={encounter.case ? <Link href={caseHref(encounter.case.id)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.case.reference_code}</Link> : encounter.in_case ? "In a case another Counselor is responsible for" : "Not in a case"} />
           <Metadata label="Origin" value={counselingEntryModeLabel(encounter.entry_mode)} />
           <Metadata label="Delivery mode" value={counselingDeliveryModeLabel(encounter.delivery_mode)} />
           <Metadata label="Actual start" value={formatCounselingDateTime(encounter.started_at)} />
@@ -70,6 +72,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         {correctionOpen && access.canManageAssigned ? <EncounterCorrectionForm encounter={encounter} onClose={() => setCorrectionOpen(false)} /> : null}
       </Panel>
 
+      {access.canManageAssigned && !encounter.in_case && encounter.counselor.id === user.id ? <div className="mt-5"><Link className="inline-flex min-h-11 items-center font-semibold text-brand underline" href={openCaseHref({ origin: "ENCOUNTER", sourceId: encounter.id })}>Open a case from this session</Link></div> : null}
       {user.capabilities.includes("counseling.continuity.request") && encounter.counselor.id === user.id ? <div className="mt-5"><Link className="inline-flex min-h-11 items-center font-semibold text-brand underline" href={`/portal/counseling/coverage?student=${encounter.student.id}&original=${user.id}`}>Request coverage</Link></div> : null}
       <FollowupsContext kind="COUNSELING_ENCOUNTER" id={encounter.id} />
       {access.canViewAssignedStudentSessionSummaries ? <div className="mt-5"><StudentSessionSummarySection encounterId={encounter.id} access={access} /></div> : null}

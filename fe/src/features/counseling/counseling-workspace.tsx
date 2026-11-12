@@ -20,6 +20,7 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { RoutineCounselorEvaluationReadOnly } from "@/features/routine-interviews/routine-counselor-evaluation";
 import { RoutineStudentIntakeReadOnly } from "@/features/routine-interviews/routine-student-intake";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
+import { openCaseHref } from "@/features/counseling/cases/case-presentation";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import { contextEncounterPreset, recordEncounterPath } from "@/features/counseling/encounter-origin";
@@ -179,7 +180,7 @@ export function CounselingWorkspace({
         action={
           <>
             {expired ? null : <Button variant="secondary" onClick={() => void overview.refetch()}>Retry</Button>}
-            <Link href="/portal/counseling" className={buttonVariants({ variant: "secondary" })}>My Counseling Encounters</Link>
+            <Link href="/portal/counseling/encounters" className={buttonVariants({ variant: "secondary" })}>Session records</Link>
           </>
         }
       >
@@ -329,7 +330,7 @@ function CounselingWorkspaceContent({
               !overview.matching_encounter ? (
               // The Appointment's own Encounter fact comes from the Appointment read, so this still
               // shows when the context window no longer projects the record.
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My Counseling Encounters.</p><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My Counseling Encounters.</p><Link href="/portal/counseling/encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
             ) : canRecord && finishOffered ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => { setFinishNotice(null); setFinishOpen(true); }}>Finish counseling</Button><p className="mt-3 text-sm text-muted">{appointment?.status === AppointmentStatus.COMPLETED ? "Records the Encounter for this completed Appointment." : "Records the Encounter and completes this Appointment."}</p></div>
             ) : canRecord && preset ? (
@@ -338,6 +339,9 @@ function CounselingWorkspaceContent({
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">This interaction cannot be recorded here. Review its visit type and delivery mode.</p></div>
             ) : null}
             </div>
+            {access.canManageAssigned ? (
+              <div className="border-t border-brand-line px-4 py-3 sm:px-5"><GuardedPortalLink href={openCaseHref({ origin: anchorType === CounselingContextAnchorType.APPOINTMENT ? "APPOINTMENT" : "ROUTINE_INTERVIEW", sourceId: anchorId })} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open a case from this {anchorType === CounselingContextAnchorType.APPOINTMENT ? "Appointment" : "Routine Interview"}</GuardedPortalLink></div>
+            ) : null}
           </Panel>
           {appointment ? (
             <FinishCounselingDialog

@@ -19,6 +19,7 @@ from compass.common.errors import APIError
 from compass.common.institutional_time import to_institution_time
 from compass.service_catalog.api import DeliveryMode
 
+from .case_services import CounselingCaseError, encounter_case_links
 from .finish_service import (
     CounselingAppointmentClosed,
     CounselingFinishConflict,
@@ -31,6 +32,7 @@ from .services import (
     CounselingAppointmentAlreadyUsed,
     CounselingAppointmentInvalid,
     CounselingConfigurationConflict,
+    CounselingEncounterCaseLink,
     CounselingEncounterOrdering,
     CounselingError,
     CounselingFeedbackChronologyConflict,
@@ -82,11 +84,19 @@ class CounselingEntryMode(StrEnum):
     REFERRED = "REFERRED"
 
 
+class CounselingCaseStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    CLOSED = "CLOSED"
+
+
 class CounselingCreateRequest(StrictSchema):
     entry_mode: CounselingEntryMode
     appointment_id: UUID | None = None
     student_id: UUID | None = None
     delivery_mode: DeliveryMode | None = None
+    # Set when the session is recorded from this Counseling case. The session is linked to the
+    # case with the recording, or nothing is recorded. Without it the session joins no case.
+    case_id: UUID | None = None
     # Set when the interaction is recorded from this Routine Interview's Counseling context. The
     # Encounter must match it and is linked to it with the recording, or nothing is recorded.
     routine_interview_id: UUID | None = None
@@ -145,6 +155,12 @@ class AppointmentLinkResponse(StrictSchema):
     reference_code: str
 
 
+class CounselingEncounterCaseResponse(StrictSchema):
+    id: UUID
+    reference_code: str
+    status: CounselingCaseStatus
+
+
 class CounselingEncounterResponse(StrictSchema):
     id: UUID
     student: IdentitySummaryResponse
@@ -157,6 +173,11 @@ class CounselingEncounterResponse(StrictSchema):
     ended_at: datetime
     created_at: datetime
     updated_at: datetime
+    # Whether this session currently belongs to a Counseling case. A session joins a case only
+    # through an explicit link; it is never grouped by Student.
+    in_case: bool
+    # That case, when the reader is its primary Counselor.
+    case: CounselingEncounterCaseResponse | None
 
 
 class EncounterCollectionStudent(IdentitySummaryResponse):
@@ -326,6 +347,8 @@ def _require_student(request, capability: str) -> None:
 
 
 def _raise(exc: CounselingError) -> NoReturn:
+    if isinstance(exc, CounselingCaseError):
+        raise APIError(exc.status, exc.code, str(exc)) from exc
     if isinstance(exc, StudentSessionSummaryContentUnavailable):
         raise APIError(500, "student_session_summary_content_unavailable", str(exc)) from None
     if isinstance(exc, StudentSessionSummaryNotFound):
@@ -377,8 +400,26 @@ def _institutional(value: datetime) -> datetime:
     return to_institution_time(value)
 
 
-def _encounter(item) -> dict[str, object]:
+def _case_link(link) -> dict[str, object]:
     return {
+        "in_case": link.linked,
+        "case": (
+            {
+                "id": link.case.pk,
+                "reference_code": link.case.reference_code,
+                "status": link.case.status,
+            }
+            if link.case is not None
+            else None
+        ),
+    }
+
+
+def _encounter(item, *, actor, links=None) -> dict[str, object]:
+    if links is None:
+        links = encounter_case_links(actor=actor, encounter_ids=[item.pk])
+    return {
+        **_case_link(links[item.pk]),
         "id": item.pk,
         "student": {
             "id": item.student_id,
@@ -613,6 +654,7 @@ def counseling_list_my_encounters(
     from_date: date | None = None,
     to_date: date | None = None,
     student_id: UUID | None = None,
+    case_link: CounselingEncounterCaseLink | None = None,
     search: str | None = None,
     ordering: CounselingEncounterOrdering | None = None,
     page: int = 1,
@@ -627,6 +669,7 @@ def counseling_list_my_encounters(
             from_date=from_date,
             to_date=to_date,
             student_id=student_id,
+            case_link=case_link,
             search=search,
             ordering=ordering,
             page=page,
@@ -634,11 +677,14 @@ def counseling_list_my_encounters(
         )
     except CounselingError as exc:
         _raise(exc)
+    links = encounter_case_links(
+        actor=request.auth_user, encounter_ids=[item.pk for item in result.items]
+    )
     return {
         "ordering": result.ordering,
         "items": [
             {
-                **_encounter(item),
+                **_encounter(item, actor=request.auth_user, links=links),
                 "student": {
                     "id": item.student_id,
                     "display_name": item.student.get_full_name(),
@@ -723,13 +769,14 @@ def counseling_create_encounter(request, payload: CounselingCreateRequest):
             student_id=payload.student_id,
             delivery_mode=payload.delivery_mode.value if payload.delivery_mode else None,
             routine_interview_id=payload.routine_interview_id,
+            case_id=payload.case_id,
             started_at=payload.started_at,
             ended_at=payload.ended_at,
             context=_context(request),
         )
     except CounselingError as exc:
         _raise(exc)
-    return 201, _encounter(item)
+    return 201, _encounter(item, actor=request.auth_user)
 
 
 @router.post(
@@ -814,7 +861,7 @@ def counseling_get_encounter(request, encounter_id: UUID):
         item = get_encounter_for_actor(encounter_id=encounter_id, actor=request.auth_user)
     except CounselingError as exc:
         _raise(exc)
-    return _encounter(item)
+    return _encounter(item, actor=request.auth_user)
 
 
 @router.patch(
@@ -839,7 +886,7 @@ def counseling_update_encounter(
         )
     except CounselingError as exc:
         _raise(exc)
-    return _encounter(item)
+    return _encounter(item, actor=request.auth_user)
 
 
 @router.get(

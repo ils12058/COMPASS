@@ -7312,6 +7312,745 @@
         "title": "CounselingAssignedStudentSessionSummaryResponse",
         "type": "object"
       },
+      "CounselingCaseDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseEventResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latest_session_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Session At"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CounselingCaseOrigin"
+          },
+          "primary_counselor": {
+            "$ref": "#/components/schemas/IdentitySummaryResponse"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "session_count": {
+            "title": "Session Count",
+            "type": "integer"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseSessionResponse"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/CounselingCaseSourceResponse"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CounselingCaseStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselingCaseStudent"
+          },
+          "unlinked_origin_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseSessionCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status",
+          "student",
+          "primary_counselor",
+          "origin",
+          "opened_at",
+          "session_count",
+          "latest_session_at",
+          "version",
+          "source",
+          "sessions",
+          "unlinked_origin_session",
+          "history",
+          "can_manage"
+        ],
+        "title": "CounselingCaseDetailResponse",
+        "type": "object"
+      },
+      "CounselingCaseEventKind": {
+        "enum": [
+          "OPENED",
+          "SESSION_LINKED",
+          "SESSION_UNLINKED"
+        ],
+        "title": "CounselingCaseEventKind",
+        "type": "string"
+      },
+      "CounselingCaseEventResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/CounselingCasePerson"
+          },
+          "detail_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Code"
+          },
+          "encounter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounter Id"
+          },
+          "encounter_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounter Started At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CounselingCaseEventKind"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "primary_counselor": {
+            "$ref": "#/components/schemas/CounselingCasePerson"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "occurred_at",
+          "actor",
+          "primary_counselor",
+          "encounter_id",
+          "encounter_started_at",
+          "detail_code"
+        ],
+        "title": "CounselingCaseEventResponse",
+        "type": "object"
+      },
+      "CounselingCaseLinkSessionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "encounter_id": {
+            "format": "uuid",
+            "title": "Encounter Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "expected_version"
+        ],
+        "title": "CounselingCaseLinkSessionRequest",
+        "type": "object"
+      },
+      "CounselingCaseOpenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "known_active_case_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Known Active Case Ids",
+            "type": "array"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CounselingCaseOrigin"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          }
+        },
+        "required": [
+          "origin"
+        ],
+        "title": "CounselingCaseOpenRequest",
+        "type": "object"
+      },
+      "CounselingCaseOpeningContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_cases": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseSummaryResponse"
+            },
+            "title": "Active Cases",
+            "type": "array"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CounselingCaseOrigin"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseSessionCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/CounselingCaseSourceResponse"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselingCaseStudent"
+          }
+        },
+        "required": [
+          "origin",
+          "student",
+          "source",
+          "session",
+          "active_cases"
+        ],
+        "title": "CounselingCaseOpeningContextResponse",
+        "type": "object"
+      },
+      "CounselingCaseOrdering": {
+        "description": "Closed orderings for a Counselor's cases (ADR-090); the latest activity comes first.",
+        "enum": [
+          "LATEST_ACTIVITY",
+          "LATEST_OPENED",
+          "OLDEST_OPENED",
+          "STUDENT_ASC",
+          "STUDENT_DESC"
+        ],
+        "title": "CounselingCaseOrdering",
+        "type": "string"
+      },
+      "CounselingCaseOrigin": {
+        "enum": [
+          "INTAKE",
+          "APPOINTMENT",
+          "ENCOUNTER",
+          "ROUTINE_INTERVIEW"
+        ],
+        "title": "CounselingCaseOrigin",
+        "type": "string"
+      },
+      "CounselingCaseOriginAppointment": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "starts_at",
+          "status"
+        ],
+        "title": "CounselingCaseOriginAppointment",
+        "type": "object"
+      },
+      "CounselingCasePageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/CounselingCaseOrdering"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next",
+          "ordering"
+        ],
+        "title": "CounselingCasePageResponse",
+        "type": "object"
+      },
+      "CounselingCasePerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "CounselingCasePerson",
+        "type": "object"
+      },
+      "CounselingCaseSessionCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentLinkResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "encounter_id": {
+            "format": "uuid",
+            "title": "Encounter Id",
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "started_at",
+          "ended_at",
+          "entry_mode",
+          "delivery_mode",
+          "appointment"
+        ],
+        "title": "CounselingCaseSessionCandidate",
+        "type": "object"
+      },
+      "CounselingCaseSessionCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseSessionCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselingCaseSessionCandidatePage",
+        "type": "object"
+      },
+      "CounselingCaseSessionRemovalReason": {
+        "enum": [
+          "BELONGS_TO_ANOTHER_CASE",
+          "NOT_PART_OF_THIS_CASE",
+          "LINKED_BY_MISTAKE"
+        ],
+        "title": "CounselingCaseSessionRemovalReason",
+        "type": "string"
+      },
+      "CounselingCaseSessionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentLinkResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/IdentitySummaryResponse"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "encounter_id": {
+            "format": "uuid",
+            "title": "Encounter Id",
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "linked_at": {
+            "format": "date-time",
+            "title": "Linked At",
+            "type": "string"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "started_at",
+          "ended_at",
+          "entry_mode",
+          "delivery_mode",
+          "counselor",
+          "linked_at",
+          "record_accessible",
+          "appointment"
+        ],
+        "title": "CounselingCaseSessionResponse",
+        "type": "object"
+      },
+      "CounselingCaseSourceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseOriginAppointment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "encounter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounter Id"
+          },
+          "routine_interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Interview Id"
+          }
+        },
+        "required": [
+          "appointment",
+          "encounter_id",
+          "routine_interview_id"
+        ],
+        "title": "CounselingCaseSourceResponse",
+        "type": "object"
+      },
+      "CounselingCaseStatus": {
+        "enum": [
+          "ACTIVE",
+          "CLOSED"
+        ],
+        "title": "CounselingCaseStatus",
+        "type": "string"
+      },
+      "CounselingCaseStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
+          "institutional_id"
+        ],
+        "title": "CounselingCaseStudent",
+        "type": "object"
+      },
+      "CounselingCaseSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latest_session_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Session At"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CounselingCaseOrigin"
+          },
+          "primary_counselor": {
+            "$ref": "#/components/schemas/IdentitySummaryResponse"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "session_count": {
+            "title": "Session Count",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CounselingCaseStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselingCaseStudent"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status",
+          "student",
+          "primary_counselor",
+          "origin",
+          "opened_at",
+          "session_count",
+          "latest_session_at",
+          "version"
+        ],
+        "title": "CounselingCaseSummaryResponse",
+        "type": "object"
+      },
+      "CounselingCaseUnlinkSessionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CounselingCaseSessionRemovalReason"
+          }
+        },
+        "required": [
+          "reason",
+          "expected_version"
+        ],
+        "title": "CounselingCaseUnlinkSessionRequest",
+        "type": "object"
+      },
       "CounselingContextAnchorType": {
         "enum": [
           "APPOINTMENT",
@@ -7506,6 +8245,18 @@
               }
             ],
             "title": "Appointment Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
           },
           "delivery_mode": {
             "anyOf": [
@@ -7737,6 +8488,39 @@
         "title": "CounselingEncounterAppointmentCandidatePage",
         "type": "object"
       },
+      "CounselingEncounterCaseLink": {
+        "description": "Whether a session record currently belongs to a Counseling case.",
+        "enum": [
+          "LINKED",
+          "UNLINKED"
+        ],
+        "title": "CounselingEncounterCaseLink",
+        "type": "string"
+      },
+      "CounselingEncounterCaseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CounselingCaseStatus"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status"
+        ],
+        "title": "CounselingEncounterCaseResponse",
+        "type": "object"
+      },
       "CounselingEncounterCollectionItem": {
         "additionalProperties": false,
         "properties": {
@@ -7744,6 +8528,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AppointmentLinkResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingEncounterCaseResponse"
               },
               {
                 "type": "null"
@@ -7774,6 +8568,10 @@
             "title": "Id",
             "type": "string"
           },
+          "in_case": {
+            "title": "In Case",
+            "type": "boolean"
+          },
           "service": {
             "$ref": "#/components/schemas/ServiceSummaryResponse"
           },
@@ -7802,7 +8600,9 @@
           "started_at",
           "ended_at",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "in_case",
+          "case"
         ],
         "title": "CounselingEncounterCollectionItem",
         "type": "object"
@@ -7888,6 +8688,16 @@
               }
             ]
           },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingEncounterCaseResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "counselor": {
             "$ref": "#/components/schemas/IdentitySummaryResponse"
           },
@@ -7911,6 +8721,10 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "in_case": {
+            "title": "In Case",
+            "type": "boolean"
           },
           "service": {
             "$ref": "#/components/schemas/ServiceSummaryResponse"
@@ -7940,7 +8754,9 @@
           "started_at",
           "ended_at",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "in_case",
+          "case"
         ],
         "title": "CounselingEncounterResponse",
         "type": "object"
@@ -43086,6 +43902,751 @@
         ]
       }
     },
+    "/api/v1/counseling/cases": {
+      "get": {
+        "operationId": "counselingListMyCases",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CounselingCaseStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordering",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CounselingCaseOrdering"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCasePageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List My Cases",
+        "tags": [
+          "counseling"
+        ]
+      },
+      "post": {
+        "operationId": "counselingOpenCase",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingCaseOpenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Open Case",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/opening-context": {
+      "get": {
+        "operationId": "counselingGetCaseOpeningContext",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "origin",
+            "required": true,
+            "schema": {
+              "enum": [
+                "INTAKE",
+                "APPOINTMENT",
+                "ENCOUNTER",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "CounselingCaseOrigin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseOpeningContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get Case Opening Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}": {
+      "get": {
+        "operationId": "counselingGetCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get Case",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/session-candidates": {
+      "get": {
+        "operationId": "counselingListCaseSessionCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseSessionCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Case Session Candidates",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/sessions": {
+      "post": {
+        "operationId": "counselingLinkCaseSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingCaseLinkSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Link Case Session",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/sessions/{encounter_id}/unlink": {
+      "post": {
+        "operationId": "counselingUnlinkCaseSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "encounter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Encounter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingCaseUnlinkSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Unlink Case Session",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/context/{anchor_type}/{anchor_id}": {
       "get": {
         "operationId": "counselingContextGetOverview",
@@ -45914,6 +47475,21 @@
                 }
               ],
               "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "case_link",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CounselingEncounterCaseLink"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           {
@@ -74066,7 +75642,7 @@
       "name": "appointments"
     },
     {
-      "description": "Assigned records of actual Counseling encounters.",
+      "description": "Assigned Counseling cases and records of actual encounters.",
       "name": "counseling"
     },
     {

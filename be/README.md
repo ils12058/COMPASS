@@ -14,7 +14,8 @@ configuration is synchronized explicitly after migrations; ordinary requests do 
 > Fresh bootstrap: `migrate`, `sync_identity_policy`, `sync_canonical_services`,
 > `sync_institutional_forms`, `initialize_organization_catalog --seed`, then database checks.
 > Subsequent catalog checks use `--check`. Future migrations extend this graph and are registered
-> in `additive_migrations`; never regenerate or edit the immutable release files.
+> in `additive_migrations` and pinned in `deploy/staging/additive-migrations.json`; never
+> regenerate or edit the immutable release files.
 > Ordinary staging deployment is refused until Phase E completes the separately approved reset
 > and pins the new release lineage. Phase D does not reset or deploy staging.
 

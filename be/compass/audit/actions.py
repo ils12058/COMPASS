@@ -404,4 +404,9 @@ HANDOFF_SUBMITTED = "counseling.handoff.submitted"
 HANDOFF_READ = "counseling.handoff.read"
 CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"
 
+# CW-1 counseling cases. Identifiers and closed codes only; never case or session content.
+COUNSELING_CASE_OPENED = "counseling.case.opened"
+COUNSELING_CASE_SESSION_LINKED = "counseling.case.session_linked"
+COUNSELING_CASE_SESSION_UNLINKED = "counseling.case.session_unlinked"
+
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"
