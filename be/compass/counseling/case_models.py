@@ -43,6 +43,12 @@ class CounselingCaseEventKind(models.TextChoices):
     SESSION_UNLINKED = "SESSION_UNLINKED", "Session link corrected"
 
 
+class CounselingCaseAppointmentRemovalReason(models.TextChoices):
+    BELONGS_TO_ANOTHER_CASE = "BELONGS_TO_ANOTHER_CASE", "Belongs to another case"
+    NOT_PART_OF_THIS_CASE = "NOT_PART_OF_THIS_CASE", "Not part of this case"
+    LINKED_BY_MISTAKE = "LINKED_BY_MISTAKE", "Linked by mistake"
+
+
 class CounselingCaseReferenceCounter(models.Model):
     year = models.PositiveIntegerField(primary_key=True)
     next_value = models.PositiveIntegerField(default=1)
@@ -232,6 +238,60 @@ class CounselingCaseSession(models.Model):
         ]
 
 
+class CounselingCaseAppointment(models.Model):
+    """Explicit Appointment membership; a corrected link retains its provenance."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        CounselingCase, on_delete=models.PROTECT, related_name="appointment_links"
+    )
+    appointment = models.ForeignKey(
+        "appointments.Appointment", on_delete=models.PROTECT, related_name="case_links"
+    )
+    linked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="linked_counseling_case_appointments",
+    )
+    linked_at = models.DateTimeField(default=timezone.now)
+    removed_at = models.DateTimeField(null=True, blank=True)
+    removed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="removed_counseling_case_appointments",
+    )
+    removal_reason = models.CharField(
+        max_length=32,
+        choices=CounselingCaseAppointmentRemovalReason.choices,
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("case", "-linked_at", "id")
+        indexes = [models.Index(fields=("case", "removed_at"), name="cw_case_appointment_idx")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("appointment",),
+                condition=models.Q(removed_at__isnull=True),
+                name="cw_case_appointment_one_current",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(removed_at__isnull=True, removed_by__isnull=True, removal_reason="")
+                    | (
+                        models.Q(removed_at__isnull=False, removed_by__isnull=False)
+                        & ~models.Q(removal_reason="")
+                    )
+                ),
+                name="cw_case_appointment_removal_complete",
+            ),
+        ]
+
+
 class CounselingCaseEvent(models.Model):
     """Append-only chronology of a case's responsibility, lifecycle and session links.
 
@@ -294,6 +354,8 @@ class CounselingCaseEvent(models.Model):
 
 __all__ = [
     "CounselingCase",
+    "CounselingCaseAppointment",
+    "CounselingCaseAppointmentRemovalReason",
     "CounselingCaseEvent",
     "CounselingCaseEventKind",
     "CounselingCaseOrigin",

@@ -125,6 +125,8 @@ class StudentSessionSummary(models.Model):
 # Register the focused case and continuity models in the existing Counseling app.
 from compass.counseling.case_models import (  # noqa: E402, F401
     CounselingCase,
+    CounselingCaseAppointment,
+    CounselingCaseAppointmentRemovalReason,
     CounselingCaseEvent,
     CounselingCaseReferenceCounter,
     CounselingCaseSession,

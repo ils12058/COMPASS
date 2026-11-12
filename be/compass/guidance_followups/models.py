@@ -53,6 +53,16 @@ class GuidanceFollowUp(models.Model):
         max_length=32, choices=FollowUpSource.choices, null=True, blank=True
     )
     source_id = models.UUIDField(null=True, blank=True)
+    case = models.ForeignKey(
+        "counseling.CounselingCase",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="next_actions",
+    )
+    predecessor = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="successors"
+    )
     visibility = models.CharField(max_length=32, choices=FollowUpVisibility.choices)
     category = models.CharField(max_length=32, choices=FollowUpCategory.choices)
     assigned_to = models.ForeignKey(
@@ -65,6 +75,7 @@ class GuidanceFollowUp(models.Model):
         max_length=16, choices=FollowUpStatus.choices, default=FollowUpStatus.PENDING
     )
     description_ciphertext = models.TextField(null=True, blank=True, editable=False)
+    title_ciphertext = models.TextField(null=True, blank=True, editable=False)
     outcome_ciphertext = models.TextField(null=True, blank=True, editable=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -141,6 +152,7 @@ class GuidanceFollowUp(models.Model):
             ),
             models.Index(fields=("student", "created_at", "id"), name="fup_student_created_idx"),
             models.Index(fields=("source_kind", "source_id"), name="fup_source_ref_idx"),
+            models.Index(fields=("case", "status", "due_at"), name="fup_case_pending_idx"),
         ]
 
 
