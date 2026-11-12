@@ -213,7 +213,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
         {item.sessions.length === 0 ? (
           <PanelMessage>No sessions are in this case yet.</PanelMessage>
         ) : (
-          <div className={dataTable.scroll}>
+          <div className={`${dataTable.scroll} relative`}>
             <table className={`${dataTable.table} min-w-[760px]`}>
               <caption className="sr-only">Completed sessions in this case</caption>
               <thead className={dataTable.head}>

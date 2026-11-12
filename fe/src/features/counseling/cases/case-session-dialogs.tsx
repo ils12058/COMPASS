@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -30,6 +30,7 @@ import type {
   CounselingCaseSessionRemovalReason,
   CounselingCaseSessionResponse,
 } from "@/lib/api/generated/model";
+import { focusHeading } from "@/lib/focus-heading";
 
 const unconfirmed = "Couldn't confirm whether the case changed. Close this and check the case before trying again.";
 
@@ -83,11 +84,13 @@ export function AddSessionDialog({
         data: { encounter_id: selected, expected_version: caseItem.version },
       });
       setSelected("");
+      setPage(1);
       onOpenChange(false);
       onChanged(response.data, "Session added to this case.");
     } catch (caught) {
       if (isStaleCaseError(caught)) {
         setSelected("");
+        setPage(1);
         onOpenChange(false);
         onStale();
         return;
@@ -159,6 +162,7 @@ export function RemoveSessionDialog({
   const [reason, setReason] = useState<CounselingCaseSessionRemovalReason | "">("");
   const [error, setError] = useState<string | null>(null);
   const unlink = useCounselingUnlinkCaseSession({ mutation: { retry: false } });
+  const removed = useRef(false);
 
   function close() {
     setReason("");
@@ -175,6 +179,7 @@ export function RemoveSessionDialog({
         encounterId: session.encounter_id,
         data: { reason, expected_version: caseItem.version },
       });
+      removed.current = true;
       close();
       onChanged(response.data, "Session removed from this case.");
     } catch (caught) {
@@ -198,6 +203,13 @@ export function RemoveSessionDialog({
       error={error}
       onOpenChange={(next) => { if (!next) close(); }}
       onConfirm={() => void remove()}
+      onCloseAutoFocus={(event) => {
+        if (removed.current) {
+          event.preventDefault();
+          focusHeading("case-sessions-heading");
+          removed.current = false;
+        }
+      }}
       choices={
         <div className="grid gap-2">
           <Label htmlFor="case-session-removal-reason">Why it doesn&apos;t belong here</Label>
