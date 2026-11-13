@@ -164,6 +164,8 @@ class FollowUpSummary(StrictSchema):
     updated_at: datetime
     title: str | None
     case: FollowUpCaseReference | None
+    post_closure_designated_at: datetime | None = None
+    post_closure_closure_id: UUID | None = None
 
 
 class SourceReference(StrictSchema):
@@ -185,6 +187,9 @@ class FollowUpHistoryEvent(StrictSchema):
     remarks: str | None
     case_transfer_id: UUID | None = None
     case_transfer_reference: str | None = None
+    case_coverage_id: UUID | None = None
+    case_coverage_reference: str | None = None
+    coverage_effective_at: datetime | None = None
 
 
 class FollowUpDetail(FollowUpSummary):
@@ -200,6 +205,7 @@ class FollowUpDetail(FollowUpSummary):
     events_has_next: bool
     predecessor_id: UUID | None
     can_create_next_action: bool
+    can_reassign: bool = True
 
 
 class FollowUpPage(StrictSchema):
@@ -244,18 +250,28 @@ def _raise(exc: FollowUpError) -> NoReturn:
 
 
 def _summary(item, source_unavailable, *, actor=None):
+    from compass.counseling.case_coverage_tasks import task_read_guard
+
+    with task_read_guard(actor, item) as (actor, item):
+        return _summary_fields(item, source_unavailable, actor=actor)
+
+
+def _summary_fields(item, source_unavailable, *, actor=None):
     from django.utils import timezone
 
     student_photo = profile_photo_projection(item.student)
-    assignee_photo = profile_photo_projection(item.assigned_to)
+    from compass.counseling.case_coverage_tasks import effective_assignee
+
+    assignee = effective_assignee(item)
+    assignee_photo = profile_photo_projection(assignee)
     return {
         "id": item.pk,
         "student_id": item.student_id,
         "student_name": item.student.get_full_name(),
         "student_profile_photo_url": student_photo["profile_photo_url"],
         "student_profile_photo_updated_at": student_photo["profile_photo_updated_at"],
-        "assigned_to_id": item.assigned_to_id,
-        "assigned_to_name": item.assigned_to.get_full_name(),
+        "assigned_to_id": assignee.pk,
+        "assigned_to_name": assignee.get_full_name(),
         "assigned_to_profile_photo_url": assignee_photo["profile_photo_url"],
         "assigned_to_profile_photo_updated_at": assignee_photo["profile_photo_updated_at"],
         "category": item.category,
@@ -273,6 +289,8 @@ def _summary(item, source_unavailable, *, actor=None):
             else None
         ),
         "case": policy.visible_case(actor, item) if actor is not None else None,
+        "post_closure_designated_at": item.post_closure_designated_at,
+        "post_closure_closure_id": item.post_closure_closure_id,
     }
 
 
@@ -303,6 +321,13 @@ def _summaries(actor, items, *, protected=True):
 
 
 def _detail(actor, item):
+    from compass.counseling.case_coverage_tasks import task_read_guard
+
+    with task_read_guard(actor, item) as (actor, item):
+        return _detail_fields(actor, item)
+
+
+def _detail_fields(actor, item):
     extra = followup_detail(actor=actor, item=item)
     source_unavailable = bool(item.source_id is not None and extra["source"] is None)
     return {

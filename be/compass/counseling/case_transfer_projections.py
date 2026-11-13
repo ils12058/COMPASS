@@ -10,7 +10,7 @@ from compass.guidance_followups.content import decrypt_text
 
 from . import case_continuity_rules as rules
 from .case_models import CounselingCase
-from .case_transfer_models import CounselingCaseTransferEvent
+from .case_transfer_models import CaseTransferPurpose, CounselingCaseTransferEvent
 from .case_transfer_plans import case_tasks, disposition_allowed, upcoming_links
 from .case_transfer_services import can_authorize, transfers
 
@@ -54,18 +54,21 @@ def appointment_context(link, actor):
     }
 
 
-def transfer_context(*, actor, case_id, reason="SERVICE_RESPONSIBILITY_CHANGE"):
+def transfer_context(*, actor, case_id, reason="SERVICE_RESPONSIBILITY_CHANGE", purpose=None):
     actor = rules.current_actor(actor, "request")
     case = (
         CounselingCase.objects.select_related("student", "primary_counselor")
         .filter(pk=case_id)
         .first()
     )
-    if case is None or not rules.may_prepare(actor, case):
+    if case is None or not rules.may_prepare(actor, case, purpose):
         rules.fail("case_not_found", "The case is not available for this arrangement.", 404)
-    if case.status != "ACTIVE":
-        rules.fail("case_not_active", "Only an Active case can be transferred.")
+    rules.require_case_current(case, case.primary_counselor_id, purpose)
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
     office = actor.pk != case.primary_counselor_id
+    reopening = purpose == CaseTransferPurpose.REOPEN
     now = timezone.now()
     options = []
     for receiver in (
@@ -87,7 +90,9 @@ def transfer_context(*, actor, case_id, reason="SERVICE_RESPONSIBILITY_CHANGE"):
             {"person": person(receiver), "authorization_route": route, "blocked_reason": blocked}
         )
     tasks = []
-    for task in case_tasks(case).filter(status="PENDING").order_by("due_at", "pk"):
+    for task in (
+        () if reopening else case_tasks(case).filter(status="PENDING").order_by("due_at", "pk")
+    ):
         readable = not office and task_policy.authorized(actor, task)
         tasks.append(
             {
@@ -108,17 +113,20 @@ def transfer_context(*, actor, case_id, reason="SERVICE_RESPONSIBILITY_CHANGE"):
         )
     return {
         "case": case_identity(case),
+        "purpose": purpose,
         "office_prepared": office,
         "receiver_options": options,
         "tasks": tasks,
-        "appointments": [
+        "appointments": []
+        if reopening
+        else [
             appointment_context(link, actor)
             for link in upcoming_links(case, now).order_by("appointment__starts_at", "pk")
         ],
     }
 
 
-def lookup_cases(*, actor, search=None, page=1, page_size=20):
+def lookup_cases(*, actor, search=None, page=1, page_size=20, status="ACTIVE"):
     actor = rules.current_actor(actor, "request")
     if not is_office_requester(actor):
         rules.fail(
@@ -130,9 +138,10 @@ def lookup_cases(*, actor, search=None, page=1, page_size=20):
         not 1 <= page <= 1000
         or not 1 <= page_size <= 50
         or (search is not None and len(search) > 120)
+        or status not in {"ACTIVE", "CLOSED"}
     ):
         rules.fail("lookup_invalid", "Choose a valid search and page.", 422)
-    query = CounselingCase.objects.filter(status="ACTIVE").select_related(
+    query = CounselingCase.objects.filter(status=status).select_related(
         "student", "primary_counselor"
     )
     if not is_head(actor):
@@ -166,6 +175,7 @@ def transfer_summary(item, now=None):
     )
     return {
         "id": item.pk,
+        "purpose": item.purpose,
         "reference_code": item.reference_code,
         "state": state,
         "version": item.version,
@@ -197,10 +207,7 @@ def transfer_detail(item, actor, *, result=False):
     item = transfers().get(pk=item.pk)
     now = timezone.now()
     state = rules.state_at(item, now)
-    current = (
-        item.case.status == "ACTIVE"
-        and item.case.primary_counselor_id == item.outgoing_counselor_id
-    )
+    current = rules.transfer_case_is_current(item.case, item.outgoing_counselor_id, item.purpose)
     office = item.prepared_by_id != item.outgoing_counselor_id
     preparer = actor.pk == item.prepared_by_id
     receiver = actor.pk == item.receiving_counselor_id
@@ -219,7 +226,24 @@ def transfer_detail(item, actor, *, result=False):
         and actor.has_capability("counseling.continuity.request", at=now)
     )
     head = can_authorize(actor, item, now)
-    package = state in {"PREPARED", "AUTHORIZED"} and current and (review or preparer or head)
+    from .case_handoff_services import metadata as handoff_metadata
+
+    handoff = handoff_metadata(item, actor, now)
+    if item.purpose == CaseTransferPurpose.REOPEN:
+        handoff = {
+            "handoff": None,
+            "handoff_exception": None,
+            "handoff_ready": True,
+            "handoff_required": False,
+            "can_write_handoff": False,
+            "can_read_handoff": False,
+            "can_record_handoff_exception": False,
+        }
+    package = (
+        state in {"PREPARED", "AUTHORIZED"}
+        and current
+        and (review or preparer or head or handoff["can_record_handoff_exception"])
+    )
     tasks, appointments = [], []
     if package:
         for plan in item.task_plans.select_related("task__student__role", "assignee"):
@@ -256,6 +280,7 @@ def transfer_detail(item, actor, *, result=False):
             )
     return {
         **transfer_summary(item, now),
+        **handoff,
         "case": case_identity(item.case),
         "outgoing_counselor": person(item.outgoing_counselor),
         "prepared_by": person(item.prepared_by),
@@ -286,14 +311,30 @@ def transfer_detail(item, actor, *, result=False):
         ],
         "review_accessible": review,
         "can_edit": edit,
-        "can_submit": edit and item.state == "PREPARED" and item.submitted_at is None,
-        "can_authorize": head,
-        "can_accept": review,
-        "can_decline": review or head,
-        "can_cancel": current
+        "can_submit": edit
+        and item.state == "PREPARED"
+        and item.submitted_at is None
+        and handoff["handoff_ready"],
+        "can_authorize": head and (handoff["handoff_ready"] or item.handoff_required_at is None),
+        "can_accept": review and (handoff["handoff_ready"] or item.handoff_required_at is None),
+        "can_decline": review
+        or head
+        or (
+            item.purpose == CaseTransferPurpose.REOPEN
+            and state == "AUTHORIZED"
+            and receiver
+            and rules.receiver_eligible(actor, now)
+            and actor.has_capability("counseling.continuity.read_selected", at=now)
+        ),
+        "can_cancel": (current or item.purpose == CaseTransferPurpose.REOPEN)
         and state in {"PREPARED", "AUTHORIZED"}
         and (
             preparer
+            or (
+                actor.pk == item.case.primary_counselor_id
+                and rules.receiver_eligible(actor, now)
+                and actor.has_capability("counseling.continuity.request", at=now)
+            )
             or (
                 is_head(actor)
                 and not receiver
@@ -344,6 +385,27 @@ def case_continuity(case, actor):
         "responsibility": responsibility,
         "history": [history_event(event) for event in history],
         "can_transfer": case.status == "ACTIVE"
+        and actor.has_capability("counseling.manage_assigned")
+        and actor.has_capability("counseling.continuity.request"),
+        **case_coverage_panel(case, actor),
+    }
+
+
+def case_coverage_panel(case, actor):
+    from .case_coverage_models import CounselingCaseCoverageEvent
+    from .case_coverage_projections import history_event as coverage_history_event
+    from .case_coverage_projections import summary
+    from .case_coverage_services import coverages
+
+    return {
+        "coverages": [summary(item) for item in coverages().filter(case=case)],
+        "coverage_history": [
+            coverage_history_event(event)
+            for event in CounselingCaseCoverageEvent.objects.filter(coverage__case=case)
+            .select_related("actor", "coverage")
+            .order_by("-occurred_at", "-pk")
+        ],
+        "can_arrange_coverage": case.status == "ACTIVE"
         and actor.has_capability("counseling.manage_assigned")
         and actor.has_capability("counseling.continuity.request"),
     }

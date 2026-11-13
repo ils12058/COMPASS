@@ -11,6 +11,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.CASE_TRANSFER && notification.target_id) {
     return { href: `/portal/counseling/transfers/${notification.target_id}`, label: "Review case transfer" };
   }
+  if (notification.target_type === NotificationTargetType.CASE_COVERAGE && notification.target_id) {
+    return { href: `/portal/counseling/coverages/${notification.target_id}`, label: "Review case coverage" };
+  }
   if (notification.target_type === NotificationTargetType.ACCOUNT_SECURITY && notification.target_id === currentUserId) {
     return { href: "/portal/account/security", label: "Open Security" };
   }

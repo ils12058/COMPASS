@@ -193,7 +193,7 @@ def test_every_other_audience_and_guessed_ids_are_denied_on_all_task_routes(cw2)
         ({"assignee": "b"}, FollowUpInvalid),
         ({"assignee": "head"}, FollowUpInvalid),
         ({"assignee": "goa"}, FollowUpInvalid),
-        ({"closed": True}, FollowUpInvalid),
+        ({"closed": True}, FollowUpConflict),
         ({"title": "x" * 121}, FollowUpInvalid),
         ({"title": "unsupported\x00text"}, FollowUpInvalid),
     ],
@@ -207,10 +207,27 @@ def test_creation_validation(cw2, change, error):
         values["actor"] = getattr(w, values["actor"])
     if "assignee" in values:
         values["assigned_to_id"] = getattr(w, values.pop("assignee")).pk
-    if values.pop("closed", False):
+    closed = values.pop("closed", False)
+    if closed:
         CounselingCase.objects.filter(pk=w.case.pk).update(status="CLOSED")
     with pytest.raises(error):
         create(w, **values)
+    if closed:
+        response = write(
+            auth_client(w.a, recent_mfa=True),
+            "post",
+            FUP,
+            {
+                "student_id": str(w.student.pk),
+                "case_id": str(w.case.pk),
+                "category": "COUNSELING",
+                "assigned_to_id": str(w.a.pk),
+                "due_at": (timezone.now() + timedelta(days=2)).isoformat(),
+                "title": "Refused Closed case action",
+            },
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "followup_conflict"
     assert not GuidanceFollowUp.objects.exists()
 
 

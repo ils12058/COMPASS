@@ -422,6 +422,13 @@ def get_case(*, actor: User, case_id: UUID, now: datetime | None = None) -> Case
     )
     if case is None:
         raise CounselingCaseNotFound("The requested case was not found.")
+    from .case_continuity_rules import CaseContinuityError
+    from .case_coverage_tasks import reconcile_returns
+
+    try:
+        reconcile_returns(actor=actor, case_id=case.pk)
+    except CaseContinuityError as exc:
+        raise CounselingCaseChanged(exc.message) from None
     links = list(
         _current_links()
         .filter(case_id=case.pk)

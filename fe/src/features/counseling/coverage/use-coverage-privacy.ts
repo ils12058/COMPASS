@@ -1,15 +1,16 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { subscribeSessionRevalidation } from "@/lib/auth/session-revalidation";
 import { CoverageGeneration } from "./coverage-safety";
 // Short-lived per-detail barrier. TanStack owns fetching/cancellation; these events only clear.
-export function useCoveragePrivacy(accountId: string, grantId: string) {
+export function useCoveragePrivacy(accountId: string, grantId: string, queryPrefix?: QueryKey) {
     const client = useQueryClient();
     const [barrier] = useState(() => new CoverageGeneration());
-    const prefix = useMemo(() => ["protected-case-coverage", accountId, grantId], [accountId, grantId]);
+    const prefix = useMemo(() => queryPrefix ?? ["protected-case-coverage", accountId, grantId], [accountId, grantId, queryPrefix]);
     const [blocked, setBlocked] = useState(false);
-    const [generation, setGeneration] = useState(0);
+    // State schedules renders; the barrier is the authority, including StrictMode cleanup replay.
+    const [, setGeneration] = useState(0);
     const clear = useCallback(() => { barrier.invalidate(); setBlocked(true); setGeneration(barrier.current()); void client.cancelQueries({ queryKey: prefix }); client.removeQueries({ queryKey: prefix }); }, [barrier, client, prefix]);
     const resume = useCallback(() => { barrier.invalidate(); setGeneration(barrier.current()); setBlocked(false); }, [barrier]);
     useEffect(() => {
@@ -24,7 +25,7 @@ export function useCoveragePrivacy(accountId: string, grantId: string) {
                 clear(); };
         return () => { barrier.invalidate(); void client.cancelQueries({ queryKey: prefix }); client.removeQueries({ queryKey: prefix }); window.removeEventListener("offline", clear); document.removeEventListener("visibilitychange", hidden); unsubscribe(); channel?.close(); };
     }, [clear, barrier, client, prefix, grantId]);
-    return { blocked, generation, barrier, prefix, clear, resume };
+    return { blocked, generation: barrier.current(), barrier, prefix, clear, resume };
 }
 export function broadcastCoverageChange(grantId: string) { if (typeof BroadcastChannel !== "undefined") {
     const channel = new BroadcastChannel("compass-case-coverage");

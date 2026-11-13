@@ -3,6 +3,11 @@
   "compass/counseling/migrations/0004_case_appointments.py": "199292ce1b4c6370a572e53e8160624d17404b5704bf2a4c3c4434b0fd6355d5",
   "compass/counseling/migrations/0005_case_transfers.py": "62c0cb72667fb040cfcd5e657fc7779b4d1cb39db962cbb9e907c4d1a61a5cf8",
   "compass/counseling/migrations/0006_transfer_history.py": "0f2370a900bc6ee30f81236c24cca641c59f29754ddfc29027e003179e6d1e11",
+  "compass/counseling/migrations/0007_case_handoffs.py": "7a0a60dee3cd35e2d96402c10df93e11c8b6ad22f8133551eeeeca7b71a0f22a",
+  "compass/counseling/migrations/0008_case_coverage.py": "b8a76dd34c65d08fc5ad9a0c0fbb16f98be7e0b4cf749d05ed868d96fbec1ed5",
+  "compass/counseling/migrations/0009_case_closure.py": "588f0ab8af93daf4fe7e8fd3f3e6adcb000b814dd62ffb725e46543083b92ebf",
   "compass/guidance_followups/migrations/0002_next_actions.py": "23b1106adf2ec4130c0a61c9bde15c870d6db32115d66204b0b6b515d367c9dc",
-  "compass/guidance_followups/migrations/0003_case_transfers.py": "cf3a1f720c65f4429e3a36e7a9fcd69f773d31738a1a3b20a80a41e16a206d38"
+  "compass/guidance_followups/migrations/0003_case_transfers.py": "cf3a1f720c65f4429e3a36e7a9fcd69f773d31738a1a3b20a80a41e16a206d38",
+  "compass/guidance_followups/migrations/0004_case_coverage.py": "ee765dd3a08b3b2bfbd2198bdb6502423d558f81a5aa4160c520922d02bf0d44",
+  "compass/guidance_followups/migrations/0005_case_closure.py": "7fab7e9d8b636ce024f812442021fe639b7d01beaece9be2373727ecdea91786"
 }

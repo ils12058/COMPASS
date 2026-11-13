@@ -18,6 +18,10 @@ class CaseContinuityReason(models.TextChoices):
     SERVICE_RESPONSIBILITY_CHANGE = "SERVICE_RESPONSIBILITY_CHANGE", "Service responsibility change"
 
 
+class CaseTransferPurpose(models.TextChoices):
+    REOPEN = "REOPEN", "Reopen under a new responsible Counselor"
+
+
 class CaseArrangementState(models.TextChoices):
     PREPARED = "PREPARED", "Prepared"
     AUTHORIZED = "AUTHORIZED", "Authorized"
@@ -93,6 +97,10 @@ class CounselingCaseTransfer(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="prepared_case_transfers"
     )
     reason = models.CharField(max_length=40, choices=CaseContinuityReason.choices)
+    # Null preserves ordinary transfers and every pre-CW-4 row without a backfill.
+    purpose = models.CharField(
+        max_length=16, choices=CaseTransferPurpose.choices, null=True, blank=True
+    )
     office_preparation_reason = models.CharField(
         max_length=32, choices=CaseOfficePreparationReason.choices, blank=True, default=""
     )
@@ -115,6 +123,22 @@ class CounselingCaseTransfer(models.Model):
         max_length=24, choices=CaseAuthorizationRoute.choices, blank=True, default=""
     )
     review_expires_at = models.DateTimeField(null=True, blank=True)
+    # Null marks a pre-CW-3b submitted offer; no handoff is fabricated for existing data.
+    handoff_required_at = models.DateTimeField(null=True, blank=True)
+    case_handoff = models.ForeignKey(
+        "counseling.CounselingCaseHandoff",
+        on_delete=models.PROTECT,
+        related_name="selected_by_transfers",
+        null=True,
+        blank=True,
+    )
+    handoff_exception = models.ForeignKey(
+        "counseling.CounselingCaseHandoffException",
+        on_delete=models.PROTECT,
+        related_name="selected_by_transfers",
+        null=True,
+        blank=True,
+    )
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointment, appointmentId, user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 import { casePath, casesFixture, followup, student as caseStudent } from "./support/counseling-cases-fixtures.mjs";
+import { closureFixture, closureNote } from "./support/counseling-closure-fixtures.mjs";
 import { continuityAPI, continuityFixture } from "./support/counseling-continuity-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("counseling-encounter-consistency");
@@ -259,10 +260,11 @@ await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ 
 
 const connectedSession = session();
 const connectedCase = casesFixture({ followups: [followup()] });
+const connectedClosure = closureFixture({ cases: connectedCase });
 const connectedContinuity = continuityFixture();
 connectedCase.detail.continuity.transfers = [connectedContinuity.projection()];
 await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession,
-  handler: (args) => args.pathname.startsWith(continuityAPI) ? connectedContinuity.handler(args) : args.pathname.startsWith("/api/v1/counseling/cases") || args.pathname.startsWith("/api/v1/guidance-followups") ? connectedCase.handler(args) : false,
+  handler: (args) => args.pathname.startsWith(continuityAPI) ? connectedContinuity.handler(args) : args.pathname.startsWith("/api/v1/counseling/cases") || args.pathname.startsWith("/api/v1/guidance-followups") ? connectedClosure.handler(args) : false,
   overrides: {
   ...connectedSession.overrides,
   "/api/v1/auth/session": { user: { ...user(), capabilities: [...user().capabilities, "guidance_followups.view", "guidance_followups.manage", "counseling.continuity.view", "counseling.continuity.request"] }, session: { id: "test-session", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
@@ -296,6 +298,15 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   assert.equal(await fakeCount(page, "createCallObject"), 1, "Transfer review keeps the same Call Object");
   assert.equal(await fakeCount(page, "destroy"), 0, "Transfer review does not end the call");
   await shown(page.getByRole("region", { name: "Active E-Counseling call" }));
+  await page.getByRole("link", { name: "Open handoff", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Submitted handoff", exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Opening a case handoff keeps the Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Opening a case handoff does not rejoin");
+  assert.equal(await fakeCount(page, "leave"), 0, "Opening a case handoff does not leave");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Opening a case handoff does not destroy the call");
+  await activeCallAvailable(page);
+  await page.getByRole("link", { name: "Back to transfer review", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Transfer review", exact: true }));
   await page.getByRole("link", { name: "Back to case", exact: true }).click();
   await page.locator('[aria-labelledby="case-next-actions-heading"]').getByRole("link", { name: "Check progress with Student", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
@@ -306,6 +317,33 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   await activeCallAvailable(page);
   await page.getByRole("link", { name: "Back to case", exact: true }).click();
   await shown(page.getByRole("heading", { name: caseStudent.display_name, exact: true }));
+  await page.getByRole("link", { name: "Close case", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Close case", exact: true }));
+  await activeCallAvailable(page);
+  await page.getByRole("button", { name: "Keep after closure", exact: true }).click();
+  await page.getByRole("checkbox", { name: "This is an administrative action to keep after closure.", exact: true }).check();
+  await page.getByRole("button", { name: "Save after-closure plan", exact: true }).click();
+  await page.getByRole("button", { name: "Next: closure details", exact: true }).click();
+  await page.getByLabel("Closure reason", { exact: true }).selectOption("CONTACT_NOT_REESTABLISHED");
+  await page.getByLabel("Confidential closure note (required)", { exact: true }).fill(closureNote);
+  await page.getByRole("button", { name: "Review closure", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "3. Close this case?", exact: true }).getByRole("button", { name: "Close case", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "Case closed", exact: true }).getByRole("button", { name: "Done", exact: true }).click();
+  await activeCallAvailable(page);
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Closing a case keeps the same Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Closing a case does not rejoin");
+  assert.equal(await fakeCount(page, "leave"), 0, "Closing a case does not leave the call");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Closing a case does not destroy the call");
+  await page.getByRole("link", { name: "Reopen case", exact: true }).click();
+  await page.getByRole("button", { name: "Next: reopening reason", exact: true }).click();
+  await page.getByRole("button", { name: "Review reopening", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "3. Reopen this case?", exact: true }).getByRole("button", { name: "Reopen case", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "Case reopened", exact: true }).getByRole("button", { name: "Done", exact: true }).click();
+  await activeCallAvailable(page);
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Reopening the same case keeps the call");
+  assert.equal(await fakeCount(page, "join"), 1, "Reopening does not rejoin");
+  assert.equal(await fakeCount(page, "leave"), 0, "Reopening does not leave");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Reopening does not destroy the call");
   await page.getByRole("link", { name: "Back to Counseling", exact: true }).click();
   await shown(page.getByRole("heading", { name: "My cases", exact: true }));
   await page.getByRole("link", { name: "Session records", exact: true }).click();

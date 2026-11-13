@@ -25,7 +25,7 @@ import {
   guidanceFollowupsCreate, useGuidanceFollowupsGet, useGuidanceFollowupsGetContext,
   useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees,
 } from "@/lib/api/generated/guidance-followups/guidance-followups";
-import { useCounselingGetCase } from "@/lib/api/generated/counseling/counseling";
+import { useProtectedCase } from "@/features/counseling/cases/use-protected-case";
 import { CompassApiError } from "@/lib/api/errors";
 import {
   Category, SourceKind, type FollowUpCreate, type FollowUpDetail,
@@ -51,10 +51,9 @@ export function FollowupsCreate() {
   const source = useGuidanceFollowupsGetContext({
     source_kind: sourceKind ?? SourceKind.COUNSELING_ENCOUNTER, source_id: sourceId ?? "",
   }, { query: { enabled: access.manage && validSource && (!predecessorId || predecessor.isSuccess), retry: false } });
-  const caseQuery = useCounselingGetCase(caseId ?? "", {
-    query: { enabled: access.manage && Boolean(caseId), retry: false },
-  });
+  const caseQuery = useProtectedCase(caseId ?? "", access.manage && Boolean(caseId));
   if (!access.manage) return <FollowupRestricted />;
+  if (caseId && caseQuery.privacy.blocked) return <FollowupFailure error={caseQuery.failure} retry={() => caseQuery.privacy.resume()} />;
   if ((predecessorId && predecessor.isPending) || (caseId && caseQuery.isPending) || (hasSource && validSource && source.isPending)) {
     return <LoadingRegion label="Checking next-action context"><Panel><PanelMessage>Checking the related work…</PanelMessage></Panel></LoadingRegion>;
   }

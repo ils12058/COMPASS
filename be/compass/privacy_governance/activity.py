@@ -615,6 +615,24 @@ _CASE_CONTINUITY_ACTIONS = frozenset(
     }
 )
 _PRIVACY_GOVERNANCE_ACTIONS |= _CASE_CONTINUITY_ACTIONS
+_CASE_CONTINUITY_ACTIONS |= frozenset(
+    "counseling.case_coverage." + verb
+    for verb in (
+        "prepared",
+        "updated",
+        "submitted",
+        "authorized",
+        "accepted",
+        "declined",
+        "cancelled",
+        "revoked",
+        "tasks_returned",
+        "tasks_recovered",
+    )
+)
+_PRIVACY_GOVERNANCE_ACTIONS |= _CASE_CONTINUITY_ACTIONS
+_CASE_LIFECYCLE_ACTIONS = frozenset({"counseling.case.closed", "counseling.case.reopened"})
+_PRIVACY_GOVERNANCE_ACTIONS |= _CASE_LIFECYCLE_ACTIONS
 _ALL_ACTIONS = (
     _DATA_RELEASE_ACTIONS
     | _ACCESS_CONTROL_ACTIONS
@@ -627,6 +645,8 @@ def _present(event: AuditEvent) -> PrivacyActivityItem | None:
     if not isinstance(event.metadata, dict):
         return None
     try:
+        if event.action in _CASE_LIFECYCLE_ACTIONS:
+            return _case_lifecycle(event)
         if event.action in _CASE_CONTINUITY_ACTIONS:
             return _case_continuity(event)
         if event.action == REPORT_EXPORT_RELEASED:
@@ -645,10 +665,47 @@ def _present(event: AuditEvent) -> PrivacyActivityItem | None:
     return None
 
 
+def _case_lifecycle(event: AuditEvent) -> PrivacyActivityItem | None:
+    import re
+
+    metadata = event.metadata
+    case_id = _uuid_string(event.target_id)
+    reference = metadata.get("reference_code")
+    if (
+        event.target_type != "counseling.case"
+        or case_id is None
+        or _uuid_string(metadata.get("case_id")) != case_id
+        or _uuid_string(metadata.get("closure_id")) is None
+        or type(metadata.get("version")) is not int
+        or metadata["version"] < 1
+        or not isinstance(reference, str)
+        or not re.fullmatch(r"CASE-\d{4}-\d{6}", reference)
+        or event.outcome != AuditOutcome.SUCCESS
+    ):
+        return None
+    closed = event.action == "counseling.case.closed"
+    return _base(
+        event,
+        category=PrivacyActivityCategory.PRIVACY_GOVERNANCE,
+        title="Counseling case closed" if closed else "Counseling case reopened",
+        description=(
+            "The responsible Counselor recorded case closure."
+            if closed
+            else "The responsible Counselor resumed the same episode of support."
+        ),
+        resource_reference=reference,
+    )
+
+
 def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
     import re
 
-    if event.target_type != "counseling.case_transfer" or _uuid_string(event.target_id) is None:
+    coverage = event.action.startswith("counseling.case_coverage.")
+    if (
+        event.target_type
+        != ("counseling.case_coverage" if coverage else "counseling.case_transfer")
+        or _uuid_string(event.target_id) is None
+    ):
         return None
     independent = event.metadata.get("independent_authorization")
     route = event.metadata.get("authorization_route")
@@ -657,7 +714,9 @@ def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
         type(independent) is not bool
         or route not in {"", "INDEPENDENT_HEAD", "DIRECT_OUTGOING_HEAD", "OWNER_TO_HEAD"}
         or not isinstance(reference, str)
-        or not re.fullmatch(r"TRF-CASE-\d{4}-\d{6}-\d{3,6}", reference)
+        or not re.fullmatch(
+            (r"COV" if coverage else r"TRF") + r"-CASE-\d{4}-\d{6}-\d{3,6}", reference
+        )
     ):
         return None
     fact = (
@@ -678,7 +737,7 @@ def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
     return _base(
         event,
         category=PrivacyActivityCategory.PRIVACY_GOVERNANCE,
-        title=f"Case transfer {verb}",
+        title=f"Case {'coverage' if coverage else 'transfer'} {verb.replace('_', ' ')}",
         description=fact,
         resource_reference=reference,
     )

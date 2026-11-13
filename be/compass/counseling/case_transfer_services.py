@@ -19,6 +19,7 @@ from .case_transfer_models import (
     CaseCommunicationDeferral,
     CaseContinuityReason,
     CaseStudentCommunication,
+    CaseTransferPurpose,
     CounselingCaseResponsibility,
     CounselingCaseTransfer,
     CounselingCaseTransferEvent,
@@ -37,6 +38,8 @@ def transfers():
         "decided_by",
         "communication_recorded_by",
         "communication_task__assigned_to",
+        "case_handoff__author",
+        "handoff_exception__recorded_by__role",
     )
 
 
@@ -47,8 +50,7 @@ def can_authorize(actor, item, now):
         and actor.pk not in {item.prepared_by_id, item.receiving_counselor_id}
         and is_head(actor)
         and actor.has_capability("counseling.continuity.approve", at=now)
-        and item.case.primary_counselor_id == item.outgoing_counselor_id
-        and item.case.status == "ACTIVE"
+        and rules.transfer_case_is_current(item.case, item.outgoing_counselor_id, item.purpose)
     )
 
 
@@ -61,6 +63,10 @@ def may_view(actor, item, now):
         return True
     if actor.pk == item.receiving_counselor_id:
         return rules.state_at(item, now) != "PREPARED"
+    from .case_handoff_services import may_record_exception
+
+    if may_record_exception(actor, item, now):
+        return True
     return can_authorize(actor, item, now)
 
 
@@ -104,7 +110,9 @@ def notify_next_actor(item):
     now = timezone.now()
     if rules.state_at(item, now) == "AUTHORIZED":
         recipients = (item.receiving_counselor,)
-    elif item.state == "PREPARED" and item.submitted_at:
+    elif item.state == "PREPARED" and not item.submitted_at and item.handoff_exception_id:
+        recipients = (item.prepared_by,)
+    elif item.state == "PREPARED" and (item.submitted_at or item.office_preparation_reason):
         recipients = rules.eligible_authorizers(
             requester_id=item.prepared_by_id, receiver_id=item.receiving_counselor_id, now=now
         )
@@ -145,6 +153,8 @@ def lock_work(item):
         item.case.student_id,
     }
     ids.update(plan.assignee_id for plan in plans)
+    if item.handoff_exception_id:
+        ids.add(item.handoff_exception.recorded_by_id)
     return ids
 
 
@@ -153,7 +163,7 @@ def _save(item):
     item.save()
 
 
-def _check_communication(item, values, *, actor, people, now, context):
+def _check_communication(item, values, *, actor, people, now, context, identity_prefix="transfer"):
     status = values.get("student_communication", "NO")
     if status not in CaseStudentCommunication.values:
         rules.fail("communication_invalid", "Choose the Student communication status.", 422)
@@ -216,7 +226,7 @@ def _check_communication(item, values, *, actor, people, now, context):
                 assignee=people[item.outgoing_counselor_id],
                 title=title,
                 due_at=due,
-                identity=f"transfer-communication:{item.pk}",
+                identity=f"{identity_prefix}-communication:{item.pk}",
                 context=context,
             )
     elif (
@@ -229,10 +239,44 @@ def _check_communication(item, values, *, actor, people, now, context):
         )
 
 
+def require_reopening_package(item, values=None):
+    """Closed-case transfer changes responsibility; retained tasks keep their explicit owners."""
+    if item.purpose != CaseTransferPurpose.REOPEN:
+        return
+    values = values or {}
+    if (
+        values.get("tasks")
+        or values.get("appointments")
+        or values.get("handoff_sections") is not None
+        or item.case_handoff_id
+        or item.handoff_exception_id
+        or (
+            not item._state.adding and (item.task_plans.exists() or item.appointment_plans.exists())
+        )
+    ):
+        rules.fail(
+            "reopening_plan_forbidden",
+            "A reopening transfer has no task, Appointment or handoff dispositions.",
+            422,
+        )
+    if values.get("student_communication", item.student_communication) == "DEFERRED":
+        rules.fail(
+            "reopening_task_forbidden",
+            "A Closed case cannot create a new communication action. Use existing work separately.",
+            422,
+        )
+
+
 @transaction.atomic
 def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expected_version=None):
     actor = rules.current_actor(actor, "request")
     case = rules.lock_case(case_id)
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
+    purpose = values.get("purpose")
+    if purpose is not None and purpose not in CaseTransferPurpose.values:
+        rules.fail("purpose_invalid", "Choose a valid transfer purpose.", 422)
     if transfer_id is None:
         if values.get("expected_case_version") != case.version:
             rules.fail("case_changed", "This case changed. Review the latest pending work.")
@@ -241,6 +285,7 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
             outgoing_counselor_id=case.primary_counselor_id,
             prepared_by=actor,
             communication_recorded_by=actor,
+            purpose=purpose,
         )
         item.reference_code = f"TRF-{case.reference_code}-{case.transfers.count() + 1:03d}"
     else:
@@ -258,12 +303,23 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
                 "terminal_arrangement",
                 "A completed decision cannot be edited. Prepare a new transfer.",
             )
+        if purpose != item.purpose:
+            rules.fail(
+                "purpose_changed", "A transfer's purpose cannot change. Prepare a new request.", 422
+            )
     ids = {actor.pk, case.student_id, case.primary_counselor_id, values["receiving_counselor_id"]}
     people = rules.lock_people(ids)
     actor = rules.current_actor(people[actor.pk], "request")
     now = timezone.now()
-    rules.require_case_current(case, item.outgoing_counselor_id)
-    rules.require_preparer(actor, case, values.get("office_preparation_reason"))
+    rules.require_case_current(case, item.outgoing_counselor_id, item.purpose)
+    rules.require_preparer(actor, case, values.get("office_preparation_reason"), item.purpose)
+    require_reopening_package(item, values)
+    if values.get("handoff_sections") is not None and actor.pk != case.primary_counselor_id:
+        rules.fail(
+            "handoff_write_denied",
+            "Office preparation cannot include counseling handoff content.",
+            403,
+        )
     receiver = people.get(values["receiving_counselor_id"])
     if not rules.receiver_eligible(receiver, now):
         rules.fail("receiver_ineligible", "The receiving Counselor is no longer eligible.", 422)
@@ -281,6 +337,9 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
     ) = None
     item.authorization_route = ""
     item.independent_authorization = True
+    item.case_handoff = item.handoff_exception = None
+    if item.purpose != CaseTransferPurpose.REOPEN:
+        item.handoff_required_at = item.handoff_required_at or now
     _check_communication(item, values, actor=actor, people=people, now=now, context=context)
     if item._state.adding:
         item.save(force_insert=True)
@@ -297,10 +356,17 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
                 "disposition": "TRANSFER",
             }
         )
-    store_plans(
-        item, actor=actor, tasks=tasks, appointments=values.get("appointments", []), now=now
-    )
+    if item.purpose != CaseTransferPurpose.REOPEN:
+        store_plans(
+            item, actor=actor, tasks=tasks, appointments=values.get("appointments", []), now=now
+        )
+    if values.get("handoff_sections") is not None:
+        from .case_handoff_services import save_prepared_draft
+
+        save_prepared_draft(item, actor=actor, sections=values["handoff_sections"], context=context)
     audit(item, "prepared" if transfer_id is None else "updated", actor=actor, context=context)
+    if item.office_preparation_reason:
+        notify_next_actor(item)
     return item
 
 
@@ -339,14 +405,21 @@ def submit_transfer(*, actor, transfer_id, expected_version, context):
     people = rules.lock_people(ids)
     actor = rules.current_actor(people[actor.pk], "request")
     now = timezone.now()
-    rules.require_case_current(case, item.outgoing_counselor_id)
-    rules.require_preparer(actor, case, item.office_preparation_reason)
+    rules.require_case_current(case, item.outgoing_counselor_id, item.purpose)
+    rules.require_preparer(actor, case, item.office_preparation_reason, item.purpose)
     if not rules.receiver_eligible(people[item.receiving_counselor_id], now):
         rules.fail("receiver_ineligible", "The receiving Counselor is no longer eligible.")
-    validate_plans(item, actor=actor, now=now)
+    require_reopening_package(item)
+    if item.purpose != CaseTransferPurpose.REOPEN:
+        validate_plans(item, actor=actor, now=now)
     route = rules.authorization_route(
         requester=actor, receiver=people[item.receiving_counselor_id], case=case, now=now
     )
+    from .case_handoff_services import require_ready
+
+    if item.purpose != CaseTransferPurpose.REOPEN:
+        require_ready(item, new_submission=True, now=now)
+        item.handoff_required_at = item.handoff_required_at or now
     item.submitted_at = now
     item.authorization_route = route
     item.independent_authorization = route == CaseAuthorizationRoute.INDEPENDENT_HEAD
@@ -367,15 +440,23 @@ def submit_transfer(*, actor, transfer_id, expected_version, context):
 def conflicting_coverage(case, now):
     # Student-keyed legacy coverage is left unchanged. Its active interval must be explicitly
     # revoked/ended before changing this case's responsibility.
-    return CounselorCaseContinuityGrant.objects.filter(
-        student_id=case.student_id, decision="APPROVED", starts_at__lte=now, expires_at__gt=now
-    ).exists()
+    from .case_coverage_services import conflicting_case_coverage
+
+    return (
+        conflicting_case_coverage(case, now)
+        or CounselorCaseContinuityGrant.objects.filter(
+            student_id=case.student_id, decision="APPROVED", starts_at__lte=now, expires_at__gt=now
+        ).exists()
+    )
 
 
 @transaction.atomic
 def decide_transfer(*, actor, transfer_id, expected_version, action, context, reason=None):
     visible = get_transfer(actor=actor, transfer_id=transfer_id)
     case = rules.lock_case(visible.case_id)
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
     item = transfers().select_for_update(of=("self",)).get(pk=visible.pk)
     item.case = case
     rules.require_version(item, expected_version)
@@ -387,7 +468,9 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
     now = timezone.now()  # Recheck after the case/User waits, never before them.
     if rules.state_at(item, now) == "EXPIRED":
         rules.fail("review_expired", "The review window ended. Another arrangement is needed.")
-    rules.require_case_current(case, item.outgoing_counselor_id)
+    if not (item.purpose == CaseTransferPurpose.REOPEN and action in {"decline", "cancel"}):
+        rules.require_case_current(case, item.outgoing_counselor_id, item.purpose)
+    require_reopening_package(item)
     from .case_transfer_models import CaseArrangementDecisionReason
 
     if action == "authorize":
@@ -397,9 +480,14 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
                 "Only an independent current Head can authorize this request.",
                 403,
             )
-        validate_plans(item, actor=people[item.prepared_by_id], now=now)
+        if item.purpose != CaseTransferPurpose.REOPEN:
+            validate_plans(item, actor=people[item.prepared_by_id], now=now)
         if not rules.receiver_eligible(people[item.receiving_counselor_id], now):
             rules.fail("receiver_ineligible", "The receiving Counselor is no longer eligible.")
+        from .case_handoff_services import require_ready
+
+        if item.purpose != CaseTransferPurpose.REOPEN:
+            require_ready(item, now=now)
         item.state = CaseArrangementState.AUTHORIZED
         item.authorization_route = CaseAuthorizationRoute.INDEPENDENT_HEAD
         item.independent_authorization = True
@@ -419,13 +507,25 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
             )
         rules.require_review(item, now)
         require_current_authorization(item, people, now)
+        from .case_handoff_services import require_ready
+
+        if item.purpose != CaseTransferPurpose.REOPEN:
+            require_ready(item, now=now, verify_content=True)
+        if item.case_handoff_id and not actor.has_capability(
+            "counseling.handoff.read_received", at=now
+        ):
+            rules.fail(
+                "handoff_read_denied", "The receiving Counselor cannot read the submitted handoff."
+            )
         if conflicting_coverage(case, now):
             rules.fail(
                 "coverage_conflict",
                 "The case has conflicting coverage. End it explicitly or wait for expiry.",
             )
-        plans, tasks = validate_plans(
-            item, actor=people[item.prepared_by_id], now=now, accepting=True
+        plans, tasks = (
+            ((), {})
+            if item.purpose == CaseTransferPurpose.REOPEN
+            else validate_plans(item, actor=people[item.prepared_by_id], now=now, accepting=True)
         )
         if plans and not actor.has_capability("guidance_followups.manage", at=now):
             rules.fail(
@@ -433,8 +533,15 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
                 "The receiving Counselor cannot manage the planned case actions.",
             )
         case.primary_counselor = actor
-        case.version += 1
-        case.save(update_fields=["primary_counselor", "version", "updated_at"])
+        if item.purpose == CaseTransferPurpose.REOPEN:
+            from .case_closure_services import reopen_locked_case
+
+            reopen_locked_case(
+                case=case, actor=actor, reason="FURTHER_SUPPORT_NEEDED", context=context, now=now
+            )
+        else:
+            case.version += 1
+            case.save(update_fields=["primary_counselor", "version", "updated_at"])
         CounselingCaseResponsibility.objects.filter(case=case, ended_at__isnull=True).update(
             ended_at=now
         )
@@ -466,12 +573,20 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
             )
         else:
             permitted = (
-                actor.pk == item.prepared_by_id
-                and actor.has_capability("counseling.continuity.request", at=now)
-            ) or (
-                is_head(actor)
-                and actor.pk != item.receiving_counselor_id
-                and actor.has_capability("counseling.continuity.revoke", at=now)
+                (
+                    actor.pk == item.prepared_by_id
+                    and actor.has_capability("counseling.continuity.request", at=now)
+                )
+                or (
+                    actor.pk == case.primary_counselor_id
+                    and rules.receiver_eligible(actor, now)
+                    and actor.has_capability("counseling.continuity.request", at=now)
+                )
+                or (
+                    is_head(actor)
+                    and actor.pk != item.receiving_counselor_id
+                    and actor.has_capability("counseling.continuity.revoke", at=now)
+                )
             )
         if not permitted:
             rules.fail("decision_denied", "This decision is unavailable to your account.", 403)
@@ -514,9 +629,24 @@ def notification_is_current(notification, now=None):
         or not actor.has_capability("counseling.continuity.view", at=now)
     ):
         return False
-    return can_authorize(actor, item, now) or (
-        rules.state_at(item, now) == "AUTHORIZED"
-        and item.receiving_counselor_id == actor.pk
-        and rules.receiver_eligible(actor, now)
-        and actor.has_capability("counseling.continuity.read_selected", at=now)
+    from .case_handoff_services import may_record_exception
+
+    return (
+        can_authorize(actor, item, now)
+        or (item.office_preparation_reason and may_record_exception(actor, item, now))
+        or (
+            item.state == "PREPARED"
+            and item.submitted_at is None
+            and item.handoff_exception_id
+            and actor.pk == item.prepared_by_id
+            and actor.has_capability("counseling.continuity.request", at=now)
+        )
+        or (
+            rules.state_at(item, now) == "AUTHORIZED"
+            and rules.transfer_case_is_current(item.case, item.outgoing_counselor_id, item.purpose)
+            and item.authorized_version == item.version
+            and item.receiving_counselor_id == actor.pk
+            and rules.receiver_eligible(actor, now)
+            and actor.has_capability("counseling.continuity.read_selected", at=now)
+        )
     )
