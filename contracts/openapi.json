@@ -7312,9 +7312,182 @@
         "title": "CounselingAssignedStudentSessionSummaryResponse",
         "type": "object"
       },
+      "CounselingCaseAppointmentCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "starts_at",
+          "ends_at",
+          "status",
+          "delivery_mode"
+        ],
+        "title": "CounselingCaseAppointmentCandidate",
+        "type": "object"
+      },
+      "CounselingCaseAppointmentCandidatePage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseAppointmentCandidate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselingCaseAppointmentCandidatePage",
+        "type": "object"
+      },
+      "CounselingCaseAppointmentRemovalReason": {
+        "enum": [
+          "BELONGS_TO_ANOTHER_CASE",
+          "NOT_PART_OF_THIS_CASE",
+          "LINKED_BY_MISTAKE"
+        ],
+        "title": "CounselingCaseAppointmentRemovalReason",
+        "type": "string"
+      },
+      "CounselingCaseAppointmentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseAppointmentCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_at": {
+            "format": "date-time",
+            "title": "Linked At",
+            "type": "string"
+          },
+          "linked_by": {
+            "$ref": "#/components/schemas/CounselingCasePerson"
+          },
+          "removal_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseAppointmentRemovalReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
+          },
+          "removed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCasePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "appointment_id",
+          "appointment",
+          "linked_at",
+          "linked_by",
+          "removed_at",
+          "removed_by",
+          "removal_reason"
+        ],
+        "title": "CounselingCaseAppointmentResponse",
+        "type": "object"
+      },
       "CounselingCaseDetailResponse": {
         "additionalProperties": false,
         "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseAppointmentResponse"
+            },
+            "title": "Appointments",
+            "type": "array"
+          },
+          "can_add_next_action": {
+            "title": "Can Add Next Action",
+            "type": "boolean"
+          },
+          "can_link_appointments": {
+            "title": "Can Link Appointments",
+            "type": "boolean"
+          },
           "can_manage": {
             "title": "Can Manage",
             "type": "boolean"
@@ -7342,6 +7515,41 @@
               }
             ],
             "title": "Latest Session At"
+          },
+          "next_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_actions": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpSummary"
+            },
+            "title": "Next Actions",
+            "type": "array"
+          },
+          "next_actions_available": {
+            "title": "Next Actions Available",
+            "type": "boolean"
+          },
+          "next_actions_has_more": {
+            "title": "Next Actions Has More",
+            "type": "boolean"
+          },
+          "next_appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselingCaseAppointmentCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "opened_at": {
             "format": "date-time",
@@ -7378,6 +7586,13 @@
           "student": {
             "$ref": "#/components/schemas/CounselingCaseStudent"
           },
+          "unlinked_appointment_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingCaseSessionCandidate"
+            },
+            "title": "Unlinked Appointment Sessions",
+            "type": "array"
+          },
           "unlinked_origin_session": {
             "anyOf": [
               {
@@ -7408,7 +7623,16 @@
           "sessions",
           "unlinked_origin_session",
           "history",
-          "can_manage"
+          "can_manage",
+          "appointments",
+          "next_appointment",
+          "unlinked_appointment_sessions",
+          "next_action",
+          "next_actions",
+          "next_actions_has_more",
+          "next_actions_available",
+          "can_add_next_action",
+          "can_link_appointments"
         ],
         "title": "CounselingCaseDetailResponse",
         "type": "object"
@@ -7491,6 +7715,27 @@
           "detail_code"
         ],
         "title": "CounselingCaseEventResponse",
+        "type": "object"
+      },
+      "CounselingCaseLinkAppointmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "expected_version"
+        ],
+        "title": "CounselingCaseLinkAppointmentRequest",
         "type": "object"
       },
       "CounselingCaseLinkSessionRequest": {
@@ -8030,6 +8275,25 @@
           "version"
         ],
         "title": "CounselingCaseSummaryResponse",
+        "type": "object"
+      },
+      "CounselingCaseUnlinkAppointmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CounselingCaseAppointmentRemovalReason"
+          }
+        },
+        "required": [
+          "reason",
+          "expected_version"
+        ],
+        "title": "CounselingCaseUnlinkAppointmentRequest",
         "type": "object"
       },
       "CounselingCaseUnlinkSessionRequest": {
@@ -14389,6 +14653,31 @@
         "title": "FollowUpCancel",
         "type": "object"
       },
+      "FollowUpCaseReference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status"
+        ],
+        "title": "FollowUpCaseReference",
+        "type": "object"
+      },
       "FollowUpComplete": {
         "additionalProperties": false,
         "properties": {
@@ -14419,6 +14708,18 @@
             "title": "Assigned To Id",
             "type": "string"
           },
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
           "category": {
             "$ref": "#/components/schemas/Category"
           },
@@ -14438,6 +14739,18 @@
             "format": "date-time",
             "title": "Due At",
             "type": "string"
+          },
+          "predecessor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessor Id"
           },
           "source_id": {
             "anyOf": [
@@ -14465,6 +14778,18 @@
             "format": "uuid",
             "title": "Student Id",
             "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "visibility": {
             "anyOf": [
@@ -14521,6 +14846,10 @@
             ],
             "title": "Assigned To Profile Photo Url"
           },
+          "can_create_next_action": {
+            "title": "Can Create Next Action",
+            "type": "boolean"
+          },
           "cancelled_at": {
             "anyOf": [
               {
@@ -14543,6 +14872,16 @@
               }
             ],
             "title": "Cancelled By Name"
+          },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpCaseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "category": {
             "$ref": "#/components/schemas/Category"
@@ -14622,6 +14961,18 @@
             "title": "Overdue",
             "type": "boolean"
           },
+          "predecessor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessor Id"
+          },
           "source": {
             "anyOf": [
               {
@@ -14671,6 +15022,17 @@
             ],
             "title": "Student Profile Photo Url"
           },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -14703,6 +15065,8 @@
           "version",
           "created_at",
           "updated_at",
+          "title",
+          "case",
           "completed_at",
           "completed_by_name",
           "cancelled_at",
@@ -14711,7 +15075,9 @@
           "outcome",
           "source",
           "events",
-          "events_has_next"
+          "events_has_next",
+          "predecessor_id",
+          "can_create_next_action"
         ],
         "title": "FollowUpDetail",
         "type": "object"
@@ -14912,6 +15278,18 @@
               }
             ],
             "title": "Assigned To Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
           },
           "due_window": {
             "anyOf": [
@@ -15121,6 +15499,16 @@
             ],
             "title": "Assigned To Profile Photo Url"
           },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpCaseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category": {
             "$ref": "#/components/schemas/Category"
           },
@@ -15182,6 +15570,17 @@
             ],
             "title": "Student Profile Photo Url"
           },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -15213,7 +15612,9 @@
           "source_unavailable",
           "version",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "title",
+          "case"
         ],
         "title": "FollowUpSummary",
         "type": "object"
@@ -15259,6 +15660,18 @@
             "minimum": 1,
             "title": "Expected Version",
             "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "required": [
@@ -30693,6 +31106,16 @@
             "title": "Can Create",
             "type": "boolean"
           },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpCaseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category": {
             "$ref": "#/components/schemas/Category"
           },
@@ -30724,7 +31147,8 @@
           "student_name",
           "category",
           "visibility",
-          "can_create"
+          "can_create",
+          "case"
         ],
         "title": "SourceContext",
         "type": "object"
@@ -44115,6 +44539,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "security": [
@@ -44320,6 +44754,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "security": [
@@ -44328,6 +44772,330 @@
           }
         ],
         "summary": "Counseling Get Case",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/appointment-candidates": {
+      "get": {
+        "operationId": "counselingListCaseAppointmentCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseAppointmentCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Case Appointment Candidates",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/appointments": {
+      "post": {
+        "operationId": "counselingLinkCaseAppointment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingCaseLinkAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Link Case Appointment",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/appointments/{appointment_id}/unlink": {
+      "post": {
+        "operationId": "counselingUnlinkCaseAppointment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingCaseUnlinkAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Unlink Case Appointment",
         "tags": [
           "counseling"
         ]
@@ -44526,6 +45294,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "security": [
@@ -44634,6 +45412,16 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         },
         "security": [
@@ -55760,6 +56548,23 @@
           },
           {
             "in": "query",
+            "name": "case_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "due_window",
             "required": false,
             "schema": {
@@ -56142,6 +56947,23 @@
                 }
               ],
               "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "case_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Id"
             }
           },
           {

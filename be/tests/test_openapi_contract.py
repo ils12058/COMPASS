@@ -328,6 +328,9 @@ EXPECTED_OPERATION_IDS = {
     "counselingListCaseSessionCandidates",
     "counselingLinkCaseSession",
     "counselingUnlinkCaseSession",
+    "counselingListCaseAppointmentCandidates",
+    "counselingLinkCaseAppointment",
+    "counselingUnlinkCaseAppointment",
     "counselingUpdateEncounter",
     "counselingListStudents",
     "counselingGetAssignedStudentSessionSummary",
@@ -540,6 +543,41 @@ def _response_statuses(operation: dict) -> set[int]:
 def _response_schema(schema: dict, operation: dict) -> str:
     content = operation["responses"]["200"]["content"]["application/json"]["schema"]
     return content["$ref"].rsplit("/", 1)[-1]
+
+
+def test_cw2_contract_preserves_optional_legacy_fields_and_exposes_authorized_case_facts():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for name in ("FollowUpCreate", "FollowUpUpdate"):
+        title = schemas[name]["properties"]["title"]
+        assert "title" not in schemas[name]["required"]
+        assert {"maxLength": 120, "type": "string"} in title["anyOf"]
+    for field in ("case_id", "predecessor_id"):
+        assert field in schemas["FollowUpCreate"]["properties"]
+        assert field not in schemas["FollowUpCreate"]["required"]
+    assert "title" in schemas["FollowUpSummary"]["properties"]
+    assert "case" in schemas["FollowUpSummary"]["properties"]
+    assert "predecessor_id" in schemas["FollowUpDetail"]["properties"]
+    detail = schemas["CounselingCaseDetailResponse"]["properties"]
+    assert {
+        "next_appointment",
+        "next_action",
+        "next_actions",
+        "appointments",
+        "unlinked_appointment_sessions",
+        "can_add_next_action",
+        "can_link_appointments",
+    } <= detail.keys()
+    assert schemas["CounselingCaseEventKind"]["enum"] == [
+        "OPENED",
+        "SESSION_LINKED",
+        "SESSION_UNLINKED",
+    ]
+    for name in ("FollowUpReport", "WorkItem"):
+        if name in schemas:
+            assert "title_ciphertext" not in schemas[name]["properties"]
+            assert "action_title" not in schemas[name]["properties"]
+    assert "title" not in schemas["FollowUpReport"]["properties"]
 
 
 # Every user-sortable collection and its closed ordering enum (ADR-090).
