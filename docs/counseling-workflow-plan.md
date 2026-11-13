@@ -278,10 +278,12 @@ The following are domain responsibilities to implement, not invented endpoint na
 
 Each package includes its own API, UI, meaningful tests, and documentation. The labels below are this plan's work packages.
 
-| Package | State on 12 November 2026 |
+| Package | State on 13 November 2026 |
 |---|---|
 | CW-1 | Implemented in source, not merged. Backend verified locally; frontend tests, build, browser journeys and the upgrade rehearsal are still to run. See the [CW-1 record](cw-1/README.md). |
-| CW-2 to CW-7 | Not started. |
+| CW-2 to CW-4 | Not started on this branch. |
+| CW-5 | Implemented and verified locally with mocked and real backends; not merged. See the [CW-5 record](cw-5/README.md). |
+| CW-6 to CW-7 | Not started on this branch. |
 
 | Order | Package | Deliverable and completion condition |
 |---|---|---|
