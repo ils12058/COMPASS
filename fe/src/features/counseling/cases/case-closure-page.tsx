@@ -43,7 +43,7 @@ function OutstandingReview({ context, item, here, refresh, onTaskSaved }: { cont
   </>;
 }
 
-function ClosureForm({ item, context, reopening, here, back, refresh }: { item: CounselingCaseDetailResponse; context?: CaseClosureContextResponse; reopening: boolean; here: string; back: string; refresh: () => Promise<unknown> }) {
+function ClosureForm({ item, context, reopening, here, back, refresh, onCompleted }: { item: CounselingCaseDetailResponse; context?: CaseClosureContextResponse; reopening: boolean; here: string; back: string; refresh: () => Promise<unknown>; onCompleted: () => void }) {
   const router = useRouter();
   const client = useQueryClient();
   const close = useCounselingCloseCase({ mutation: { retry: false } });
@@ -69,6 +69,8 @@ function ClosureForm({ item, context, reopening, here, back, refresh }: { item: 
     setError(null);
     try {
       const response = reopening ? await reopen.mutateAsync({ caseId: item.id, data: { expected_version: version, reason: reopenReason } }) : await close.mutateAsync({ caseId: item.id, data: { expected_version: version, reason, outcome, note: note || null } });
+      // Stop the Active-only closure review before anything refetches, so the confirmed result stays visible.
+      onCompleted();
       setCompleted(response.data);
       setDirty(false);
       setNote("");
@@ -123,12 +125,15 @@ export function CaseClosurePage({ caseId, reopening = false }: { caseId: string;
   const access = getCounselingAccess(user);
   const allowed = access.isCounselor && access.canViewAssigned;
   const query = useProtectedCase(caseId, allowed);
-  const context = useCounselingGetCaseClosureContext(caseId, { query: { enabled: allowed && !reopening, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } });
+  const [done, setDone] = useState(false);
+  const context = useCounselingGetCaseClosureContext(caseId, { query: { enabled: allowed && !reopening && !done, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } });
   const heading = <CounselingPageHeading title={reopening ? "Reopen case" : "Close case"} back={<Link className={pageBackLinkClass} href={back}>Back to case</Link>} />;
   if (!allowed) return <CounselingUnavailable title={reopening ? "Reopen case" : "Close case"} />;
   if (query.privacy.blocked) return <>{heading}<CounselingQueryError message={closureError(query.failure, "Protected case details have been cleared. Check access again to continue.")} onRetry={() => { query.privacy.resume(); if (!reopening) void context.refetch(); }} /></>;
+  // After a confirmed close/reopen the review endpoint no longer applies; keep the completed form mounted.
+  if (done && query.data) return <>{heading}<ClosureForm key={`${user.id}:${caseId}:${reopening}`} item={query.data.data} context={context.data?.data} reopening={reopening} here={here} back={back} refresh={async () => {}} onCompleted={() => {}} /></>;
   if (query.isPending || !reopening && context.isPending) return <>{heading}<EncounterDetailSkeleton /></>;
   if (query.isError || !query.data || !reopening && (context.isError || !context.data)) return <>{heading}<CounselingQueryError message={closureError(query.error ?? context.error, "This case action couldn't be confirmed. Check access and try again.")} onRetry={() => { void query.refetch(); if (!reopening) void context.refetch(); }} /></>;
   async function refresh() { await Promise.all([query.refetch(), !reopening ? context.refetch() : Promise.resolve()]); }
-  return <>{heading}<ClosureForm key={`${user.id}:${caseId}:${reopening}`} item={query.data.data} context={context.data?.data} reopening={reopening} here={here} back={back} refresh={refresh} /></>;
+  return <>{heading}<ClosureForm key={`${user.id}:${caseId}:${reopening}`} item={query.data.data} context={context.data?.data} reopening={reopening} here={here} back={back} refresh={refresh} onCompleted={() => setDone(true)} /></>;
 }

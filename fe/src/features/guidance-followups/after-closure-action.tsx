@@ -32,7 +32,7 @@ export function AfterClosureTask({ task, item, context, here, onSaved }: { task:
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [requirement, setRequirement] = useState<StepUpRequirement>("verify");
   const mutation = useCounselingDesignateCaseTaskAfterClosure({ mutation: { retry: false } });
-  const assignees = useGuidanceFollowupsEligibleAssignees({ student_id: task.student_id, category: "COUNSELING", case_id: item.id, source_kind: enumChoice(Object.values(SourceKind), task.source_kind ?? ""), source_id: task.source_id, page }, { query: { enabled: editing, retry: false } });
+  const assignees = useGuidanceFollowupsEligibleAssignees({ student_id: task.student_id, category: "COUNSELING", case_id: item.id, source_kind: enumChoice(Object.values(SourceKind), task.source_kind ?? ""), source_id: task.source_id ?? undefined, page }, { query: { enabled: editing, retry: false } });
   useUnsavedChangesGuard({ dirty: editing && (administrative || owner !== task.assigned_to_id || due !== isoToInstitutionalDateTimeInput(task.due_at)), message: "Leave this after-closure action plan and discard unsaved changes?" });
   async function save(event: FormEvent) {
     event.preventDefault();

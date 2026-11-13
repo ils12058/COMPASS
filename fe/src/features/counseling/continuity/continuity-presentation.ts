@@ -85,6 +85,7 @@ const errorMessages: Record<string, string> = {
   case_continuity_case_changed: "This case changed. Review its latest pending work before saving.",
   case_continuity_owner_changed: "The primary Counselor changed. Another arrangement is needed.",
   case_continuity_case_not_active: "This case is no longer Active.",
+  case_continuity_case_not_closed: "This case is no longer Closed, so this reopening transfer can't be accepted.",
   case_continuity_case_not_found: "You don't have access to prepare an arrangement for this case.",
   case_continuity_arrangement_not_found: "This arrangement isn't available to your account.",
   case_continuity_access_denied: "Case continuity is unavailable to your account.",
@@ -117,7 +118,7 @@ export function continuityError(error: unknown, fallback = "The arrangement coul
 }
 export function continuityStale(error: unknown) {
   const code = caseErrorCode(error);
-  return Boolean(code && ["case_continuity_changed", "case_continuity_owner_changed", "case_continuity_review_expired", "case_continuity_terminal_arrangement", "case_continuity_authorization_changed", "case_continuity_case_not_active"].includes(code));
+  return Boolean(code && ["case_continuity_changed", "case_continuity_owner_changed", "case_continuity_review_expired", "case_continuity_terminal_arrangement", "case_continuity_authorization_changed", "case_continuity_case_not_active", "case_continuity_case_not_closed"].includes(code));
 }
 
 export type CoverageTaskChoice = { selected: boolean; plan: CaseCoverageReturnPlan };
