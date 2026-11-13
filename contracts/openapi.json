@@ -5466,6 +5466,451 @@
         "title": "CaseContinuityReason",
         "type": "string"
       },
+      "CaseHandoffActionWork": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/CaseTaskDisposition"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "responsible": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "category",
+          "source_kind",
+          "disposition",
+          "due_at",
+          "responsible"
+        ],
+        "title": "CaseHandoffActionWork",
+        "type": "object"
+      },
+      "CaseHandoffAddendumRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 12000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "expected_transfer_version": {
+            "minimum": 1,
+            "title": "Expected Transfer Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_transfer_version",
+          "content"
+        ],
+        "title": "CaseHandoffAddendumRequest",
+        "type": "object"
+      },
+      "CaseHandoffAddendumResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "author",
+          "created_at",
+          "content"
+        ],
+        "title": "CaseHandoffAddendumResponse",
+        "type": "object"
+      },
+      "CaseHandoffAppointmentWork": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/CaseAppointmentDisposition"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "responsible": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "reference_code",
+          "starts_at",
+          "ends_at",
+          "disposition",
+          "responsible"
+        ],
+        "title": "CaseHandoffAppointmentWork",
+        "type": "object"
+      },
+      "CaseHandoffBodyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "addenda": {
+            "items": {
+              "$ref": "#/components/schemas/CaseHandoffAddendumResponse"
+            },
+            "title": "Addenda",
+            "type": "array"
+          },
+          "addenda_has_next": {
+            "title": "Addenda Has Next",
+            "type": "boolean"
+          },
+          "addenda_page": {
+            "title": "Addenda Page",
+            "type": "integer"
+          },
+          "author": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "can_addendum": {
+            "title": "Can Addendum",
+            "type": "boolean"
+          },
+          "can_edit": {
+            "title": "Can Edit",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sections": {
+            "$ref": "#/components/schemas/CaseHandoffSections"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseHandoffState"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "transfer_version": {
+            "title": "Transfer Version",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "work": {
+            "$ref": "#/components/schemas/CaseHandoffWork"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "state",
+          "author",
+          "submitted_at",
+          "transfer_version",
+          "sections",
+          "work",
+          "addenda",
+          "addenda_page",
+          "addenda_has_next",
+          "can_edit",
+          "can_addendum"
+        ],
+        "title": "CaseHandoffBodyResponse",
+        "type": "object"
+      },
+      "CaseHandoffExceptionMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/CaseHandoffUnavailableReason"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          }
+        },
+        "required": [
+          "reason",
+          "recorded_by",
+          "recorded_at"
+        ],
+        "title": "CaseHandoffExceptionMetadata",
+        "type": "object"
+      },
+      "CaseHandoffExceptionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_transfer_version": {
+            "minimum": 1,
+            "title": "Expected Transfer Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseHandoffUnavailableReason"
+          }
+        },
+        "required": [
+          "expected_transfer_version",
+          "reason"
+        ],
+        "title": "CaseHandoffExceptionRequest",
+        "type": "object"
+      },
+      "CaseHandoffMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseHandoffState"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "state",
+          "author",
+          "submitted_at",
+          "received_at"
+        ],
+        "title": "CaseHandoffMetadata",
+        "type": "object"
+      },
+      "CaseHandoffSaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_handoff_version": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Handoff Version"
+          },
+          "expected_transfer_version": {
+            "minimum": 1,
+            "title": "Expected Transfer Version",
+            "type": "integer"
+          },
+          "sections": {
+            "$ref": "#/components/schemas/CaseHandoffSections"
+          }
+        },
+        "required": [
+          "expected_transfer_version",
+          "sections"
+        ],
+        "title": "CaseHandoffSaveRequest",
+        "type": "object"
+      },
+      "CaseHandoffSections": {
+        "additionalProperties": false,
+        "properties": {
+          "context_and_purpose": {
+            "maxLength": 12000,
+            "title": "Context And Purpose",
+            "type": "string"
+          },
+          "continuing_considerations": {
+            "maxLength": 12000,
+            "title": "Continuing Considerations",
+            "type": "string"
+          },
+          "receiver_next_steps": {
+            "maxLength": 12000,
+            "title": "Receiver Next Steps",
+            "type": "string"
+          },
+          "support_and_progress": {
+            "maxLength": 12000,
+            "title": "Support And Progress",
+            "type": "string"
+          }
+        },
+        "required": [
+          "context_and_purpose",
+          "support_and_progress",
+          "continuing_considerations",
+          "receiver_next_steps"
+        ],
+        "title": "CaseHandoffSections",
+        "type": "object"
+      },
+      "CaseHandoffState": {
+        "enum": [
+          "DRAFT",
+          "SUBMITTED"
+        ],
+        "title": "CaseHandoffState",
+        "type": "string"
+      },
+      "CaseHandoffSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_handoff_version": {
+            "minimum": 1,
+            "title": "Expected Handoff Version",
+            "type": "integer"
+          },
+          "expected_transfer_version": {
+            "minimum": 1,
+            "title": "Expected Transfer Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_transfer_version",
+          "expected_handoff_version"
+        ],
+        "title": "CaseHandoffSubmitRequest",
+        "type": "object"
+      },
+      "CaseHandoffUnavailableReason": {
+        "enum": [
+          "OWNER_UNAVAILABLE",
+          "INFORMATION_NOT_OBTAINABLE",
+          "IMPARTIALITY_CONCERN"
+        ],
+        "title": "CaseHandoffUnavailableReason",
+        "type": "string"
+      },
+      "CaseHandoffWork": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseHandoffAppointmentWork"
+            },
+            "maxItems": 2000,
+            "title": "Appointments",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseHandoffActionWork"
+            },
+            "maxItems": 2000,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tasks",
+          "appointments"
+        ],
+        "title": "CaseHandoffWork",
+        "type": "object"
+      },
       "CaseOfficePreparationReason": {
         "enum": [
           "OWNER_UNAVAILABLE",
@@ -5818,8 +6263,20 @@
             "title": "Can Open Case",
             "type": "boolean"
           },
+          "can_read_handoff": {
+            "title": "Can Read Handoff",
+            "type": "boolean"
+          },
+          "can_record_handoff_exception": {
+            "title": "Can Record Handoff Exception",
+            "type": "boolean"
+          },
           "can_submit": {
             "title": "Can Submit",
+            "type": "boolean"
+          },
+          "can_write_handoff": {
+            "title": "Can Write Handoff",
             "type": "boolean"
           },
           "case": {
@@ -5891,6 +6348,34 @@
                 "type": "null"
               }
             ]
+          },
+          "handoff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseHandoffMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handoff_exception": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseHandoffExceptionMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handoff_ready": {
+            "title": "Handoff Ready",
+            "type": "boolean"
+          },
+          "handoff_required": {
+            "title": "Handoff Required",
+            "type": "boolean"
           },
           "history": {
             "items": {
@@ -6010,6 +6495,13 @@
           "independent_authorization",
           "authorization_route",
           "needs_new_arrangement",
+          "handoff",
+          "handoff_exception",
+          "handoff_ready",
+          "handoff_required",
+          "can_write_handoff",
+          "can_read_handoff",
+          "can_record_handoff_exception",
           "case",
           "outgoing_counselor",
           "prepared_by",
@@ -6154,6 +6646,16 @@
             "minimum": 1,
             "title": "Expected Case Version",
             "type": "integer"
+          },
+          "handoff_sections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseHandoffSections"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "office_preparation_reason": {
             "anyOf": [
@@ -6590,6 +7092,16 @@
             "minimum": 1,
             "title": "Expected Version",
             "type": "integer"
+          },
+          "handoff_sections": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseHandoffSections"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "office_preparation_reason": {
             "anyOf": [
@@ -34778,6 +35290,7 @@
       },
       "WorkKind": {
         "enum": [
+          "CASE_HANDOFF_EXCEPTION",
           "CASE_TRANSFER_AUTHORIZATION",
           "CASE_TRANSFER_ACCEPTANCE",
           "GUIDANCE_FOLLOW_UP",
@@ -49104,6 +49617,222 @@
         ]
       }
     },
+    "/api/v1/counseling/continuity/handoffs/{handoff_id}": {
+      "get": {
+        "operationId": "counselingGetCaseHandoff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoff_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Handoff Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "addenda_page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Addenda Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseHandoffBodyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Read",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/handoffs/{handoff_id}/addenda": {
+      "post": {
+        "operationId": "counselingAddCaseHandoffAddendum",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoff_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Handoff Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseHandoffAddendumRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseHandoffBodyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Addendum",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/continuity/office-cases": {
       "get": {
         "operationId": "counselingListContinuityOfficeCases",
@@ -49859,6 +50588,330 @@
           }
         ],
         "summary": "Decline",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/handoff": {
+      "put": {
+        "operationId": "counselingSaveCaseHandoff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseHandoffSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseHandoffBodyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Save",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/handoff-unavailable": {
+      "post": {
+        "operationId": "counselingRecordCaseHandoffUnavailable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseHandoffExceptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Exception",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/handoff/submit": {
+      "post": {
+        "operationId": "counselingSubmitCaseHandoff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseHandoffSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseHandoffBodyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit",
         "tags": [
           "counseling"
         ]
