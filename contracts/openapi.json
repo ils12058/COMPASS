@@ -3571,6 +3571,14 @@
         "title": "AssessmentTypeUpdate",
         "type": "object"
       },
+      "AssignmentBasis": {
+        "enum": [
+          "ASSIGNED",
+          "HEAD_FALLBACK"
+        ],
+        "title": "AssignmentBasis",
+        "type": "string"
+      },
       "AssistedCurrentStudentRequestPayload": {
         "additionalProperties": false,
         "properties": {
@@ -12920,6 +12928,140 @@
           }
         },
         "title": "CounselingUpdateRequest",
+        "type": "object"
+      },
+      "CounselorAboutCampus": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "colleges": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorAboutCollege"
+            },
+            "title": "Colleges",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "colleges"
+        ],
+        "title": "CounselorAboutCampus",
+        "type": "object"
+      },
+      "CounselorAboutCollege": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/AssignmentBasis"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "basis"
+        ],
+        "title": "CounselorAboutCollege",
+        "type": "object"
+      },
+      "CounselorAboutPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "CounselorAboutPerson",
+        "type": "object"
+      },
+      "CounselorAboutResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "campuses": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorAboutCampus"
+            },
+            "title": "Campuses",
+            "type": "array"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/CounselorAboutPerson"
+          }
+        },
+        "required": [
+          "counselor",
+          "campuses",
+          "checked_at"
+        ],
+        "title": "CounselorAboutResponse",
         "type": "object"
       },
       "CounselorAssignmentRequest": {
@@ -24365,6 +24507,48 @@
         "title": "GuidanceAppointmentContext",
         "type": "object"
       },
+      "GuidanceAppointmentSummary": {
+        "additionalProperties": false,
+        "description": "The linked Appointment, only while this reader may see it now (MSG-01).",
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service_name": {
+            "title": "Service Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "service_name",
+          "starts_at",
+          "ends_at",
+          "status"
+        ],
+        "title": "GuidanceAppointmentSummary",
+        "type": "object"
+      },
       "GuidanceAssignRequest": {
         "additionalProperties": false,
         "properties": {
@@ -24477,6 +24661,52 @@
           "has_next"
         ],
         "title": "GuidanceCounselorPeerPage",
+        "type": "object"
+      },
+      "GuidanceCounselorPerson": {
+        "additionalProperties": false,
+        "description": "A Counselor participant: the safe public identity, with the optional profile photo.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "GuidanceCounselorPerson",
         "type": "object"
       },
       "GuidanceHandlerOption": {
@@ -24874,18 +25104,32 @@
             "type": "string"
           },
           "counselor": {
-            "$ref": "#/components/schemas/GuidancePerson"
+            "$ref": "#/components/schemas/GuidanceCounselorPerson"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service_name": {
+            "title": "Service Name",
+            "type": "string"
           },
           "starts_at": {
             "format": "date-time",
             "title": "Starts At",
             "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
           }
         },
         "required": [
           "appointment_id",
           "counselor",
-          "starts_at"
+          "starts_at",
+          "reference_code",
+          "service_name",
+          "status"
         ],
         "title": "GuidanceRelationshipOption",
         "type": "object"
@@ -25195,7 +25439,7 @@
           "counselor": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/GuidancePerson"
+                "$ref": "#/components/schemas/GuidanceCounselorPerson"
               },
               {
                 "type": "null"
@@ -25254,6 +25498,16 @@
           "own_last_read_sequence": {
             "title": "Own Last Read Sequence",
             "type": "integer"
+          },
+          "relationship_appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "relationship_appointment_id": {
             "anyOf": [
@@ -25396,6 +25650,7 @@
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
+          "relationship_appointment",
           "relationship_referral_id",
           "relationship_referral_reference",
           "relationship_referral_voided",
@@ -71972,6 +72227,74 @@
           }
         ],
         "summary": "Counselor Responsibilities",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/counselors/{counselor_id}/about": {
+      "get": {
+        "operationId": "organizationGetCounselorAbout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "counselor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Counselor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorAboutResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counselor About",
         "tags": [
           "organization"
         ]

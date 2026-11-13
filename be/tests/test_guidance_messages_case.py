@@ -157,6 +157,7 @@ def test_open_creates_one_canonical_case_thread(world):
         "direct_second_user_id",
         "relationship_referral_id",
         "relationship_appointment_id",
+        "relationship_appointment",
         "routing_college_id",
         "assigned_to_id",
     ):
@@ -184,6 +185,7 @@ def test_open_creates_one_canonical_case_thread(world):
             "assigned_to",
             "relationship_referral_id",
             "relationship_appointment_id",
+            "relationship_appointment",
         ):
             assert payload[name] is None, name
 

@@ -81,6 +81,7 @@ EXPECTED_OPERATION_IDS = {
     "organizationSetProgramActive",
     "organizationGetProgramImpact",
     "organizationGetProgramHistory",
+    "organizationGetCounselorAbout",
     "guidanceFollowupsList",
     "guidanceFollowupsCreate",
     "guidanceFollowupsGet",

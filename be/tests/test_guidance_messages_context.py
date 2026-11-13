@@ -60,6 +60,7 @@ def test_existing_thread_resolves_for_persisted_participants(world, actor):  # n
         "routing_college",
         "assigned_to",
         "relationship_appointment_id",
+        "relationship_appointment",
         "relationship_referral_id",
         "relationship_referral_reference",
         "relationship_referral_voided",
