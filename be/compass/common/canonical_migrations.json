@@ -48,6 +48,7 @@
     "guidance_followups/migrations/0002_next_actions.py",
     "guidance_followups/migrations/0003_case_transfers.py",
     "guidance_followups/migrations/0004_case_coverage.py",
-    "guidance_followups/migrations/0005_case_closure.py"
+    "guidance_followups/migrations/0005_case_closure.py",
+    "referrals/migrations/0003_referral_timing.py"
   ]
 }

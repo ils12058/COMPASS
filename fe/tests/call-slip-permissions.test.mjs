@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CallSlipDetailPage } from "../src/features/call-slips/call-slip-detail-page.tsx";
 import CallSlipListRoute from "../src/app/(portal)/portal/call-slips/page.tsx";
 import { ReferralCallSlipSection } from "../src/features/referrals/referral-call-slip-section.tsx";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { getCallSlipsGetQueryKey, getCallSlipsGetMyQueryKey, getCallSlipsListQueryKey } from "../src/lib/api/generated/call-slips/call-slips.ts";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
@@ -94,11 +95,14 @@ for (const hasCurrent of [false, true]) {
       data: { items: [voided], page: 1, page_size: 20, has_next: false }, status: 200, headers: {},
     });
     try {
-      const html = renderToStaticMarkup(h(QueryClientProvider, { client }, h(ReferralCallSlipSection, {
+      // Linked navigation participates in the same unsaved-draft provider as the real portal.
+      const section = h(ReferralCallSlipSection, {
         referral, canManageReferral: false, canViewCallSlips: true, canManageCallSlips: true,
         currentItems: hasCurrent ? [slip] : [], currentPending: false, currentError: null,
         retryCurrent: () => {}, onRefresh: async () => referral,
-      })));
+      });
+      const html = renderToStaticMarkup(h(QueryClientProvider, { client },
+        h(UnsavedChangesProvider, null, section)));
       assert.match(html, /Linked Call Slip history/);
       assert.match(html, /voided-history-slip/);
       assert.doesNotMatch(html, /Loading linked Call Slip history/);

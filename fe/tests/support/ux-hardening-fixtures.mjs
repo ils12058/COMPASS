@@ -1,4 +1,5 @@
 import { user } from "./ui-hierarchy-fixtures.mjs";
+import { emptyReferralTiming } from "./referral-timing-fixtures.mjs";
 export const student={id:'student',display_name:'Maria Santos',institutional_id:'TEST-01'};
 export const year={id:'year',label:'2026–2027',is_current:true};
 export const empty={items:[],page:1,page_size:20,has_next:false};
@@ -14,5 +15,6 @@ export const worlds={...auth,
 '/api/v1/resources/management':{...empty,items:[{id:'resource',title:'Resource',kind:'EXTERNAL_LINK',category:'GENERAL',audience:'PUBLIC',status:'DRAFT',display_order:1,updated_at:'2026-10-07T00:00:00Z'}],ordering:'TITLE_ASC'},
 '/api/v1/announcements/management/long':{id:'long',title:'A'.repeat(120),body_markdown:'Text',status:'DRAFT',audience:'PUBLIC',created_by:student,updated_by:student,updated_at:'2026-10-07T00:00:00Z',is_pinned:false,created_at:'2026-10-07T00:00:00Z'},
 '/api/v1/call-slips':empty,
+'/api/v1/referrals/long/timing':emptyReferralTiming('long', { referral_updated_at: '2026-10-07T00:00:00Z' }),
 '/api/v1/referrals/long':{id:'long',reference_code:'REF-01',actions:[],student,form_revision:{official_code:'TEST',official_revision:'1'},student_name_snapshot:'Maria',course_year_block_snapshot:'BSIT / 4',referred_on:'2026-10-07',received_at:null,created_at:'2026-10-07T00:00:00Z',updated_at:'2026-10-07T00:00:00Z',recorded_by:null,referrer_name:'Example',reason:'https://example.test/'+ 'a'.repeat(240),status_note:'',voided_at:null,void_reason:'',voided_by:null},
 };

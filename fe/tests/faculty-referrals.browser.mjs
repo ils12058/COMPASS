@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
+import { civilDays, manilaDay, reportedTimingFixture } from "./support/referral-timing-fixtures.mjs";
 
 const { check, finish, shown, artifacts, navigate } = await createBrowserHarness("faculty-referrals");
 const root = "/portal/faculty/referrals";
@@ -12,13 +13,15 @@ const tabKey = process.platform === "darwin" && process.env.COMPASS_UI_BROWSER =
 const recordId = "f3000000-0000-4000-8000-000000000001";
 const faculty = { ...user("STUDENT"), role: "FACULTY", student_lifecycle_status: null, designations: [], capabilities: ["referrals.submit_self", "referrals.view_submitted_self"], faculty_affiliation: { active: true, college_name: "College of Arts and Sciences", campus_name: "Main Campus", resource_version: 1 } };
 const longName = "Synthetic Student " + "LongInstitutionalName".repeat(5);
-const record = { id: recordId, reference_code: "REF-2026-000001", submitted_at: "2026-11-01T01:30:00Z", state: "SUBMITTED", student: { display_name: longName } };
+const record = { id: recordId, reference_code: "REF-2026-000001", submitted_at: "2026-11-01T01:30:00Z", state: "SUBMITTED", student: { display_name: longName }, received_at: null, closed_at: null, timing_status: "NOT_PROVIDED" };
 const approved = { can_confirm_student: true, can_submit_referral: true, can_view_submissions: true, valid_until: "2099-01-01T00:00:00Z" };
 const unavailable = { can_confirm_student: false, can_submit_referral: false, can_view_submissions: false, valid_until: null };
 
 function fixture(options = {}) {
   const calls = [];
-  const state = { available: true, confirmations: 0, submissions: 0, ...options };
+  const state = { available: true, confirmations: 0, submissions: 0, statement: null, ...options };
+  const detail = () => ({ ...record, timing_status: state.statement?.answer_kind ?? "NOT_PROVIDED", scheduling_statement: state.statement });
+  const summary = () => { const { scheduling_statement, ...item } = detail(); void scheduling_statement; return item; };
   return { state, calls, handler: async ({ pathname, method, request, reply, route, url }) => {
     if (pathname === "/api/v1/auth/session") { await reply(state.sessionEnded ? { error: { code: "session_unavailable", message: "Synthetic session ended" } } : sessionFor(state.account ?? faculty), state.sessionEnded ? 401 : 200); return true; }
     if (pathname === api + "/availability") { await reply(state.available ? (state.availability ?? approved) : unavailable); return true; }
@@ -34,33 +37,37 @@ function fixture(options = {}) {
       calls.push({ key: request.headers()["idempotency-key"], body: request.postData() });
       if (state.beforeSubmit) await state.beforeSubmit();
       if (state.uncertain && state.submissions === 1) { await route.abort("failed"); return true; }
+      if (state.timingError) { await reply({ error: { code: "referral_timing_invalid", message: "Check the timing information.", details: [{ loc: ["body", "scheduling_statement", "windows", "0", "end_time"], message: "End time must be after start time." }] } }, 422); return true; }
       if (state.submitError) {
         if (state.submitError === 401) state.sessionEnded = true;
         if (state.changeRole) state.account = user("STUDENT");
         if (state.submitError === 403) state.available = false;
         await reply({ error: { code: state.submitError === 403 ? "faculty_referral_ineligible" : "referral_creation_conflict", message: "Synthetic denial" } }, state.submitError); return true;
       }
-      await reply(record, state.uncertain ? 200 : 201); return true;
+      const statement = request.postDataJSON().scheduling_statement;
+      state.statement = statement ? reportedTimingFixture({ ...statement, windows: statement.windows.map(window => ({ ...window, expired: false })), created_at: new Date().toISOString() }) : null;
+      await reply(detail(), state.uncertain ? 200 : 201); return true;
     }
     if (pathname === api && method === "GET") {
       if (state.beforeList) await state.beforeList();
       const page = Number(url.searchParams.get("page") ?? 1);
       if (state.listError) { await reply({ error: { code: "permission_denied", message: "Synthetic read denial" } }, state.listError); return true; }
-      await reply({ items: page > 1 || state.empty ? [] : [record], page, page_size: Number(url.searchParams.get("page_size") ?? 20), has_next: !!state.pages && page === 1 }); return true;
+      await reply({ items: page > 1 || state.empty ? [] : [summary()], page, page_size: Number(url.searchParams.get("page_size") ?? 20), has_next: !!state.pages && page === 1 }); return true;
     }
     if (pathname === `${api}/${recordId}`) {
-      await reply(state.detailError ? { error: { code: "referral_not_found", message: "Synthetic unavailable" } } : record, state.detailError ?? 200); return true;
+      await reply(state.detailError ? { error: { code: "referral_not_found", message: "Synthetic unavailable" } } : detail(), state.detailError ?? 200); return true;
     }
     return false;
   } };
 }
 
-async function fill(page, reason = "Synthetic confidential concern") {
+async function fill(page, reason = "Synthetic confidential concern", answer = "UNKNOWN") {
   await page.getByLabel("Student institutional ID", { exact: true }).fill("SYNTHETIC-EXACT-ID");
   await page.getByRole("button", { name: "Confirm Student", exact: true }).click();
   await shown(page.getByText(longName, { exact: true }));
   await page.getByLabel("Course/Year/Block", { exact: true }).fill("CCMS course declared by CAS Faculty");
   await page.getByLabel("Referral reason", { exact: true }).fill(reason);
+  if (answer) await page.getByRole("radio", { name: answer === "UNKNOWN" ? "Unknown / needs confirmation" : "Known times", exact: true }).check();
 }
 async function review(page) {
   await page.getByRole("button", { name: "Review Referral", exact: true }).click();
@@ -88,11 +95,14 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const scale of [100, 200])
     await shown(page.getByText("Your Referral has been submitted to the Guidance Office.", { exact: true }));
     assert.equal(f.calls.length, 1);
     assert.ok(f.calls[0].key);
+    assert.deepEqual(JSON.parse(f.calls[0].body).scheduling_statement, { answer_kind: "UNKNOWN", windows: [], note: "" });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, "Confirmation fits enlarged text");
     const storage = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage), location.href]));
     assert.ok(!/SYNTHETIC-EXACT-ID|synthetic-component-memory|Synthetic confidential concern/.test(storage), "No sensitive form data in URL or storage");
     await page.getByRole("link", { name: "View Referral details", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Referral details", exact: true }));
+    await shown(page.getByText("Unknown / needs confirmation", { exact: true }));
+    assert.equal(await page.getByRole("heading", { name: "Verified availability", exact: true }).count(), 0);
     assert.equal(await page.getByText(/Synthetic confidential concern/).count(), 0);
     assert.equal(observed.requests.some(r => /\/api\/v1\/(?:referrals|accounts|counseling|guidance-followups)(?:\/|$)/.test(r.pathname)), false);
     if ([320, 1440].includes(width)) await page.screenshot({ path: join(artifacts, `detail-${width}-${scale}.png`), fullPage: true });
@@ -200,6 +210,11 @@ await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fix
   await page.keyboard.press(tabKey);
   await page.keyboard.type("Synthetic relevant observations");
   await page.keyboard.press(tabKey);
+  assert.equal(await page.getByRole("radio", { name: "Known times", exact: true }).evaluate(e => e === document.activeElement), true);
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await page.getByRole("radio", { name: "Unknown / needs confirmation", exact: true }).isChecked(), true);
+  await page.keyboard.press(tabKey);
+  assert.equal(await page.getByRole("button", { name: "Review Referral", exact: true }).evaluate(e => e === document.activeElement), true);
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.activeElement?.id === "faculty-review-heading");
   await page.keyboard.press(tabKey);
@@ -285,5 +300,127 @@ for (const role of ["STUDENT", "COUNSELOR", "IT_ADMIN"]) {
 await check("faculty-gco-route-denies-before-protected-components-mount", "/portal/referrals/new", { handler: fixture().handler }, async (page, observed) => {
   await shown(page.getByRole("heading", { name: "Workspace access" }));
   assert.equal(observed.requests.some(r => r.pathname.startsWith("/api/v1/referrals")), false);
+});
+
+async function specificWindow(page) {
+  await page.getByRole("button", { name: "Add window", exact: true }).click();
+  const row = page.getByRole("group", { name: "Window 1 of 1", exact: true });
+  await row.getByLabel("Date · Philippine Time", { exact: true }).fill(civilDays(manilaDay(), 2));
+  await row.getByLabel("Start time · Philippine Time", { exact: true }).fill("10:00");
+  await row.getByLabel("End time · Philippine Time", { exact: true }).fill("11:00");
+  return row;
+}
+
+for (const width of [320, 390, 1440]) {
+  const f = fixture();
+  await check(`mixed-windows-own-detail-and-marker-only-${width}`, root + "/new", { handler: f.handler, viewport: { width, height: 1000 }, timezoneId: "America/Los_Angeles" }, async (page, observed) => {
+    await fill(page, "Synthetic confidential concern", "KNOWN");
+    await specificWindow(page);
+    await page.getByRole("button", { name: "Add window", exact: true }).click();
+    const second = page.getByRole("group", { name: "Window 2 of 2", exact: true });
+    await second.getByLabel("Information type", { exact: true }).selectOption("CLASS_RELEASE");
+    await second.getByLabel("Pattern", { exact: true }).selectOption("RECURRING_WEEKDAY");
+    await second.getByLabel("Weekday", { exact: true }).selectOption("SATURDAY");
+    await second.getByLabel("Valid until · Philippine Time", { exact: true }).fill(civilDays(manilaDay(), 7));
+    await second.getByLabel("Start time · Philippine Time", { exact: true }).fill("13:00");
+    await second.getByLabel("End time · Philippine Time", { exact: true }).fill("14:00");
+    await page.getByLabel("Scheduling constraints note (optional)", { exact: true }).fill("Synthetic timetable constraint only");
+    if (width === 320) await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+    await page.screenshot({ path: join(artifacts, `mixed-editor-${width}.png`), fullPage: true });
+    await review(page);
+    await shown(page.getByText("The student is usually free", { exact: true }));
+    await shown(page.getByText("The student may leave the referrer’s class", { exact: true }));
+    await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
+    const submitted = JSON.parse(f.calls[0].body).scheduling_statement;
+    assert.equal(submitted.answer_kind, "KNOWN");
+    assert.equal(submitted.windows.length, 2);
+    assert.equal(submitted.windows[1].information_type, "CLASS_RELEASE");
+    assert.equal(submitted.windows[1].date, null);
+    await page.getByRole("link", { name: "View Referral details", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Reported by the referrer", exact: true }));
+    await shown(page.getByText(/Synthetic timetable constraint only/));
+    assert.equal(await page.getByRole("heading", { name: "Verified availability", exact: true }).count(), 0);
+    assert.equal(await page.getByText("Student confirmed", { exact: true }).count(), 0);
+    assert.equal(observed.requests.some(request => request.pathname.startsWith("/api/v1/referrals")), false);
+    await page.getByRole("link", { name: "Back to My Referrals", exact: true }).click();
+    await shown(page.getByText("Timing: Known", { exact: true }));
+    assert.equal(await page.getByText(/Synthetic timetable constraint only/).count(), 0);
+  });
+}
+
+await check("timing-errors-use-field-order-and-retain-partial-windows", root + "/new", { handler: fixture().handler, viewport: { width: 390, height: 844 } }, async page => {
+  await fill(page, "Synthetic concern", null);
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-answer_kind");
+  await page.getByRole("radio", { name: "Known times", exact: true }).check();
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-add-window");
+  await page.getByRole("button", { name: "Add window", exact: true }).click();
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-window-1-date");
+  const row = page.getByRole("group", { name: "Window 1 of 1", exact: true });
+  assert.equal(await row.getByLabel("Date · Philippine Time", { exact: true }).getAttribute("aria-invalid"), "true");
+  await row.getByLabel("Date · Philippine Time", { exact: true }).fill(manilaDay());
+  await row.getByLabel("Start time · Philippine Time", { exact: true }).fill("11:00");
+  await row.getByLabel("End time · Philippine Time", { exact: true }).fill("10:00");
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-window-1-end_time");
+  await shown(page.getByText("End time must be after start time.", { exact: true }));
+  await row.getByLabel("End time · Philippine Time", { exact: true }).fill("12:00");
+  await page.getByLabel("Scheduling constraints note (optional)", { exact: true }).fill("🌱".repeat(501));
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-note");
+  assert.equal(await page.getByLabel("Scheduling constraints note (optional)").inputValue(), "🌱".repeat(501));
+  await page.getByRole("radio", { name: "Unknown / needs confirmation", exact: true }).check();
+  await page.getByRole("radio", { name: "Known times", exact: true }).check();
+  assert.equal(await row.getByLabel("Start time · Philippine Time", { exact: true }).inputValue(), "11:00");
+});
+
+await check("five-window-limit-remove-renumbers-and-restores-focus", root + "/new", { handler: fixture().handler }, async page => {
+  await page.getByRole("radio", { name: "Known times", exact: true }).check();
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Add window", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "Add window", exact: true }).isDisabled(), true);
+  await shown(page.getByRole("group", { name: "Window 5 of 5", exact: true }));
+  await page.getByRole("button", { name: "Remove Window 2", exact: true }).click();
+  await shown(page.getByRole("group", { name: "Window 4 of 4", exact: true }));
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-add-window");
+  assert.equal(await page.getByRole("button", { name: "Add window", exact: true }).isEnabled(), true);
+});
+
+const timingFailure = fixture({ timingError: true });
+await check("backend-window-refusal-returns-to-preserved-field-with-focus", root + "/new", { handler: timingFailure.handler }, async page => {
+  await fill(page, "Synthetic concern", "KNOWN");
+  await specificWindow(page); await review(page);
+  await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
+  await shown(page.getByText("End time must be after start time.", { exact: true }));
+  await page.waitForFunction(() => document.activeElement?.id === "faculty-timing-window-1-end_time");
+  assert.equal(await page.getByLabel("Start time · Philippine Time", { exact: true }).inputValue(), "10:00");
+  assert.equal(timingFailure.calls.length, 1);
+  assert.equal(await page.getByRole("heading", { name: "Referral submitted", exact: true }).count(), 0);
+});
+
+await check("partial-timing-draft-navigation-warns-and-cancel-keeps-input", root + "/new", { handler: fixture().handler }, async page => {
+  await page.getByRole("radio", { name: "Known times", exact: true }).check();
+  await page.getByRole("button", { name: "Add window", exact: true }).click();
+  await page.getByLabel("Start time · Philippine Time", { exact: true }).fill("09:30");
+  let warned = 0;
+  page.once("dialog", async dialog => { warned++; assert.match(dialog.message(), /unsaved Referral/); await dialog.dismiss(); });
+  await page.locator('a[href="/portal"]').first().click();
+  assert.equal(warned, 1);
+  assert.equal(new URL(page.url()).pathname, root + "/new");
+  assert.equal(await page.getByLabel("Start time · Philippine Time", { exact: true }).inputValue(), "09:30");
+  page.once("dialog", dialog => dialog.accept());
+  await page.locator('a[href="/portal"]').first().click();
+  await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
+});
+
+await check("own-historical-statement-is-read-only-and-keeps-expired-windows", `${root}/${recordId}`, { handler: fixture({ statement: reportedTimingFixture() }).handler }, async (page, observed) => {
+  await shown(page.getByText("This time has passed", { exact: true }));
+  await shown(page.getByText(/^No longer valid after /));
+  assert.equal(await page.getByRole("heading", { name: "Verified availability", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("radio").count(), 0);
+  assert.equal(observed.requests.some(request => request.pathname.startsWith("/api/v1/referrals")), false);
 });
 await finish();

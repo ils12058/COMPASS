@@ -19,6 +19,15 @@ const overrides = {
   "/api/v1/referrals": { ...empty, filter_options: { form_revisions: [] } }, "/api/v1/routine-interviews": { ...empty, filter_options: { form_revisions: [] } },
   "/api/v1/graduate-tracer/responses/tracer": tracer,
 };
+// The base branch already supplies Guide here; no record-changing command belongs in this slot.
+async function onlyGuideInHeader(page) {
+  const actions = page.locator("[data-page-header-actions]");
+  assert.equal(await actions.count(), 1);
+  assert.equal(await actions.locator("button, a").count(), 1, "Guide is the sole header command");
+  const guide = actions.getByRole("button", { name: /^Guide\s*:/ });
+  await shown(guide);
+  assert.ok(await guide.getAttribute("data-guide-launch"), "The sole command launches an existing task guide");
+}
 async function commands(page, labels) {
   const header = page.locator("[data-page-header]").first(); await shown(header);
   const headerActions = header.locator("[data-page-header-actions]");
@@ -54,7 +63,8 @@ for (const width of [320, 393, 1440]) {
     await shown(page.getByRole("heading", { level: 1 }));
     if (name === "graduate-detail") {
       await shown(page.getByRole("heading", { level: 1, name: tracer.name }));
-      assert.equal(await page.locator("[data-page-header-actions]").count(), 0);
+      // This staff-only record has no eligible Guide. The base header retains an empty action slot.
+      assert.equal(await page.locator("[data-page-header-actions] button, [data-page-header-actions] a").count(), 0, "Submitted staff response has no operational header command");
       assert.match(await page.locator("[data-page-header]").innerText(), /Submitted/);
       await shown(page.getByRole("link", { name: "Back to Graduate Tracer queue", exact: true }));
     }
@@ -105,7 +115,7 @@ for (const width of [320, 393, 1440]) {
 await check("student-tracer-metadata", "/portal/graduate-tracer", { mobile: true, overrides: { "/api/v1/auth/session": session(graduate), "/api/v1/graduate-tracer/me": tracer } }, async (page) => {
   await shown(page.getByRole("heading", { level: 1, name: "Graduate Tracer survey" }));
   await shown(page.locator("[data-page-header]").getByText("Submitted", { exact: true }));
-  assert.equal(await page.locator("[data-page-header-actions]").count(), 0); await noHorizontalOverflow(page);
+  await onlyGuideInHeader(page); await noHorizontalOverflow(page);
 });
 for (const role of ["COUNSELOR", "STUDENT"]) {
   let release; let started; let failDownload = false;

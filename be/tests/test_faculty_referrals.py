@@ -102,7 +102,10 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
         "student",
         "received_at",
         "closed_at",
+        "timing_status",
+        "scheduling_statement",
     }
+    assert result["timing_status"] == "NOT_PROVIDED" and result["scheduling_statement"] is None
     assert not ReferralAction.objects.exists()
     assert (
         AuditEvent.objects.filter(
@@ -273,7 +276,19 @@ def test_own_submission_queries_never_read_another_faculty_or_operational_detail
     result, _ = submit(world)
     own = dict(actor=world.faculty, actor_session=world.issued.session)
     other = dict(actor=world.other_faculty, actor_session=world.other_issued.session)
-    assert faculty_services.list_own_submissions(**own)["items"] == [result]
+    summary = {key: value for key, value in result.items() if key != "scheduling_statement"}
+    assert faculty_services.list_own_submissions(**own)["items"] == [summary]
+    assert set(summary) == {
+        "id",
+        "reference_code",
+        "submitted_at",
+        "state",
+        "student",
+        "received_at",
+        "closed_at",
+        "timing_status",
+    }
+    assert set(summary).isdisjoint({"scheduling_statement", "verifications", "note", "reason"})
     assert faculty_services.list_own_submissions(**other)["items"] == []
     with pytest.raises(ReferralNotFound):
         faculty_services.get_own_submission(**other, referral_id=result["id"])
@@ -376,7 +391,21 @@ def test_strict_api_safe_dtos_csrf_and_no_gco_or_directory_authority(world):
     assert response.status_code == 201
     assert "reason" not in response.json() and "Secret API reason" not in response.content.decode()
     assert post(path, data, HTTP_IDEMPOTENCY_KEY="api-referral").status_code == 200
-    assert client.get(path).json()["items"] == [response.json()]
+    summary = {
+        key: value for key, value in response.json().items() if key != "scheduling_statement"
+    }
+    assert client.get(path).json()["items"] == [summary]
+    assert set(summary) == {
+        "id",
+        "reference_code",
+        "submitted_at",
+        "state",
+        "student",
+        "received_at",
+        "closed_at",
+        "timing_status",
+    }
+    assert set(summary).isdisjoint({"scheduling_statement", "verifications", "note", "reason"})
     for endpoint in (
         "/api/v1/accounts",
         "/api/v1/referrals",

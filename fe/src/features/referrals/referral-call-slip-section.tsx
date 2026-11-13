@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -89,13 +89,13 @@ export function ReferralCallSlipSection({
                   ? "The Call Slip action is already recorded."
                   : "Issuing also records the Call Slip action on this Referral."}
               </p>
-              <Link href={`/portal/referrals/${referral.id}/issue-call-slip`} className={buttonVariants({ variant: "primary", className: "mt-3" })}>
+              <GuardedPortalLink href={`/portal/referrals/${referral.id}/issue-call-slip`} className={buttonVariants({ variant: "primary", className: "mt-3" })}>
                 {history.data?.data.items.some((item) => item.state === CallSlipLifecycleStateValue.VOIDED)
                   ? "Issue another linked Call Slip"
                   : referralAction
                     ? "Issue linked Call Slip"
                     : "Issue Call Slip / Interview Permit"}
-              </Link>
+              </GuardedPortalLink>
               {!referralAction && canManageReferral ? (
                 <ReferralActionEntry
                   referral={referral}
@@ -125,9 +125,9 @@ function LinkedCallSlipSummary({
       <p className="font-semibold text-ink">{callSlipStateLabel(callSlip.state)}</p>
       <p className="mt-1 text-sm text-muted">{callSlip.student_name_snapshot} · {callSlip.course_year_snapshot}</p>
       <p className="mt-1 text-sm text-muted">Report {formatInstitutionalDateTime(callSlip.report_at)} · {callSlip.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : callSlip.other_destination}</p>
-      <Link href={`/portal/call-slips/${callSlip.id}`} className="mt-2 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <GuardedPortalLink href={`/portal/call-slips/${callSlip.id}`} className="mt-2 inline-block text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
         Open Call Slip
-      </Link>
+      </GuardedPortalLink>
     </div>
   );
 }
@@ -161,7 +161,7 @@ function LinkedCallSlipHistory({
                 <p className="font-medium text-ink">{callSlipStateLabel(item.state)}</p>
                 <p className="mt-1 text-sm text-muted">{formatInstitutionalDateTime(item.report_at)} · {item.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : item.other_destination}</p>
               </div>
-              <Link href={`/portal/call-slips/${item.id}`} className="min-h-9 self-start text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:self-auto">Open Call Slip</Link>
+              <GuardedPortalLink href={`/portal/call-slips/${item.id}`} className="min-h-9 self-start text-sm font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:self-auto">Open Call Slip</GuardedPortalLink>
             </li>
           ))}
         </ul>

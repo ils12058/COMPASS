@@ -73,7 +73,12 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
         "state",
         "received_at",
         "closed_at",
+        "timing_status",
+        "scheduling_statement",
     }
+    assert projection["timing_status"] == "NOT_PROVIDED"
+    assert projection["scheduling_statement"] is None
+    assert not {"verifications", "note", "reason"}.intersection(projection)
     assert set(projection["student"]) == {"display_name"}
     assert projection["closed_at"] == row.administratively_closed_at
     assert (

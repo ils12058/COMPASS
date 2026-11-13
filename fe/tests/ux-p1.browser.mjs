@@ -56,7 +56,13 @@ await check("Appointment desktop contextual rail and Messages dock", appointment
   assert.equal(await rail.evaluate((element) => getComputedStyle(element).flexDirection), "column");
   assert.equal(await rail.locator("button, a").count(), 3);
   for (const name of ["Open Counseling workspace", "Open E-Counseling", "Messages"]) await shown(rail.getByRole(name === "Messages" ? "button" : "link", { name, exact: true }));
-  assert.equal(await page.locator("[data-page-header-actions]").count(), 0, "actions are rendered once outside the heading on desktop");
+  // The base branch places its task Guide in the heading; operational commands remain solely in the rail.
+  const headerActions = page.locator("[data-page-header-actions]");
+  assert.equal(await headerActions.count(), 1);
+  assert.equal(await headerActions.locator("button, a").count(), 1, "Guide is the sole header command");
+  const guide = headerActions.getByRole("button", { name: /^Guide\s*:/ });
+  await shown(guide);
+  assert.ok(await guide.getAttribute("data-guide-launch"));
   const counselingLink = rail.getByRole("link", { name: "Open Counseling workspace", exact: true });
   assert.equal(await counselingLink.getAttribute("href"), `/portal/counseling/workspace/appointment/${appointmentId}`);
   const counselingSurface = counselingLink.locator("[data-page-action-surface]");

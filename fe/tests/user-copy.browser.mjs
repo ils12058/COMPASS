@@ -40,6 +40,7 @@ for (const width of [320, 1440]) {
         await page.getByLabel('Reason for Referral', { exact: true }).fill('Synthetic source wording');
         await page.getByLabel('Referrer name', { exact: true }).fill('Synthetic Referrer');
         await page.getByLabel('Date referred', { exact: true }).fill('2026-10-01');
+        await page.getByRole('radio', { name: 'Unknown / needs confirmation', exact: true }).check();
         const submit = page.getByRole('button', { name: 'Record Referral', exact: true });
         await submit.focus();
         await page.keyboard.press('Enter');

@@ -9,7 +9,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageActionLink } from "@/components/ui/page-action";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
-import { Panel, PanelHeader, PanelMessage, RecordSummary } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelMessage, PanelSection, RecordSummary } from "@/components/ui/panel";
+import { ReportedTiming } from "@/features/referral-timing/timing-readout";
+import { timingStatusLabel } from "@/features/referral-timing/timing-presentation";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -44,6 +46,7 @@ export function SubmissionRows({ items }: { items: FacultyReferralSubmissionResp
       <div className="min-w-0">
         <GuardedPortalLink data-guide-target="faculty-row" href={`${facultyReferralsPath}/${item.id}`} className="inline-flex min-h-11 max-w-full items-center font-semibold text-brand underline-offset-4 hover:underline [overflow-wrap:anywhere] focus-visible:ring-2 focus-visible:ring-focus" aria-label={`View Referral ${item.reference_code}`}>{item.reference_code}</GuardedPortalLink>
         <p className="text-ink [overflow-wrap:anywhere]">{item.student.display_name}</p>
+        <p className="mt-1 text-sm text-muted">{timingStatusLabel(item.timing_status)}</p>
       </div>
       <p className="min-w-0 self-center text-muted [overflow-wrap:anywhere]"><span className="sr-only">Submitted </span><time dateTime={item.submitted_at}>{formatInstitutionalDateTime(item.submitted_at)}</time><span className="block text-xs">Philippine Time</span></p>
       <div className="self-center"><SubmittedState item={item} /></div>
@@ -94,6 +97,6 @@ function FacultyReferralDetail({ referralId }: { referralId: string }) {
     {query.isPending ? <FacultyLoading label="Loading Referral details…" /> : null}
     {query.isError && !item ? <Notice role="alert" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>{facultyReferralError(query.error, "read")}</Notice> : null}
     {item && query.isError ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
-    {item ? <Panel data-guide-target="faculty-details"><SubmissionFacts item={item} /><PanelMessage>{item.state === "SUBMITTED" ? "Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance Office." : item.state === "RECEIVED_BY_GCO" ? "The Guidance Office recorded receipt of this Referral." : "Administrative handling is complete. See Help for what this status means."}</PanelMessage>{messageable ? <PanelMessage action={<GuardedPortalLink href={`/portal/messages/new?referral=${referralId}`} className={buttonVariants({ variant: "secondary" })}>Message Guidance Office</GuardedPortalLink>}>Ask the Guidance Office about this Referral in Messages. The conversation does not change the Referral record.</PanelMessage> : null}</Panel> : null}
+    {item ? <Panel data-guide-target="faculty-details"><SubmissionFacts item={item} /><PanelSection title="When can Guidance reach or meet the student?" titleId="faculty-reported-timing-heading"><ReportedTiming statement={item.scheduling_statement} headingId="faculty-own-statement-heading" /></PanelSection><PanelMessage>{item.state === "SUBMITTED" ? "Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance Office." : item.state === "RECEIVED_BY_GCO" ? "The Guidance Office recorded receipt of this Referral." : "Administrative handling is complete. See Help for what this status means."}</PanelMessage>{messageable ? <PanelMessage action={<GuardedPortalLink href={`/portal/messages/new?referral=${referralId}`} className={buttonVariants({ variant: "secondary" })}>Message Guidance Office</GuardedPortalLink>}>Ask the Guidance Office about this Referral in Messages. The conversation does not change the Referral record.</PanelMessage> : null}</Panel> : null}
   </section>;
 }

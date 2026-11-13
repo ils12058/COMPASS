@@ -246,3 +246,10 @@ class ReferralAction(models.Model):
                 name="referral_action_ciphertext_present",
             ),
         ]
+
+
+# Keep the supplements in this app's model registry without changing the Referral table.
+from .timing_models import (  # noqa: E402, F401
+    ReferralSchedulingStatement,
+    ReferralSchedulingVerification,
+)

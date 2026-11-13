@@ -65,7 +65,10 @@ def _safe_validation_details(errors: Iterable[object]) -> list[dict[str, object]
             continue
         location = item.get("loc", ())
         if isinstance(location, (list, tuple)):
-            safe_location = [str(part) for part in location[:5]]
+            # Nested Referral timing windows include body, payload, supplement,
+            # collection, row and field. Keep that structural field location while
+            # retaining a bounded response and excluding Pydantic's input values.
+            safe_location = [str(part) for part in location[:8]]
         else:
             safe_location = [str(location)]
         safe.append(

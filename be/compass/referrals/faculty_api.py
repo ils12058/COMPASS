@@ -22,6 +22,11 @@ from compass.referrals.faculty_services import (
     referral_availability,
     submit_referral,
 )
+from compass.referrals.timing_schemas import (
+    ReferralSchedulingStatementRequest,
+    ReferralSchedulingStatementResponse,
+    ReferralTimingStatus,
+)
 
 router = Router(tags=["referrals"])
 
@@ -49,6 +54,7 @@ class FacultyReferralSubmitRequest(StrictSchema):
     confirmation: str = Field(min_length=1, max_length=4096)
     course_year_block: str = Field(min_length=1, max_length=255)
     reason: str = Field(min_length=1, max_length=10000)
+    scheduling_statement: ReferralSchedulingStatementRequest | None = None
 
 
 class FacultyReferralSubmissionResponse(StrictSchema):
@@ -59,6 +65,11 @@ class FacultyReferralSubmissionResponse(StrictSchema):
     student: FacultyConfirmedStudent
     received_at: datetime | None
     closed_at: datetime | None
+    timing_status: ReferralTimingStatus = ReferralTimingStatus.NOT_PROVIDED
+
+
+class FacultyReferralSubmissionDetailResponse(FacultyReferralSubmissionResponse):
+    scheduling_statement: ReferralSchedulingStatementResponse | None = None
 
 
 class FacultyReferralSubmissionPage(StrictSchema):
@@ -87,7 +98,7 @@ def _error(exc):
             else None
         )
         raise APIError(exc.status, exc.code, str(exc), headers=headers) from exc
-    _raise(exc)
+    _raise(exc, timing_prefix=("scheduling_statement",))
 
 
 @router.get(
@@ -127,9 +138,9 @@ def faculty_confirm_student(request, payload: FacultyStudentConfirmationRequest)
     auth=session_auth,
     response={
         **response_with_errors(
-            FacultyReferralSubmissionResponse, 401, 403, 404, 409, 422, success_status=201
+            FacultyReferralSubmissionDetailResponse, 401, 403, 404, 409, 422, success_status=201
         ),
-        200: FacultyReferralSubmissionResponse,
+        200: FacultyReferralSubmissionDetailResponse,
     },
     operation_id="referralsFacultySubmit",
     summary="Submit an authenticated Faculty Referral",
@@ -168,7 +179,7 @@ def faculty_list_submissions(request, page: int = 1, page_size: int = 20):
 @router.get(
     "/{referral_id}",
     auth=session_auth,
-    response=response_with_errors(FacultyReferralSubmissionResponse, 401, 403, 404, 422),
+    response=response_with_errors(FacultyReferralSubmissionDetailResponse, 401, 403, 404, 422),
     operation_id="referralsFacultyGetMine",
     summary="Read one allowlisted own Faculty submission",
 )

@@ -32,7 +32,12 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "valid_until",
         },
         "FacultyConfirmedStudent": {"display_name"},
-        "FacultyReferralSubmitRequest": {"confirmation", "course_year_block", "reason"},
+        "FacultyReferralSubmitRequest": {
+            "confirmation",
+            "course_year_block",
+            "reason",
+            "scheduling_statement",
+        },
         "FacultyReferralSubmissionResponse": {
             "id",
             "reference_code",
@@ -41,12 +46,25 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "student",
             "received_at",
             "closed_at",
+            "timing_status",
         },
+    }
+    optional = {
+        "FacultyReferralSubmitRequest": {"scheduling_statement"},
+        "FacultyReferralSubmissionResponse": {"timing_status"},
     }
     for name, fields in expected.items():
         assert schemas[name]["additionalProperties"] is False
         assert set(schemas[name]["properties"]) == fields
-        assert set(schemas[name]["required"]) == fields
+        assert set(schemas[name]["required"]) == fields - optional.get(name, set())
+    detail = schemas["FacultyReferralSubmissionDetailResponse"]
+    assert detail["additionalProperties"] is False
+    assert set(detail["properties"]) == expected["FacultyReferralSubmissionResponse"] | {
+        "scheduling_statement"
+    }
+    assert set(detail["required"]) == expected["FacultyReferralSubmissionResponse"] - {
+        "timing_status"
+    }
     assert schemas["FacultyReferralSubmissionState"]["enum"] == [
         "SUBMITTED",
         "RECEIVED_BY_GCO",
@@ -55,6 +73,8 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
 
 
 EXPECTED_OPERATION_IDS = {
+    "referralsGetTiming",
+    "referralsRecordTimingVerification",
     "referralsGetAdministration",
     "referralsAcknowledge",
     "referralsCloseAdministratively",

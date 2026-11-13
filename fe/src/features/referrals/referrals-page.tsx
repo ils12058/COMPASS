@@ -29,6 +29,7 @@ import {
   referralErrorMessage, referralOrderingOptions } from "@/features/referrals/referrals-shared";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { timingStatusLabel } from "@/features/referral-timing/timing-presentation";
 import { useReferralsList } from "@/lib/api/generated/referrals/referrals";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
@@ -190,6 +191,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                     {referral.reference_code}
                   </Link>
                   <IntakeContext item={referral} />
+                  <p className="text-sm text-muted">{timingStatusLabel(referral.timing_status)}</p>
                   <p className="text-sm font-medium text-ink">{referral.student_name_snapshot}</p>
                   {referral.student.institutional_id ? <p className="text-xs text-muted">{referral.student.institutional_id}</p> : null}
                   <p className="text-sm text-muted">{referral.course_year_block_snapshot}</p>
@@ -248,6 +250,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                       <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                         <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
                         <IntakeContext item={referral} />
+                        <span className="mt-1 block text-sm text-muted">{timingStatusLabel(referral.timing_status)}</span>
                         <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>
                         {referral.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{referral.student.institutional_id}</span> : null}
                       </th>

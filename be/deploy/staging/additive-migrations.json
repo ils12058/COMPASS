@@ -9,5 +9,6 @@
   "compass/guidance_followups/migrations/0002_next_actions.py": "23b1106adf2ec4130c0a61c9bde15c870d6db32115d66204b0b6b515d367c9dc",
   "compass/guidance_followups/migrations/0003_case_transfers.py": "cf3a1f720c65f4429e3a36e7a9fcd69f773d31738a1a3b20a80a41e16a206d38",
   "compass/guidance_followups/migrations/0004_case_coverage.py": "ee765dd3a08b3b2bfbd2198bdb6502423d558f81a5aa4160c520922d02bf0d44",
-  "compass/guidance_followups/migrations/0005_case_closure.py": "7fab7e9d8b636ce024f812442021fe639b7d01beaece9be2373727ecdea91786"
+  "compass/guidance_followups/migrations/0005_case_closure.py": "7fab7e9d8b636ce024f812442021fe639b7d01beaece9be2373727ecdea91786",
+  "compass/referrals/migrations/0003_referral_timing.py": "a05585c8a0aae8707e653b0a3218aa1e5058934d7aa6159457e99f02d2337505"
 }
