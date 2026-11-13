@@ -177,6 +177,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Privacy-scoped Guidance Follow-Up domain and lifecycle.",
         (
             "test_guidance_followups.py",
+            "test_cw2_next_actions.py",
             "test_fup3a_faculty_referral_journey.py",
         ),
     ),
@@ -224,6 +225,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_counseling.py",
             "test_counseling_cases.py",
             "test_counseling_cases_concurrency.py",
+            "test_cw2_case_appointments.py",
             "test_counseling_context.py",
             "test_counseling_documentation_review.py",
             "test_counseling_downstream_lifecycle.py",

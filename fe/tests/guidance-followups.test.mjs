@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { followupAccess } from "../src/features/guidance-followups/followups-access.ts";
 import { nextFollowupHref } from "../src/features/guidance-followups/followups-shared.tsx";
+import { followupActionLabel, readFollowupFilters } from "../src/features/guidance-followups/followups-presentation.ts";
 import { notificationDestination } from "../src/features/notifications/notification-targets.ts";
 import { presentWork } from "../src/features/work-queue/work-queue-presentation.ts";
 
@@ -16,28 +17,44 @@ test("Follow-Up workspace requires a canonical staff role and its own capability
     assert.deepEqual(followupAccess({ role, capabilities: ["guidance_followups.view", "guidance_followups.manage"] }), { view: false, manage: false });
   }
 });
-test("Create next follow-up links only the readable source or the standalone Student identity", () => {
-  const studentId = "22222222-2222-4222-8222-222222222222";
-  const studentName = "Synthetic Student & Co.";
-  const sourceId = "33333333-3333-4333-8333-333333333333";
-  const sourceHref = nextFollowupHref({ student_id: studentId, student_name: studentName, source: { kind: "REFERRAL", id: sourceId } });
-  assert.equal(sourceHref, `/portal/follow-ups/new?source_kind=REFERRAL&source_id=${encodeURIComponent(sourceId)}`);
-  assert.deepEqual([...new URLSearchParams(sourceHref.split("?")[1]).keys()], ["source_kind", "source_id"]);
-
-  for (const item of [
-    { student_id: studentId, student_name: studentName, source: null },
-    { student_id: studentId, student_name: studentName, source: null, source_unavailable: true },
-  ]) {
-    const href = nextFollowupHref(item);
-    assert.equal(href, `/portal/follow-ups/new?student_id=${encodeURIComponent(studentId)}&student_name=${encodeURIComponent(studentName)}`);
-    assert.deepEqual([...new URLSearchParams(href.split("?")[1]).keys()], ["student_id", "student_name"]);
+test("Create next action names the predecessor and obtains its context from an authorized read", () => {
+  const id = "33333333-3333-4333-8333-333333333333";
+  for (const source of [null, { kind: "REFERRAL", id: "source-id" }]) {
+    const href = nextFollowupHref({ id, source, student_name: "Private Student", title: "Private title", description: "Private description" });
+    assert.equal(href, `/portal/follow-ups/new?predecessor_id=${id}`);
+    assert.deepEqual([...new URLSearchParams(href.split("?")[1]).keys()], ["predecessor_id"]);
+    assert.doesNotMatch(href, /Private|source-id/);
   }
+  const back = "/portal/follow-ups?status=all&due_window=OVERDUE&page=3";
+  const query = new URL(nextFollowupHref({ id: "source/../&id" }, back), "https://compass.invalid").searchParams;
+  assert.equal(query.get("predecessor_id"), "source/../&id");
+  assert.equal(query.get("return_to"), back);
+});
 
-  const encoded = nextFollowupHref({ student_id: studentId, student_name: "A/B? C&D#E", source: { kind: "REFERRAL", id: "source/../&id" } });
-  for (const forbidden of ["category", "visibility", "assigned_to_id", "due_at", "description", "outcome", "status", "version", "predecessor", "successor"]) {
-    assert.equal(new URLSearchParams(encoded.split("?")[1]).has(forbidden), false, `${forbidden} is never copied into the create link`);
-  }
-  assert.equal(new URLSearchParams(encoded.split("?")[1]).get("source_id"), "source/../&id");
+test("legacy next actions fall back to their category and protected titles remain literal text", () => {
+  assert.equal(followupActionLabel({ category: "COUNSELING", title: null }), "Counseling Follow-Up");
+  assert.equal(followupActionLabel({ category: "STUDENT_CONTACT", title: "" }), "Student contact");
+  assert.equal(followupActionLabel({ category: "REFERRAL_ACTION", title: "  " }), "Referral coordination");
+  assert.equal(followupActionLabel({ category: "COUNSELING", title: "Review <exercise> & progress" }), "Review <exercise> & progress");
+});
+
+test("Follow-Up return filters preserve a case, all statuses, deadline order and a deep page", () => {
+  const caseId = "44444444-4444-4444-8444-444444444444";
+  const params = new URLSearchParams({ case_id: caseId, status: "all", due_window: "OVERDUE", ordering: "LATEST_DUE", page: "3", page_size: "10" });
+  const result = readFollowupFilters(params);
+  assert.equal(result.case_id, caseId);
+  assert.equal(result.status, undefined);
+  assert.equal(result.due_window, "OVERDUE");
+  assert.equal(result.ordering, "LATEST_DUE");
+  assert.equal(result.page, 3);
+  assert.equal(result.page_size, 10);
+  const invalid = readFollowupFilters(new URLSearchParams({ case_id: "guessed-id", status: "UNKNOWN", ordering: "UNKNOWN", due_window: "UNKNOWN", page: "-1", page_size: "500" }));
+  assert.equal(invalid.case_id, undefined);
+  assert.equal(invalid.status, "PENDING");
+  assert.equal(invalid.ordering, undefined);
+  assert.equal(invalid.due_window, undefined);
+  assert.equal(invalid.page, 1);
+  assert.equal(invalid.page_size, 20);
 });
 test("Follow-Up work uses the queue's confirmed time for overdue language and its own destination", () => {
   const item = { id: "guidance-follow-up:synthetic", kind: "GUIDANCE_FOLLOW_UP", source_id: "synthetic", due_at: "2026-10-01T00:00:00Z" };

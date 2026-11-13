@@ -1,8 +1,8 @@
-// CW-1 journeys against the actual Next UI, with synthetic handlers for all seven case operations.
+// CW-1/CW-2 journeys against the actual Next UI and synthetic canonical responses.
 import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
-import { candidate, casePath, casesAPI, casesFixture, detail, ids, newPath, root, student, summary } from "./support/counseling-cases-fixtures.mjs";
+import { appointmentCandidate, candidate, caseAppointment, casePath, casesAPI, casesFixture, detail, followup, ids, newPath, root, student, summary } from "./support/counseling-cases-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, settleFetches, finish } = await createBrowserHarness("counseling-cases");
 const casesHeading = (page) => page.getByRole("heading", { name: "My cases", exact: true });
@@ -59,7 +59,7 @@ await check("my-cases-loading-then-rows", root, { handler: loadingFixture.handle
     assert.equal(await page.getByText(/You have no cases yet/).count(), 0, "Loading is not an empty result");
     loading.release();
     await shown(page.getByRole("link", { name: student.display_name, exact: true }));
-    assert.equal(await page.getByRole("link", { name: student.display_name, exact: true }).getAttribute("href"), casePath);
+    assert.equal(await page.getByRole("link", { name: student.display_name, exact: true }).getAttribute("href"), `${casePath}?return_to=%2Fportal%2Fcounseling`);
     const row = page.locator("tbody tr");
     assert.match(await row.innerText(), /CASE-2026-000001/);
     assert.match(await row.innerText(), /Active/);
@@ -222,12 +222,14 @@ for (const mode of ["network", "server"]) {
 await check("case-overview-facts-session-access-and-history", casePath, { handler: casesFixture().handler }, async (page) => {
   await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
   assert.equal(await page.locator("main h1").count(), 1);
-  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Sessions", "Case history"]);
+  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Next actions", "Appointments", "Sessions", "Case history"]);
   assert.equal(await completedCount(page).innerText(), "2");
   assert.match(await page.locator('[aria-labelledby="case-details-heading"]').innerText(), /Synthetic CW-1 Counselor/);
   assert.match(await page.locator("main").innerText(), /CASE-2026-000001/);
+  await shown(page.getByText("No upcoming appointment is linked to this case.", { exact: true }));
+  await shown(page.getByText("No pending next action in this case.", { exact: true }));
   const session = page.getByRole("link", { name: /Jan 6, 2026/ });
-  assert.equal(await session.getAttribute("href"), `${root}/encounters/${ids.session}`);
+  assert.equal(await session.getAttribute("href"), `${root}/encounters/${ids.session}?return_to=${encodeURIComponent(casePath)}`);
   const inaccessible = page.locator("tbody tr").filter({ hasText: "Synthetic Other Counselor" });
   assert.equal(await inaccessible.getByRole("link").count(), 0, "A case does not grant source-record access");
   assert.equal(await inaccessible.locator("td").nth(3).innerText(), "—", "The inaccessible Appointment reference is withheld");
@@ -241,12 +243,14 @@ await check("case-overview-facts-session-access-and-history", casePath, { handle
 
 const originFixture = casesFixture({ detail: { origin: "APPOINTMENT", source: { appointment: { id: ids.appointment, reference_code: "APT-CW1T-0001", starts_at: "2026-01-06T01:00:00Z", status: "SCHEDULED" }, encounter_id: null, routine_interview_id: null }, sessions: [], session_count: 0, latest_session_at: null, unlinked_origin_session: candidate() } });
 await check("case-unlinked-origin-session-notice-and-add", casePath, { handler: originFixture.handler }, async (page) => {
-  await shown(page.getByText(/for the Appointment this case started from isn't in the case yet\./));
+  await shown(page.getByText(/for the Appointment this case started from isn't in a case yet\./));
   assert.equal(await completedCount(page).innerText(), "0");
   await page.getByRole("button", { name: "Add to this case", exact: true }).click();
   await shown(page.getByRole("status").filter({ hasText: "Session added to this case." }));
   assert.equal(await completedCount(page).innerText(), "1");
   assert.equal(await page.getByRole("button", { name: "Add to this case", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Add next action", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Link appointment", exact: true }).count(), 1);
   assert.deepEqual(calls(originFixture, "counselingLinkCaseSession")[0].body, { encounter_id: ids.candidate, expected_version: 4 });
 });
 
@@ -499,6 +503,8 @@ await check("case-read-only-hides-record-add-remove-and-origin-add", casePath, {
   assert.equal(await addTrigger(page).count(), 0);
   assert.equal(await page.getByRole("button", { name: /^Remove the session/ }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "Add to this case", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Add next action", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Link appointment", exact: true }).count(), 0);
   assert.equal(await completedCount(page).innerText(), "2");
 });
 
@@ -604,6 +610,296 @@ await check("keyboard-only-intake-open-add-remove-and-dialog-focus", root, { han
   assert.deepEqual(calls(keyboardFixture, "counselingLinkCaseSession")[0].body, { encounter_id: ids.candidate, expected_version: 1 });
   assert.deepEqual(calls(keyboardFixture, "counselingUnlinkCaseSession")[0].body, { reason: "BELONGS_TO_ANOTHER_CASE", expected_version: 2 });
   await screenshot(page, "keyboard-case-after-removal");
+});
+
+const appointmentDialog = page => page.getByRole("dialog", { name: "Link appointment", exact: true });
+const unlinkAppointmentDialog = page => page.getByRole("alertdialog", { name: "Unlink this appointment from the case?", exact: true });
+const appointmentPanel = page => page.locator('[aria-labelledby="case-appointments-heading"]');
+const actionsPanel = page => page.locator('[aria-labelledby="case-next-actions-heading"]');
+const linkAppointmentTrigger = page => appointmentPanel(page).getByRole("button", { name: "Link appointment", exact: true });
+const unlinkAppointmentTrigger = page => appointmentPanel(page).getByRole("button", { name: "Unlink appointment APT-CW2T-0002", exact: true });
+const returnedPath = (path, returnTo) => `${path}${path.includes("?") ? "&" : "?"}return_to=${encodeURIComponent(returnTo)}`;
+async function fillAction(page, title = "Arrange a progress check") {
+  await page.getByLabel("Action title", { exact: true }).fill(title);
+  await page.getByLabel("Responsible staff member", { exact: true }).selectOption(ids.counselor);
+  await page.getByLabel("Due date and time (Philippine Time)", { exact: true }).fill("2099-01-07T10:00");
+  await page.getByRole("button", { name: "Create Follow-Up", exact: true }).click();
+  await shown(page.getByRole("heading", { name: title, exact: true }));
+}
+async function selectAppointment(page) {
+  await linkAppointmentTrigger(page).click();
+  await shown(appointmentDialog(page));
+  await appointmentDialog(page).getByLabel("Appointment", { exact: true }).selectOption(ids.nextAppointment);
+}
+
+const factsTask = followup();
+const factsAppointment = appointmentCandidate();
+const factsFixture = casesFixture({
+  detail: { appointments: [caseAppointment()], next_appointment: factsAppointment },
+  followups: [
+    followup({ id: ids.successor, title: "Later pending action", due_at: "2099-01-09T02:00:00Z" }),
+    followup({ id: "c2000000-0000-4000-8000-000000000001", title: null, status: "CANCELLED", updated_at: "2026-11-12T01:00:00Z" }),
+    factsTask,
+    followup({ id: "c2000000-0000-4000-8000-000000000002", title: "Completed action", status: "COMPLETED", updated_at: "2026-11-13T01:00:00Z" }),
+  ],
+});
+await check("cw2-authorized-next-facts-panel-order-statuses-and-deadlines", casePath, { handler: factsFixture.handler, timezoneId: "America/Los_Angeles" }, async page => {
+  await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
+  const facts = page.locator('[aria-labelledby="case-details-heading"]');
+  assert.match(await facts.innerText(), /Next appointment\s+Jan 8, 2099(?:,| at) 9:00\sAM · APT-CW2T-0002/);
+  assert.match(await facts.innerText(), /Next action\s+Check progress with Student\s+Due Jan 7, 2099(?:,| at) 10:00\sAM · Synthetic CW-1 Counselor/);
+  assert.deepEqual(await actionsPanel(page).locator("li a").allTextContents(), ["Check progress with Student", "Later pending action", "Completed action", "Counseling Follow-Up"]);
+  assert.deepEqual(await actionsPanel(page).locator("li").allTextContents().then(rows => rows.map(row => /Cancelled/.test(row) ? "Cancelled" : /Completed/.test(row) ? "Completed" : "Pending")), ["Pending", "Pending", "Completed", "Cancelled"]);
+  assert.equal(await page.getByRole("link", { name: "Protected synthetic task detail", exact: true }).count(), 0);
+  assert.equal(await page.getByText("Protected synthetic task detail", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Schedule session", exact: true }).count(), 0);
+  assert.deepEqual(await page.locator('[data-page-header] [data-page-action-label]').allTextContents(), ["Record session for this case", "Add next action"]);
+  assert.equal(await appointmentPanel(page).getByRole("button", { name: "Link appointment", exact: true }).count(), 1);
+  assert.equal(await page.locator('[aria-labelledby="case-sessions-heading"]').getByRole("button", { name: "Add recorded session", exact: true }).count(), 1);
+  await screenshot(page, "cw2-next-facts-desktop");
+});
+
+await check("cw2-empty-next-facts-and-unavailable-task-permission", casePath, { handler: casesFixture({ detail: { next_actions_available: false, can_add_next_action: false } }).handler }, async page => {
+  await shown(page.getByText("No upcoming appointment is linked to this case.", { exact: true }));
+  await shown(actionsPanel(page).getByText("Next actions are unavailable to your account.", { exact: true }));
+  assert.equal(await page.getByRole("link", { name: "Add next action", exact: true }).count(), 0);
+  assert.equal(await actionsPanel(page).getByRole("link").count(), 0);
+});
+
+for (const device of ["desktop", "narrowPhone"]) {
+  const fixture = casesFixture();
+  await check(`cw2-add-case-task-and-create-successor-${device}`, casePath, { device, handler: fixture.handler }, async page => {
+    await page.getByRole("link", { name: "Add next action", exact: true }).click();
+    await page.waitForURL(url => url.pathname === "/portal/follow-ups/new");
+    await shown(page.getByText(student.display_name, { exact: true }));
+    assert.equal(new URL(page.url()).searchParams.get("case_id"), ids.case);
+    assert.equal(new URL(page.url()).searchParams.get("return_to"), casePath);
+    assert.equal(await page.getByLabel("Category", { exact: true }).inputValue(), "COUNSELING");
+    assert.equal(await page.getByLabel("Linked case", { exact: true }).inputValue(), ids.case);
+    assert.equal(await page.getByLabel("Linked case", { exact: true }).isDisabled(), true);
+    assert.equal(await page.locator("#followup-student").count(), 0);
+    await noHorizontalOverflow(page);
+    await screenshot(page, `cw2-add-case-task-${device}`);
+    await fillAction(page);
+    assert.deepEqual(calls(fixture, "guidanceFollowupsCreate")[0].body, { student_id: ids.student, assigned_to_id: ids.counselor, category: "COUNSELING", title: "Arrange a progress check", due_at: "2099-01-07T02:00:00.000Z", description: null, case_id: ids.case, predecessor_id: null });
+    await page.getByRole("link", { name: "Create next action", exact: true }).click();
+    await page.waitForURL(url => url.pathname === "/portal/follow-ups/new");
+    assert.equal(new URL(page.url()).searchParams.get("predecessor_id"), ids.action);
+    assert.equal(new URL(page.url()).searchParams.has("student_name"), false);
+    await shown(page.getByText(student.display_name, { exact: true }));
+    assert.equal(await page.getByLabel("Linked case", { exact: true }).inputValue(), ids.case);
+    assert.equal(await page.getByLabel("Action title", { exact: true }).inputValue(), "", "Confidential action content is not copied");
+    assert.equal(await page.getByLabel("Task description (optional)", { exact: true }).inputValue(), "");
+    await fillAction(page, "Continue the progress check");
+    assert.equal(calls(fixture, "guidanceFollowupsCreate")[1].body.predecessor_id, ids.action);
+    assert.equal(calls(fixture, "guidanceFollowupsCreate")[1].body.case_id, ids.case);
+    const caseLink = page.getByRole("link", { name: "Case CASE-2026-000001", exact: true });
+    await caseLink.click();
+    await shown(actionsPanel(page).getByRole("link", { name: "Arrange a progress check", exact: true }));
+    await shown(actionsPanel(page).getByRole("link", { name: "Continue the progress check", exact: true }));
+    assert.equal(fixture.followups.length, 2);
+    await noHorizontalOverflow(page);
+  });
+}
+
+for (const removeCase of [false, true]) {
+  const fixture = casesFixture();
+  await check(`cw2-source-case-is-visible-preselected-and-${removeCase ? "removable" : "retained"}`, `/portal/follow-ups/new?source_kind=COUNSELING_ENCOUNTER&source_id=${ids.session}`, { handler: fixture.handler }, async page => {
+    const choice = page.getByLabel("Linked case (optional)", { exact: true });
+    await shown(choice);
+    assert.equal(await choice.inputValue(), ids.case);
+    assert.equal(await choice.isEnabled(), true);
+    if (removeCase) await choice.selectOption("");
+    await fillAction(page);
+    const body = calls(fixture, "guidanceFollowupsCreate")[0].body;
+    assert.equal(body.case_id, removeCase ? null : ids.case);
+    assert.equal(body.source_kind, "COUNSELING_ENCOUNTER");
+    assert.equal(body.source_id, ids.session);
+    assert.equal(calls(fixture, "guidanceFollowupsEligibleStudents").length, 0);
+  });
+}
+
+for (const origin of ["work", "follow-ups"]) {
+  const listPath = origin === "work" ? "/portal/work?page=2" : "/portal/follow-ups?status=all&ordering=LATEST_DUE&page=2&page_size=1";
+  const fixture = casesFixture({ followups: [followup({ id: ids.successor, title: "Other action", due_at: "2099-01-09T02:00:00Z" }), followup()] });
+  await check(`cw2-${origin}-case-task-return-preserves-originating-filters`, listPath, { handler: fixture.handler }, async page => {
+    if (origin === "work") {
+      await shown(page.getByRole("link", { name: "View all Follow-Ups", exact: true }));
+      assert.equal(await page.getByRole("link", { name: "View all Follow-Ups", exact: true }).getAttribute("href"), returnedPath("/portal/follow-ups", listPath));
+      await page.getByRole("link", { name: "Open Follow-Up", exact: true }).last().click();
+      await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
+    } else {
+      await shown(page.getByRole("link", { name: "Check progress with Student", exact: true }));
+      assert.deepEqual(await page.locator("thead th").allTextContents(), ["Next action", "Due", "Student", "Responsible staff member", "Status", "Category"]);
+      assert.match(await page.locator("tbody tr").innerText(), new RegExp(student.display_name));
+      await page.getByRole("link", { name: "Check progress with Student", exact: true }).click();
+      await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
+    }
+    const taskPath = `${new URL(page.url()).pathname}${new URL(page.url()).search}`;
+    assert.equal(new URL(page.url()).searchParams.get("return_to"), listPath);
+    await page.getByRole("link", { name: "Case CASE-2026-000001", exact: true }).click();
+    await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
+    assert.equal(new URL(page.url()).searchParams.get("return_to"), taskPath);
+    const caseReturnPath = `${new URL(page.url()).pathname}${new URL(page.url()).search}`;
+    await page.locator('[aria-labelledby="case-details-heading"]').getByRole("link", { name: "Check progress with Student", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
+    assert.equal(new URL(page.url()).searchParams.get("return_to"), caseReturnPath);
+    await page.getByRole("link", { name: "Back to case", exact: true }).click();
+    await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
+    await page.getByRole("link", { name: "Back to Follow-Ups", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
+    await page.getByRole("link", { name: origin === "work" ? "Back to My work" : "Back to Follow-Ups", exact: true }).click();
+    await page.waitForURL(url => `${url.pathname}${url.search}` === listPath);
+    assert.equal(calls(fixture, "guidanceFollowupsCreate").length, 0);
+  });
+}
+
+await check("cw2-counselor-followups-is-under-more-and-destination-search", casePath, { handler: casesFixture().handler }, async page => {
+  const nav = page.getByRole("navigation", { name: "Portal navigation", exact: true });
+  await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
+  assert.equal(await nav.getByRole("link", { name: "Follow-ups", exact: true }).count(), 0);
+  await nav.getByRole("button", { name: /^More,/ }).click();
+  await shown(nav.getByRole("link", { name: "Follow-ups", exact: true }));
+  await page.getByRole("button", { name: "Go to a COMPASS feature", exact: true }).click();
+  const search = page.getByRole("dialog", { name: "Go to a COMPASS feature", exact: true });
+  await shown(search);
+  await search.getByRole("combobox").fill("Follow");
+  const destination = search.getByRole("option").filter({ has: page.getByText("Follow-ups", { exact: true }) });
+  await shown(destination);
+  assert.equal(await destination.getAttribute("href"), "/portal/follow-ups");
+  await page.keyboard.press("Escape");
+});
+
+for (const device of ["desktop", "narrowPhone"]) {
+  const fixture = casesFixture();
+  await check(`cw2-link-unlink-retains-provenance-and-focus-${device}`, casePath, { device, handler: fixture.handler }, async page => {
+    await selectAppointment(page);
+    await noHorizontalOverflow(page);
+    await screenshot(page, `cw2-link-appointment-${device}`);
+    await appointmentDialog(page).getByRole("button", { name: "Link to case", exact: true }).click();
+    await hidden(appointmentDialog(page));
+    await shown(page.getByRole("status").filter({ hasText: "Appointment linked to this case." }));
+    await shown(unlinkAppointmentTrigger(page));
+    assert.deepEqual(calls(fixture, "counselingLinkCaseAppointment")[0].body, { appointment_id: ids.nextAppointment, expected_version: 4 });
+    assert.equal(await completedCount(page).innerText(), "2", "A scheduled Appointment is not a completed session");
+    assert.match(await appointmentPanel(page).innerText(), /Linked by Synthetic CW-1 Counselor/);
+    await unlinkAppointmentTrigger(page).click();
+    const dialog = unlinkAppointmentDialog(page);
+    await shown(dialog);
+    assert.equal(await dialog.getByRole("button", { name: "Unlink appointment", exact: true }).isDisabled(), true);
+    await chooseRemovalReason(dialog);
+    await noHorizontalOverflow(page);
+    await screenshot(page, `cw2-unlink-appointment-${device}`);
+    await dialog.getByRole("button", { name: "Unlink appointment", exact: true }).click();
+    await hidden(dialog);
+    await focused(page.locator("#case-appointments-heading"));
+    await shown(page.getByText("No upcoming appointment is linked to this case.", { exact: true }));
+    assert.match(await appointmentPanel(page).innerText(), /Removed by Synthetic CW-1 Counselor.*Linked by mistake/s);
+    assert.equal(fixture.detail.appointments.length, 1, "The removed link is retained");
+    assert.equal(fixture.detail.appointments[0].appointment.status, "SCHEDULED", "Unlink never changes a meeting");
+    assert.equal(await unlinkAppointmentTrigger(page).count(), 0);
+    assert.deepEqual(calls(fixture, "counselingUnlinkCaseAppointment")[0].body, { reason: "LINKED_BY_MISTAKE", expected_version: 5 });
+  });
+}
+
+for (const action of ["link", "unlink"]) for (const mode of ["changed", "failure"]) {
+  const fixture = casesFixture({ detail: action === "unlink" ? { appointments: [caseAppointment()], next_appointment: appointmentCandidate() } : {}, [action === "link" ? "appointmentLinkMode" : "appointmentUnlinkMode"]: mode });
+  await check(`cw2-appointment-${action}-${mode}-recovery`, casePath, { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
+    await settleFetches(page);
+    const readsBefore = fixture.detailReads;
+    if (action === "link") await selectAppointment(page);
+    else { await unlinkAppointmentTrigger(page).click(); await chooseRemovalReason(unlinkAppointmentDialog(page)); }
+    const dialog = action === "link" ? appointmentDialog(page) : unlinkAppointmentDialog(page);
+    await dialog.getByRole("button", { name: action === "link" ? "Link to case" : "Unlink appointment", exact: true }).click();
+    if (mode === "changed") {
+      await hidden(dialog);
+      await shown(page.getByRole("status").filter({ hasText: staleMessage }));
+      await settleFetches(page);
+      assert.equal(fixture.detailReads, readsBefore + 1);
+    } else {
+      await shown(dialog.getByRole("alert"));
+      assert.equal(await dialog.getByLabel(action === "link" ? "Appointment" : "Why it doesn't belong here", { exact: true }).inputValue(), action === "link" ? ids.nextAppointment : "LINKED_BY_MISTAKE");
+      assert.doesNotMatch(await dialog.innerText(), /Private diagnostic text/);
+    }
+    assert.equal(calls(fixture, action === "link" ? "counselingLinkCaseAppointment" : "counselingUnlinkCaseAppointment").length, 1, "Recovery never resubmits the action");
+  });
+}
+
+for (const action of ["link", "unlink"]) {
+  const pending = deferred();
+  const fixture = casesFixture({ detail: action === "unlink" ? { appointments: [caseAppointment()], next_appointment: appointmentCandidate() } : {}, state: { [action === "link" ? "appointmentLinkHold" : "appointmentUnlinkHold"]: pending.promise } });
+  await check(`cw2-appointment-${action}-pending-stable-dialog`, casePath, { handler: fixture.handler }, async page => {
+    try {
+      if (action === "link") await selectAppointment(page);
+      else { await unlinkAppointmentTrigger(page).click(); await chooseRemovalReason(unlinkAppointmentDialog(page)); }
+      const dialog = action === "link" ? appointmentDialog(page) : unlinkAppointmentDialog(page);
+      await dialog.getByRole("button", { name: action === "link" ? "Link to case" : "Unlink appointment", exact: true }).click();
+      await shown(dialog.getByRole("button", { name: action === "link" ? "Linking appointment…" : "Unlinking appointment…", exact: true }));
+      assert.equal(await dialog.getByRole("button", { name: "Cancel", exact: true }).isDisabled(), true);
+      assert.equal(await dialog.getByRole("button", { name: "Close dialog", exact: true }).count(), 0);
+      await page.keyboard.press("Escape");
+      await shown(dialog);
+      pending.release();
+      await hidden(dialog);
+      assert.equal(calls(fixture, action === "link" ? "counselingLinkCaseAppointment" : "counselingUnlinkCaseAppointment").length, 1);
+    } finally { pending.release(); }
+  });
+}
+
+const appointmentLoading = deferred();
+const appointmentLoadingFixture = casesFixture({ state: { appointmentCandidateHold: appointmentLoading.promise } });
+await check("cw2-appointment-candidates-loading-then-empty", casePath, { handler: appointmentLoadingFixture.handler }, async page => {
+  try {
+    await linkAppointmentTrigger(page).click();
+    const dialog = appointmentDialog(page);
+    await shown(dialog.getByRole("status").filter({ hasText: "Loading appointments" }));
+    assert.equal(await dialog.getByText("No eligible scheduled appointments are available to link.", { exact: true }).count(), 0);
+    appointmentLoadingFixture.appointmentCandidates = [];
+    appointmentLoading.release();
+    await shown(dialog.getByText("No eligible scheduled appointments are available to link.", { exact: true }));
+    assert.equal(await dialog.getByRole("button", { name: "Link to case", exact: true }).isDisabled(), true);
+  } finally { appointmentLoading.release(); }
+});
+
+const appointmentRetryFixture = casesFixture({ state: { appointmentCandidateError: true } });
+await check("cw2-appointment-candidates-error-retry-and-keyboard-focus", casePath, { handler: appointmentRetryFixture.handler }, async page => {
+  await keyboardActivate(page, linkAppointmentTrigger(page));
+  const dialog = appointmentDialog(page);
+  await shown(dialog.getByRole("alert"));
+  appointmentRetryFixture.appointmentCandidateError = false;
+  await dialog.getByRole("button", { name: "Retry", exact: true }).click();
+  await shown(dialog.getByLabel("Appointment", { exact: true }));
+  assert.equal(calls(appointmentRetryFixture, "counselingListCaseAppointmentCandidates").length, 2);
+  await page.keyboard.press("Escape");
+  await hidden(dialog);
+  await focused(linkAppointmentTrigger(page));
+});
+
+const canonicalPredecessorFixture = casesFixture({ followups: [followup()] });
+await check("cw2-case-only-predecessor-ignores-unrelated-url-source", `/portal/follow-ups/new?predecessor_id=${ids.action}&source_kind=COUNSELING_ENCOUNTER&source_id=${ids.inaccessibleSession}`, { handler: canonicalPredecessorFixture.handler }, async page => {
+  await shown(page.getByText(student.display_name, { exact: true }));
+  await fillAction(page);
+  assert.equal(calls(canonicalPredecessorFixture, "guidanceFollowupsGetContext").length, 0);
+  const body = calls(canonicalPredecessorFixture, "guidanceFollowupsCreate")[0].body;
+  assert.equal(body.predecessor_id, ids.action);
+  assert.equal(body.source_id, undefined);
+  assert.equal(body.source_kind, undefined);
+});
+
+const offeredSession = candidate({ appointment: { id: ids.nextAppointment, reference_code: "APT-CW2T-0002" } });
+const offerFixture = casesFixture({ candidates: [], detail: { origin: "APPOINTMENT", unlinked_origin_session: offeredSession, unlinked_appointment_sessions: [offeredSession], appointments: [caseAppointment({ appointment: appointmentCandidate({ status: "COMPLETED" }) })] } });
+await check("cw2-recorded-linked-appointment-session-is-offered-once-and-linked-explicitly", casePath, { handler: offerFixture.handler }, async page => {
+  await shown(page.getByText(/for Appointment APT-CW2T-0002 isn't in a case yet/));
+  assert.equal(await page.getByRole("button", { name: "Add to this case", exact: true }).count(), 1, "The origin and linked Appointment offer the same session only once");
+  assert.equal(calls(offerFixture, "counselingLinkCaseSession").length, 0);
+  assert.equal(await completedCount(page).innerText(), "2");
+  await shown(page.getByText("No upcoming appointment is linked to this case.", { exact: true }));
+  await page.getByRole("button", { name: "Add to this case", exact: true }).click();
+  await shown(page.getByRole("status").filter({ hasText: "Session added to this case." }));
+  assert.equal(await completedCount(page).innerText(), "3");
+  assert.equal(await page.getByRole("button", { name: "Add to this case", exact: true }).count(), 0);
+  assert.deepEqual(calls(offerFixture, "counselingLinkCaseSession")[0].body, { encounter_id: ids.candidate, expected_version: 4 });
 });
 
 await finish();

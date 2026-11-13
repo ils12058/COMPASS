@@ -5,8 +5,8 @@
 import assert from "node:assert/strict";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
-import { appointment, appointmentId, workspace } from "./support/ui-hierarchy-fixtures.mjs";
-import { casePath, casesFixture, student as caseStudent } from "./support/counseling-cases-fixtures.mjs";
+import { appointment, appointmentId, user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
+import { casePath, casesFixture, followup, student as caseStudent } from "./support/counseling-cases-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("counseling-encounter-consistency");
 const ePath = `/portal/e-counseling/${appointmentId}`;
@@ -247,11 +247,12 @@ await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ 
 });
 
 const connectedSession = session();
-const connectedCase = casesFixture();
+const connectedCase = casesFixture({ followups: [followup()] });
 await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession,
-  handler: (args) => args.pathname.startsWith("/api/v1/counseling/cases") ? connectedCase.handler(args) : false,
+  handler: (args) => args.pathname.startsWith("/api/v1/counseling/cases") || args.pathname.startsWith("/api/v1/guidance-followups") ? connectedCase.handler(args) : false,
   overrides: {
   ...connectedSession.overrides,
+  "/api/v1/auth/session": { user: { ...user(), capabilities: [...user().capabilities, "guidance_followups.view", "guidance_followups.manage"] }, session: { id: "test-session", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
   "/api/v1/counseling/me/encounters": { items: [], page: 1, page_size: 20, has_next: false, ordering: "LATEST_ENCOUNTER" },
   "/api/v1/counseling/appointment-candidates": {
     items: [{ id: appointmentId, reference_code: appointment.reference_code, student: { id: "student", display_name: STUDENT, institutional_id: SYNTH_ID }, delivery_mode: "ONLINE", starts_at: appointment.starts_at, ends_at: appointment.ends_at, status: "SCHEDULED" }],
@@ -270,6 +271,15 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   assert.equal(await fakeCount(page, "leave"), 0, "Opening a case does not leave the call");
   assert.equal(await fakeCount(page, "destroy"), 0, "Opening a case does not destroy the call");
   await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await page.locator('[aria-labelledby="case-next-actions-heading"]').getByRole("link", { name: "Check progress with Student", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Opening a Follow-Up keeps the same Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Opening a Follow-Up does not rejoin the call");
+  assert.equal(await fakeCount(page, "leave"), 0, "Opening a Follow-Up does not leave the call");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Opening a Follow-Up does not destroy the call");
+  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await page.getByRole("link", { name: "Back to case", exact: true }).click();
+  await shown(page.getByRole("heading", { name: caseStudent.display_name, exact: true }));
   await page.getByRole("link", { name: "Back to Counseling", exact: true }).click();
   await shown(page.getByRole("heading", { name: "My cases", exact: true }));
   await page.getByRole("link", { name: "Session records", exact: true }).click();
