@@ -49,6 +49,7 @@ def _capable_users(queryset, capability):
 def recoverable_queryset(*, actor):
     actor = policy.current_actor(actor, manage=True)
     rows = GuidanceFollowUp.objects.filter(
+        case__isnull=True,
         visibility="OPERATIONAL",
         status="PENDING",
         student__is_active=True,

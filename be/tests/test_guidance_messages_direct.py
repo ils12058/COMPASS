@@ -169,6 +169,7 @@ def test_creation_persists_one_canonical_pair_thread_with_no_legacy_columns(worl
         "relationship_referral_id",
         "relationship_case_grant_id",
         "relationship_appointment_id",
+        "relationship_appointment",
         "routing_college_id",
         "assigned_to_id",
     ):
@@ -414,6 +415,7 @@ def test_dto_exposes_only_name_pair_and_nulls_every_legacy_field(world):
             "routing_college",
             "assigned_to",
             "relationship_appointment_id",
+            "relationship_appointment",
             "relationship_referral_id",
             "relationship_referral_reference",
             "relationship_referral_voided",

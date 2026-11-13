@@ -1,5 +1,6 @@
-import { WorkQueuePage } from "@/features/work-queue/work-queue-page";
+import { Suspense } from "react";
+import { WorkQueuePage, WorkQueueLoading } from "@/features/work-queue/work-queue-page";
 
 export default function Page() {
-  return <WorkQueuePage />;
+  return <Suspense fallback={<WorkQueueLoading />}><WorkQueuePage /></Suspense>;
 }

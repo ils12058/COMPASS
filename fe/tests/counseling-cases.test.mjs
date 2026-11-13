@@ -12,6 +12,7 @@ import {
   caseSessionRemovalReasons,
   sessionCountLabel,
   caseEventSummary,
+  caseSessionOffers,
   caseErrorCode,
   caseErrorMessage,
   isUncertainCaseResult,
@@ -23,6 +24,13 @@ import { CompassApiError } from "../src/lib/api/errors.ts";
 const caseId = "10000000-0000-4000-8000-000000000001";
 const started = "2026-01-06T01:00:00Z";
 const ended = "2026-01-06T02:00:00Z";
+test("source and linked-Appointment offers show an explicitly projected session once", () => {
+  const first = { encounter_id: "one", started_at: started, ended_at: ended, appointment: null };
+  const second = { ...first, encounter_id: "two" };
+  assert.deepEqual(caseSessionOffers({ unlinked_origin_session: first, unlinked_appointment_sessions: [first, second] }), [first, second]);
+  assert.deepEqual(caseSessionOffers({ unlinked_origin_session: null, unlinked_appointment_sessions: [] }), []);
+  assert.deepEqual(caseSessionOffers({ unlinked_origin_session: null, unlinked_appointment_sessions: [second] }), [second]);
+});
 function apiError(code, status = 409, message = "Untrusted backend wording") {
   return new CompassApiError({ status, body: { error: { code, message } }, headers: {}, method: "POST", url: "/api/v1/counseling/cases" });
 }

@@ -231,6 +231,7 @@ export function AppointmentsPageHeading({
   help,
   context,
   meta,
+  back,
   children,
   headingId = "appointments-page-heading",
 }: {
@@ -240,11 +241,12 @@ export function AppointmentsPageHeading({
   help?: ReactNode;
   context?: ReactNode;
   meta?: ReactNode;
+  back?: ReactNode;
   children?: ReactNode;
   headingId?: string;
 }) {
   return (
-    <PageHeader title={title} headingId={headingId} description={description} actions={<>{action}<TaskGuideAction /></>} help={help} context={context} meta={meta}>
+    <PageHeader title={title} headingId={headingId} description={description} actions={<>{action}<TaskGuideAction /></>} help={help} context={context} meta={meta} back={back}>
       {children}
     </PageHeader>
   );

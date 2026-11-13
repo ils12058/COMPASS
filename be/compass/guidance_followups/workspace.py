@@ -88,21 +88,59 @@ def source_context(*, actor, source_kind, source_id):
         "category": category,
         "visibility": policy.classify(source_kind=source_kind, category=category),
         "can_create": can_create,
+        "case": _source_case(actor, source_kind, source),
     }
 
 
+def _source_case(actor, kind, source):
+    """Offer only an explicit source relationship to the creator's own Active case."""
+    from compass.counseling.case_models import CounselingCase, CounselingCaseSession
+
+    if kind == FollowUpSource.REFERRAL or not actor.has_capability("counseling.view_assigned"):
+        return None
+    encounter_id = (
+        source.pk if kind == FollowUpSource.COUNSELING_ENCOUNTER else source.counseling_encounter_id
+    )
+    cases = CounselingCase.objects.filter(primary_counselor_id=actor.pk, status="ACTIVE")
+    if encounter_id:
+        cases = cases.filter(
+            pk__in=CounselingCaseSession.objects.filter(
+                encounter_id=encounter_id, removed_at__isnull=True
+            ).values("case_id")
+        )
+    elif kind == FollowUpSource.ROUTINE_INTERVIEW:
+        cases = cases.filter(origin_routine_interview_id=source.pk)
+    else:
+        return None
+    matches = list(cases[:2])
+    if len(matches) != 1:
+        return None
+    case = matches[0]
+    return {"id": case.pk, "reference_code": case.reference_code, "status": case.status}
+
+
 def eligible_assignees(
-    *, actor, student_id, category, source_kind=None, source_id=None, page=1, page_size=20
+    *,
+    actor,
+    student_id,
+    category,
+    source_kind=None,
+    source_id=None,
+    case_id=None,
+    page=1,
+    page_size=20,
 ):
     actor = policy.current_actor(actor, manage=True)
     pagination(page, page_size)
     student = policy.valid_student(student_id)
-    classification = policy.classify(source_kind=source_kind, category=category)
+    classification = policy.classify(source_kind=source_kind, category=category, case_id=case_id)
+    if case_id is not None:
+        policy.require_case(actor, case_id=case_id, student_id=student.pk, manage=True, active=True)
     if source_kind:
         policy.require_source(
             actor, kind=source_kind, source_id=source_id, student_id=student.pk, manage=True
         )
-    elif not policy.in_operational_scope(actor, student.pk):
+    elif case_id is None and not policy.in_operational_scope(actor, student.pk):
         raise FollowUpNotFound("Student not found.")
     candidates = User.objects.filter(is_active=True, role__code__in=policy.ROLES).select_related(
         "role"
@@ -136,6 +174,7 @@ def eligible_assignees(
                 visibility=classification,
                 source_kind=source_kind,
                 source_id=source_id,
+                case_id=case_id,
             )
         except FollowUpInvalid:
             continue
