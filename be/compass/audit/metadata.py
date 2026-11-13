@@ -71,8 +71,19 @@ def _validate_value(value: Any, *, path: str, depth: int) -> Any:
             ):
                 raise ValueError(f"audit metadata key at {path} contains invalid characters")
             key_name = key.casefold().replace("-", "_")
-            if key_name in _SENSITIVE_KEY_NAMES or any(
-                fragment in key_name for fragment in _SENSITIVE_KEY_FRAGMENTS
+            # These exact, typed continuity facts contain no HTTP authorization material.
+            # Keep the generic credential guard for every other authorization-shaped key.
+            continuity_fact = path == "" and (
+                (key_name == "independent_authorization" and type(nested_value) is bool)
+                or (
+                    key_name == "authorization_route"
+                    and nested_value
+                    in ("", "INDEPENDENT_HEAD", "DIRECT_OUTGOING_HEAD", "OWNER_TO_HEAD")
+                )
+            )
+            if not continuity_fact and (
+                key_name in _SENSITIVE_KEY_NAMES
+                or any(fragment in key_name for fragment in _SENSITIVE_KEY_FRAGMENTS)
             ):
                 raise ValueError(f"audit metadata key {key!r} is not allowed for sensitive data")
             child_path = f"{path}.{key}" if path else key

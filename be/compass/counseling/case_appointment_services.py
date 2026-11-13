@@ -68,6 +68,16 @@ def eligible_appointments(*, actor, case):
 
 
 def appointment_accessible(*, actor, case, appointment):
+    # Current links authorize scheduling metadata for the case owner, including a retained
+    # provider after transfer. The Appointment's ordinary detail/actions keep their own ACL.
+    if (
+        actor.pk == case.primary_counselor_id
+        and current_links().filter(case=case, appointment=appointment).exists()
+    ):
+        return (
+            appointment.student_id == case.student_id
+            and appointment.service.code == COUNSELING_SERVICE_CODE
+        )
     return (
         actor.has_capability("appointments.view_self")
         and appointment.provider_id == actor.pk == case.primary_counselor_id

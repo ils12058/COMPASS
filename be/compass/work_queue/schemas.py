@@ -18,6 +18,8 @@ class StrictSchema(Schema):
 
 
 class WorkKind(StrEnum):
+    CASE_TRANSFER_AUTHORIZATION = "CASE_TRANSFER_AUTHORIZATION"
+    CASE_TRANSFER_ACCEPTANCE = "CASE_TRANSFER_ACCEPTANCE"
     GUIDANCE_FOLLOW_UP = "GUIDANCE_FOLLOW_UP"
     GUIDANCE_MESSAGE_REPLY = "GUIDANCE_MESSAGE_REPLY"
     ROUTINE_EVALUATION = "ROUTINE_EVALUATION"
@@ -45,6 +47,7 @@ class WorkItem(StrictSchema):
     conversation_kind: ThreadKind | None
     due_at: datetime | None
     waiting_since: datetime | None
+    case_reference_code: str | None = None
 
 
 class WorkQueueQuery(StrictSchema):

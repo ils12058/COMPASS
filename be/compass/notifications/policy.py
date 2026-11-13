@@ -25,6 +25,7 @@ class NotificationTargetType(StrEnum):
     """Closed set of in-app destinations a Notification may point at."""
 
     GUIDANCE_FOLLOW_UP = "GUIDANCE_FOLLOW_UP"
+    CASE_TRANSFER = "CASE_TRANSFER"
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
     CALL_SLIP = "CALL_SLIP"
@@ -41,6 +42,7 @@ class NotificationTargetType(StrEnum):
 
 
 class NotificationEvent(StrEnum):
+    CASE_TRANSFER_REVIEW = "counseling.case_transfer.review"
     FACULTY_REFERRAL_RECEIVED = "referral.received_by_guidance_office"
     FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
@@ -100,6 +102,15 @@ _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMA
 
 
 _EVENT_CATALOG = {
+    NotificationEvent.CASE_TRANSFER_REVIEW: NotificationEventDefinition(
+        event=NotificationEvent.CASE_TRANSFER_REVIEW,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Case transfer review",
+        message="A case transfer needs your review. Open COMPASS to review the arrangement.",
+        email_subject="",
+        email_template="",
+    ),
     NotificationEvent.GRADUATE_TRACER_REMINDER: NotificationEventDefinition(
         event=NotificationEvent.GRADUATE_TRACER_REMINDER,
         policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,

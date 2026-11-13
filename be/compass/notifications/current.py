@@ -2,6 +2,10 @@
 
 
 def notification_is_current(notification, *, now=None):
+    if notification.source_type.startswith("case_transfer_v"):
+        from compass.counseling.case_transfer_services import notification_is_current
+
+        return notification_is_current(notification, now=now)
     if notification.source_type == "graduate_tracer_reminder":
         from compass.graduate_tracer.reminders import reminder_notification_is_current
 

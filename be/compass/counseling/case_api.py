@@ -54,6 +54,8 @@ from .case_services import (
     open_case,
     unlink_session,
 )
+from .case_transfer_projections import appointment_record_accessible, case_continuity
+from .case_transfer_schemas import CaseContinuityPanelResponse, CaseContinuityPerson
 from .services import DEFAULT_PAGE_SIZE, CounselingError
 
 router = Router(tags=["counseling"])
@@ -219,6 +221,8 @@ class CounselingCaseAppointmentCandidate(StrictSchema):
     ends_at: datetime
     status: AppointmentStatus
     delivery_mode: DeliveryMode
+    provider: CaseContinuityPerson | None = None
+    record_accessible: bool = True
 
 
 class CounselingCaseAppointmentCandidatePage(StrictSchema):
@@ -256,6 +260,7 @@ class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     next_actions_available: bool
     can_add_next_action: bool
     can_link_appointments: bool
+    continuity: CaseContinuityPanelResponse | None = None
 
 
 class CounselingCaseOpeningContextResponse(StrictSchema):
@@ -356,7 +361,7 @@ def _source(*, appointment, encounter_id, routine_interview_id) -> dict[str, obj
     }
 
 
-def _appointment_candidate(appointment):
+def _appointment_candidate(appointment, actor=None):
     return {
         "id": appointment.pk,
         "reference_code": appointment.reference_code,
@@ -364,6 +369,10 @@ def _appointment_candidate(appointment):
         "ends_at": _institutional(appointment.ends_at),
         "status": appointment.status,
         "delivery_mode": appointment.delivery_mode,
+        "provider": _person(appointment.provider),
+        "record_accessible": appointment_record_accessible(actor, appointment)
+        if actor is not None
+        else True,
     }
 
 
@@ -426,7 +435,7 @@ def _detail(overview: CaseOverview) -> dict[str, object]:
                 "id": link.pk,
                 "appointment_id": link.appointment_id,
                 "appointment": (
-                    _appointment_candidate(link.appointment)
+                    _appointment_candidate(link.appointment, actor)
                     if appointment_accessible(
                         actor=actor, case=overview.summary.case, appointment=link.appointment
                     )
@@ -441,7 +450,9 @@ def _detail(overview: CaseOverview) -> dict[str, object]:
             for link in overview.appointments
         ],
         "next_appointment": (
-            _appointment_candidate(overview.next_appointment) if overview.next_appointment else None
+            _appointment_candidate(overview.next_appointment, actor)
+            if overview.next_appointment
+            else None
         ),
         "unlinked_appointment_sessions": [
             _candidate(session) for session in overview.unlinked_appointment_sessions
@@ -460,6 +471,7 @@ def _detail(overview: CaseOverview) -> dict[str, object]:
         "next_actions_available": overview.next_actions.available,
         "can_add_next_action": overview.next_actions.can_add,
         "can_link_appointments": overview.can_link_appointments,
+        "continuity": case_continuity(overview.summary.case, actor),
     }
 
 

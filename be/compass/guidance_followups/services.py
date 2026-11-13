@@ -540,7 +540,11 @@ def followup_detail(*, actor, item, history_page=1):
     if type(history_page) is not int or not 1 <= history_page <= MAX_PAGE:
         raise FollowUpInvalid("Choose a valid History page.")
     offset = (history_page - 1) * 20
-    rows = list(item.events.select_related("actor").order_by("revision")[offset : offset + 21])
+    rows = list(
+        item.events.select_related("actor", "case_transfer").order_by("revision")[
+            offset : offset + 21
+        ]
+    )
     events = []
     for event in rows[:20]:
         events.append(
@@ -555,6 +559,10 @@ def followup_detail(*, actor, item, history_page=1):
                 "new_assignee_id": event.new_assignee_id,
                 "old_due_at": event.old_due_at,
                 "new_due_at": event.new_due_at,
+                "case_transfer_id": event.case_transfer_id,
+                "case_transfer_reference": event.case_transfer.reference_code
+                if event.case_transfer
+                else None,
                 "remarks": (
                     decrypt_text(item.pk, "remarks", event.remarks_ciphertext, event_id=event.pk)
                     if event.remarks_ciphertext

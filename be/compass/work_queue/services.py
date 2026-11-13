@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.call_slips.work import due_call_slips
+from compass.counseling.case_transfer_work import pending_transfer_work
 from compass.good_moral.work import issuance_requests, preparation_requests
 from compass.guidance_followups.integration import followup_is_time_sensitive, pending_followups
 from compass.guidance_messages.work import reply_needed_threads
@@ -79,6 +80,7 @@ def list_work(*, actor, page=1, page_size=20):
     # Never count/load whole sources. N+1 from each ordered source proves the global N+1 prefix.
     # Unexpected source failures propagate: an incomplete projection cannot claim 'caught up'.
     items = [
+        *pending_transfer_work(actor=actor, limit=limit, now=now),
         *(_followup_item(row, now) for row in pending_followups(actor=actor, limit=limit)),
         *(
             _item(

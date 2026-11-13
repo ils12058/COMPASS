@@ -183,6 +183,8 @@ class FollowUpHistoryEvent(StrictSchema):
     old_due_at: datetime | None
     new_due_at: datetime | None
     remarks: str | None
+    case_transfer_id: UUID | None = None
+    case_transfer_reference: str | None = None
 
 
 class FollowUpDetail(FollowUpSummary):
