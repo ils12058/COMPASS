@@ -317,7 +317,15 @@ def transfer_detail(item, actor, *, result=False):
         and handoff["handoff_ready"],
         "can_authorize": head and (handoff["handoff_ready"] or item.handoff_required_at is None),
         "can_accept": review and (handoff["handoff_ready"] or item.handoff_required_at is None),
-        "can_decline": review or head,
+        "can_decline": review
+        or head
+        or (
+            item.purpose == CaseTransferPurpose.REOPEN
+            and state == "AUTHORIZED"
+            and receiver
+            and rules.receiver_eligible(actor, now)
+            and actor.has_capability("counseling.continuity.read_selected", at=now)
+        ),
         "can_cancel": (current or item.purpose == CaseTransferPurpose.REOPEN)
         and state in {"PREPARED", "AUTHORIZED"}
         and (

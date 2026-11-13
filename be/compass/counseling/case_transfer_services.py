@@ -643,6 +643,8 @@ def notification_is_current(notification, now=None):
         )
         or (
             rules.state_at(item, now) == "AUTHORIZED"
+            and rules.transfer_case_is_current(item.case, item.outgoing_counselor_id, item.purpose)
+            and item.authorized_version == item.version
             and item.receiving_counselor_id == actor.pk
             and rules.receiver_eligible(actor, now)
             and actor.has_capability("counseling.continuity.read_selected", at=now)

@@ -53,18 +53,14 @@ def _lock(case_id, actor, *, expected_version=None, manage=True, extra_people=()
     case = CounselingCase.objects.select_for_update(of=("self",)).filter(pk=case_id).first()
     if case is None or case.primary_counselor_id != actor.pk:
         raise CounselingCaseNotFound("The requested case was not found.")
-    # Case, source Encounters, work, then Users and authority. NOWAIT avoids task-writer inversions.
+    # Case, source Encounters/appointments, Users, then task rows. Ordinary task writers
+    # lock Users before tasks, so taking a task before waiting on its User would deadlock.
     tasks = list(GuidanceFollowUp.objects.filter(case=case, status="PENDING"))
     from .models import CounselingEncounter
 
     rules.locked_rows(
         CounselingEncounter.objects.filter(
             pk__in=[row.source_id for row in tasks if row.source_kind == "COUNSELING_ENCOUNTER"]
-        )
-    )
-    tasks = rules.locked_rows(
-        GuidanceFollowUp.objects.select_related("student__role", "assigned_to__role").filter(
-            case=case, status="PENDING"
         )
     )
     links = rules.locked_rows(
@@ -76,6 +72,15 @@ def _lock(case_id, actor, *, expected_version=None, manage=True, extra_people=()
     people = rules.lock_people(
         {actor.pk, case.student_id, *extra_people} | {row.assigned_to_id for row in tasks}
     )
+    # A reassignment may have committed while the User fence waited. Fence any newly named
+    # assignee without waiting in an inverted User order, then take the current task snapshot.
+    current_assignees = set(
+        GuidanceFollowUp.objects.filter(case=case, status="PENDING").values_list(
+            "assigned_to_id", flat=True
+        )
+    )
+    rules.locked_rows(User.objects.filter(pk__in=current_assignees - set(people)))
+    rules.locked_rows(GuidanceFollowUp.objects.filter(case=case, status="PENDING"))
     actor = people[actor.pk]
     _owner(case, actor, manage=manage, now=timezone.now())
     if expected_version is not None and case.version != _expected_version(expected_version):
