@@ -284,6 +284,27 @@ def eligible_relationship(appointment):
     )
 
 
+def appointment_summary_visible(actor, appointment) -> bool:
+    """Whether a thread's linked Appointment may be summarized to this reader now (MSG-01).
+
+    A Counseling thread stays with its persisted participants, but the Appointment summary is
+    rechecked on every read: the Student who owns it, its current provider, or staff who may manage
+    it today. A Counselor who was reassigned away keeps the conversation, not the Appointment.
+    """
+    from compass.appointments.access import appointment_management_access_allowed
+
+    if appointment is None or not getattr(actor, "pk", None) or not actor.is_active:
+        return False
+    if actor.role.code == "STUDENT":
+        return appointment.student_id == actor.pk and (
+            actor.has_capability("appointments.view_self")
+            or actor.has_capability("appointments.manage_self")
+        )
+    if actor.role.code == "COUNSELOR" and appointment.provider_id == actor.pk:
+        return True
+    return appointment_management_access_allowed(actor, appointment)
+
+
 def relationship_participant(actor, appointment):
     """The exact Student or provider Counselor of the Appointment, as creation requires."""
     return (actor.role.code == "STUDENT" and actor.pk == appointment.student_id) or (

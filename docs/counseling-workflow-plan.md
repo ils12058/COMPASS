@@ -1,7 +1,7 @@
 # COMPASS counseling workflow: decisions and implementation plan
 
 **Date:** 12 November 2026 · Philippine Time  
-**Status:** Decided planning baseline. CW-1 is implemented and verified locally, in review as pull request #360 ([CW-1 record](cw-1/README.md)). CW-2 is implemented and verified locally on `codex/counseling-cw2-next-actions`, stacked on CW-1 ([CW-2 record](cw-2/README.md)). CW-3a transfer, CW-3b structured handoff and CW-3c temporary coverage are implemented and verified locally, stacked in that order on CW-2 ([CW-3 record](cw-3/README.md)). CW-4 closure and reopening is implemented and verified locally, stacked on CW-3c ([CW-4 record](cw-4/README.md)). CW-5 to CW-7 remain open.
+**Status:** Decided planning baseline. CW-1 is implemented and verified locally, in review as pull request #360 ([CW-1 record](cw-1/README.md)). CW-2 is implemented and verified locally on `codex/counseling-cw2-next-actions`, stacked on CW-1 ([CW-2 record](cw-2/README.md)). CW-3a transfer, CW-3b structured handoff and CW-3c temporary coverage are implemented and verified locally, stacked in that order on CW-2 ([CW-3 record](cw-3/README.md)). CW-4 closure and reopening is implemented and verified locally, stacked on CW-3c ([CW-4 record](cw-4/README.md)). CW-6 Counselor About and Messages context is implemented and verified locally, stacked on CW-4 ([CW-6 record](cw-6/README.md)). CW-5 is in review separately as draft pull request #362, stacked on CW-1; CW-7 remains open.
 **Purpose:** Turn the related counseling features into one understandable student-care workflow, and capture the related Referral, Counselor About, and Guidance Messages improvements.
 
 The owner has asked us to make the remaining product decisions using the Guidance Head's insights and the discussions in both chats. The decisions below are the team's chosen implementation direction. Statements attributed to the Guidance Head are the owner's recollection, not a verbatim institutional specification. In particular, a ten-session closure rule was never established.
@@ -278,7 +278,7 @@ The following are domain responsibilities to implement, not invented endpoint na
 
 Each package includes its own API, UI, meaningful tests, and documentation. The labels below are this plan's work packages.
 
-| Package | State on 13 November 2026 |
+| Package | State on 14 November 2026 |
 |---|---|
 | CW-1 | Implemented and verified locally (backend, frontend, browser journeys in Chromium and WebKit, upgrade rehearsal). In review as pull request #360; not merged or deployed. See the [CW-1 record](cw-1/README.md). |
 | CW-2 | Implemented and verified locally with mocked and real local backends, in Chromium and WebKit, plus an upgrade rehearsal. Stacked on CW-1; not merged or deployed. Staff-side booking remains an open gap. See the [CW-2 record](cw-2/README.md). |
@@ -286,7 +286,9 @@ Each package includes its own API, UI, meaningful tests, and documentation. The 
 | CW-3b | Structured handoff implemented and verified locally: backend, immutable encrypted snapshots/addenda, receipt, Head unavailable exception, Chromium/WebKit mocked and real-backend journeys, and upgrade rehearsal. Stacked on CW-3a; not merged or deployed. See the [CW-3 record](cw-3/README.md). |
 | CW-3c | Case coverage implemented and verified locally: backend, frontend, Chromium/WebKit mocked journeys, and upgrade rehearsal. No real-backend browser journey yet. Stacked on CW-3b; not merged or deployed. See the [CW-3 record](cw-3/README.md). |
 | CW-4 | Closure and reopening implemented, including outstanding-work review, confidential closure cycles, retained administrative actions and independently accepted reopening transfers. Backend, contract, unit, Chromium/WebKit mocked and real-backend journeys, and upgrade rehearsal pass locally. Its real-backend journey also exercises CW-3c coverage. Stacked on CW-3c; not merged or deployed. See the [CW-4 record](cw-4/README.md). |
-| CW-5 to CW-7 | Not started. |
+| CW-5 | Referral timing is in review separately as draft pull request #362, stacked on CW-1; its record is on that branch. |
+| CW-6 | Counselor About and Messages context implemented: shared no-store About summary with Head fallback marked as fallback, About in booking, new-message recipients, the Student's Counseling conversation header and transfer/coverage preparation, plus Counselor photo and a rechecked Appointment summary in Messages. Backend, contract, unit, Chromium/WebKit mocked and real-backend journeys pass locally. No migration. Stacked on CW-4; not merged or deployed. See the [CW-6 record](cw-6/README.md). |
+| CW-7 | Not started. |
 
 | Order | Package | Deliverable and completion condition |
 |---|---|---|
@@ -368,4 +370,4 @@ Conversation sources:
 - Subsequent continuation chat **“aruy naputol na naman tayo sa kabilang chat, basahin mo daw…”**, ID `01a1cf4d-5104-75a3-bdef-a52324642b4a`: the final unanswered product question asked which pages to simplify or remove because the frontend feels fragmented. Sections UX-07 and UX-08 complete that review after recovering the conversation in chat `01a1cf67-4479-75b3-8465-211bc42bf612` and checking the current owning frontend sources.
 - The earlier fifteen-proposal document was consulted for continuity and referral context. Its technical suggestions are not all direct panel requirements, and it does not establish automatic closure after ten sessions.
 
-**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1, CW-2 and CW-3 (a, b, c) are implemented and verified locally but not merged ([CW-1 record](cw-1/README.md), [CW-2 record](cw-2/README.md), [CW-3 record](cw-3/README.md)); CW-4 is implemented and verified locally but not merged ([CW-4 record](cw-4/README.md)); CW-5 to CW-7 remain open. Package records contain the executed local scenarios. The section 13 checklist remains the integrated acceptance handover; institutional UAT is not claimed.
+**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1, CW-2 and CW-3 (a, b, c) are implemented and verified locally but not merged ([CW-1 record](cw-1/README.md), [CW-2 record](cw-2/README.md), [CW-3 record](cw-3/README.md)); CW-4 and CW-6 are implemented and verified locally but not merged ([CW-4 record](cw-4/README.md), [CW-6 record](cw-6/README.md)); CW-5 is in draft pull request #362 and CW-7 remains open. Package records contain the executed local scenarios. The section 13 checklist remains the integrated acceptance handover; institutional UAT is not claimed.

@@ -175,6 +175,7 @@ def _directory(query, actor):
         "direct_first_user",
         "direct_second_user",
         "student_subject",
+        "relationship_appointment__service",
     ).annotate(own_unread_count=Coalesce(Subquery(unread), Value(0)))
 
 
