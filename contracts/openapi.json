@@ -5268,6 +5268,1400 @@
         "title": "CareerModeValue",
         "type": "string"
       },
+      "CaseAppointmentDisposition": {
+        "enum": [
+          "REASSIGN",
+          "RESCHEDULE",
+          "CANCEL",
+          "RETAIN_WITH_PROVIDER"
+        ],
+        "title": "CaseAppointmentDisposition",
+        "type": "string"
+      },
+      "CaseAppointmentRetentionReason": {
+        "enum": [
+          "CONTINUING_SUPPORT",
+          "ARRANGED_WITH_STUDENT",
+          "SEPARATE_SERVICE_WORK"
+        ],
+        "title": "CaseAppointmentRetentionReason",
+        "type": "string"
+      },
+      "CaseArrangementDecisionReason": {
+        "enum": [
+          "NO_CAPACITY",
+          "INFORMATION_INCOMPLETE",
+          "ARRANGEMENT_NOT_SUITABLE",
+          "REQUEST_WITHDRAWN",
+          "REVIEW_WINDOW_ENDED"
+        ],
+        "title": "CaseArrangementDecisionReason",
+        "type": "string"
+      },
+      "CaseArrangementStatus": {
+        "enum": [
+          "PREPARED",
+          "AUTHORIZED",
+          "ACCEPTED",
+          "DECLINED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "title": "CaseArrangementStatus",
+        "type": "string"
+      },
+      "CaseAuthorizationRoute": {
+        "enum": [
+          "INDEPENDENT_HEAD",
+          "DIRECT_OUTGOING_HEAD",
+          "OWNER_TO_HEAD"
+        ],
+        "title": "CaseAuthorizationRoute",
+        "type": "string"
+      },
+      "CaseCommunicationDeferral": {
+        "enum": [
+          "STUDENT_UNAVAILABLE",
+          "CONTACT_PENDING",
+          "SUPPORT_TIMING"
+        ],
+        "title": "CaseCommunicationDeferral",
+        "type": "string"
+      },
+      "CaseContinuityIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "primary_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CounselingCaseStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "student",
+          "primary_counselor",
+          "status",
+          "version"
+        ],
+        "title": "CaseContinuityIdentity",
+        "type": "object"
+      },
+      "CaseContinuityLookupPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseContinuityIdentity"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CaseContinuityLookupPage",
+        "type": "object"
+      },
+      "CaseContinuityPanelResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "can_transfer": {
+            "title": "Can Transfer",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferHistoryResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "responsibility": {
+            "items": {
+              "$ref": "#/components/schemas/CaseResponsibilityResponse"
+            },
+            "title": "Responsibility",
+            "type": "array"
+          },
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferSummary"
+            },
+            "title": "Transfers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transfers",
+          "responsibility",
+          "history",
+          "can_transfer"
+        ],
+        "title": "CaseContinuityPanelResponse",
+        "type": "object"
+      },
+      "CaseContinuityPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "CaseContinuityPerson",
+        "type": "object"
+      },
+      "CaseContinuityReason": {
+        "enum": [
+          "IMPARTIALITY_CONCERN",
+          "PLANNED_ABSENCE",
+          "UNEXPECTED_ABSENCE",
+          "TEMPORARY_SUPPORT",
+          "SERVICE_RESPONSIBILITY_CHANGE"
+        ],
+        "title": "CaseContinuityReason",
+        "type": "string"
+      },
+      "CaseOfficePreparationReason": {
+        "enum": [
+          "OWNER_UNAVAILABLE",
+          "IMPARTIALITY_CONCERN"
+        ],
+        "title": "CaseOfficePreparationReason",
+        "type": "string"
+      },
+      "CaseResponsibilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "derived_opening": {
+            "title": "Derived Opening",
+            "type": "boolean"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "transfer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transfer Id"
+          }
+        },
+        "required": [
+          "counselor",
+          "started_at",
+          "ended_at",
+          "transfer_id",
+          "derived_opening"
+        ],
+        "title": "CaseResponsibilityResponse",
+        "type": "object"
+      },
+      "CaseStudentCommunication": {
+        "enum": [
+          "YES",
+          "NO",
+          "DEFERRED"
+        ],
+        "title": "CaseStudentCommunication",
+        "type": "string"
+      },
+      "CaseTaskDisposition": {
+        "enum": [
+          "TRANSFER",
+          "RETAIN",
+          "HAND_OVER_AS_NEW",
+          "RESOLVE_FIRST"
+        ],
+        "title": "CaseTaskDisposition",
+        "type": "string"
+      },
+      "CaseTransferAppointmentContext": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "link_id": {
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "appointment_id",
+          "reference_code",
+          "starts_at",
+          "ends_at",
+          "status",
+          "provider",
+          "record_accessible"
+        ],
+        "title": "CaseTransferAppointmentContext",
+        "type": "object"
+      },
+      "CaseTransferAppointmentPlanInput": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "$ref": "#/components/schemas/CaseAppointmentDisposition"
+          },
+          "link_id": {
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "retention_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAppointmentRetentionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "link_id",
+          "disposition"
+        ],
+        "title": "CaseTransferAppointmentPlanInput",
+        "type": "object"
+      },
+      "CaseTransferAppointmentPlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/CaseAppointmentDisposition"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "link_id": {
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "retention_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAppointmentRetentionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "appointment_id",
+          "reference_code",
+          "starts_at",
+          "ends_at",
+          "status",
+          "provider",
+          "record_accessible",
+          "disposition",
+          "retention_reason"
+        ],
+        "title": "CaseTransferAppointmentPlanResponse",
+        "type": "object"
+      },
+      "CaseTransferContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferAppointmentContext"
+            },
+            "title": "Appointments",
+            "type": "array"
+          },
+          "case": {
+            "$ref": "#/components/schemas/CaseContinuityIdentity"
+          },
+          "office_prepared": {
+            "title": "Office Prepared",
+            "type": "boolean"
+          },
+          "receiver_options": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferReceiverOption"
+            },
+            "title": "Receiver Options",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferTaskContext"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case",
+          "office_prepared",
+          "receiver_options",
+          "tasks",
+          "appointments"
+        ],
+        "title": "CaseTransferContextResponse",
+        "type": "object"
+      },
+      "CaseTransferDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseArrangementDecisionReason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "CaseTransferDecisionRequest",
+        "type": "object"
+      },
+      "CaseTransferDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferAppointmentPlanResponse"
+            },
+            "title": "Appointments",
+            "type": "array"
+          },
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authorized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorized At"
+          },
+          "authorized_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_accept": {
+            "title": "Can Accept",
+            "type": "boolean"
+          },
+          "can_authorize": {
+            "title": "Can Authorize",
+            "type": "boolean"
+          },
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "can_decline": {
+            "title": "Can Decline",
+            "type": "boolean"
+          },
+          "can_edit": {
+            "title": "Can Edit",
+            "type": "boolean"
+          },
+          "can_open_case": {
+            "title": "Can Open Case",
+            "type": "boolean"
+          },
+          "can_submit": {
+            "title": "Can Submit",
+            "type": "boolean"
+          },
+          "case": {
+            "$ref": "#/components/schemas/CaseContinuityIdentity"
+          },
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_recorded_by": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "communication_responsible": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Task Id"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseArrangementDecisionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferHistoryResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "needs_new_arrangement": {
+            "title": "Needs New Arrangement",
+            "type": "boolean"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "office_prepared": {
+            "title": "Office Prepared",
+            "type": "boolean"
+          },
+          "outgoing_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "prepared_by": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "review_accessible": {
+            "title": "Review Accessible",
+            "type": "boolean"
+          },
+          "review_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Expires At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseArrangementStatus"
+          },
+          "student_communication": {
+            "$ref": "#/components/schemas/CaseStudentCommunication"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferTaskPlanResponse"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "state",
+          "version",
+          "receiving_counselor",
+          "waiting_for",
+          "review_expires_at",
+          "independent_authorization",
+          "authorization_route",
+          "needs_new_arrangement",
+          "case",
+          "outgoing_counselor",
+          "prepared_by",
+          "office_prepared",
+          "reason",
+          "office_preparation_reason",
+          "authorized_by",
+          "authorized_at",
+          "decided_by",
+          "decided_at",
+          "decision_reason",
+          "student_communication",
+          "student_informed_at",
+          "communication_recorded_by",
+          "communication_deferral_reason",
+          "communication_task_id",
+          "communication_responsible",
+          "tasks",
+          "appointments",
+          "history",
+          "review_accessible",
+          "can_edit",
+          "can_submit",
+          "can_authorize",
+          "can_accept",
+          "can_decline",
+          "can_cancel",
+          "can_open_case"
+        ],
+        "title": "CaseTransferDetailResponse",
+        "type": "object"
+      },
+      "CaseTransferHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "transfer_id": {
+            "format": "uuid",
+            "title": "Transfer Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "transfer_id",
+          "reference_code",
+          "kind",
+          "version",
+          "actor",
+          "occurred_at",
+          "independent_authorization",
+          "authorization_route"
+        ],
+        "title": "CaseTransferHistoryResponse",
+        "type": "object"
+      },
+      "CaseTransferPrepareRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferAppointmentPlanInput"
+            },
+            "maxItems": 2000,
+            "title": "Appointments",
+            "type": "array"
+          },
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Due At"
+          },
+          "communication_next_action": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Next Action"
+          },
+          "expected_case_version": {
+            "minimum": 1,
+            "title": "Expected Case Version",
+            "type": "integer"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "student_communication": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaseStudentCommunication"
+              }
+            ],
+            "default": "NO"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferTaskPlanInput"
+            },
+            "maxItems": 2000,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_case_version",
+          "receiving_counselor_id",
+          "reason"
+        ],
+        "title": "CaseTransferPrepareRequest",
+        "type": "object"
+      },
+      "CaseTransferReceiverOption": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "person": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          }
+        },
+        "required": [
+          "person",
+          "authorization_route",
+          "blocked_reason"
+        ],
+        "title": "CaseTransferReceiverOption",
+        "type": "object"
+      },
+      "CaseTransferSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "needs_new_arrangement": {
+            "title": "Needs New Arrangement",
+            "type": "boolean"
+          },
+          "receiving_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "review_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Expires At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseArrangementStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "state",
+          "version",
+          "receiving_counselor",
+          "waiting_for",
+          "review_expires_at",
+          "independent_authorization",
+          "authorization_route",
+          "needs_new_arrangement"
+        ],
+        "title": "CaseTransferSummary",
+        "type": "object"
+      },
+      "CaseTransferTaskContext": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_dispositions": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTaskDisposition"
+            },
+            "title": "Allowed Dispositions",
+            "type": "array"
+          },
+          "assignee": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "version",
+          "category",
+          "source_kind",
+          "due_at",
+          "assignee",
+          "title",
+          "allowed_dispositions",
+          "record_accessible"
+        ],
+        "title": "CaseTransferTaskContext",
+        "type": "object"
+      },
+      "CaseTransferTaskPlanInput": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "$ref": "#/components/schemas/CaseTaskDisposition"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "successor_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successor Due At"
+          },
+          "successor_title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successor Title"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "expected_version",
+          "disposition"
+        ],
+        "title": "CaseTransferTaskPlanInput",
+        "type": "object"
+      },
+      "CaseTransferTaskPlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "assignee": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/CaseTaskDisposition"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "successor_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successor Due At"
+          },
+          "successor_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successor Title"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "task_id",
+          "category",
+          "source_kind",
+          "due_at",
+          "assignee",
+          "disposition",
+          "successor_due_at",
+          "successor_title",
+          "title",
+          "record_accessible"
+        ],
+        "title": "CaseTransferTaskPlanResponse",
+        "type": "object"
+      },
+      "CaseTransferUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferAppointmentPlanInput"
+            },
+            "maxItems": 2000,
+            "title": "Appointments",
+            "type": "array"
+          },
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Due At"
+          },
+          "communication_next_action": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Next Action"
+          },
+          "expected_case_version": {
+            "minimum": 1,
+            "title": "Expected Case Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "student_communication": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaseStudentCommunication"
+              }
+            ],
+            "default": "NO"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferTaskPlanInput"
+            },
+            "maxItems": 2000,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_case_version",
+          "receiving_counselor_id",
+          "reason",
+          "expected_version"
+        ],
+        "title": "CaseTransferUpdateRequest",
+        "type": "object"
+      },
+      "CaseTransferVersionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "CaseTransferVersionRequest",
+        "type": "object"
+      },
       "CatalogCreateCampusRequest": {
         "additionalProperties": false,
         "properties": {
@@ -7328,6 +8722,21 @@
             "title": "Id",
             "type": "string"
           },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "record_accessible": {
+            "default": true,
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
           "reference_code": {
             "title": "Reference Code",
             "type": "string"
@@ -7491,6 +8900,16 @@
           "can_manage": {
             "title": "Can Manage",
             "type": "boolean"
+          },
+          "continuity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPanelResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "history": {
             "items": {
@@ -15093,6 +16512,29 @@
           "actor_name": {
             "title": "Actor Name",
             "type": "string"
+          },
+          "case_transfer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Transfer Id"
+          },
+          "case_transfer_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Transfer Reference"
           },
           "created_at": {
             "format": "date-time",
@@ -25452,6 +26894,7 @@
         "description": "Closed set of in-app destinations a Notification may point at.",
         "enum": [
           "GUIDANCE_FOLLOW_UP",
+          "CASE_TRANSFER",
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
@@ -26642,6 +28085,13 @@
           "auth.mfa.totp.disabled",
           "auth.mfa.totp.failed",
           "auth.password.reset",
+          "counseling.case_transfer.accepted",
+          "counseling.case_transfer.authorized",
+          "counseling.case_transfer.cancelled",
+          "counseling.case_transfer.declined",
+          "counseling.case_transfer.prepared",
+          "counseling.case_transfer.submitted",
+          "counseling.case_transfer.updated",
           "document.download_released",
           "privacy.activity.exported",
           "privacy.incident.created",
@@ -33249,6 +34699,17 @@
       "WorkItem": {
         "additionalProperties": false,
         "properties": {
+          "case_reference_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Reference Code"
+          },
           "conversation_kind": {
             "anyOf": [
               {
@@ -33317,6 +34778,8 @@
       },
       "WorkKind": {
         "enum": [
+          "CASE_TRANSFER_AUTHORIZATION",
+          "CASE_TRANSFER_ACCEPTANCE",
           "GUIDANCE_FOLLOW_UP",
           "GUIDANCE_MESSAGE_REPLY",
           "ROUTINE_EVALUATION",
@@ -47409,6 +48872,1101 @@
           }
         ],
         "summary": "Get Selected Routine Evaluation",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/cases/{case_id}/transfer-context": {
+      "get": {
+        "operationId": "counselingGetCaseTransferContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "enum": [
+                    "IMPARTIALITY_CONCERN",
+                    "PLANNED_ABSENCE",
+                    "UNEXPECTED_ABSENCE",
+                    "TEMPORARY_SUPPORT",
+                    "SERVICE_RESPONSIBILITY_CHANGE"
+                  ],
+                  "title": "CaseContinuityReason",
+                  "type": "string"
+                }
+              ],
+              "default": "SERVICE_RESPONSIBILITY_CHANGE"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/cases/{case_id}/transfers": {
+      "post": {
+        "operationId": "counselingPrepareCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferPrepareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Prepare",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/office-cases": {
+      "get": {
+        "operationId": "counselingListContinuityOfficeCases",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseContinuityLookupPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Office Cases",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}": {
+      "get": {
+        "operationId": "counselingGetCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Review",
+        "tags": [
+          "counseling"
+        ]
+      },
+      "put": {
+        "operationId": "counselingUpdateCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Update",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/accept": {
+      "post": {
+        "operationId": "counselingAcceptCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Accept",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/authorize": {
+      "post": {
+        "operationId": "counselingAuthorizeCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Authorize",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/cancel": {
+      "post": {
+        "operationId": "counselingCancelCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/decline": {
+      "post": {
+        "operationId": "counselingDeclineCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Decline",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/transfers/{transfer_id}/submit": {
+      "post": {
+        "operationId": "counselingSubmitCaseTransfer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransferVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseTransferDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit",
         "tags": [
           "counseling"
         ]
