@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelSection, PanelFooter } from "@/components/ui/panel";
 import { pageBackLinkClass } from "@/components/ui/page-header";
+import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -117,7 +118,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
       {reopening ? <PanelSection title="Closed case for reopening" titleId="transfer-reopening-heading"><p className="text-sm">Acceptance moves responsibility to the receiving Counselor and reopens the same episode with reason “Further support needed”. Existing after-closure action owners stay unchanged.</p><p className="mt-2 text-sm text-muted">The office prepares this only when the current owner is unavailable. Independent Head authorization is required.</p></PanelSection> : null}
       <PanelSection title="1. Receiver and reason" titleId="transfer-receiver-heading">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1"><Label htmlFor="transfer-receiver">Receiving counselor</Label><Select id="transfer-receiver" required value={receiver} onChange={event => setReceiver(event.target.value)}><option value="">Choose a Counselor</option>{context.receiver_options.map(item => <option key={item.person.id} value={item.person.id}>{item.person.display_name}</option>)}</Select></div>
+          <div className="grid gap-1"><Label htmlFor="transfer-receiver">Receiving counselor</Label><Select id="transfer-receiver" required value={receiver} onChange={event => setReceiver(event.target.value)}><option value="">Choose a Counselor</option>{context.receiver_options.map(item => <option key={item.person.id} value={item.person.id}>{item.person.display_name}</option>)}</Select>{option ? <CounselorAboutButton counselorId={option.person.id} counselorName={option.person.display_name} className="justify-self-start" /> : null}</div>
           <div className="grid gap-1"><Label htmlFor="transfer-reason">Neutral reason</Label><Select id="transfer-reason" value={reason} onChange={event => { const value = enumChoice(Object.values(CaseContinuityReason), event.target.value); if (value) setReason(value); }}>{Object.values(CaseContinuityReason).map(value => <option key={value} value={value}>{continuityReasonLabels[value]}</option>)}</Select></div>
           {context.office_prepared ? <div className="grid gap-1 sm:col-span-2"><Label htmlFor="office-preparation">Why is the office preparing this?</Label><Select id="office-preparation" required value={officeReason} onChange={event => setOfficeReason(enumChoice(Object.values(CaseOfficePreparationReason), event.target.value) ?? "")}><option value="">Choose a reason</option><option value="OWNER_UNAVAILABLE">Owner unavailable</option>{!reopening ? <option value="IMPARTIALITY_CONCERN">Impartiality concern</option> : null}</Select></div> : null}
         </div>

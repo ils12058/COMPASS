@@ -17,6 +17,7 @@ import {
   guidanceDirectoryQueryKey,
 } from "@/features/guidance-messages/guidance-messages-cache";
 import {
+  threadAppointmentLabel,
   threadRoutingFacts,
   threadStartedLabel,
   threadStatusLabel,
@@ -172,7 +173,8 @@ function ThreadRow({
     : null;
   const time = threadActivityTime(thread.last_message_at ?? thread.created_at);
   const title = threadTitle(thread, viewer, currentUserId);
-  const started = threadStartedLabel(thread);
+  // A Counseling conversation is told apart by its Appointment; others by when they began.
+  const started = threadAppointmentLabel(thread) ?? threadStartedLabel(thread);
 
   return (
     <GuardedPortalLink
