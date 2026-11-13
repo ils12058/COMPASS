@@ -8,7 +8,7 @@
 |---|---|---|
 | CW-3a Transfer | `codex/counseling-cw3a-transfer` | Implemented and verified locally; stacked on CW-2. |
 | CW-3b Handoff | `codex/counseling-cw3b-handoff` | Implemented and verified locally; stacked on CW-3a. |
-| CW-3c Coverage | `codex/counseling-cw3c-coverage` | Not started. |
+| CW-3c Coverage | `codex/counseling-cw3c-coverage` | Implemented and verified locally with mocked browsers and backend tests; stacked on CW-3b. No real-backend browser journey was run. |
 
 ## CW-3a: What staff can do
 
@@ -175,3 +175,79 @@ Existing transfer fixtures now satisfy the real handoff prerequisite instead of 
 Not run: full backend suite, full browser matrix, hosted CI, institutional UAT, physical-device/screen-reader checks, deployment or real-key custody/restore verification. Stacked PRs target feature branches, while hosted CI runs only against `staging`. No merge, shared database change, reset or external messaging was performed.
 
 CW-4 must preserve authorized current-owner handoff reads after closure, resolve pending arrangements explicitly and retain immutable narrative/addenda, receipt, exception and responsibility attribution. Clinical closure, automatic source disclosure and Student messaging remain outside CW-3b.
+
+## CW-3c: Temporary case coverage
+
+The Codex agent built the CW-3c backend and stopped on an API error before the frontend, contract, docs and commits. Claude finished it on 13 November 2026.
+
+### What staff can do
+
+- **Arrange coverage** from the case's Continuity panel. It sits next to Transfer case, and the case keeps at most three page-level commands. The primary Counselor stays responsible throughout, and the screen says so.
+- **Choose what to delegate.** The preparer picks the covering Counselor, a neutral reason, and a start and end in Philippine Time. Then they choose which pending case actions to delegate, each with a return plan: return at the end, or review with the primary Counselor before the end. Session-sourced actions are shown but cannot be selected.
+- **Review and decide** on the coverage page (`/portal/counseling/coverages/<id>`), linked from the case, My work and in-app notifications:
+  - submit, then the Head authorizes;
+  - the covering Counselor accepts or declines;
+  - the preparer cancels;
+  - the primary Counselor ends an active coverage with a reason.
+- **Follow it in My work.** Four new work items open the coverage page: authorization, acceptance, active coverage, and recovery.
+
+### Rules enforced
+
+| Rule | Where |
+|---|---|
+| The same authorization routes as transfer, including the single-Head rule (D1): Counselor → Head needs no third-party authorization when the primary Counselor requests it, and is recorded as not independent; an office request with the Head as receiver is blocked. | `case_coverage_services.py`, shared `case_continuity_rules.eligible_authorizers` |
+| A coverage lasts at most 30 days and starts at most 14 days ahead. | Backend interval check; the form explains the limits before sending anything. |
+| Covering needs explicit acceptance. The primary Counselor never changes. | `accept` changes only the coverage state and delegation rows. |
+| Only selected actions are delegated. Each must be a pending, confidential COUNSELING action assigned to the primary Counselor, who must still be eligible to manage it. | `task_can_delegate`, rechecked at acceptance |
+| Delegated authority comes from the coverage interval, so it ends at expiry or revocation without a job. | `guidance_followups/policy.py` coverage scope |
+| Unfinished delegated actions return to the primary Counselor with an attributed Follow-up event. If the primary is no longer eligible, the action is flagged for recovery through case continuity, never the operational "Recover assignments". Expiry never completes or cancels work. | `case_coverage_tasks.reconcile_returns`. It runs idempotently when a case, coverage or work list is read, or through `manage.py return_case_coverage_tasks`, which nothing schedules yet. |
+| No accepted transfer while a case coverage is active or accepted-upcoming. No second overlapping coverage. No acceptance over an overlapping legacy grant. | `coverage_conflict` refusals |
+| The Head's and the office's views never show action titles. Notifications and audit carry no Student name or task text. | Coverage projections, `notifications/policy.py`, audit metadata |
+| Legacy grants keep their legacy behaviour and are not converted. | Coverage lives in new tables; legacy grants are only read for overlap. |
+
+### API and migrations
+
+- **Ten new operations under `/api/v1/counseling/continuity`:** `counselingGetCaseCoverageContext`, `counselingPrepareCaseCoverage`, `counselingGetCaseCoverage`, `counselingUpdateCaseCoverage`, `counselingSubmitCaseCoverage`, `counselingAuthorizeCaseCoverage`, `counselingAcceptCaseCoverage`, `counselingDeclineCaseCoverage`, `counselingCancelCaseCoverage`, `counselingRevokeCaseCoverage`.
+- **Contract comparison by operation and schema:** 483 → 493 operations; no operation or schema was removed and no method or path changed.
+- **Four new work kinds:** `CASE_COVERAGE_AUTHORIZATION`, `_ACCEPTANCE`, `_WORK`, `_RECOVERY`.
+- **New notification event** `counseling.case_coverage.review` (in-app only) and target type `CASE_COVERAGE`.
+- **Migrations:**
+  - `counseling/0008_case_coverage`: three `CreateModel`s with their constraints inside.
+  - `guidance_followups/0004_case_coverage`: two nullable `AddField`s on the Follow-up event table, without defaults.
+  - Both are registered in `canonical_migrations.json` and pinned in `additive-migrations.json`.
+- **No new keyring, setting, capability or Celery beat entry.**
+
+### Fixed while finishing
+
+- **The authorizing Head lost the task plan after authorizing.** The Head could see the plan while authorizing, but not after. The review projection now keeps it visible to the authorizer, still without titles.
+- **Push policy gaps.** `CASE_TRANSFER_REVIEW` (from CW-3a) and the new `CASE_COVERAGE_REVIEW` were missing from the push policy, so `test_notification_push` failed. CW-3a and CW-3b had not run that file. Both events are now in-app only, because a lock-screen push would reveal case activity. The notification count test went from 33 to 35 events for the same reason.
+- **Three test faults:**
+  - the privacy-activity query passed a person where a search string belongs;
+  - `recoverable_queryset` was called positionally;
+  - notifications were read through a `body` field that does not exist.
+- **Phone width in WebKit.** At 320 and 390 px, the coverage form scrolled sideways (page width 445 px). WebKit counts the text of hidden `<option>` elements toward a narrow wrapper's scroll width. The return-plan options are now short ("Return at the end", "Review before the end"), with the full meaning as help text below.
+
+### Local verification
+
+| Check | Outcome |
+|---|---|
+| `uv run pytest tests/test_cw3_case_coverage.py` | 22 passed |
+| 34 affected backend files: all CW-3 and CW-2 files, cases, Follow-ups, work queue, continuity, handoff, notifications, privacy governance, audit, lock scope, baseline, OpenAPI and staging deployment | 988 passed, 3 failed (the push and registry gaps above). After the fixes, the three files passed (94 tests). |
+| `ruff check`, `ruff format --check`, `makemigrations --check --dry-run`, migration pins | clean; pins match |
+| `pnpm validate` | passed |
+| `pnpm test` | 1,266 passed, 0 failed (before the final copy change); the touched unit files pass (17) |
+| `counseling-coverage.browser.mjs` (new) | 9/9 in Chromium and WebKit |
+| `counseling-continuity`, `user-copy` | 17/17 and 42/42 in both engines, after the final change |
+| `counseling-handoffs`, `counseling-cases`, `work-queue`, `guidance-followups` | 10/10, 62/62, 19/19 and 28/28 in both engines (before the option-label change, which touches only the coverage form) |
+| Upgrade rehearsal (`Claude outputs/cw-3/migration_rehearsal_c.py`, database `compass_cw3_rehearsal_c_20261113_a`) | Counseling stopped at `0007`, Follow-ups at `0003`. Only the two CW-3c migrations applied, and the routine preflight accepted them. Every original column of every legacy table was byte-identical. The three new tables were empty, and the new event fields were null. |
+
+**Not run:**
+
+- the real-backend browser journey for CW-3c (CW-3a and CW-3b have one; coverage is covered by backend HTTP tests and mocked browsers only);
+- the full backend suite and full browser matrix;
+- hosted CI (stacked PRs get none);
+- UAT, screen readers, deployment.
+
+### Handoff to CW-4
+
+Closing a case must account for active, accepted-upcoming and pending coverages, and for delegated actions still out. Close or revoke them explicitly first, and never let closure end coverage silently. The return command needs a schedule before relying on returns being recorded without someone opening the case.
