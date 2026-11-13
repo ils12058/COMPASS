@@ -115,6 +115,22 @@ class CounselingCaseTransfer(models.Model):
         max_length=24, choices=CaseAuthorizationRoute.choices, blank=True, default=""
     )
     review_expires_at = models.DateTimeField(null=True, blank=True)
+    # Null marks a pre-CW-3b submitted offer; no handoff is fabricated for existing data.
+    handoff_required_at = models.DateTimeField(null=True, blank=True)
+    case_handoff = models.ForeignKey(
+        "counseling.CounselingCaseHandoff",
+        on_delete=models.PROTECT,
+        related_name="selected_by_transfers",
+        null=True,
+        blank=True,
+    )
+    handoff_exception = models.ForeignKey(
+        "counseling.CounselingCaseHandoffException",
+        on_delete=models.PROTECT,
+        related_name="selected_by_transfers",
+        null=True,
+        blank=True,
+    )
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
