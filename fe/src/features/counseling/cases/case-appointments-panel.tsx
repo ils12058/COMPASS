@@ -21,8 +21,9 @@ export function CaseAppointmentsPanel({ item, returnTo, confirmed, onLink, onUnl
       {item.appointments.map(link => <li key={link.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-5">
         <div className="min-w-0 flex-1 text-sm">
           {link.appointment ? <>
-            <Link className="font-semibold text-brand underline" href={withWorkflowReturn(`/portal/appointments/${link.appointment.id}`, returnTo)}>{link.appointment.reference_code}</Link>
+            {link.appointment.record_accessible ? <Link className="font-semibold text-brand underline" href={withWorkflowReturn(`/portal/appointments/${link.appointment.id}`, returnTo)}>{link.appointment.reference_code}</Link> : <span className="font-semibold">{link.appointment.reference_code}</span>}
             <p className="mt-1">{formatCounselingDateTime(link.appointment.starts_at)} · {appointmentStatusLabel(link.appointment.status)}</p>
+            {link.appointment.provider ? <p className="mt-1">{link.appointment.provider.display_name}</p> : null}
           </> : <p className="font-semibold">Appointment no longer available</p>}
           <p className="mt-1 text-muted">Linked by {link.linked_by.display_name} · {formatCounselingDateTime(link.linked_at)}</p>
           {link.removed_at ? <p className="mt-1 text-muted">Removed by {link.removed_by?.display_name} · {formatCounselingDateTime(link.removed_at)} · {link.removal_reason === "BELONGS_TO_ANOTHER_CASE" ? "Belongs to another case" : link.removal_reason === "NOT_PART_OF_THIS_CASE" ? "Not part of this case" : "Linked by mistake"}</p> : null}

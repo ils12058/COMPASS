@@ -27,6 +27,8 @@ import { CaseStatusBadge } from "@/features/counseling/cases/case-status-badge";
 import { CaseAppointmentsPanel } from "@/features/counseling/cases/case-appointments-panel";
 import { LinkAppointmentDialog, UnlinkAppointmentDialog } from "@/features/counseling/cases/case-appointment-dialogs";
 import { CaseNextActionsPanel } from "@/features/counseling/cases/case-next-actions-panel";
+import { CaseContinuityPanel } from "@/features/counseling/continuity/case-continuity-panel";
+import { authorizationLabel } from "@/features/counseling/continuity/continuity-presentation";
 import { followupActionLabel } from "@/features/guidance-followups/followups-presentation";
 import { useFollowupsFreshness } from "@/features/guidance-followups/followups-data";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
@@ -216,7 +218,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
           <Fact label="Responsible counselor"><Person person={item.primary_counselor} /></Fact>
           <Fact label="Completed sessions">{item.session_count}</Fact>
           <Fact label="Latest session">{item.latest_session_at ? formatCounselingDateTime(item.latest_session_at) : "No session yet"}</Fact>
-          <Fact label="Next appointment">{item.next_appointment ? <Link href={withWorkflowReturn(`/portal/appointments/${item.next_appointment.id}`, here)} className={textLink}>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</Link> : "No upcoming appointment is linked to this case."}</Fact>
+          <Fact label="Next appointment">{item.next_appointment ? <>{item.next_appointment.record_accessible ? <Link href={withWorkflowReturn(`/portal/appointments/${item.next_appointment.id}`, here)} className={textLink}>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</Link> : <span>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</span>}{item.next_appointment.provider ? <span className="mt-1 block">{item.next_appointment.provider.display_name}</span> : null}</> : "No upcoming appointment is linked to this case."}</Fact>
           <Fact label="Next action">{!item.next_actions_available ? "Next actions are unavailable to your account." : item.next_action ? <><Link href={withWorkflowReturn(`/portal/follow-ups/${item.next_action.id}`, here)} className={textLink}>{followupActionLabel(item.next_action)}</Link><span className="mt-1 block">Due {formatCounselingDateTime(item.next_action.due_at)} · {item.next_action.assigned_to_name}</span></> : "No pending next action in this case."}</Fact>
           <Fact label="Opened">{formatCounselingDateTime(item.opened_at)} · {originDescription(item, here)}</Fact>
         </dl>
@@ -233,6 +235,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
         </Notice>
       )) : null}
 
+      <CaseContinuityPanel item={item} returnTo={here} confirmed={!query.isError} />
       <CaseNextActionsPanel item={item} returnTo={here} />
       <CaseAppointmentsPanel item={item} returnTo={here} confirmed={!query.isError} onLink={() => { actionStatus.dismiss(); setAppointmentOpen(true); }} onUnlink={link => { actionStatus.dismiss(); setUnlinking(link); }} />
 
@@ -291,6 +294,11 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
               <p className="mt-0.5 text-xs text-muted">{formatCounselingDateTime(event.occurred_at)} · {event.actor.display_name}{event.primary_counselor.id !== event.actor.id ? ` · Responsible counselor: ${event.primary_counselor.display_name}` : ""}</p>
             </li>
           ))}
+          {item.continuity?.history.map(event => <li key={event.id} className="px-4 py-3 sm:px-5">
+            <p className="text-sm text-ink capitalize">Transfer {event.kind} · {event.reference_code}</p>
+            <p className="mt-0.5 text-xs text-muted">{formatCounselingDateTime(event.occurred_at)} · {event.actor.display_name}</p>
+            {event.authorization_route ? <p className="mt-1 text-sm text-muted">{authorizationLabel(event.authorization_route)}</p> : null}
+          </li>)}
         </ol>
       </Panel>
 

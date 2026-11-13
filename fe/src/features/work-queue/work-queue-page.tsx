@@ -50,6 +50,7 @@ function WorkList({ user }: { user: UserSummary }) {
   return (
     <section aria-labelledby="my-work-heading" className="min-w-0">
       <PageHeader title="My work" headingId="my-work-heading" description="Work that needs your attention." />
+      {user.capabilities.includes("counseling.continuity.request") && (user.role === "GUIDANCE_OFFICE_ASSISTANT" || user.designations.includes("HEAD_GUIDANCE_COUNSELOR")) ? <p className="mb-4 text-sm"><Link className="font-semibold text-brand underline underline-offset-4" href={withWorkflowReturn("/portal/counseling/continuity", here)}>Arrange case continuity</Link></p> : null}
       {followupAccess(user).view ? <p className="mb-4 text-sm"><Link className="font-semibold text-brand underline underline-offset-4" href={withWorkflowReturn("/portal/follow-ups", here)}>View all Follow-Ups</Link></p> : null}
       {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <Panel>
