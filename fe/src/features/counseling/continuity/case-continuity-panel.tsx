@@ -13,7 +13,7 @@ export function CaseContinuityPanel({ item, returnTo, confirmed }: { item: Couns
   const continuity = item.continuity;
   if (!continuity) return null;
   return <Panel className="mt-5" aria-labelledby="case-continuity-heading">
-    <PanelHeader title="Continuity" titleId="case-continuity-heading" actions={confirmed && (continuity.can_transfer || continuity.can_arrange_coverage) ? <div className="flex flex-wrap gap-2">
+    <PanelHeader title="Continuity" titleId="case-continuity-heading" actions={confirmed && item.status === "ACTIVE" && (continuity.can_transfer || continuity.can_arrange_coverage) ? <div className="flex flex-wrap gap-2">
       {continuity.can_arrange_coverage ? <PageActionLink icon={UserRoundCheck} label="Arrange coverage" variant="secondary" href={withWorkflowReturn(coveragePrepareHref(item.id), returnTo)} /> : null}
       {continuity.can_transfer ? <PageActionLink icon={ArrowRightLeft} label="Transfer case" variant="secondary" href={withWorkflowReturn(transferPrepareHref(item.id), returnTo)} /> : null}
     </div> : null} />

@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelSection, PanelFooter } from "@/components/ui/panel";
 import { pageBackLinkClass } from "@/components/ui/page-header";
+import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -85,7 +86,7 @@ function CoverageForm({ context, existing, returnTo }: { context: CaseCoverageCo
       <PanelHeader title={`${context.case.reference_code} · ${context.case.student.display_name}`} titleId="coverage-form-heading" description={`${context.case.primary_counselor.display_name} stays the primary Counselor throughout the coverage.`} />
       <PanelSection title="1. Covering counselor and period" titleId="coverage-receiver-heading">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1"><Label htmlFor="coverage-receiver">Covering counselor</Label><Select id="coverage-receiver" required value={receiver} disabled={pending} onChange={event => setReceiver(event.target.value)}><option value="">Choose a Counselor</option>{context.receiver_options.map(item => <option key={item.person.id} value={item.person.id}>{item.person.display_name}</option>)}</Select></div>
+          <div className="grid gap-1"><Label htmlFor="coverage-receiver">Covering counselor</Label><Select id="coverage-receiver" required value={receiver} disabled={pending} onChange={event => setReceiver(event.target.value)}><option value="">Choose a Counselor</option>{context.receiver_options.map(item => <option key={item.person.id} value={item.person.id}>{item.person.display_name}</option>)}</Select>{option ? <CounselorAboutButton counselorId={option.person.id} counselorName={option.person.display_name} className="justify-self-start" /> : null}</div>
           <div className="grid gap-1"><Label htmlFor="coverage-reason">Neutral reason</Label><Select id="coverage-reason" value={reason} disabled={pending} onChange={event => { const value = enumChoice(Object.values(CaseContinuityReason), event.target.value); if (value) setReason(value); }}>{Object.values(CaseContinuityReason).map(value => <option key={value} value={value}>{continuityReasonLabels[value]}</option>)}</Select></div>
           <div className="grid gap-1"><Label htmlFor="coverage-starts">Starts (Philippine Time)</Label><Input id="coverage-starts" type="datetime-local" required value={starts} disabled={pending} onChange={event => setStarts(event.target.value)} /></div>
           <div className="grid gap-1"><Label htmlFor="coverage-ends">Ends (Philippine Time)</Label><Input id="coverage-ends" type="datetime-local" required value={ends} disabled={pending} onChange={event => setEnds(event.target.value)} /></div>

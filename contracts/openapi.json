@@ -3571,6 +3571,14 @@
         "title": "AssessmentTypeUpdate",
         "type": "object"
       },
+      "AssignmentBasis": {
+        "enum": [
+          "ASSIGNED",
+          "HEAD_FALLBACK"
+        ],
+        "title": "AssignmentBasis",
+        "type": "string"
+      },
       "AssistedCurrentStudentRequestPayload": {
         "additionalProperties": false,
         "properties": {
@@ -5319,6 +5327,405 @@
         "title": "CaseAuthorizationRoute",
         "type": "string"
       },
+      "CaseCloseRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CaseClosureOutcome"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseClosureReason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason",
+          "outcome"
+        ],
+        "title": "CaseCloseRequest",
+        "type": "object"
+      },
+      "CaseClosureAppointment": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "CaseClosureAppointment",
+        "type": "object"
+      },
+      "CaseClosureArrangement": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "state"
+        ],
+        "title": "CaseClosureArrangement",
+        "type": "object"
+      },
+      "CaseClosureBlockerKind": {
+        "enum": [
+          "TRANSFER",
+          "COVERAGE",
+          "DELEGATED_TASK",
+          "APPOINTMENT",
+          "TASK"
+        ],
+        "title": "CaseClosureBlockerKind",
+        "type": "string"
+      },
+      "CaseClosureContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureAppointment"
+            },
+            "title": "Appointments",
+            "type": "array"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureBlockerKind"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "can_close": {
+            "title": "Can Close",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "coverages": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureArrangement"
+            },
+            "title": "Coverages",
+            "type": "array"
+          },
+          "delegated_task_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Delegated Task Ids",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureTask"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureArrangement"
+            },
+            "title": "Transfers",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "case_id",
+          "version",
+          "blockers",
+          "transfers",
+          "coverages",
+          "delegated_task_ids",
+          "appointments",
+          "tasks",
+          "can_close"
+        ],
+        "title": "CaseClosureContextResponse",
+        "type": "object"
+      },
+      "CaseClosureOutcome": {
+        "enum": [
+          "GOALS_MET",
+          "GOALS_PARTLY_MET",
+          "GOALS_NOT_MET",
+          "NOT_ASSESSED"
+        ],
+        "title": "CaseClosureOutcome",
+        "type": "string"
+      },
+      "CaseClosurePerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "CaseClosurePerson",
+        "type": "object"
+      },
+      "CaseClosureReason": {
+        "enum": [
+          "PLANNED_SUPPORT_CONCLUDED",
+          "STUDENT_DISCONTINUED",
+          "CONTACT_NOT_REESTABLISHED",
+          "EXTERNAL_HANDOVER_CONFIRMED",
+          "ELIGIBILITY_ENDED"
+        ],
+        "title": "CaseClosureReason",
+        "type": "string"
+      },
+      "CaseClosureResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "closed_at": {
+            "format": "date-time",
+            "title": "Closed At",
+            "type": "string"
+          },
+          "closed_by": {
+            "$ref": "#/components/schemas/CaseClosurePerson"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CaseClosureOutcome"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseClosureReason"
+          },
+          "reopen_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseReopenReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reopened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reopened At"
+          },
+          "reopened_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseClosurePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "closed_at",
+          "closed_by",
+          "reason",
+          "outcome",
+          "note",
+          "reopened_at",
+          "reopened_by",
+          "reopen_reason"
+        ],
+        "title": "CaseClosureResponse",
+        "type": "object"
+      },
+      "CaseClosureTask": {
+        "additionalProperties": false,
+        "properties": {
+          "assigned_to_id": {
+            "format": "uuid",
+            "title": "Assigned To Id",
+            "type": "string"
+          },
+          "assigned_to_name": {
+            "title": "Assigned To Name",
+            "type": "string"
+          },
+          "can_designate": {
+            "title": "Can Designate",
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "post_closure_designated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Closure Designated At"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "student_id",
+          "category",
+          "source_kind",
+          "source_id",
+          "title",
+          "assigned_to_id",
+          "assigned_to_name",
+          "due_at",
+          "version",
+          "post_closure_designated_at",
+          "can_designate"
+        ],
+        "title": "CaseClosureTask",
+        "type": "object"
+      },
       "CaseCommunicationDeferral": {
         "enum": [
           "STUDENT_UNAVAILABLE",
@@ -6955,6 +7362,73 @@
         "title": "CaseOfficePreparationReason",
         "type": "string"
       },
+      "CasePostClosureTaskRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "administrative_action": {
+            "const": true,
+            "title": "Administrative Action",
+            "type": "boolean"
+          },
+          "assigned_to_id": {
+            "format": "uuid",
+            "title": "Assigned To Id",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "expected_task_version": {
+            "minimum": 1,
+            "title": "Expected Task Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_task_version",
+          "administrative_action",
+          "assigned_to_id",
+          "due_at"
+        ],
+        "title": "CasePostClosureTaskRequest",
+        "type": "object"
+      },
+      "CaseReopenReason": {
+        "enum": [
+          "SAME_CONCERN_RETURNED",
+          "FURTHER_SUPPORT_NEEDED",
+          "CLOSED_IN_ERROR"
+        ],
+        "title": "CaseReopenReason",
+        "type": "string"
+      },
+      "CaseReopenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseReopenReason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "CaseReopenRequest",
+        "type": "object"
+      },
       "CaseResponsibilityResponse": {
         "additionalProperties": false,
         "properties": {
@@ -7188,6 +7662,16 @@
           "office_prepared": {
             "title": "Office Prepared",
             "type": "boolean"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseTransferPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "receiver_options": {
             "items": {
@@ -7453,6 +7937,16 @@
           "prepared_by": {
             "$ref": "#/components/schemas/CaseContinuityPerson"
           },
+          "purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseTransferPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reason": {
             "$ref": "#/components/schemas/CaseContinuityReason"
           },
@@ -7703,6 +8197,16 @@
               }
             ]
           },
+          "purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseTransferPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reason": {
             "$ref": "#/components/schemas/CaseContinuityReason"
           },
@@ -7747,6 +8251,13 @@
         ],
         "title": "CaseTransferPrepareRequest",
         "type": "object"
+      },
+      "CaseTransferPurpose": {
+        "enum": [
+          "REOPEN"
+        ],
+        "title": "CaseTransferPurpose",
+        "type": "string"
       },
       "CaseTransferReceiverOption": {
         "additionalProperties": false,
@@ -7809,6 +8320,16 @@
           "needs_new_arrangement": {
             "title": "Needs New Arrangement",
             "type": "boolean"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseTransferPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "receiving_counselor": {
             "$ref": "#/components/schemas/CaseContinuityPerson"
@@ -8143,6 +8664,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseTransferPurpose"
               },
               {
                 "type": "null"
@@ -10441,6 +10972,11 @@
             "title": "Can Add Next Action",
             "type": "boolean"
           },
+          "can_close": {
+            "default": false,
+            "title": "Can Close",
+            "type": "boolean"
+          },
           "can_link_appointments": {
             "title": "Can Link Appointments",
             "type": "boolean"
@@ -10448,6 +10984,50 @@
           "can_manage": {
             "title": "Can Manage",
             "type": "boolean"
+          },
+          "can_reopen": {
+            "default": false,
+            "title": "Can Reopen",
+            "type": "boolean"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseClosureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseClosureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closures": {
+            "items": {
+              "$ref": "#/components/schemas/CaseClosureResponse"
+            },
+            "title": "Closures",
+            "type": "array"
           },
           "continuity": {
             "anyOf": [
@@ -11182,6 +11762,28 @@
       "CounselingCaseSummaryResponse": {
         "additionalProperties": false,
         "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseClosureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -12326,6 +12928,140 @@
           }
         },
         "title": "CounselingUpdateRequest",
+        "type": "object"
+      },
+      "CounselorAboutCampus": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "colleges": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorAboutCollege"
+            },
+            "title": "Colleges",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "colleges"
+        ],
+        "title": "CounselorAboutCampus",
+        "type": "object"
+      },
+      "CounselorAboutCollege": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/AssignmentBasis"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "basis"
+        ],
+        "title": "CounselorAboutCollege",
+        "type": "object"
+      },
+      "CounselorAboutPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "CounselorAboutPerson",
+        "type": "object"
+      },
+      "CounselorAboutResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "campuses": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorAboutCampus"
+            },
+            "title": "Campuses",
+            "type": "array"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/CounselorAboutPerson"
+          }
+        },
+        "required": [
+          "counselor",
+          "campuses",
+          "checked_at"
+        ],
+        "title": "CounselorAboutResponse",
         "type": "object"
       },
       "CounselorAssignmentRequest": {
@@ -17933,6 +18669,30 @@
             "title": "Overdue",
             "type": "boolean"
           },
+          "post_closure_closure_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Closure Closure Id"
+          },
+          "post_closure_designated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Closure Designated At"
+          },
           "predecessor_id": {
             "anyOf": [
               {
@@ -18560,6 +19320,30 @@
           "overdue": {
             "title": "Overdue",
             "type": "boolean"
+          },
+          "post_closure_closure_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Closure Closure Id"
+          },
+          "post_closure_designated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Closure Designated At"
           },
           "source_unavailable": {
             "title": "Source Unavailable",
@@ -23723,6 +24507,48 @@
         "title": "GuidanceAppointmentContext",
         "type": "object"
       },
+      "GuidanceAppointmentSummary": {
+        "additionalProperties": false,
+        "description": "The linked Appointment, only while this reader may see it now (MSG-01).",
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service_name": {
+            "title": "Service Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "service_name",
+          "starts_at",
+          "ends_at",
+          "status"
+        ],
+        "title": "GuidanceAppointmentSummary",
+        "type": "object"
+      },
       "GuidanceAssignRequest": {
         "additionalProperties": false,
         "properties": {
@@ -23835,6 +24661,52 @@
           "has_next"
         ],
         "title": "GuidanceCounselorPeerPage",
+        "type": "object"
+      },
+      "GuidanceCounselorPerson": {
+        "additionalProperties": false,
+        "description": "A Counselor participant: the safe public identity, with the optional profile photo.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "GuidanceCounselorPerson",
         "type": "object"
       },
       "GuidanceHandlerOption": {
@@ -24232,18 +25104,32 @@
             "type": "string"
           },
           "counselor": {
-            "$ref": "#/components/schemas/GuidancePerson"
+            "$ref": "#/components/schemas/GuidanceCounselorPerson"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service_name": {
+            "title": "Service Name",
+            "type": "string"
           },
           "starts_at": {
             "format": "date-time",
             "title": "Starts At",
             "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
           }
         },
         "required": [
           "appointment_id",
           "counselor",
-          "starts_at"
+          "starts_at",
+          "reference_code",
+          "service_name",
+          "status"
         ],
         "title": "GuidanceRelationshipOption",
         "type": "object"
@@ -24553,7 +25439,7 @@
           "counselor": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/GuidancePerson"
+                "$ref": "#/components/schemas/GuidanceCounselorPerson"
               },
               {
                 "type": "null"
@@ -24612,6 +25498,16 @@
           "own_last_read_sequence": {
             "title": "Own Last Read Sequence",
             "type": "integer"
+          },
+          "relationship_appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "relationship_appointment_id": {
             "anyOf": [
@@ -24754,6 +25650,7 @@
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
+          "relationship_appointment",
           "relationship_referral_id",
           "relationship_referral_reference",
           "relationship_referral_voided",
@@ -29674,6 +30571,8 @@
           "auth.mfa.totp.disabled",
           "auth.mfa.totp.failed",
           "auth.password.reset",
+          "counseling.case.closed",
+          "counseling.case.reopened",
           "counseling.case_coverage.accepted",
           "counseling.case_coverage.authorized",
           "counseling.case_coverage.cancelled",
@@ -48168,6 +49067,320 @@
         ]
       }
     },
+    "/api/v1/counseling/cases/{case_id}/close": {
+      "post": {
+        "operationId": "counselingCloseCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCloseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Close Case",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/closure-context": {
+      "get": {
+        "operationId": "counselingGetCaseClosureContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseClosureContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Closure Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/reopen": {
+      "post": {
+        "operationId": "counselingReopenCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseReopenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Reopen Case",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/cases/{case_id}/session-candidates": {
       "get": {
         "operationId": "counselingListCaseSessionCandidates",
@@ -48497,6 +49710,124 @@
           }
         ],
         "summary": "Counseling Unlink Case Session",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/cases/{case_id}/tasks/{task_id}/after-closure": {
+      "post": {
+        "operationId": "counselingDesignateCaseTaskAfterClosure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CasePostClosureTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingCaseDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Designate Case Task",
         "tags": [
           "counseling"
         ]
@@ -50721,6 +52052,21 @@
               ],
               "default": "SERVICE_RESPONSIBILITY_CHANGE"
             }
+          },
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CaseTransferPurpose"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           }
         ],
         "responses": {
@@ -52020,6 +53366,24 @@
               "default": 20,
               "title": "Page Size",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "enum": [
+                    "ACTIVE",
+                    "CLOSED"
+                  ],
+                  "title": "CounselingCaseStatus",
+                  "type": "string"
+                }
+              ],
+              "default": "ACTIVE"
             }
           }
         ],
@@ -70863,6 +72227,74 @@
           }
         ],
         "summary": "Counselor Responsibilities",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/counselors/{counselor_id}/about": {
+      "get": {
+        "operationId": "organizationGetCounselorAbout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "counselor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Counselor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselorAboutResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counselor About",
         "tags": [
           "organization"
         ]

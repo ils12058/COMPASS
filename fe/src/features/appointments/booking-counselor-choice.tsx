@@ -1,4 +1,5 @@
 import { PersonAvatar } from "@/features/account/components/person-avatar";
+import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import type { EligibleCounselorResponse } from "@/lib/api/generated/model";
 
 function CounselorIdentity({ counselor }: { counselor: EligibleCounselorResponse }) {
@@ -11,22 +12,33 @@ function CounselorIdentity({ counselor }: { counselor: EligibleCounselorResponse
   </>;
 }
 
+// About sits beside each choice, never inside its label, so opening it cannot select a Counselor.
 export function BookingCounselorChoice({ items, value, onChange, disabled = false }: {
   items: EligibleCounselorResponse[];
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
 }) {
-  if (items.length === 1) return <div className="@container flex flex-wrap items-center gap-3"><CounselorIdentity counselor={items[0]} /></div>;
+  if (items.length === 1) {
+    return (
+      <div className="@container flex flex-wrap items-center gap-3">
+        <CounselorIdentity counselor={items[0]} />
+        <CounselorAboutButton counselorId={items[0].id} counselorName={items[0].display_name} />
+      </div>
+    );
+  }
   return (
     <fieldset disabled={disabled} className="@container min-w-0">
       <legend className="sr-only">Counselor</legend>
       <div className="grid gap-2 @min-[40rem]:grid-cols-2">
         {items.map((counselor) => (
-          <label key={counselor.id} className="flex min-w-0 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border-strong px-3 py-2 has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:focus]:ring-2 has-[:focus]:ring-focus has-[:focus]:ring-offset-2">
-            <input type="radio" name="booking-counselor" value={counselor.id} checked={value === counselor.id} onChange={() => onChange(counselor.id)} className="size-4 shrink-0 accent-brand" />
-            <CounselorIdentity counselor={counselor} />
-          </label>
+          <div key={counselor.id} className="flex min-w-0 items-center gap-1 rounded-md border border-border-strong pr-1 has-[input:checked]:border-brand has-[input:checked]:bg-brand-wash has-[input:focus]:ring-2 has-[input:focus]:ring-focus has-[input:focus]:ring-offset-2">
+            <label className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+              <input type="radio" name="booking-counselor" value={counselor.id} checked={value === counselor.id} onChange={() => onChange(counselor.id)} className="size-4 shrink-0 accent-brand" />
+              <CounselorIdentity counselor={counselor} />
+            </label>
+            <CounselorAboutButton counselorId={counselor.id} counselorName={counselor.display_name} />
+          </div>
         ))}
       </div>
     </fieldset>

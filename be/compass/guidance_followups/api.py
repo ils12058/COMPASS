@@ -164,6 +164,8 @@ class FollowUpSummary(StrictSchema):
     updated_at: datetime
     title: str | None
     case: FollowUpCaseReference | None
+    post_closure_designated_at: datetime | None = None
+    post_closure_closure_id: UUID | None = None
 
 
 class SourceReference(StrictSchema):
@@ -287,6 +289,8 @@ def _summary_fields(item, source_unavailable, *, actor=None):
             else None
         ),
         "case": policy.visible_case(actor, item) if actor is not None else None,
+        "post_closure_designated_at": item.post_closure_designated_at,
+        "post_closure_closure_id": item.post_closure_closure_id,
     }
 
 

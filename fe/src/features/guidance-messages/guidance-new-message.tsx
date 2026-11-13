@@ -4,10 +4,11 @@ import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-inval
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
+import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import { cacheThread } from "@/features/guidance-messages/guidance-conversation-data";
 import { GuidanceIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
 import { ConversationFrame } from "@/features/guidance-messages/guidance-conversation";
@@ -15,14 +16,17 @@ import { GuidanceCounselorPeerPicker } from "@/features/guidance-messages/guidan
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
 import type { SendIntent } from "@/features/guidance-messages/guidance-message-send";
 import { messageTemplatesFor } from "@/features/guidance-messages/guidance-messages-access";
-import { guidanceDateTime } from "@/features/guidance-messages/guidance-message-time";
 import {
   guidanceConversationQueryKey,
   guidanceDirectoryQueryFamily,
   type ConversationHistory,
 } from "@/features/guidance-messages/guidance-messages-cache";
 import { describeSendError, type GuidanceSendContext } from "@/features/guidance-messages/guidance-messages-errors";
-import { GUIDANCE_OFFICE_LABEL, personName } from "@/features/guidance-messages/guidance-messages-presentation";
+import {
+  GUIDANCE_OFFICE_LABEL,
+  appointmentSummaryLabel,
+  personName,
+} from "@/features/guidance-messages/guidance-messages-presentation";
 import { CONVERSATION_HEADING_ID, errorStatus } from "@/features/guidance-messages/guidance-messages-shared";
 import { useGuidanceWorkspace } from "@/features/guidance-messages/guidance-messages-workspace";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
@@ -299,7 +303,15 @@ function StudentNewMessage() {
                       setRelationship(option);
                     }}
                     title={personName(option.counselor, "Counselor")}
-                    detail={`Counseling Appointment · ${guidanceDateTime(option.starts_at)}`}
+                    detail={`${option.reference_code} · ${appointmentSummaryLabel(option)}`}
+                    photoUrl={option.counselor.profile_photo_url}
+                    photoUpdatedAt={option.counselor.profile_photo_updated_at}
+                    aside={
+                      <CounselorAboutButton
+                        counselorId={option.counselor.id}
+                        counselorName={personName(option.counselor, "Counselor")}
+                      />
+                    }
                   />
                 </li>
               ))}
@@ -566,6 +578,9 @@ function RecipientOption({
   detail,
   office = false,
   showAvatar = true,
+  photoUrl,
+  photoUpdatedAt,
+  aside,
 }: {
   name: string;
   checked: boolean;
@@ -574,15 +589,26 @@ function RecipientOption({
   detail?: string;
   office?: boolean;
   showAvatar?: boolean;
+  photoUrl?: string | null;
+  photoUpdatedAt?: string | null;
+  /** Shown beside the choice, outside its label, so it never selects the recipient. */
+  aside?: ReactNode;
 }) {
-  return (
-    <label data-guide-target="message-recipient" className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
+  const label = (
+    <label data-guide-target="message-recipient" className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash has-[:disabled]:cursor-not-allowed has-[:focus]:ring-2 has-[:focus]:ring-inset has-[:focus]:ring-focus">
       <input className="mt-1 size-4 shrink-0 accent-brand" type="radio" name={name} checked={checked} onChange={onSelect} />
-      {showAvatar ? <GuidanceIdentityAvatar name={title} office={office} /> : null}
+      {showAvatar ? <GuidanceIdentityAvatar name={title} office={office} photoUrl={photoUrl} photoUpdatedAt={photoUpdatedAt} /> : null}
       <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         <span className="block font-semibold">{title}</span>
         {detail ? <span className="mt-0.5 block text-sm text-muted">{detail}</span> : null}
       </span>
     </label>
+  );
+  if (!aside) return label;
+  return (
+    <div className="flex items-center gap-1 pr-2 has-[input:checked]:bg-brand-wash">
+      {label}
+      {aside}
+    </div>
   );
 }

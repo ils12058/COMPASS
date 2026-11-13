@@ -18,6 +18,10 @@ class CaseContinuityReason(models.TextChoices):
     SERVICE_RESPONSIBILITY_CHANGE = "SERVICE_RESPONSIBILITY_CHANGE", "Service responsibility change"
 
 
+class CaseTransferPurpose(models.TextChoices):
+    REOPEN = "REOPEN", "Reopen under a new responsible Counselor"
+
+
 class CaseArrangementState(models.TextChoices):
     PREPARED = "PREPARED", "Prepared"
     AUTHORIZED = "AUTHORIZED", "Authorized"
@@ -93,6 +97,10 @@ class CounselingCaseTransfer(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="prepared_case_transfers"
     )
     reason = models.CharField(max_length=40, choices=CaseContinuityReason.choices)
+    # Null preserves ordinary transfers and every pre-CW-4 row without a backfill.
+    purpose = models.CharField(
+        max_length=16, choices=CaseTransferPurpose.choices, null=True, blank=True
+    )
     office_preparation_reason = models.CharField(
         max_length=32, choices=CaseOfficePreparationReason.choices, blank=True, default=""
     )

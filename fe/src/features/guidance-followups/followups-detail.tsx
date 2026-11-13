@@ -80,6 +80,7 @@ export function FollowupsDetail({ id }: { id: string }) {
       <PanelSection title="Current status and due date" titleId="followup-status-due">
         <dl className="grid gap-4 sm:grid-cols-2">
           <div><dt className="text-sm text-muted">Status</dt><dd>{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</dd></div>
+          {item.post_closure_designated_at ? <div><dt className="text-sm text-muted">Case disposition</dt><dd>Administrative action kept after closure</dd></div> : null}
           <div><dt className="text-sm text-muted">Due date and time (Philippine Time)</dt><dd>{formatInstitutionalDateTime(item.due_at)}</dd></div>
         </dl>
       </PanelSection>

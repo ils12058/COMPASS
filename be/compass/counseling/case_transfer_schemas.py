@@ -19,6 +19,7 @@ from .case_transfer_models import (
     CaseOfficePreparationReason,
     CaseStudentCommunication,
     CaseTaskDisposition,
+    CaseTransferPurpose,
 )
 
 
@@ -92,6 +93,7 @@ class CaseTransferAppointmentContext(StrictSchema):
 
 class CaseTransferContextResponse(StrictSchema):
     case: CaseContinuityIdentity
+    purpose: CaseTransferPurpose | None = None
     office_prepared: bool
     receiver_options: list[CaseTransferReceiverOption]
     tasks: list[CaseTransferTaskContext]
@@ -135,6 +137,7 @@ class CaseHandoffExceptionMetadata(StrictSchema):
 
 
 class CaseTransferPrepareRequest(StrictSchema):
+    purpose: CaseTransferPurpose | None = None
     expected_case_version: int = Field(ge=1)
     receiving_counselor_id: UUID
     reason: CaseContinuityReason
@@ -182,6 +185,7 @@ class CaseTransferAppointmentPlanResponse(CaseTransferAppointmentContext):
 
 
 class CaseTransferSummary(StrictSchema):
+    purpose: CaseTransferPurpose | None = None
     id: UUID
     reference_code: str
     state: CaseArrangementStatus
