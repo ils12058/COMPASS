@@ -1,13 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { subscribeSessionRevalidation } from "@/lib/auth/session-revalidation";
 import { CoverageGeneration } from "./coverage-safety";
 // Short-lived per-detail barrier. TanStack owns fetching/cancellation; these events only clear.
-export function useCoveragePrivacy(accountId: string, grantId: string) {
+export function useCoveragePrivacy(accountId: string, grantId: string, queryPrefix?: QueryKey) {
     const client = useQueryClient();
     const [barrier] = useState(() => new CoverageGeneration());
-    const prefix = useMemo(() => ["protected-case-coverage", accountId, grantId], [accountId, grantId]);
+    const prefix = useMemo(() => queryPrefix ?? ["protected-case-coverage", accountId, grantId], [accountId, grantId, queryPrefix]);
     const [blocked, setBlocked] = useState(false);
     const [generation, setGeneration] = useState(0);
     const clear = useCallback(() => { barrier.invalidate(); setBlocked(true); setGeneration(barrier.current()); void client.cancelQueries({ queryKey: prefix }); client.removeQueries({ queryKey: prefix }); }, [barrier, client, prefix]);
