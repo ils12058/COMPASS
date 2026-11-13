@@ -408,5 +408,7 @@ CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"
 COUNSELING_CASE_OPENED = "counseling.case.opened"
 COUNSELING_CASE_SESSION_LINKED = "counseling.case.session_linked"
 COUNSELING_CASE_SESSION_UNLINKED = "counseling.case.session_unlinked"
+COUNSELING_CASE_APPOINTMENT_LINKED = "counseling.case.appointment_linked"
+COUNSELING_CASE_APPOINTMENT_UNLINKED = "counseling.case.appointment_unlinked"
 
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"

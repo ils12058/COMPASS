@@ -22,6 +22,8 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.institutional_time import to_institution_time
+from compass.guidance_followups.api import FollowUpSummary, _summaries
+from compass.guidance_followups.errors import FollowUpError
 from compass.service_catalog.api import DeliveryMode
 
 from .api import (
@@ -29,6 +31,12 @@ from .api import (
     CounselingCaseStatus,
     CounselingEntryMode,
     IdentitySummaryResponse,
+)
+from .case_appointment_services import (
+    appointment_accessible,
+    link_appointment,
+    list_appointment_candidates,
+    unlink_appointment,
 )
 from .case_services import (
     MANAGE_CAPABILITY,
@@ -72,6 +80,22 @@ class CounselingCaseEventKind(StrEnum):
     OPENED = "OPENED"
     SESSION_LINKED = "SESSION_LINKED"
     SESSION_UNLINKED = "SESSION_UNLINKED"
+
+
+class CounselingCaseAppointmentRemovalReason(StrEnum):
+    BELONGS_TO_ANOTHER_CASE = "BELONGS_TO_ANOTHER_CASE"
+    NOT_PART_OF_THIS_CASE = "NOT_PART_OF_THIS_CASE"
+    LINKED_BY_MISTAKE = "LINKED_BY_MISTAKE"
+
+
+class CounselingCaseLinkAppointmentRequest(StrictSchema):
+    appointment_id: UUID
+    expected_version: int = Field(ge=1)
+
+
+class CounselingCaseUnlinkAppointmentRequest(StrictSchema):
+    reason: CounselingCaseAppointmentRemovalReason
+    expected_version: int = Field(ge=1)
 
 
 class CounselingCaseOpenRequest(StrictSchema):
@@ -188,6 +212,33 @@ class CounselingCaseEventResponse(StrictSchema):
     detail_code: str | None
 
 
+class CounselingCaseAppointmentCandidate(StrictSchema):
+    id: UUID
+    reference_code: str
+    starts_at: datetime
+    ends_at: datetime
+    status: AppointmentStatus
+    delivery_mode: DeliveryMode
+
+
+class CounselingCaseAppointmentCandidatePage(StrictSchema):
+    items: list[CounselingCaseAppointmentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CounselingCaseAppointmentResponse(StrictSchema):
+    id: UUID
+    appointment_id: UUID
+    appointment: CounselingCaseAppointmentCandidate | None
+    linked_at: datetime
+    linked_by: CounselingCasePerson
+    removed_at: datetime | None
+    removed_by: CounselingCasePerson | None
+    removal_reason: CounselingCaseAppointmentRemovalReason | None
+
+
 class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     source: CounselingCaseSourceResponse
     sessions: list[CounselingCaseSessionResponse]
@@ -196,6 +247,15 @@ class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     history: list[CounselingCaseEventResponse]
     # Whether the reader may link or correct sessions now.
     can_manage: bool
+    appointments: list[CounselingCaseAppointmentResponse]
+    next_appointment: CounselingCaseAppointmentCandidate | None
+    unlinked_appointment_sessions: list[CounselingCaseSessionCandidate]
+    next_action: FollowUpSummary | None
+    next_actions: list[FollowUpSummary]
+    next_actions_has_more: bool
+    next_actions_available: bool
+    can_add_next_action: bool
+    can_link_appointments: bool
 
 
 class CounselingCaseOpeningContextResponse(StrictSchema):
@@ -296,7 +356,27 @@ def _source(*, appointment, encounter_id, routine_interview_id) -> dict[str, obj
     }
 
 
+def _appointment_candidate(appointment):
+    return {
+        "id": appointment.pk,
+        "reference_code": appointment.reference_code,
+        "starts_at": _institutional(appointment.starts_at),
+        "ends_at": _institutional(appointment.ends_at),
+        "status": appointment.status,
+        "delivery_mode": appointment.delivery_mode,
+    }
+
+
 def _detail(overview: CaseOverview) -> dict[str, object]:
+    # The case's primary Counselor is the reader. Source-based task policy was applied in SQL;
+    # the shared Follow-Up projection rechecks before decrypting any title.
+    actor = overview.summary.case.primary_counselor
+    try:
+        actions = _summaries(actor, overview.next_actions.items)
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise as raise_followup_error
+
+        raise_followup_error(exc)
     return {
         **_summary(overview.summary),
         "source": _source(
@@ -341,6 +421,45 @@ def _detail(overview: CaseOverview) -> dict[str, object]:
             for event in overview.events
         ],
         "can_manage": overview.can_manage,
+        "appointments": [
+            {
+                "id": link.pk,
+                "appointment_id": link.appointment_id,
+                "appointment": (
+                    _appointment_candidate(link.appointment)
+                    if appointment_accessible(
+                        actor=actor, case=overview.summary.case, appointment=link.appointment
+                    )
+                    else None
+                ),
+                "linked_at": _institutional(link.linked_at),
+                "linked_by": _person(link.linked_by),
+                "removed_at": _institutional(link.removed_at),
+                "removed_by": _person(link.removed_by) if link.removed_by else None,
+                "removal_reason": link.removal_reason or None,
+            }
+            for link in overview.appointments
+        ],
+        "next_appointment": (
+            _appointment_candidate(overview.next_appointment) if overview.next_appointment else None
+        ),
+        "unlinked_appointment_sessions": [
+            _candidate(session) for session in overview.unlinked_appointment_sessions
+        ],
+        "next_action": next(
+            (
+                item
+                for item in actions
+                if overview.next_actions.next_action is not None
+                and item["id"] == overview.next_actions.next_action.pk
+            ),
+            None,
+        ),
+        "next_actions": actions,
+        "next_actions_has_more": overview.next_actions.has_more,
+        "next_actions_available": overview.next_actions.available,
+        "can_add_next_action": overview.next_actions.can_add,
+        "can_link_appointments": overview.can_link_appointments,
     }
 
 
@@ -384,7 +503,7 @@ def counseling_list_my_cases(
 @router.post(
     "",
     response=response_with_errors(
-        CounselingCaseDetailResponse, 401, 403, 404, 409, 422, success_status=201
+        CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503, success_status=201
     ),
     auth=session_auth,
     operation_id="counselingOpenCase",
@@ -446,7 +565,7 @@ def counseling_get_case_opening_context(
 
 @router.get(
     "/{case_id}",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 422, 503),
     auth=session_auth,
     operation_id="counselingGetCase",
 )
@@ -488,7 +607,7 @@ def counseling_list_case_session_candidates(
 
 @router.post(
     "/{case_id}/sessions",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="counselingLinkCaseSession",
 )
@@ -510,7 +629,7 @@ def counseling_link_case_session(request, case_id: UUID, payload: CounselingCase
 
 @router.post(
     "/{case_id}/sessions/{encounter_id}/unlink",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="counselingUnlinkCaseSession",
 )
@@ -526,6 +645,87 @@ def counseling_unlink_case_session(
             actor=request.auth_user,
             case_id=case_id,
             encounter_id=encounter_id,
+            reason=payload.reason.value,
+            expected_version=payload.expected_version,
+            context=_context(request),
+        )
+        overview = get_case(actor=request.auth_user, case_id=case_id)
+    except CounselingError as exc:
+        _raise(exc)
+    return _detail(overview)
+
+
+@router.get(
+    "/{case_id}/appointment-candidates",
+    response=response_with_errors(CounselingCaseAppointmentCandidatePage, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="counselingListCaseAppointmentCandidates",
+)
+def counseling_list_case_appointment_candidates(
+    request,
+    case_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        result = list_appointment_candidates(
+            actor=request.auth_user, case_id=case_id, page=page, page_size=page_size
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "items": [_appointment_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.post(
+    "/{case_id}/appointments",
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="counselingLinkCaseAppointment",
+)
+def counseling_link_case_appointment(
+    request,
+    case_id: UUID,
+    payload: CounselingCaseLinkAppointmentRequest,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        link_appointment(
+            actor=request.auth_user,
+            case_id=case_id,
+            appointment_id=payload.appointment_id,
+            expected_version=payload.expected_version,
+            context=_context(request),
+        )
+        overview = get_case(actor=request.auth_user, case_id=case_id)
+    except CounselingError as exc:
+        _raise(exc)
+    return _detail(overview)
+
+
+@router.post(
+    "/{case_id}/appointments/{appointment_id}/unlink",
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="counselingUnlinkCaseAppointment",
+)
+def counseling_unlink_case_appointment(
+    request,
+    case_id: UUID,
+    appointment_id: UUID,
+    payload: CounselingCaseUnlinkAppointmentRequest,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        unlink_appointment(
+            actor=request.auth_user,
+            case_id=case_id,
+            appointment_id=appointment_id,
             reason=payload.reason.value,
             expected_version=payload.expected_version,
             context=_context(request),

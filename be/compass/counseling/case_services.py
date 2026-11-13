@@ -44,6 +44,7 @@ from compass.service_catalog.services import service_counselor_eligible
 
 from .case_models import (
     CounselingCase,
+    CounselingCaseAppointment,
     CounselingCaseEvent,
     CounselingCaseEventKind,
     CounselingCaseOrigin,
@@ -52,6 +53,7 @@ from .case_models import (
     CounselingCaseSessionRemovalReason,
     CounselingCaseStatus,
 )
+from .case_next_actions import CaseNextActions
 from .models import CounselingEncounter
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -195,6 +197,11 @@ class CaseOverview:
     # The originating context's own recorded session, when it exists, is the reader's, and is not
     # in any case yet. It is offered for an explicit link and never added automatically.
     unlinked_origin_session: CounselingEncounter | None
+    appointments: tuple[CounselingCaseAppointment, ...]
+    next_appointment: Appointment | None
+    unlinked_appointment_sessions: tuple[CounselingEncounter, ...]
+    next_actions: CaseNextActions
+    can_link_appointments: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -405,7 +412,7 @@ def _origin_session(case: CounselingCase, actor: User) -> CounselingEncounter | 
     )
 
 
-def get_case(*, actor: User, case_id: UUID) -> CaseOverview:
+def get_case(*, actor: User, case_id: UUID, now: datetime | None = None) -> CaseOverview:
     _require_actor(actor, VIEW_CAPABILITY)
     case = (
         _case_queryset(actor)
@@ -436,6 +443,41 @@ def get_case(*, actor: User, case_id: UUID) -> CaseOverview:
     routine = case.origin_routine_interview
     encounter = case.origin_encounter
     active = case.status == CounselingCaseStatus.ACTIVE
+    from .case_appointment_services import eligible_appointments
+    from .case_next_actions import next_actions
+
+    appointment_links = tuple(
+        case.appointment_links.select_related(
+            "appointment__service", "appointment__provider", "linked_by", "removed_by"
+        ).order_by("-linked_at", "id")
+    )
+    next_appointment = (
+        eligible_appointments(actor=actor, case=case)
+        .filter(
+            case_links__case_id=case.pk,
+            case_links__removed_at__isnull=True,
+            starts_at__gt=now or timezone.now(),
+        )
+        .select_related("service", "provider")
+        .order_by("starts_at", "id")
+        .first()
+    )
+    appointment_sessions = (
+        tuple(
+            CounselingEncounter.objects.filter(
+                counselor_id=actor.pk,
+                student_id=case.student_id,
+                appointment__case_links__case_id=case.pk,
+                appointment__case_links__removed_at__isnull=True,
+            )
+            .alias(_linked=Exists(_current_links().filter(encounter_id=OuterRef("pk"))))
+            .filter(_linked=False)
+            .select_related("counselor", "counselor__role", "appointment")
+            .order_by("-started_at", "id")
+        )
+        if active
+        else ()
+    )
     return CaseOverview(
         summary=_summary(case),
         sessions=tuple(
@@ -455,6 +497,15 @@ def get_case(*, actor: User, case_id: UUID) -> CaseOverview:
             routine.pk if routine is not None and routine.counselor_id == actor.pk else None
         ),
         unlinked_origin_session=_origin_session(case, actor) if active else None,
+        appointments=appointment_links,
+        next_appointment=next_appointment,
+        unlinked_appointment_sessions=appointment_sessions,
+        next_actions=next_actions(actor=actor, case=case),
+        can_link_appointments=(
+            active
+            and actor.has_capability(MANAGE_CAPABILITY)
+            and actor.has_capability("appointments.view_self")
+        ),
     )
 
 
@@ -780,6 +831,9 @@ def open_case(
         opening = _resolve_opening(
             actor=actor, origin=normalized, student_id=student_id, source_id=source_id
         )
+        if opening.appointment is not None:
+            # Appointment links and lifecycle changes serialize before participant locks.
+            Appointment.objects.select_for_update().get(pk=opening.appointment.pk)
         session = None
         if opening.session is not None:
             # Lock order everywhere in this module: case, then Encounter, then Users.
@@ -863,6 +917,16 @@ def open_case(
         )
         if session is not None:
             _link(case=case, encounter=session, actor=locked_actor, at=current, context=context)
+        if confirmed.appointment is not None and confirmed.appointment.status == "SCHEDULED":
+            from .case_appointment_services import create_link
+
+            create_link(
+                case=case,
+                appointment=confirmed.appointment,
+                actor=locked_actor,
+                context=context,
+                at=current,
+            )
     return case
 
 

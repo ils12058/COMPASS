@@ -114,9 +114,31 @@ def require_source(actor, *, kind, source_id, student_id, manage=False):
     return True
 
 
-def classify(*, source_kind, category):
+def require_case(actor, *, case_id, student_id, manage=False, active=False, lock=False):
+    from compass.counseling.case_models import CounselingCase
+
+    if actor.role.code != "COUNSELOR" or not actor.has_capability(
+        "counseling.manage_assigned" if manage else "counseling.view_assigned"
+    ):
+        raise FollowUpNotFound("The related case is not available.")
+    query = CounselingCase.objects
+    if lock:
+        query = query.select_for_update()
+    case = query.filter(pk=case_id, primary_counselor_id=actor.pk).first()
+    if case is None:
+        raise FollowUpNotFound("The related case is not available.")
+    if case.student_id != student_id:
+        raise FollowUpInvalid("The Student must match the case.")
+    if active and case.status != "ACTIVE":
+        raise FollowUpInvalid("Next actions can only be added to an Active case.")
+    return case
+
+
+def classify(*, source_kind, category, case_id=None):
     if category not in FollowUpCategory.values:
         raise FollowUpInvalid("The follow-up category is unsupported.")
+    if case_id is not None and category != FollowUpCategory.COUNSELING:
+        raise FollowUpInvalid("Only counseling next actions can be linked to a case.")
     if source_kind in {
         FollowUpSource.COUNSELING_ENCOUNTER,
         FollowUpSource.ROUTINE_INTERVIEW,
@@ -130,12 +152,18 @@ def classify(*, source_kind, category):
         return FollowUpVisibility.OPERATIONAL
     if source_kind is None:
         if category == FollowUpCategory.COUNSELING:
-            raise FollowUpInvalid("Counseling Follow-Ups must be linked to a related record.")
+            if case_id is None:
+                raise FollowUpInvalid(
+                    "Counseling Follow-Ups must be linked to a related record or case."
+                )
+            return FollowUpVisibility.COUNSELOR_CONFIDENTIAL
         return FollowUpVisibility.OPERATIONAL
     raise FollowUpInvalid("The follow-up source is unsupported.")
 
 
-def require_assignee(candidate_id, *, student_id, visibility, source_kind=None, source_id=None):
+def require_assignee(
+    candidate_id, *, student_id, visibility, source_kind=None, source_id=None, case_id=None
+):
     candidate = User.objects.select_related("role").filter(pk=candidate_id, is_active=True).first()
     if candidate is None or candidate.role.code not in ROLES:
         raise FollowUpInvalid("The selected staff member isn't available for Follow-Ups.")
@@ -145,13 +173,16 @@ def require_assignee(candidate_id, *, student_id, visibility, source_kind=None, 
         if candidate.role.code != "COUNSELOR":
             raise FollowUpInvalid("Confidential Follow-Ups require an assigned Counselor.")
         try:
-            require_source(
-                candidate,
-                kind=source_kind,
-                source_id=source_id,
-                student_id=student_id,
-                manage=True,
-            )
+            if source_kind is None and case_id is not None:
+                require_case(candidate, case_id=case_id, student_id=student_id, manage=True)
+            else:
+                require_source(
+                    candidate,
+                    kind=source_kind,
+                    source_id=source_id,
+                    student_id=student_id,
+                    manage=True,
+                )
         except FollowUpNotFound:
             raise FollowUpInvalid("The selected Counselor cannot manage this follow-up.") from None
     elif not in_operational_scope(candidate, student_id):
@@ -170,14 +201,19 @@ def authorized(actor, followup, *, manage=False):
         if actor.role.code != "COUNSELOR":
             return False
         try:
-            require_source(
-                actor,
-                kind=followup.source_kind,
-                source_id=followup.source_id,
-                student_id=followup.student_id,
-                manage=manage,
-            )
-        except FollowUpNotFound:
+            if followup.source_kind is None and followup.source_id is None and followup.case_id:
+                require_case(
+                    actor, case_id=followup.case_id, student_id=followup.student_id, manage=manage
+                )
+            else:
+                require_source(
+                    actor,
+                    kind=followup.source_kind,
+                    source_id=followup.source_id,
+                    student_id=followup.student_id,
+                    manage=manage,
+                )
+        except (FollowUpNotFound, FollowUpInvalid):
             return False
         return True
     return False
@@ -189,7 +225,7 @@ def scope(actor, queryset, *, manage=False):
     Never fetch an unbounded prefix and filter it in Python: that breaks privacy,
     has_next accuracy and deep paging in the presence of inaccessible source rows.
     """
-    from django.db.models import Exists, OuterRef, Q
+    from django.db.models import Exists, F, OuterRef, Q
 
     queryset = queryset.filter(
         assigned_to_id=actor.pk, student__is_active=True, student__role__code="STUDENT"
@@ -223,6 +259,14 @@ def scope(actor, queryset, *, manage=False):
             visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL,
             source_kind=FollowUpSource.COUNSELING_ENCOUNTER,
             _fup_encounter_match=True,
+        )
+        confidential |= Q(
+            visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL,
+            category=FollowUpCategory.COUNSELING,
+            source_kind__isnull=True,
+            source_id__isnull=True,
+            case__primary_counselor_id=actor.pk,
+            case__student_id=F("student_id"),
         )
     if actor.has_capability(
         "routine_interviews.manage_assigned" if manage else "routine_interviews.view_assigned"
@@ -272,3 +316,13 @@ def visible_source(actor, followup):
     ):
         return None
     return {"kind": followup.source_kind, "id": followup.source_id}
+
+
+def visible_case(actor, followup):
+    if not followup.case_id:
+        return None
+    try:
+        case = require_case(actor, case_id=followup.case_id, student_id=followup.student_id)
+    except (FollowUpNotFound, FollowUpInvalid):
+        return None
+    return {"id": case.pk, "reference_code": case.reference_code, "status": case.status}
