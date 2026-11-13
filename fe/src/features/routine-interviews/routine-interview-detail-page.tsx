@@ -1,5 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { portalReturnHref, workflowBackLabel } from "@/features/portal/workflow-navigation";
+
 import { FollowupsContext } from "@/features/guidance-followups/followups-context";
 import { NotebookPen } from "lucide-react";
 import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
@@ -53,9 +56,11 @@ function RoutineLifecycleNotice({ message }: { message: string | null }) {
 }
 
 function RoutineBackLink() {
+  const params = useSearchParams();
+  const back = portalReturnHref(params.get("return_to"), "/portal/routine-interviews");
   return (
-    <GuardedPortalLink href="/portal/routine-interviews" className={pageBackLinkClass}>
-      Back to Routine Interviews
+    <GuardedPortalLink href={back} className={pageBackLinkClass}>
+      {workflowBackLabel(back)}
     </GuardedPortalLink>
   );
 }

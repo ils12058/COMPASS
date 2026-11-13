@@ -20,6 +20,7 @@ import {
   SESSION_RECORDS_PATH,
 } from "@/features/counseling/cases/case-presentation";
 import { CaseStatusBadge } from "@/features/counseling/cases/case-status-badge";
+import { withWorkflowReturn } from "@/features/portal/workflow-navigation";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselingHelp } from "@/features/counseling/counseling-help";
 import {
@@ -52,6 +53,7 @@ export function CounselorCases({ access }: { access: CounselingAccess }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const here = `${pathname}${searchParams.size ? `?${searchParams}` : ""}`;
   const page = positivePage(searchParams.get("page"));
   const search = searchParams.get("search") ?? "";
   const { requested: requestedOrdering, setOrdering } = useListOrdering(CounselingCaseOrdering);
@@ -143,7 +145,7 @@ export function CounselorCases({ access }: { access: CounselingAccess }) {
                       <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}>
                         <span className="flex items-center gap-2">
                           <PersonAvatar displayName={item.student.display_name} photoUrl={item.student.profile_photo_url} photoUpdatedAt={item.student.profile_photo_updated_at} size="compact" />
-                          <Link href={caseHref(item.id)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.student.display_name}</Link>
+                          <Link href={withWorkflowReturn(caseHref(item.id), here)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.student.display_name}</Link>
                         </span>
                         {item.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{item.student.institutional_id}</span> : null}
                       </th>

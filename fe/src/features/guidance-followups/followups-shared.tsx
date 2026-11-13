@@ -1,23 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import type { Category, FollowUpDetail, SourceReference } from "@/lib/api/generated/model";
+import type { FollowUpDetail, SourceReference } from "@/lib/api/generated/model";
+import { withWorkflowReturn } from "@/features/portal/workflow-navigation";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
 
 export { followupAccess } from "./followups-access";
-export const categoryLabel = (category: Category) => ({ ADMINISTRATIVE: "Administrative coordination", STUDENT_CONTACT: "Student contact", COUNSELING: "Counseling Follow-Up", REFERRAL_ACTION: "Referral coordination" }[category]);
+export { categoryLabel } from "./followups-presentation";
 export const statusLabel = (status: string) => ({ PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" }[status] ?? status);
 export function sourceDestination(source: SourceReference) {
   const root = { COUNSELING_ENCOUNTER: "/portal/counseling/encounters/", REFERRAL: "/portal/referrals/", ROUTINE_INTERVIEW: "/portal/routine-interviews/" }[source.kind];
   return root + encodeURIComponent(source.id);
 }
-export function nextFollowupHref(item: Pick<FollowUpDetail, "source" | "student_id" | "student_name">) {
-  const reference = item.source
-    ? `source_kind=${encodeURIComponent(item.source.kind)}&source_id=${encodeURIComponent(item.source.id)}`
-    : `student_id=${encodeURIComponent(item.student_id)}&student_name=${encodeURIComponent(item.student_name)}`;
-  return `/portal/follow-ups/new?${reference}`;
+export function nextFollowupHref(item: Pick<FollowUpDetail, "id">, returnTo?: string) {
+  const href = `/portal/follow-ups/new?predecessor_id=${encodeURIComponent(item.id)}`;
+  return returnTo ? withWorkflowReturn(href, returnTo) : href;
 }
 export function followupError(error: unknown) {
   if (error instanceof CompassApiError) {

@@ -1,120 +1,204 @@
 "use client";
 
-import { invalidateFollowups } from "./followups-data";
-import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FollowupsHelp } from "./followups-help";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
-import { Panel, PanelSection, PanelFooter } from "@/components/ui/panel";
+import { Panel, PanelSection, PanelFooter, PanelMessage } from "@/components/ui/panel";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { FollowupsHelp } from "./followups-help";
+import { invalidateFollowups } from "./followups-data";
+import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel } from "./followups-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { portalReturnHref, withWorkflowReturn, workflowBackLabel } from "@/features/portal/workflow-navigation";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
-import { guidanceFollowupsCreate, useGuidanceFollowupsGetContext, useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees } from "@/lib/api/generated/guidance-followups/guidance-followups";
+import {
+  guidanceFollowupsCreate, useGuidanceFollowupsGet, useGuidanceFollowupsGetContext,
+  useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees,
+} from "@/lib/api/generated/guidance-followups/guidance-followups";
+import { useCounselingGetCase } from "@/lib/api/generated/counseling/counseling";
 import { CompassApiError } from "@/lib/api/errors";
-import { Category, SourceKind, type FollowUpCreate, type SourceContext } from "@/lib/api/generated/model";
+import {
+  Category, SourceKind, type FollowUpCreate, type FollowUpDetail,
+  type SourceContext, type FollowUpCaseReference, type StudentOption,
+} from "@/lib/api/generated/model";
 import { institutionalDateTimeInputToISO } from "@/lib/institutional-time";
-import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel } from "./followups-shared";
 
 export function FollowupsCreate() {
   const { user } = usePortalSession();
   const params = useSearchParams();
-  const sourceKind = params.get("source_kind");
-  const sourceId = params.get("source_id");
-  const initialStudentId = params.get("student_id") ?? undefined;
-  const initialStudentName = params.get("student_name") ?? undefined;
-  const hasSource = Boolean(sourceKind || sourceId);
-  const validSource = Object.values(SourceKind).includes(sourceKind as SourceKind) && Boolean(sourceId);
-  const context = useGuidanceFollowupsGetContext({ source_kind: sourceKind as SourceKind, source_id: sourceId ?? "" }, { query: { enabled: followupAccess(user).manage && hasSource && validSource, retry: false } });
-  if (!followupAccess(user).manage) return <FollowupRestricted />;
-  if (hasSource && !validSource) return <FollowupFailure error={null} />;
-  if (hasSource && context.isPending) return <p role="status">Checking the related record…</p>;
-  if (hasSource && (context.isError || !context.data?.data.can_create)) return <FollowupFailure error={context.error} />;
-  return <CreateForm source={hasSource ? context.data?.data : undefined} initialStudentId={initialStudentId} initialStudentName={initialStudentName} />;
+  const access = followupAccess(user);
+  const predecessorId = params.get("predecessor_id");
+  const caseId = params.get("case_id");
+  const predecessor = useGuidanceFollowupsGet(predecessorId ?? "", {
+    query: { enabled: access.manage && Boolean(predecessorId), retry: false },
+  });
+  const previous = predecessor.data?.data;
+  const rawKind = previous ? previous.source?.kind : params.get("source_kind");
+  const sourceId = previous ? previous.source?.id : params.get("source_id");
+  const sourceKind = Object.values(SourceKind).find(value => value === rawKind);
+  const hasSource = Boolean(rawKind || sourceId);
+  const validSource = Boolean(sourceKind && sourceId);
+  const source = useGuidanceFollowupsGetContext({
+    source_kind: sourceKind ?? SourceKind.COUNSELING_ENCOUNTER, source_id: sourceId ?? "",
+  }, { query: { enabled: access.manage && validSource && (!predecessorId || predecessor.isSuccess), retry: false } });
+  const caseQuery = useCounselingGetCase(caseId ?? "", {
+    query: { enabled: access.manage && Boolean(caseId), retry: false },
+  });
+  if (!access.manage) return <FollowupRestricted />;
+  if ((predecessorId && predecessor.isPending) || (caseId && caseQuery.isPending) || (hasSource && validSource && source.isPending)) {
+    return <LoadingRegion label="Checking next-action context"><Panel><PanelMessage>Checking the related work…</PanelMessage></Panel></LoadingRegion>;
+  }
+  if (predecessorId && (predecessor.isError || !previous?.can_create_next_action)) {
+    return <FollowupFailure error={predecessor.error} />;
+  }
+  if (caseId && (caseQuery.isError || !caseQuery.data?.data.can_add_next_action)) {
+    return <FollowupFailure error={caseQuery.error} retry={() => void caseQuery.refetch()} />;
+  }
+  if (hasSource && (!validSource || source.isError || !source.data?.data.can_create)) {
+    return <FollowupFailure error={source.error} retry={validSource ? () => void source.refetch() : undefined} />;
+  }
+  const context = hasSource ? source.data?.data : undefined;
+  const caseItem = caseQuery.data?.data;
+  const caseChoice = previous ? previous.case : caseItem ? {
+    id: caseItem.id, reference_code: caseItem.reference_code, status: caseItem.status,
+  } : context?.case;
+  const fixedStudent = previous ? { id: previous.student_id, display_name: previous.student_name }
+    : caseItem ? caseItem.student : undefined;
+  return <CreateForm source={context} predecessor={previous} caseChoice={caseChoice ?? undefined}
+    fixedStudent={fixedStudent} initialStudentId={params.get("student_id") ?? undefined}
+    returnTo={portalReturnHref(params.get("return_to"), "/portal/follow-ups")} />;
 }
 
-type Source = SourceContext;
-function CreateForm({ source, initialStudentId, initialStudentName }: { source?: Source; initialStudentId?: string; initialStudentName?: string }) {
+function CreateForm({ source, predecessor, caseChoice, fixedStudent, initialStudentId, returnTo }: {
+  source?: SourceContext;
+  predecessor?: FollowUpDetail;
+  caseChoice?: FollowUpCaseReference;
+  fixedStudent?: Pick<StudentOption, "id" | "display_name">;
+  initialStudentId?: string;
+  returnTo: string;
+}) {
   const { user } = usePortalSession();
   const router = useRouter();
   const client = useQueryClient();
-  const [studentId, setStudentId] = useState(source?.student_id ?? initialStudentId ?? "");
+  const initialCategory = predecessor?.category ?? source?.category ?? (caseChoice ? Category.COUNSELING : Category.ADMINISTRATIVE);
+  const fixed = Boolean(source || fixedStudent);
+  const [studentId, setStudentId] = useState(fixedStudent?.id ?? source?.student_id ?? initialStudentId ?? "");
+  const [selectedCase, setSelectedCase] = useState(caseChoice?.id ?? "");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [assigneePage, setAssigneePage] = useState(1);
-  const [category, setCategory] = useState<Category>(source?.category ?? Category.ADMINISTRATIVE);
+  const [category, setCategory] = useState<Category>(initialCategory);
   const [assignee, setAssignee] = useState("");
+  const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const continuation = useStepUpContinuation();
   const [submission, setSubmission] = useState<{ data: FollowUpCreate; key: string } | null>(null);
-  const create = useMutation({ mutationFn: (value: { data: FollowUpCreate; key: string }) => guidanceFollowupsCreate(value.data, { headers: { "Idempotency-Key": value.key } }) });
-  const students = useGuidanceFollowupsEligibleStudents({ search, page }, { query: { enabled: !source } });
-  const assignees = useGuidanceFollowupsEligibleAssignees({ student_id: studentId, category, source_kind: source?.source_kind, source_id: source?.source_id, page: assigneePage }, { query: { enabled: Boolean(studentId), retry: false } });
-  useUnsavedChangesGuard({ dirty: !create.isSuccess && Boolean(description || due || assignee || (!source && studentId) || category !== (source?.category ?? Category.ADMINISTRATIVE)), message: "Your Follow-Up has not been saved." });
+  const create = useMutation({
+    mutationFn: (value: { data: FollowUpCreate; key: string }) => guidanceFollowupsCreate(value.data, { headers: { "Idempotency-Key": value.key } }),
+    retry: false,
+  });
+  const students = useGuidanceFollowupsEligibleStudents({ search, page }, { query: { enabled: !fixed, retry: false } });
+  const assignees = useGuidanceFollowupsEligibleAssignees({
+    student_id: studentId, category, source_kind: source?.source_kind,
+    source_id: source?.source_id, case_id: selectedCase || undefined, page: assigneePage,
+  }, { query: { enabled: Boolean(studentId), retry: false } });
+  useUnsavedChangesGuard({
+    dirty: !create.isSuccess && Boolean(title || description || due || assignee || (!fixed && studentId) || category !== initialCategory || selectedCase !== (caseChoice?.id ?? "")),
+    message: "Your Follow-Up has not been saved.",
+  });
+
   async function submit(event: FormEvent) {
-    event.preventDefault(); setError(null);
+    event.preventDefault();
+    if (create.isPending) return;
+    setError(null);
     const dueAt = institutionalDateTimeInputToISO(due);
-    if (!studentId || !assignee || !dueAt) { setError("Choose a Student, responsible staff member and due date."); return; }
-    const value = submission ?? { key: crypto.randomUUID(), data: { student_id: studentId, assigned_to_id: assignee, category, due_at: dueAt, description: description || null, source_kind: source?.source_kind, source_id: source?.source_id } };
+    if (!studentId || !assignee || !dueAt || !title.trim()) {
+      setError("Enter an action title and choose a Student, responsible staff member and due date.");
+      return;
+    }
+    const value = submission ?? {
+      key: crypto.randomUUID(), data: {
+        student_id: studentId, assigned_to_id: assignee, category, title, due_at: dueAt,
+        description: description || null, source_kind: source?.source_kind,
+        source_id: source?.source_id, case_id: selectedCase || null,
+        predecessor_id: predecessor?.id ?? null,
+      },
+    };
     setSubmission(value);
     const response = await continuation.run(() => create.mutateAsync(value), {
-      onFailure: (caught) => {
+      onFailure: caught => {
         if (caught instanceof CompassApiError && caught.status === 422) setSubmission(null);
         setError(followupError(caught));
       },
     });
     if (!response) return;
     await invalidateFollowups(client);
-    router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
+    router.push(response.data.assigned_to_id === user.id
+      ? withWorkflowReturn(`/portal/follow-ups/${response.data.id}`, returnTo) : returnTo);
   }
+
+  const locked = Boolean(submission);
   return <>
-    <PageHeader help={<FollowupsHelp />} title="Create Follow-Up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
+    <PageHeader help={<FollowupsHelp />} title="Create Follow-Up"
+      description="Creating a task does not book an appointment or contact the Student."
+      back={<Link className={pageBackLinkClass} href={returnTo}>{workflowBackLabel(returnTo)}</Link>} />
     <form onSubmit={event => void submit(event)}><Panel>
-      <PanelSection title="What needs to be done?" titleId="followup-purpose" description="Choose the purpose, then describe the next action if more detail is needed.">
-        <div><Label htmlFor="followup-category">Category</Label><Select id="followup-category" value={category} disabled={Boolean(source || submission)} onChange={event => { setCategory(event.target.value as Category); setAssignee(""); }}>
-          {(source ? [source.category] : [Category.ADMINISTRATIVE, Category.STUDENT_CONTACT, Category.REFERRAL_ACTION]).map(value => <option key={value} value={value}>{categoryLabel(value)}</option>)}
+      <PanelSection title="What needs to be done?" titleId="followup-purpose">
+        <div><Label htmlFor="followup-title">Action title</Label><Input id="followup-title" maxLength={120} required value={title} disabled={locked} onChange={event => setTitle(event.target.value)} /></div>
+        <div className="mt-4"><Label htmlFor="followup-category">Category</Label><Select id="followup-category" value={category} disabled={Boolean(source || caseChoice || predecessor || locked)} onChange={event => {
+          const value = Object.values(Category).find(value => value === event.target.value);
+          if (value) { setCategory(value); setAssignee(""); }
+        }}>
+          {(source || caseChoice || predecessor ? [initialCategory] : [Category.ADMINISTRATIVE, Category.STUDENT_CONTACT, Category.REFERRAL_ACTION]).map(value => <option key={value} value={value}>{categoryLabel(value)}</option>)}
         </Select></div>
-        <div className="mt-4"><Label htmlFor="followup-description">Task description (optional)</Label><Textarea id="followup-description" maxLength={4000} value={description} disabled={Boolean(submission)} onChange={event => setDescription(event.target.value)} /><p className="mt-2 text-sm text-muted">Describe one next action in plain language. Include only the information needed to complete it.</p></div>
-        {!source ? <p className="mt-3 text-sm text-muted">To create a Counseling Follow-Up, open a Counseling Encounter or Routine Interview you can access and choose Create Follow-Up.</p> : null}
+        <div className="mt-4"><Label htmlFor="followup-description">Task description (optional)</Label><Textarea id="followup-description" maxLength={4000} value={description} disabled={locked} onChange={event => setDescription(event.target.value)} /></div>
+        {caseChoice ? <div className="mt-4"><Label htmlFor="followup-case">Linked case{source && !predecessor ? " (optional)" : ""}</Label>
+          <Select id="followup-case" value={selectedCase} disabled={!source || Boolean(predecessor) || locked} onChange={event => { setSelectedCase(event.target.value); setAssignee(""); setAssigneePage(1); }}>
+            {source && !predecessor ? <option value="">No case link</option> : null}
+            <option value={caseChoice.id}>Case {caseChoice.reference_code}</option>
+          </Select>
+        </div> : null}
+        {predecessor ? <p className="mt-3 text-sm text-muted">This new action continues the preceding task for the same Student{caseChoice ? " and case" : ""}.</p> : null}
       </PanelSection>
       <PanelSection title="Student" titleId="followup-student-section">
-        {source ? <div>
-          <p className="font-semibold">{source.student_name}</p>
-          <p className="mt-1 text-sm text-muted">{categoryLabel(source.category)} · {source.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Staff coordination"}. Created from the related record you can access.</p>
-          {source.visibility === "COUNSELOR_CONFIDENTIAL" ? <p className="mt-2 text-sm text-muted">You can assign only the Counselor who has access to this record.</p> : null}
+        {fixed ? <div>
+          <p className="font-semibold">{fixedStudent?.display_name ?? source?.student_name}</p>
+          <p className="mt-1 text-sm text-muted">{category === Category.COUNSELING ? "Counselor-confidential" : "Staff coordination"}</p>
         </div> : <>
-          <Label htmlFor="followup-student-search">Find a Student</Label><Input id="followup-student-search" placeholder="Search by name or institutional ID" value={search} disabled={Boolean(submission)} onChange={event => { setSearch(event.target.value); setPage(1); setStudentId(""); setAssignee(""); }} />
+          <Label htmlFor="followup-student-search">Find a Student</Label><Input id="followup-student-search" placeholder="Search by name or institutional ID" value={search} disabled={locked} onChange={event => { setSearch(event.target.value); setPage(1); setStudentId(""); setAssignee(""); }} />
           {students.isPending ? <p role="status">Loading Students…</p> : students.isError ? <FollowupFailure error={students.error} retry={() => void students.refetch()} /> : <>
-            <Label htmlFor="followup-student">Student</Label><Select id="followup-student" required value={studentId} disabled={Boolean(submission)} onChange={event => { setStudentId(event.target.value); setAssignee(""); setAssigneePage(1); }}>
+            <Label htmlFor="followup-student">Student</Label><Select id="followup-student" required value={studentId} disabled={locked} onChange={event => { setStudentId(event.target.value); setAssignee(""); setAssigneePage(1); }}>
               <option value="">Choose a Student</option>
-              {studentId && !students.data?.data.items.some(row => row.id === studentId) ? (
-                <option value={studentId}>{initialStudentName || `Selected Student (${studentId.slice(0, 8)}…)`}</option>
-              ) : null}
               {students.data?.data.items.map(row => <option key={row.id} value={row.id}>{row.display_name}{row.institutional_id ? ` · ${row.institutional_id}` : ""}</option>)}
             </Select>
-            {students.data ? <CanonicalPagination page={students.data.data.page} hasNext={students.data.data.has_next} onPageChange={page => { setPage(page); setStudentId(""); setAssignee(""); }} /> : null}
+            {students.data ? <CanonicalPagination page={students.data.data.page} hasNext={students.data.data.has_next} onPageChange={setPage} /> : null}
           </>}
         </>}
       </PanelSection>
-      <PanelSection title="Responsible staff member" titleId="followup-responsibility">
-        <Label htmlFor="followup-assignee">Responsible staff member</Label><Select id="followup-assignee" required value={assignee} disabled={!studentId || Boolean(submission) || assignees.isFetching} onChange={event => setAssignee(event.target.value)}><option value="">Choose a staff member</option>{assignees.data?.data.items.map(row => <option key={row.id} value={row.id}>{row.display_name}</option>)}</Select>
+      <PanelSection title="Responsibility and deadline" titleId="followup-responsibility">
+        <Label htmlFor="followup-assignee">Responsible staff member</Label><Select id="followup-assignee" required value={assignee} disabled={locked || assignees.isFetching || !studentId} onChange={event => setAssignee(event.target.value)}>
+          <option value="">Choose a staff member</option>{assignees.data?.data.items.map(row => <option key={row.id} value={row.id}>{row.display_name}</option>)}
+        </Select>
         {assignees.isError ? <FollowupFailure error={assignees.error} retry={() => void assignees.refetch()} /> : null}
-        {assignees.data ? <CanonicalPagination label="Staff pages" page={assignees.data.data.page} hasNext={assignees.data.data.has_next} onPageChange={page => { setAssigneePage(page); setAssignee(""); }} /> : null}
+        {assignees.data ? <CanonicalPagination page={assignees.data.data.page} hasNext={assignees.data.data.has_next} onPageChange={setAssigneePage} /> : null}
+        <div className="mt-4"><Label htmlFor="followup-due">Due date and time (Philippine Time)</Label><Input id="followup-due" type="datetime-local" required value={due} disabled={locked} onChange={event => setDue(event.target.value)} /></div>
       </PanelSection>
-      <PanelSection title="Due date and time" titleId="followup-due-section" description="Use Philippine Time. A due date is required.">
-        <Label htmlFor="followup-due">Due date and time (Philippine Time)</Label><Input id="followup-due" type="datetime-local" required value={due} disabled={Boolean(submission)} onChange={event => setDue(event.target.value)} />
-      </PanelSection>
-      <PanelFooter><Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating Follow-Up…" : submission ? "Retry the same Follow-Up" : "Create Follow-Up"}</Button>{error ? <p role="alert">{error} Return to Follow-Ups to check the saved record before starting another request.</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}</PanelFooter>
+      <PanelFooter>
+        {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : continuation.notice ? <p role="status" className="w-full text-sm text-muted">{continuation.notice}</p> : null}
+        <Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating Follow-Up…" : submission ? "Retry same submission" : "Create Follow-Up"}</Button>
+      </PanelFooter>
     </Panel></form>
     <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(open) => { continuation.setOpen(open); if (!open) setError(null); }} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;

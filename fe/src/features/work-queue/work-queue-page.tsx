@@ -1,9 +1,11 @@
 "use client";
 
 import { TaskLink } from "@/components/ui/task-link";
-import { useState } from "react";
+import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelMessage } from "@/components/ui/panel";
@@ -13,10 +15,16 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
+import { followupAccess } from "@/features/guidance-followups/followups-access";
+import { withWorkflowReturn } from "@/features/portal/workflow-navigation";
 import { useWorkQueue } from "@/features/work-queue/work-queue-data";
 import { presentWork } from "@/features/work-queue/work-queue-presentation";
 import { CompassApiError } from "@/lib/api/errors";
 import type { UserSummary } from "@/lib/api/generated/model";
+
+export function WorkQueueLoading() {
+  return <><PageHeader title="My work" /><Panel><RowsSkeleton label="Loading your work…" framed={false} /></Panel></>;
+}
 
 export function WorkQueuePage() {
   const { user } = usePortalSession();
@@ -25,13 +33,24 @@ export function WorkQueuePage() {
 }
 
 function WorkList({ user }: { user: UserSummary }) {
-  const [page, setPage] = useState(1);
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const router = useRouter();
+  const requestedPage = Number(params.get("page") ?? 1);
+  const page = Number.isInteger(requestedPage) && requestedPage >= 1 && requestedPage <= 100 ? requestedPage : 1;
+  const here = `${pathname}${params.size ? `?${params}` : ""}`;
+  function setPage(next: number) {
+    const query = new URLSearchParams(params.toString());
+    query.set("page", String(next));
+    router.replace(`${pathname}?${query}`, { scroll: false });
+  }
   const query = useWorkQueue(user, page);
   const data = safeQueryData(query)?.data;
   const forbidden = query.error instanceof CompassApiError && query.error.status === 403;
   return (
     <section aria-labelledby="my-work-heading" className="min-w-0">
       <PageHeader title="My work" headingId="my-work-heading" description="Work that needs your attention." />
+      {followupAccess(user).view ? <p className="mb-4 text-sm"><Link className="font-semibold text-brand underline underline-offset-4" href={withWorkflowReturn("/portal/follow-ups", here)}>View all Follow-Ups</Link></p> : null}
       {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <Panel>
         {query.isPending ? <PanelMessage role="status">Loading your work…</PanelMessage> : null}
@@ -42,7 +61,7 @@ function WorkList({ user }: { user: UserSummary }) {
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">
           {data.items.map((item) => {
             const row = presentWork(item, data.generated_at);
-            return <li key={item.id}><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} subject={item.student.display_name} detail={row.detail} /></li>;
+            return <li key={item.id}><TaskLink href={row.href.startsWith("/portal/follow-ups/") ? withWorkflowReturn(row.href, here) : row.href} actionLabel={row.actionLabel} title={row.title} subject={item.student.display_name} detail={row.detail} /></li>;
           })}
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My work pages" className="px-4 sm:px-5" /> : null}

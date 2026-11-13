@@ -1,7 +1,8 @@
 "use client";
 
 import { FollowupsContext } from "@/features/guidance-followups/followups-context";
-import Link from "next/link";
+import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -24,6 +25,7 @@ import {
 } from "@/features/counseling/counseling-shared";
 import { StudentSessionSummarySection } from "@/features/counseling/student-session-summary-section";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { portalReturnHref, withWorkflowReturn, workflowBackLabel } from "@/features/portal/workflow-navigation";
 import { useCounselingGetEncounter } from "@/lib/api/generated/counseling/counseling";
 
 function Metadata({ label, value }: { label: string; value: ReactNode }) {
@@ -32,6 +34,11 @@ function Metadata({ label, value }: { label: string; value: ReactNode }) {
 
 export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
   const { user } = usePortalSession();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const here = `${pathname}${params.size ? `?${params}` : ""}`;
+  const back = portalReturnHref(params.get("return_to"), SESSION_RECORDS_PATH);
+  const backLink = <Link href={back} className={pageBackLinkClass}>{workflowBackLabel(back)}</Link>;
   const access = getCounselingAccess(user);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const query = useCounselingGetEncounter(encounterId, { query: { enabled: access.isCounselor && access.canViewAssigned, retry: false } });
@@ -39,14 +46,14 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Counseling Encounter" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href={SESSION_RECORDS_PATH} className={pageBackLinkClass}>Back to session records</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "You don't have access to this Counseling Encounter.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={backLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "You don't have access to this Counseling Encounter.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>
       <CounselingPageHeading
         title="Counseling Encounter"
         description={`${encounter.student.display_name} · ${counselingEntryModeLabel(encounter.entry_mode)}`}
-        back={<Link href={SESSION_RECORDS_PATH} className={pageBackLinkClass}>Back to session records</Link>}
+        back={backLink}
       />
 
       <Panel aria-labelledby="encounter-details-heading">
@@ -61,7 +68,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
           <Metadata label="Counselor" value={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={encounter.counselor.display_name} photoUrl={encounter.counselor.profile_photo_url} photoUpdatedAt={encounter.counselor.profile_photo_updated_at} size="compact" />{encounter.counselor.display_name}</span>} />
           <Metadata label="Service" value={<>{encounter.service.name}</>} />
           <Metadata label="Appointment" value={encounter.appointment ? <Link href={`/portal/appointments/${encounter.appointment.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.appointment.reference_code}</Link> : "No linked Appointment"} />
-          <Metadata label="Case" value={encounter.case ? <Link href={caseHref(encounter.case.id)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.case.reference_code}</Link> : encounter.in_case ? "In a case another Counselor is responsible for" : "Not in a case"} />
+          <Metadata label="Case" value={encounter.case ? <Link href={withWorkflowReturn(caseHref(encounter.case.id), here)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.case.reference_code}</Link> : encounter.in_case ? "In a case another Counselor is responsible for" : "Not in a case"} />
           <Metadata label="Origin" value={counselingEntryModeLabel(encounter.entry_mode)} />
           <Metadata label="Delivery mode" value={counselingDeliveryModeLabel(encounter.delivery_mode)} />
           <Metadata label="Actual start" value={formatCounselingDateTime(encounter.started_at)} />
