@@ -40,6 +40,9 @@
   "additive_migrations": [
     "counseling/migrations/0003_counseling_cases.py",
     "counseling/migrations/0004_case_appointments.py",
-    "guidance_followups/migrations/0002_next_actions.py"
+    "counseling/migrations/0005_case_transfers.py",
+    "counseling/migrations/0006_transfer_history.py",
+    "guidance_followups/migrations/0002_next_actions.py",
+    "guidance_followups/migrations/0003_case_transfers.py"
   ]
 }

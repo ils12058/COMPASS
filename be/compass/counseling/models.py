@@ -131,6 +131,13 @@ from compass.counseling.case_models import (  # noqa: E402, F401
     CounselingCaseReferenceCounter,
     CounselingCaseSession,
 )
+from compass.counseling.case_transfer_models import (  # noqa: E402, F401
+    CounselingCaseResponsibility,
+    CounselingCaseTransfer,
+    CounselingCaseTransferAppointment,
+    CounselingCaseTransferEvent,
+    CounselingCaseTransferTask,
+)
 from compass.counseling.continuity_models import (  # noqa: E402, F401
     CounselorCaseContinuityGrant,
     CounselorCaseContinuityScope,

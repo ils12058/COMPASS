@@ -175,6 +175,13 @@ class GuidanceFollowUpEvent(models.Model):
     old_due_at = models.DateTimeField(null=True, blank=True)
     new_due_at = models.DateTimeField(null=True, blank=True)
     remarks_ciphertext = models.TextField(null=True, blank=True, editable=False)
+    case_transfer = models.ForeignKey(
+        "counseling.CounselingCaseTransfer",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="followup_events",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
