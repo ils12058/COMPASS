@@ -346,6 +346,16 @@ EXPECTED_OPERATION_IDS = {
     "counselingGetCaseHandoff",
     "counselingAddCaseHandoffAddendum",
     "counselingRecordCaseHandoffUnavailable",
+    "counselingGetCaseCoverageContext",
+    "counselingPrepareCaseCoverage",
+    "counselingGetCaseCoverage",
+    "counselingUpdateCaseCoverage",
+    "counselingSubmitCaseCoverage",
+    "counselingAuthorizeCaseCoverage",
+    "counselingAcceptCaseCoverage",
+    "counselingDeclineCaseCoverage",
+    "counselingCancelCaseCoverage",
+    "counselingRevokeCaseCoverage",
     "counselingUpdateEncounter",
     "counselingListStudents",
     "counselingGetAssignedStudentSessionSummary",
@@ -3491,6 +3501,10 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
     assert set(schema["paths"]["/api/v1/work"]) == {"get"}
     schemas = schema["components"]["schemas"]
     assert schemas["WorkKind"]["enum"] == [
+        "CASE_COVERAGE_AUTHORIZATION",
+        "CASE_COVERAGE_ACCEPTANCE",
+        "CASE_COVERAGE_WORK",
+        "CASE_COVERAGE_RECOVERY",
         "CASE_HANDOFF_EXCEPTION",
         "CASE_TRANSFER_AUTHORIZATION",
         "CASE_TRANSFER_ACCEPTANCE",

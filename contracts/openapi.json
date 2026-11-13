@@ -5400,9 +5400,28 @@
       "CaseContinuityPanelResponse": {
         "additionalProperties": false,
         "properties": {
+          "can_arrange_coverage": {
+            "default": false,
+            "title": "Can Arrange Coverage",
+            "type": "boolean"
+          },
           "can_transfer": {
             "title": "Can Transfer",
             "type": "boolean"
+          },
+          "coverage_history": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageHistoryResponse"
+            },
+            "title": "Coverage History",
+            "type": "array"
+          },
+          "coverages": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageSummary"
+            },
+            "title": "Coverages",
+            "type": "array"
           },
           "history": {
             "items": {
@@ -5465,6 +5484,1023 @@
         ],
         "title": "CaseContinuityReason",
         "type": "string"
+      },
+      "CaseCoverageContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/CaseContinuityIdentity"
+          },
+          "office_prepared": {
+            "title": "Office Prepared",
+            "type": "boolean"
+          },
+          "receiver_options": {
+            "items": {
+              "$ref": "#/components/schemas/CaseTransferReceiverOption"
+            },
+            "title": "Receiver Options",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageTaskContext"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case",
+          "office_prepared",
+          "receiver_options",
+          "tasks"
+        ],
+        "title": "CaseCoverageContextResponse",
+        "type": "object"
+      },
+      "CaseCoverageDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseArrangementDecisionReason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "CaseCoverageDecisionRequest",
+        "type": "object"
+      },
+      "CaseCoverageDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authorized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorized At"
+          },
+          "authorized_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_accept": {
+            "title": "Can Accept",
+            "type": "boolean"
+          },
+          "can_arrange_transfer": {
+            "title": "Can Arrange Transfer",
+            "type": "boolean"
+          },
+          "can_authorize": {
+            "title": "Can Authorize",
+            "type": "boolean"
+          },
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "can_decline": {
+            "title": "Can Decline",
+            "type": "boolean"
+          },
+          "can_edit": {
+            "title": "Can Edit",
+            "type": "boolean"
+          },
+          "can_open_case": {
+            "title": "Can Open Case",
+            "type": "boolean"
+          },
+          "can_revoke": {
+            "title": "Can Revoke",
+            "type": "boolean"
+          },
+          "can_submit": {
+            "title": "Can Submit",
+            "type": "boolean"
+          },
+          "case": {
+            "$ref": "#/components/schemas/CaseContinuityIdentity"
+          },
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_recorded_by": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "communication_responsible": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Task Id"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseArrangementDecisionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageHistoryResponse"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "needs_new_arrangement": {
+            "title": "Needs New Arrangement",
+            "type": "boolean"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "office_prepared": {
+            "title": "Office Prepared",
+            "type": "boolean"
+          },
+          "prepared_by": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "primary_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "recovery_required_count": {
+            "title": "Recovery Required Count",
+            "type": "integer"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "review_accessible": {
+            "title": "Review Accessible",
+            "type": "boolean"
+          },
+          "review_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Expires At"
+          },
+          "revocation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseArrangementDecisionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseCoverageStatus"
+          },
+          "student_communication": {
+            "$ref": "#/components/schemas/CaseStudentCommunication"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageTaskResponse"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "state",
+          "version",
+          "receiving_counselor",
+          "starts_at",
+          "expires_at",
+          "waiting_for",
+          "review_expires_at",
+          "independent_authorization",
+          "authorization_route",
+          "needs_new_arrangement",
+          "recovery_required_count",
+          "case",
+          "primary_counselor",
+          "prepared_by",
+          "office_prepared",
+          "reason",
+          "office_preparation_reason",
+          "authorized_by",
+          "authorized_at",
+          "decided_by",
+          "decided_at",
+          "decision_reason",
+          "revoked_by",
+          "revoked_at",
+          "revocation_reason",
+          "student_communication",
+          "student_informed_at",
+          "communication_recorded_by",
+          "communication_deferral_reason",
+          "communication_task_id",
+          "communication_responsible",
+          "tasks",
+          "history",
+          "review_accessible",
+          "can_edit",
+          "can_submit",
+          "can_authorize",
+          "can_accept",
+          "can_decline",
+          "can_cancel",
+          "can_revoke",
+          "can_open_case",
+          "can_arrange_transfer"
+        ],
+        "title": "CaseCoverageDetailResponse",
+        "type": "object"
+      },
+      "CaseCoverageHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverage_id": {
+            "format": "uuid",
+            "title": "Coverage Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "coverage_id",
+          "reference_code",
+          "kind",
+          "version",
+          "actor",
+          "occurred_at",
+          "independent_authorization",
+          "authorization_route"
+        ],
+        "title": "CaseCoverageHistoryResponse",
+        "type": "object"
+      },
+      "CaseCoveragePrepareRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Due At"
+          },
+          "communication_next_action": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Next Action"
+          },
+          "expected_case_version": {
+            "minimum": 1,
+            "title": "Expected Case Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "student_communication": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaseStudentCommunication"
+              }
+            ],
+            "default": "NO"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageTaskInput"
+            },
+            "maxItems": 2000,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_case_version",
+          "receiving_counselor_id",
+          "reason",
+          "starts_at",
+          "expires_at"
+        ],
+        "title": "CaseCoveragePrepareRequest",
+        "type": "object"
+      },
+      "CaseCoverageReturnPlan": {
+        "enum": [
+          "RETURN_TO_PRIMARY",
+          "REVIEW_WITH_PRIMARY"
+        ],
+        "title": "CaseCoverageReturnPlan",
+        "type": "string"
+      },
+      "CaseCoverageStatus": {
+        "enum": [
+          "PREPARED",
+          "AUTHORIZED",
+          "SCHEDULED",
+          "ACTIVE",
+          "ENDED",
+          "DECLINED",
+          "CANCELLED",
+          "REVOKED",
+          "EXPIRED"
+        ],
+        "title": "CaseCoverageStatus",
+        "type": "string"
+      },
+      "CaseCoverageSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseAuthorizationRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "independent_authorization": {
+            "title": "Independent Authorization",
+            "type": "boolean"
+          },
+          "needs_new_arrangement": {
+            "title": "Needs New Arrangement",
+            "type": "boolean"
+          },
+          "receiving_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "recovery_required_count": {
+            "title": "Recovery Required Count",
+            "type": "integer"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "review_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Expires At"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseCoverageStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "state",
+          "version",
+          "receiving_counselor",
+          "starts_at",
+          "expires_at",
+          "waiting_for",
+          "review_expires_at",
+          "independent_authorization",
+          "authorization_route",
+          "needs_new_arrangement",
+          "recovery_required_count"
+        ],
+        "title": "CaseCoverageSummary",
+        "type": "object"
+      },
+      "CaseCoverageTaskContext": {
+        "additionalProperties": false,
+        "properties": {
+          "assignee": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "can_delegate": {
+            "title": "Can Delegate",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "version",
+          "category",
+          "source_kind",
+          "due_at",
+          "assignee",
+          "title",
+          "record_accessible",
+          "can_delegate",
+          "blocked_reason"
+        ],
+        "title": "CaseCoverageTaskContext",
+        "type": "object"
+      },
+      "CaseCoverageTaskInput": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "return_plan": {
+            "$ref": "#/components/schemas/CaseCoverageReturnPlan"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "expected_version",
+          "return_plan"
+        ],
+        "title": "CaseCoverageTaskInput",
+        "type": "object"
+      },
+      "CaseCoverageTaskResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "assigned_counselor": {
+            "$ref": "#/components/schemas/CaseContinuityPerson"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "record_accessible": {
+            "title": "Record Accessible",
+            "type": "boolean"
+          },
+          "recovery_required": {
+            "title": "Recovery Required",
+            "type": "boolean"
+          },
+          "return_plan": {
+            "$ref": "#/components/schemas/CaseCoverageReturnPlan"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseContinuityPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "task_id",
+          "category",
+          "source_kind",
+          "due_at",
+          "assigned_counselor",
+          "return_plan",
+          "title",
+          "record_accessible",
+          "returned_at",
+          "returned_by",
+          "recovery_required"
+        ],
+        "title": "CaseCoverageTaskResponse",
+        "type": "object"
+      },
+      "CaseCoverageUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "communication_deferral_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCommunicationDeferral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "communication_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Due At"
+          },
+          "communication_next_action": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Communication Next Action"
+          },
+          "expected_case_version": {
+            "minimum": 1,
+            "title": "Expected Case Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "office_preparation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOfficePreparationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CaseContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "student_communication": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaseStudentCommunication"
+              }
+            ],
+            "default": "NO"
+          },
+          "student_informed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Informed At"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCoverageTaskInput"
+            },
+            "maxItems": 2000,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_case_version",
+          "receiving_counselor_id",
+          "reason",
+          "starts_at",
+          "expires_at",
+          "expected_version"
+        ],
+        "title": "CaseCoverageUpdateRequest",
+        "type": "object"
+      },
+      "CaseCoverageVersionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "CaseCoverageVersionRequest",
+        "type": "object"
       },
       "CaseHandoffActionWork": {
         "additionalProperties": false,
@@ -16781,6 +17817,11 @@
             "title": "Can Create Next Action",
             "type": "boolean"
           },
+          "can_reassign": {
+            "default": true,
+            "title": "Can Reassign",
+            "type": "boolean"
+          },
           "cancelled_at": {
             "anyOf": [
               {
@@ -17025,6 +18066,29 @@
             "title": "Actor Name",
             "type": "string"
           },
+          "case_coverage_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Coverage Id"
+          },
+          "case_coverage_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Coverage Reference"
+          },
           "case_transfer_id": {
             "anyOf": [
               {
@@ -17047,6 +18111,18 @@
               }
             ],
             "title": "Case Transfer Reference"
+          },
+          "coverage_effective_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Effective At"
           },
           "created_at": {
             "format": "date-time",
@@ -27407,6 +28483,7 @@
         "enum": [
           "GUIDANCE_FOLLOW_UP",
           "CASE_TRANSFER",
+          "CASE_COVERAGE",
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
@@ -28597,6 +29674,16 @@
           "auth.mfa.totp.disabled",
           "auth.mfa.totp.failed",
           "auth.password.reset",
+          "counseling.case_coverage.accepted",
+          "counseling.case_coverage.authorized",
+          "counseling.case_coverage.cancelled",
+          "counseling.case_coverage.declined",
+          "counseling.case_coverage.prepared",
+          "counseling.case_coverage.revoked",
+          "counseling.case_coverage.submitted",
+          "counseling.case_coverage.tasks_recovered",
+          "counseling.case_coverage.tasks_returned",
+          "counseling.case_coverage.updated",
           "counseling.case_transfer.accepted",
           "counseling.case_transfer.authorized",
           "counseling.case_transfer.cancelled",
@@ -35290,6 +36377,10 @@
       },
       "WorkKind": {
         "enum": [
+          "CASE_COVERAGE_AUTHORIZATION",
+          "CASE_COVERAGE_ACCEPTANCE",
+          "CASE_COVERAGE_WORK",
+          "CASE_COVERAGE_RECOVERY",
           "CASE_HANDOFF_EXCEPTION",
           "CASE_TRANSFER_AUTHORIZATION",
           "CASE_TRANSFER_ACCEPTANCE",
@@ -49390,6 +50481,212 @@
         ]
       }
     },
+    "/api/v1/counseling/continuity/cases/{case_id}/coverage-context": {
+      "get": {
+        "operationId": "counselingGetCaseCoverageContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/cases/{case_id}/coverages": {
+      "post": {
+        "operationId": "counselingPrepareCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoveragePrepareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Prepare",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/continuity/cases/{case_id}/transfer-context": {
       "get": {
         "operationId": "counselingGetCaseTransferContext",
@@ -49612,6 +50909,858 @@
           }
         ],
         "summary": "Prepare",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}": {
+      "get": {
+        "operationId": "counselingGetCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Review",
+        "tags": [
+          "counseling"
+        ]
+      },
+      "put": {
+        "operationId": "counselingUpdateCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Update",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/accept": {
+      "post": {
+        "operationId": "counselingAcceptCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Accept",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/authorize": {
+      "post": {
+        "operationId": "counselingAuthorizeCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Authorize",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/cancel": {
+      "post": {
+        "operationId": "counselingCancelCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Cancel",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/decline": {
+      "post": {
+        "operationId": "counselingDeclineCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Decline",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/revoke": {
+      "post": {
+        "operationId": "counselingRevokeCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Revoke",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity/coverages/{coverage_id}/submit": {
+      "post": {
+        "operationId": "counselingSubmitCaseCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coverage_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coverage Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCoverageVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCoverageDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit",
         "tags": [
           "counseling"
         ]
