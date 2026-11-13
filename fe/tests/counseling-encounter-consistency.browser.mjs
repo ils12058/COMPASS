@@ -296,6 +296,15 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   assert.equal(await fakeCount(page, "createCallObject"), 1, "Transfer review keeps the same Call Object");
   assert.equal(await fakeCount(page, "destroy"), 0, "Transfer review does not end the call");
   await shown(page.getByRole("region", { name: "Active E-Counseling call" }));
+  await page.getByRole("link", { name: "Open handoff", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Submitted handoff", exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Opening a case handoff keeps the Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Opening a case handoff does not rejoin");
+  assert.equal(await fakeCount(page, "leave"), 0, "Opening a case handoff does not leave");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Opening a case handoff does not destroy the call");
+  await activeCallAvailable(page);
+  await page.getByRole("link", { name: "Back to transfer review", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Transfer review", exact: true }));
   await page.getByRole("link", { name: "Back to case", exact: true }).click();
   await page.locator('[aria-labelledby="case-next-actions-heading"]').getByRole("link", { name: "Check progress with Student", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));

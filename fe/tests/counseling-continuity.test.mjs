@@ -41,3 +41,10 @@ test("stale and denied errors use closed safe copy instead of backend diagnostic
     assert.equal(continuityStale(value), false);
   }
 });
+
+test("unavailable-handoff queue names the review without claiming authorization", () => {
+ const item=presentWork({kind:"CASE_HANDOFF_EXCEPTION", source_id:"arrangement", case_reference_code:"CASE-2026-000001",due_at:null,waiting_since:null});
+ assert.equal(item.title,"Review unavailable handoff · CASE-2026-000001");
+ assert.equal(item.href,"/portal/counseling/transfers/arrangement");
+ assert.match(item.detail,/before transfer submission/);
+});

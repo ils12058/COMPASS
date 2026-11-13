@@ -48,6 +48,7 @@ def future_appointment(w):
 
 def transfer_world(settings, prefix="cw3"):
     settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (Fernet.generate_key().decode(),)
+    settings.COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS = (Fernet.generate_key().decode(),)
     w = world(prefix)
     w.case = intake(w.a, w.student)
     college = make_college(prefix)
@@ -108,7 +109,50 @@ def prepare(w, *, actor=None, receiver=None, **changes):
     )
 
 
+def ensure_handoff(item, actor):
+    """Supply the real CW-3b prerequisite for existing transfer-boundary scenarios."""
+    from compass.counseling.case_continuity_rules import eligible_authorizers
+    from compass.counseling.case_handoff_services import operate
+
+    if item.case_handoff_id or item.handoff_exception_id:
+        return item
+    if actor.pk == item.outgoing_counselor_id:
+        body = operate(
+            actor=actor,
+            transfer_id=item.pk,
+            operation="save",
+            expected_transfer_version=item.version,
+            sections={
+                "context_and_purpose": "Continuing student support.",
+                "support_and_progress": "Support reviewed.",
+                "continuing_considerations": "Review the current plan.",
+                "receiver_next_steps": "Review and handle the specified actions.",
+            },
+        )
+        operate(
+            actor=actor,
+            transfer_id=item.pk,
+            operation="submit",
+            expected_transfer_version=body["transfer_version"],
+            expected_handoff_version=body["version"],
+        )
+    else:
+        head = eligible_authorizers(
+            requester_id=actor.pk, receiver_id=item.receiving_counselor_id, now=timezone.now()
+        )[0]
+        operate(
+            actor=head,
+            transfer_id=item.pk,
+            operation="exception",
+            expected_transfer_version=item.version,
+            exception_reason="OWNER_UNAVAILABLE",
+        )
+    item.refresh_from_db()
+    return item
+
+
 def submit(item, actor):
+    item = ensure_handoff(item, actor)
     return transfers.submit_transfer(
         actor=actor, transfer_id=item.pk, expected_version=item.version, context=context(actor)
     )
@@ -552,6 +596,8 @@ def test_http_roles_review_work_queue_and_content_free_notifications(cw3):
     for other in (w.student, w.faculty, w.admin, w.officer, w.b):
         denied = auth_client(other).get(f"{ROOT}/transfers/{item['id']}")
         assert denied.status_code in {403, 404}, denied.content
+    ready = ensure_handoff(CounselingCaseTransfer.objects.get(pk=item["id"]), w.a)
+    item["version"] = ready.version
     response = write(
         actor,
         "post",

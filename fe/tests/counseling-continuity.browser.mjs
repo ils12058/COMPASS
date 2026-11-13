@@ -28,12 +28,27 @@ async function confirm(page, action, reason) {
   await hidden(completed);
   await page.waitForFunction(() => document.activeElement?.id === "transfer-review-heading");
 }
+async function submitHandoff(page) {
+  await page.getByRole("link", { name: "Open handoff", exact: true }).click();
+  await shown(page.getByRole("button", {name:"Submit handoff",exact:true}));
+  await page.getByRole("button", {name:"Submit handoff",exact:true}).click();
+  const dialog=page.getByRole("alertdialog",{name:"Submit handoff?",exact:true});
+  await dialog.getByRole("button",{name:"Submit handoff",exact:true}).click();
+  await shown(page.getByRole("alertdialog",{name:"Handoff submitted",exact:true}));
+  await page.getByRole("button",{name:"Done",exact:true}).click();
+  await page.getByRole("link",{name:"Back to transfer review",exact:true}).click();
+  await shown(page.getByRole("heading",{name:"Transfer review",exact:true}));
+}
 async function fillPreparation(page, chosen = receiver) {
   await shown(page.getByLabel("Receiving counselor", { exact: true }));
   await page.getByLabel("Receiving counselor", { exact: true }).selectOption(chosen.id);
   await page.getByLabel("Plan for action 1", { exact: true }).selectOption("TRANSFER");
   await page.getByLabel("Plan for APT-CW3-0001", { exact: true }).selectOption("RETAIN_WITH_PROVIDER");
   await page.getByLabel(`Why retain ${counselor.display_name}?`, { exact: true }).selectOption("CONTINUING_SUPPORT");
+  if (await page.getByLabel("Current concern and handoff purpose", {exact:true}).count()) {
+    await page.getByLabel("Current concern and handoff purpose", {exact:true}).fill("Synthetic continuation context");
+    await page.getByLabel("What the receiver should review or do next", {exact:true}).fill("Review the specified work");
+  }
 }
 function reviewFixture(person, state = "AUTHORIZED", changes = {}) {
   const fixture = continuityFixture({ account: continuityAccount(person), item: { state, waiting_for: state === "AUTHORIZED" ? receiver.display_name : "Head approval", authorization_route: state === "AUTHORIZED" ? "INDEPENDENT_HEAD" : null, review_expires_at: state === "AUTHORIZED" ? "2099-01-15T00:00:00Z" : null, ...changes } });
@@ -56,7 +71,7 @@ await check("case-panel-names-owner-and-starts-transfer", casePath, { handler: o
 const preparation = continuityFixture();
 await check("counselor-prepares-all-work-and-deferred-communication", preparePath, { handler: preparation.handler }, async page => {
   await fillPreparation(page);
-  assert.deepEqual(await page.getByRole("heading", { name: /^[1-5]\. / }).allTextContents(), ["1. Receiver and reason", "2. Pending actions", "3. Upcoming appointments", "4. Student communication", "5. Review and save"]);
+  assert.deepEqual(await page.getByRole("heading", { name: /^[1-6]\. / }).allTextContents(), ["1. Receiver and reason", "2. Pending actions", "3. Upcoming appointments", "4. Handoff", "5. Student communication", "6. Review and save"]);
   await page.getByLabel("Has the Student been informed?", { exact: true }).selectOption("DEFERRED");
   await page.getByLabel("Why informing is deferred", { exact: true }).selectOption("CONTACT_PENDING");
   await page.getByLabel("Next action to inform the Student", { exact: true }).fill("Contact Student about new Counselor");
@@ -68,6 +83,7 @@ await check("counselor-prepares-all-work-and-deferred-communication", preparePat
   assert.equal(write.body.tasks[0].disposition, "TRANSFER");
   assert.equal(write.body.appointments[0].disposition, "RETAIN_WITH_PROVIDER");
   assert.equal(preparation.item.case.primary_counselor.id, counselor.id);
+  await submitHandoff(page);
   await confirm(page, "Submit transfer");
   await shown(page.getByText("Waiting for Head approval", { exact: true }));
   assert.equal(preparation.item.case.primary_counselor.id, counselor.id);
@@ -147,6 +163,7 @@ await check("personal-request-to-only-head-needs-explicit-acceptance", preparePa
   await shown(page.getByText(/Personally requested.*no independent Head authorization\./));
   await page.getByRole("button", { name: "Save transfer plan", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Transfer review", exact: true }));
+  await submitHandoff(page);
   await confirm(page, "Submit transfer");
   assert.equal(toHead.item.state, "AUTHORIZED");
   assert.equal(toHead.item.independent_authorization, false);
@@ -177,7 +194,8 @@ await check("office-prepares-with-attributed-operational-reason", preparePath, {
   await page.getByLabel("Why is the office preparing this?", { exact: true }).selectOption("OWNER_UNAVAILABLE");
   await page.getByRole("button", { name: "Save transfer plan", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Transfer review", exact: true }));
-  await confirm(page, "Submit transfer");
+  assert.equal(await page.getByRole("button", {name:"Submit transfer",exact:true}).count(),0,"Office preparation needs the Head exception first");
+  assert.equal(officePreparation.operations.find(operation=>operation.method==="POST").body.handoff_sections,undefined);
   assert.equal(officePreparation.item.prepared_by.id, office.id);
   assert.equal(officePreparation.item.state, "PREPARED");
   assert.doesNotMatch(await page.locator("main").innerText(), /Protected synthetic action/);
