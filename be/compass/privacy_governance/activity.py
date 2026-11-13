@@ -615,6 +615,22 @@ _CASE_CONTINUITY_ACTIONS = frozenset(
     }
 )
 _PRIVACY_GOVERNANCE_ACTIONS |= _CASE_CONTINUITY_ACTIONS
+_CASE_CONTINUITY_ACTIONS |= frozenset(
+    "counseling.case_coverage." + verb
+    for verb in (
+        "prepared",
+        "updated",
+        "submitted",
+        "authorized",
+        "accepted",
+        "declined",
+        "cancelled",
+        "revoked",
+        "tasks_returned",
+        "tasks_recovered",
+    )
+)
+_PRIVACY_GOVERNANCE_ACTIONS |= _CASE_CONTINUITY_ACTIONS
 _ALL_ACTIONS = (
     _DATA_RELEASE_ACTIONS
     | _ACCESS_CONTROL_ACTIONS
@@ -648,7 +664,12 @@ def _present(event: AuditEvent) -> PrivacyActivityItem | None:
 def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
     import re
 
-    if event.target_type != "counseling.case_transfer" or _uuid_string(event.target_id) is None:
+    coverage = event.action.startswith("counseling.case_coverage.")
+    if (
+        event.target_type
+        != ("counseling.case_coverage" if coverage else "counseling.case_transfer")
+        or _uuid_string(event.target_id) is None
+    ):
         return None
     independent = event.metadata.get("independent_authorization")
     route = event.metadata.get("authorization_route")
@@ -657,7 +678,9 @@ def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
         type(independent) is not bool
         or route not in {"", "INDEPENDENT_HEAD", "DIRECT_OUTGOING_HEAD", "OWNER_TO_HEAD"}
         or not isinstance(reference, str)
-        or not re.fullmatch(r"TRF-CASE-\d{4}-\d{6}-\d{3,6}", reference)
+        or not re.fullmatch(
+            (r"COV" if coverage else r"TRF") + r"-CASE-\d{4}-\d{6}-\d{3,6}", reference
+        )
     ):
         return None
     fact = (
@@ -678,7 +701,7 @@ def _case_continuity(event: AuditEvent) -> PrivacyActivityItem | None:
     return _base(
         event,
         category=PrivacyActivityCategory.PRIVACY_GOVERNANCE,
-        title=f"Case transfer {verb}",
+        title=f"Case {'coverage' if coverage else 'transfer'} {verb.replace('_', ' ')}",
         description=fact,
         resource_reference=reference,
     )

@@ -31,6 +31,7 @@ def next_actions(*, actor, case):
     query = policy.scope(
         actor,
         GuidanceFollowUp.objects.filter(case_id=case.pk).select_related("student", "assigned_to"),
+        include_owned_delegated=True,
     )
     pending = list(query.filter(status="PENDING").order_by("due_at", "id")[: PENDING_LIMIT + 1])
     recent = list(

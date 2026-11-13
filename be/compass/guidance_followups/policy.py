@@ -193,6 +193,13 @@ def require_assignee(
 def authorized(actor, followup, *, manage=False):
     if not followup.student.is_active or followup.student.role.code != "STUDENT":
         return False
+    from compass.counseling.case_coverage_tasks import active_delegation, may_receive_task
+
+    plan = active_delegation(followup)
+    if may_receive_task(actor, plan, manage=manage):
+        return True
+    if manage and plan is not None:
+        return False
     if followup.assigned_to_id != actor.pk:
         return False
     if followup.visibility == FollowUpVisibility.OPERATIONAL:
@@ -219,7 +226,7 @@ def authorized(actor, followup, *, manage=False):
     return False
 
 
-def scope(actor, queryset, *, manage=False):
+def scope(actor, queryset, *, manage=False, include_owned_delegated=False):
     """Authorize the entire paginated set in SQL before OFFSET/LIMIT.
 
     Never fetch an unbounded prefix and filter it in Python: that breaks privacy,
@@ -227,8 +234,15 @@ def scope(actor, queryset, *, manage=False):
     """
     from django.db.models import Exists, F, OuterRef, Q
 
-    queryset = queryset.filter(
-        assigned_to_id=actor.pk, student__is_active=True, student__role__code="STUDENT"
+    from compass.counseling.case_coverage_tasks import scoped_assignments
+
+    reconcile_coverage(actor=actor)
+    queryset = queryset.filter(student__is_active=True, student__role__code="STUDENT")
+    queryset, receives_coverage = scoped_assignments(
+        actor,
+        queryset,
+        manage=manage,
+        include_owned_delegated=include_owned_delegated,
     )
     if is_head_guidance(actor):
         operational = Q(visibility=FollowUpVisibility.OPERATIONAL)
@@ -246,6 +260,8 @@ def scope(actor, queryset, *, manage=False):
         return queryset.filter(operational).distinct()
 
     confidential = Q(pk__in=[])
+    if receives_coverage:
+        confidential |= Q(visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL, _cw_received=True)
     if actor.has_capability("counseling.manage_assigned" if manage else "counseling.view_assigned"):
         from compass.counseling.models import CounselingEncounter
 
@@ -287,6 +303,18 @@ def scope(actor, queryset, *, manage=False):
             _fup_routine_match=True,
         )
     return queryset.filter(operational | confidential).distinct()
+
+
+def reconcile_coverage(*, actor, task_id=None):
+    from compass.counseling.case_continuity_rules import CaseContinuityError
+    from compass.counseling.case_coverage_tasks import reconcile_returns
+
+    from .errors import FollowUpConflict
+
+    try:
+        reconcile_returns(actor=actor, task_id=task_id)
+    except CaseContinuityError as exc:
+        raise FollowUpConflict(exc.message) from None
 
 
 def require_followup(actor, followup, *, manage=False):

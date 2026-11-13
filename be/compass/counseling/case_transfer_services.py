@@ -163,7 +163,7 @@ def _save(item):
     item.save()
 
 
-def _check_communication(item, values, *, actor, people, now, context):
+def _check_communication(item, values, *, actor, people, now, context, identity_prefix="transfer"):
     status = values.get("student_communication", "NO")
     if status not in CaseStudentCommunication.values:
         rules.fail("communication_invalid", "Choose the Student communication status.", 422)
@@ -226,7 +226,7 @@ def _check_communication(item, values, *, actor, people, now, context):
                 assignee=people[item.outgoing_counselor_id],
                 title=title,
                 due_at=due,
-                identity=f"transfer-communication:{item.pk}",
+                identity=f"{identity_prefix}-communication:{item.pk}",
                 context=context,
             )
     elif (
@@ -243,6 +243,9 @@ def _check_communication(item, values, *, actor, people, now, context):
 def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expected_version=None):
     actor = rules.current_actor(actor, "request")
     case = rules.lock_case(case_id)
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
     if transfer_id is None:
         if values.get("expected_case_version") != case.version:
             rules.fail("case_changed", "This case changed. Review the latest pending work.")
@@ -395,15 +398,23 @@ def submit_transfer(*, actor, transfer_id, expected_version, context):
 def conflicting_coverage(case, now):
     # Student-keyed legacy coverage is left unchanged. Its active interval must be explicitly
     # revoked/ended before changing this case's responsibility.
-    return CounselorCaseContinuityGrant.objects.filter(
-        student_id=case.student_id, decision="APPROVED", starts_at__lte=now, expires_at__gt=now
-    ).exists()
+    from .case_coverage_services import conflicting_case_coverage
+
+    return (
+        conflicting_case_coverage(case, now)
+        or CounselorCaseContinuityGrant.objects.filter(
+            student_id=case.student_id, decision="APPROVED", starts_at__lte=now, expires_at__gt=now
+        ).exists()
+    )
 
 
 @transaction.atomic
 def decide_transfer(*, actor, transfer_id, expected_version, action, context, reason=None):
     visible = get_transfer(actor=actor, transfer_id=transfer_id)
     case = rules.lock_case(visible.case_id)
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
     item = transfers().select_for_update(of=("self",)).get(pk=visible.pk)
     item.case = case
     rules.require_version(item, expected_version)

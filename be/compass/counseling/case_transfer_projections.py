@@ -65,6 +65,9 @@ def transfer_context(*, actor, case_id, reason="SERVICE_RESPONSIBILITY_CHANGE"):
         rules.fail("case_not_found", "The case is not available for this arrangement.", 404)
     if case.status != "ACTIVE":
         rules.fail("case_not_active", "Only an Active case can be transferred.")
+    from .case_coverage_tasks import reconcile_returns
+
+    reconcile_returns(actor=actor, case_id=case.pk)
     office = actor.pk != case.primary_counselor_id
     now = timezone.now()
     options = []
@@ -355,6 +358,27 @@ def case_continuity(case, actor):
         "responsibility": responsibility,
         "history": [history_event(event) for event in history],
         "can_transfer": case.status == "ACTIVE"
+        and actor.has_capability("counseling.manage_assigned")
+        and actor.has_capability("counseling.continuity.request"),
+        **case_coverage_panel(case, actor),
+    }
+
+
+def case_coverage_panel(case, actor):
+    from .case_coverage_models import CounselingCaseCoverageEvent
+    from .case_coverage_projections import history_event as coverage_history_event
+    from .case_coverage_projections import summary
+    from .case_coverage_services import coverages
+
+    return {
+        "coverages": [summary(item) for item in coverages().filter(case=case)],
+        "coverage_history": [
+            coverage_history_event(event)
+            for event in CounselingCaseCoverageEvent.objects.filter(coverage__case=case)
+            .select_related("actor", "coverage")
+            .order_by("-occurred_at", "-pk")
+        ],
+        "can_arrange_coverage": case.status == "ACTIVE"
         and actor.has_capability("counseling.manage_assigned")
         and actor.has_capability("counseling.continuity.request"),
     }

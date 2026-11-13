@@ -30,8 +30,12 @@ router = Router(tags=["counseling"])
 def invoke(operation, request, **values):
     try:
         return operation(actor=request.auth_user, **values)
-    except (CaseContinuityError, FollowUpError) as exc:
+    except CaseContinuityError as exc:
         raise APIError(exc.status, exc.code, str(exc)) from None
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise
+
+        _raise(exc)
 
 
 def context(request):
