@@ -13932,6 +13932,84 @@
         "title": "FacultyReferralAvailability",
         "type": "object"
       },
+      "FacultyReferralSubmissionDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "scheduling_statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSchedulingStatementResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/FacultyReferralSubmissionState"
+          },
+          "student": {
+            "$ref": "#/components/schemas/FacultyConfirmedStudent"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "timing_status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingStatus"
+              }
+            ],
+            "default": "NOT_PROVIDED"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "submitted_at",
+          "state",
+          "student",
+          "received_at",
+          "closed_at"
+        ],
+        "title": "FacultyReferralSubmissionDetailResponse",
+        "type": "object"
+      },
       "FacultyReferralSubmissionPage": {
         "additionalProperties": false,
         "properties": {
@@ -14010,6 +14088,14 @@
             "format": "date-time",
             "title": "Submitted At",
             "type": "string"
+          },
+          "timing_status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingStatus"
+              }
+            ],
+            "default": "NOT_PROVIDED"
           }
         },
         "required": [
@@ -14053,6 +14139,16 @@
             "minLength": 1,
             "title": "Reason",
             "type": "string"
+          },
+          "scheduling_statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSchedulingStatementRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -27042,6 +27138,16 @@
             "title": "Referrer Name",
             "type": "string"
           },
+          "scheduling_statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSchedulingStatementRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "student_id": {
             "format": "uuid",
             "title": "Student Id",
@@ -27159,6 +27265,14 @@
               }
             ],
             "title": "Submitted At"
+          },
+          "timing_status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingStatus"
+              }
+            ],
+            "default": "NOT_PROVIDED"
           },
           "updated_at": {
             "format": "date-time",
@@ -27366,6 +27480,139 @@
           "profile_photo_updated_at"
         ],
         "title": "ReferralPersonSummary",
+        "type": "object"
+      },
+      "ReferralSchedulingStatementRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_kind": {
+            "$ref": "#/components/schemas/ReferralTimingAnswer"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralTimingWindowRequest"
+            },
+            "maxItems": 5,
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer_kind"
+        ],
+        "title": "ReferralSchedulingStatementRequest",
+        "type": "object"
+      },
+      "ReferralSchedulingStatementResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_kind": {
+            "$ref": "#/components/schemas/ReferralTimingAnswer"
+          },
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "author_name": {
+            "title": "Author Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "submission_channel": {
+            "$ref": "#/components/schemas/ReferralSubmissionChannel"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralTimingWindowResponse"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "answer_kind",
+          "windows",
+          "note",
+          "submission_channel",
+          "author_id",
+          "author_name",
+          "created_at"
+        ],
+        "title": "ReferralSchedulingStatementResponse",
+        "type": "object"
+      },
+      "ReferralSchedulingVerificationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_kind": {
+            "$ref": "#/components/schemas/ReferralTimingVerificationAnswer"
+          },
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "author_name": {
+            "title": "Author Name",
+            "type": "string"
+          },
+          "confirmation_source": {
+            "$ref": "#/components/schemas/ReferralTimingSource"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralTimingWindowResponse"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "answer_kind",
+          "confirmation_source",
+          "windows",
+          "note",
+          "author_id",
+          "author_name",
+          "created_at"
+        ],
+        "title": "ReferralSchedulingVerificationResponse",
         "type": "object"
       },
       "ReferralStatusUpdateRequest": {
@@ -27589,6 +27836,14 @@
             ],
             "title": "Submitted At"
           },
+          "timing_status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingStatus"
+              }
+            ],
+            "default": "NOT_PROVIDED"
+          },
           "voided_at": {
             "anyOf": [
               {
@@ -27616,6 +27871,316 @@
           "submission_channel"
         ],
         "title": "ReferralSummaryResponse",
+        "type": "object"
+      },
+      "ReferralTimingAnswer": {
+        "enum": [
+          "UNKNOWN",
+          "KNOWN"
+        ],
+        "title": "ReferralTimingAnswer",
+        "type": "string"
+      },
+      "ReferralTimingInformationType": {
+        "enum": [
+          "STUDENT_AVAILABLE",
+          "CLASS_RELEASE"
+        ],
+        "title": "ReferralTimingInformationType",
+        "type": "string"
+      },
+      "ReferralTimingPattern": {
+        "enum": [
+          "SPECIFIC_DATE",
+          "RECURRING_WEEKDAY"
+        ],
+        "title": "ReferralTimingPattern",
+        "type": "string"
+      },
+      "ReferralTimingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "can_verify": {
+            "title": "Can Verify",
+            "type": "boolean"
+          },
+          "latest_verification_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Verification Id"
+          },
+          "referral_closed": {
+            "title": "Referral Closed",
+            "type": "boolean"
+          },
+          "referral_id": {
+            "format": "uuid",
+            "title": "Referral Id",
+            "type": "string"
+          },
+          "referral_updated_at": {
+            "description": "Exact ISO-8601 Referral version timestamp, including microseconds. Return this value unchanged as expected_referral_updated_at when verifying.",
+            "title": "Referral Updated At",
+            "type": "string"
+          },
+          "reported": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSchedulingStatementResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timing_status": {
+            "$ref": "#/components/schemas/ReferralTimingStatus"
+          },
+          "verifications": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralSchedulingVerificationResponse"
+            },
+            "title": "Verifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "referral_id",
+          "timing_status",
+          "reported",
+          "verifications",
+          "latest_verification_id",
+          "referral_updated_at",
+          "referral_closed",
+          "can_verify"
+        ],
+        "title": "ReferralTimingResponse",
+        "type": "object"
+      },
+      "ReferralTimingSource": {
+        "enum": [
+          "STUDENT_CONFIRMED",
+          "REFERRER_CONFIRMED",
+          "OFFICE_RECORD"
+        ],
+        "title": "ReferralTimingSource",
+        "type": "string"
+      },
+      "ReferralTimingStatus": {
+        "enum": [
+          "NOT_PROVIDED",
+          "UNKNOWN",
+          "KNOWN"
+        ],
+        "title": "ReferralTimingStatus",
+        "type": "string"
+      },
+      "ReferralTimingVerificationAnswer": {
+        "enum": [
+          "KNOWN",
+          "NO_SUITABLE_TIME"
+        ],
+        "title": "ReferralTimingVerificationAnswer",
+        "type": "string"
+      },
+      "ReferralTimingVerificationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_kind": {
+            "$ref": "#/components/schemas/ReferralTimingVerificationAnswer"
+          },
+          "confirmation_source": {
+            "$ref": "#/components/schemas/ReferralTimingSource"
+          },
+          "expected_latest_verification_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Latest Verification Id"
+          },
+          "expected_referral_updated_at": {
+            "format": "date-time",
+            "title": "Expected Referral Updated At",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralTimingWindowRequest"
+            },
+            "maxItems": 5,
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_latest_verification_id",
+          "expected_referral_updated_at",
+          "answer_kind",
+          "confirmation_source"
+        ],
+        "title": "ReferralTimingVerificationRequest",
+        "type": "object"
+      },
+      "ReferralTimingWeekday": {
+        "enum": [
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY"
+        ],
+        "title": "ReferralTimingWeekday",
+        "type": "string"
+      },
+      "ReferralTimingWindowRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "information_type": {
+            "$ref": "#/components/schemas/ReferralTimingInformationType"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/ReferralTimingPattern"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingWeekday"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "information_type",
+          "pattern",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ReferralTimingWindowRequest",
+        "type": "object"
+      },
+      "ReferralTimingWindowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "expired": {
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "information_type": {
+            "$ref": "#/components/schemas/ReferralTimingInformationType"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/ReferralTimingPattern"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralTimingWeekday"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "information_type",
+          "pattern",
+          "start_time",
+          "end_time",
+          "expired"
+        ],
+        "title": "ReferralTimingWindowResponse",
         "type": "object"
       },
       "ReferralVoidRequest": {
@@ -50660,7 +51225,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionDetailResponse"
                 }
               }
             },
@@ -50670,7 +51235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionDetailResponse"
                 }
               }
             },
@@ -50892,7 +51457,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionDetailResponse"
                 }
               }
             },
@@ -69528,6 +70093,202 @@
           }
         ],
         "summary": "Referrals Update Status",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/timing": {
+      "get": {
+        "operationId": "referralsGetTiming",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralTimingResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Read the COMPASS timing supplement within existing Referral scope",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/timing/verifications": {
+      "post": {
+        "operationId": "referralsRecordTimingVerification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralTimingVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralTimingResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Append staff verification without changing the referrer's statement",
         "tags": [
           "referrals"
         ]
