@@ -1,3 +1,4 @@
 {
-  "compass/counseling/migrations/0003_counseling_cases.py": "87c4ad02b7c90d6da0b14bef5323683b2f1cd302563f98a0735bfc663df1a0c4"
+  "compass/counseling/migrations/0003_counseling_cases.py": "87c4ad02b7c90d6da0b14bef5323683b2f1cd302563f98a0735bfc663df1a0c4",
+  "compass/referrals/migrations/0003_referral_timing.py": "a05585c8a0aae8707e653b0a3218aa1e5058934d7aa6159457e99f02d2337505"
 }

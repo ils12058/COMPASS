@@ -38,6 +38,7 @@
     "compass/student_support/migrations/0001_release_baseline.py": "acf658dfe1496c9ed0c4f9afee406dfc1f6189fb9b17ca3cd4f7f774b4bd4e13"
   },
   "additive_migrations": [
-    "counseling/migrations/0003_counseling_cases.py"
+    "counseling/migrations/0003_counseling_cases.py",
+    "referrals/migrations/0003_referral_timing.py"
   ]
 }
