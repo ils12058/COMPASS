@@ -1,7 +1,7 @@
 # COMPASS counseling workflow: decisions and implementation plan
 
 **Date:** 12 November 2026 · Philippine Time  
-**Status:** Decided planning baseline. CW-1 is implemented in source on `codex/counseling-cw1-case-foundation` and awaits testing and review ([CW-1 record](cw-1/README.md)); CW-2 to CW-7 are not started.  
+**Status:** Decided planning baseline. CW-1 is implemented and verified locally, in review as pull request #360 ([CW-1 record](cw-1/README.md)). CW-2 is implemented and verified locally on `codex/counseling-cw2-next-actions`, stacked on CW-1 ([CW-2 record](cw-2/README.md)). CW-3 to CW-7 are not started.  
 **Purpose:** Turn the related counseling features into one understandable student-care workflow, and capture the related Referral, Counselor About, and Guidance Messages improvements.
 
 The owner has asked us to make the remaining product decisions using the Guidance Head's insights and the discussions in both chats. The decisions below are the team's chosen implementation direction. Statements attributed to the Guidance Head are the owner's recollection, not a verbatim institutional specification. In particular, a ten-session closure rule was never established.
@@ -278,10 +278,11 @@ The following are domain responsibilities to implement, not invented endpoint na
 
 Each package includes its own API, UI, meaningful tests, and documentation. The labels below are this plan's work packages.
 
-| Package | State on 12 November 2026 |
+| Package | State on 13 November 2026 |
 |---|---|
-| CW-1 | Implemented in source, not merged. Backend verified locally; frontend tests, build, browser journeys and the upgrade rehearsal are still to run. See the [CW-1 record](cw-1/README.md). |
-| CW-2 to CW-7 | Not started. |
+| CW-1 | Implemented and verified locally (backend, frontend, browser journeys in Chromium and WebKit, upgrade rehearsal). In review as pull request #360; not merged or deployed. See the [CW-1 record](cw-1/README.md). |
+| CW-2 | Implemented and verified locally with mocked and real local backends, in Chromium and WebKit, plus an upgrade rehearsal. Stacked on CW-1; not merged or deployed. Staff-side booking remains an open gap. See the [CW-2 record](cw-2/README.md). |
+| CW-3 to CW-7 | Not started. |
 
 | Order | Package | Deliverable and completion condition |
 |---|---|---|
@@ -362,4 +363,4 @@ Conversation sources:
 - Subsequent continuation chat **“aruy naputol na naman tayo sa kabilang chat, basahin mo daw…”**, ID `01a1cf4d-5104-75a3-bdef-a52324642b4a`: the final unanswered product question asked which pages to simplify or remove because the frontend feels fragmented. Sections UX-07 and UX-08 complete that review after recovering the conversation in chat `01a1cf67-4479-75b3-8465-211bc42bf612` and checking the current owning frontend sources.
 - The earlier fifteen-proposal document was consulted for continuity and referral context. Its technical suggestions are not all direct panel requirements, and it does not establish automatic closure after ten sessions.
 
-**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1 is implemented in source and not yet fully verified or merged ([CW-1 record](cw-1/README.md)); CW-2 to CW-7 and every acceptance check in section 13 remain open. No box in section 13 is ticked, because none has been confirmed in a browser on a combined candidate.
+**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1 and CW-2 are implemented and verified locally but not merged ([CW-1 record](cw-1/README.md), [CW-2 record](cw-2/README.md)); CW-3 to CW-7 and every acceptance check in section 13 remain open. No box in section 13 is ticked, because none has been confirmed in a browser on a combined candidate.
