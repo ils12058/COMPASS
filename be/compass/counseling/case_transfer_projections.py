@@ -219,7 +219,14 @@ def transfer_detail(item, actor, *, result=False):
         and actor.has_capability("counseling.continuity.request", at=now)
     )
     head = can_authorize(actor, item, now)
-    package = state in {"PREPARED", "AUTHORIZED"} and current and (review or preparer or head)
+    from .case_handoff_services import metadata as handoff_metadata
+
+    handoff = handoff_metadata(item, actor, now)
+    package = (
+        state in {"PREPARED", "AUTHORIZED"}
+        and current
+        and (review or preparer or head or handoff["can_record_handoff_exception"])
+    )
     tasks, appointments = [], []
     if package:
         for plan in item.task_plans.select_related("task__student__role", "assignee"):
@@ -256,6 +263,7 @@ def transfer_detail(item, actor, *, result=False):
             )
     return {
         **transfer_summary(item, now),
+        **handoff,
         "case": case_identity(item.case),
         "outgoing_counselor": person(item.outgoing_counselor),
         "prepared_by": person(item.prepared_by),
@@ -286,9 +294,12 @@ def transfer_detail(item, actor, *, result=False):
         ],
         "review_accessible": review,
         "can_edit": edit,
-        "can_submit": edit and item.state == "PREPARED" and item.submitted_at is None,
-        "can_authorize": head,
-        "can_accept": review,
+        "can_submit": edit
+        and item.state == "PREPARED"
+        and item.submitted_at is None
+        and handoff["handoff_ready"],
+        "can_authorize": head and (handoff["handoff_ready"] or item.handoff_required_at is None),
+        "can_accept": review and (handoff["handoff_ready"] or item.handoff_required_at is None),
         "can_decline": review or head,
         "can_cancel": current
         and state in {"PREPARED", "AUTHORIZED"}

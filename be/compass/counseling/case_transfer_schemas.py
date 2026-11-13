@@ -7,6 +7,7 @@ from uuid import UUID
 from ninja import Schema
 from pydantic import ConfigDict, Field
 
+from .case_handoff_models import CaseHandoffState, CaseHandoffUnavailableReason
 from .case_models import CounselingCaseStatus
 from .case_transfer_models import (
     CaseAppointmentDisposition,
@@ -99,6 +100,28 @@ class CaseTransferAppointmentPlanInput(StrictSchema):
     retention_reason: CaseAppointmentRetentionReason | None = None
 
 
+class CaseHandoffSections(StrictSchema):
+    context_and_purpose: str = Field(max_length=12000)
+    support_and_progress: str = Field(max_length=12000)
+    continuing_considerations: str = Field(max_length=12000)
+    receiver_next_steps: str = Field(max_length=12000)
+
+
+class CaseHandoffMetadata(StrictSchema):
+    id: UUID
+    version: int
+    state: CaseHandoffState
+    author: CaseContinuityPerson
+    submitted_at: datetime | None
+    received_at: datetime | None
+
+
+class CaseHandoffExceptionMetadata(StrictSchema):
+    reason: CaseHandoffUnavailableReason
+    recorded_by: CaseContinuityPerson
+    recorded_at: datetime
+
+
 class CaseTransferPrepareRequest(StrictSchema):
     expected_case_version: int = Field(ge=1)
     receiving_counselor_id: UUID
@@ -113,6 +136,7 @@ class CaseTransferPrepareRequest(StrictSchema):
     communication_deferral_reason: CaseCommunicationDeferral | None = None
     communication_next_action: str | None = Field(default=None, min_length=1, max_length=120)
     communication_due_at: datetime | None = None
+    handoff_sections: CaseHandoffSections | None = None
 
 
 class CaseTransferUpdateRequest(CaseTransferPrepareRequest):
@@ -186,6 +210,13 @@ class CaseContinuityPanelResponse(StrictSchema):
 
 
 class CaseTransferDetailResponse(CaseTransferSummary):
+    handoff: CaseHandoffMetadata | None
+    handoff_exception: CaseHandoffExceptionMetadata | None
+    handoff_ready: bool
+    handoff_required: bool
+    can_write_handoff: bool
+    can_read_handoff: bool
+    can_record_handoff_exception: bool
     case: CaseContinuityIdentity
     outgoing_counselor: CaseContinuityPerson
     prepared_by: CaseContinuityPerson

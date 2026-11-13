@@ -37,6 +37,8 @@ def transfers():
         "decided_by",
         "communication_recorded_by",
         "communication_task__assigned_to",
+        "case_handoff__author",
+        "handoff_exception__recorded_by__role",
     )
 
 
@@ -61,6 +63,10 @@ def may_view(actor, item, now):
         return True
     if actor.pk == item.receiving_counselor_id:
         return rules.state_at(item, now) != "PREPARED"
+    from .case_handoff_services import may_record_exception
+
+    if may_record_exception(actor, item, now):
+        return True
     return can_authorize(actor, item, now)
 
 
@@ -104,7 +110,9 @@ def notify_next_actor(item):
     now = timezone.now()
     if rules.state_at(item, now) == "AUTHORIZED":
         recipients = (item.receiving_counselor,)
-    elif item.state == "PREPARED" and item.submitted_at:
+    elif item.state == "PREPARED" and not item.submitted_at and item.handoff_exception_id:
+        recipients = (item.prepared_by,)
+    elif item.state == "PREPARED" and (item.submitted_at or item.office_preparation_reason):
         recipients = rules.eligible_authorizers(
             requester_id=item.prepared_by_id, receiver_id=item.receiving_counselor_id, now=now
         )
@@ -145,6 +153,8 @@ def lock_work(item):
         item.case.student_id,
     }
     ids.update(plan.assignee_id for plan in plans)
+    if item.handoff_exception_id:
+        ids.add(item.handoff_exception.recorded_by_id)
     return ids
 
 
@@ -264,6 +274,12 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
     now = timezone.now()
     rules.require_case_current(case, item.outgoing_counselor_id)
     rules.require_preparer(actor, case, values.get("office_preparation_reason"))
+    if values.get("handoff_sections") is not None and actor.pk != case.primary_counselor_id:
+        rules.fail(
+            "handoff_write_denied",
+            "Office preparation cannot include counseling handoff content.",
+            403,
+        )
     receiver = people.get(values["receiving_counselor_id"])
     if not rules.receiver_eligible(receiver, now):
         rules.fail("receiver_ineligible", "The receiving Counselor is no longer eligible.", 422)
@@ -281,6 +297,8 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
     ) = None
     item.authorization_route = ""
     item.independent_authorization = True
+    item.case_handoff = item.handoff_exception = None
+    item.handoff_required_at = item.handoff_required_at or now
     _check_communication(item, values, actor=actor, people=people, now=now, context=context)
     if item._state.adding:
         item.save(force_insert=True)
@@ -300,7 +318,13 @@ def prepare_transfer(*, actor, case_id, values, context, transfer_id=None, expec
     store_plans(
         item, actor=actor, tasks=tasks, appointments=values.get("appointments", []), now=now
     )
+    if values.get("handoff_sections") is not None:
+        from .case_handoff_services import save_prepared_draft
+
+        save_prepared_draft(item, actor=actor, sections=values["handoff_sections"], context=context)
     audit(item, "prepared" if transfer_id is None else "updated", actor=actor, context=context)
+    if item.office_preparation_reason:
+        notify_next_actor(item)
     return item
 
 
@@ -347,6 +371,10 @@ def submit_transfer(*, actor, transfer_id, expected_version, context):
     route = rules.authorization_route(
         requester=actor, receiver=people[item.receiving_counselor_id], case=case, now=now
     )
+    from .case_handoff_services import require_ready
+
+    require_ready(item, new_submission=True, now=now)
+    item.handoff_required_at = item.handoff_required_at or now
     item.submitted_at = now
     item.authorization_route = route
     item.independent_authorization = route == CaseAuthorizationRoute.INDEPENDENT_HEAD
@@ -400,6 +428,9 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
         validate_plans(item, actor=people[item.prepared_by_id], now=now)
         if not rules.receiver_eligible(people[item.receiving_counselor_id], now):
             rules.fail("receiver_ineligible", "The receiving Counselor is no longer eligible.")
+        from .case_handoff_services import require_ready
+
+        require_ready(item, now=now)
         item.state = CaseArrangementState.AUTHORIZED
         item.authorization_route = CaseAuthorizationRoute.INDEPENDENT_HEAD
         item.independent_authorization = True
@@ -419,6 +450,15 @@ def decide_transfer(*, actor, transfer_id, expected_version, action, context, re
             )
         rules.require_review(item, now)
         require_current_authorization(item, people, now)
+        from .case_handoff_services import require_ready
+
+        require_ready(item, now=now, verify_content=True)
+        if item.case_handoff_id and not actor.has_capability(
+            "counseling.handoff.read_received", at=now
+        ):
+            rules.fail(
+                "handoff_read_denied", "The receiving Counselor cannot read the submitted handoff."
+            )
         if conflicting_coverage(case, now):
             rules.fail(
                 "coverage_conflict",
@@ -514,9 +554,22 @@ def notification_is_current(notification, now=None):
         or not actor.has_capability("counseling.continuity.view", at=now)
     ):
         return False
-    return can_authorize(actor, item, now) or (
-        rules.state_at(item, now) == "AUTHORIZED"
-        and item.receiving_counselor_id == actor.pk
-        and rules.receiver_eligible(actor, now)
-        and actor.has_capability("counseling.continuity.read_selected", at=now)
+    from .case_handoff_services import may_record_exception
+
+    return (
+        can_authorize(actor, item, now)
+        or (item.office_preparation_reason and may_record_exception(actor, item, now))
+        or (
+            item.state == "PREPARED"
+            and item.submitted_at is None
+            and item.handoff_exception_id
+            and actor.pk == item.prepared_by_id
+            and actor.has_capability("counseling.continuity.request", at=now)
+        )
+        or (
+            rules.state_at(item, now) == "AUTHORIZED"
+            and item.receiving_counselor_id == actor.pk
+            and rules.receiver_eligible(actor, now)
+            and actor.has_capability("counseling.continuity.read_selected", at=now)
+        )
     )

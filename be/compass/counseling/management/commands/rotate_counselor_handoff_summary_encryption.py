@@ -4,7 +4,13 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from compass.confidential_data import crypto
+from compass.counseling import case_handoff_content
 from compass.counseling import handoff_content as content
+from compass.counseling.case_continuity_rules import CaseContinuityError
+from compass.counseling.case_handoff_models import (
+    CounselingCaseHandoff,
+    CounselingCaseHandoffAddendum,
+)
 from compass.counseling.continuity_rules import ContinuityError
 from compass.counseling.handoff_models import CounselorHandoffSummary
 
@@ -51,5 +57,58 @@ class Command(BaseCommand):
             f"Handoff encryption: scanned={scanned}; rewrap={rotated}; "
             f"unreadable={failed}; dry_run={dry_run}"
         )
+        # The established command also owns case Handoff custody. Verify each envelope's
+        # distinct binding before rewrapping, using update() only for ciphertext so submitted
+        # immutability, timestamps, receipt and business/audit history stay intact.
+        for model, reader, _binder, label in (
+            (
+                CounselingCaseHandoff,
+                case_handoff_content.read,
+                case_handoff_content.binding,
+                "Case handoff",
+            ),
+            (
+                CounselingCaseHandoffAddendum,
+                case_handoff_content.read_addendum,
+                case_handoff_content.addendum_binding,
+                "Case handoff addendum",
+            ),
+        ):
+            seen = changed = unreadable = 0
+            last = None
+            while True:
+                with transaction.atomic():
+                    qs = model.objects.order_by("pk")
+                    if not dry_run:
+                        qs = qs.select_for_update(of=("self",))
+                    if last is not None:
+                        qs = qs.filter(pk__gt=last)
+                    batch = list(qs[:batch_size])
+                    for item in batch:
+                        seen += 1
+                        try:
+                            reader(item)
+                            if not crypto.encrypted_with_primary_key(
+                                item.content_ciphertext, keyring=content.keyring()
+                            ):
+                                replacement = crypto.reencrypt_with_primary_key(
+                                    item.content_ciphertext,
+                                    keyring=content.keyring(),
+                                )
+                                changed += 1
+                                if not dry_run:
+                                    model.objects.filter(pk=item.pk).update(
+                                        content_ciphertext=replacement
+                                    )
+                        except CaseContinuityError:
+                            unreadable += 1
+                if not batch:
+                    break
+                last = batch[-1].pk
+            failed += unreadable
+            self.stdout.write(
+                f"{label} encryption: scanned={seen}; rewrap={changed}; "
+                f"unreadable={unreadable}; dry_run={dry_run}"
+            )
         if failed:
             raise CommandError("Unreadable Handoff payloads left unchanged.")
