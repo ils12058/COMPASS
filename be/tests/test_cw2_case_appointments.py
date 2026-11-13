@@ -208,9 +208,12 @@ def test_next_appointment_uses_current_time_provider_and_membership(cw2):
         ends_at=future + timedelta(hours=1),
         provider=w.b,
     )
-    assert get_case(actor=w.a, case_id=w.case.pk).next_appointment is None
+    next_appointment = get_case(actor=w.a, case_id=w.case.pk).next_appointment
+    assert next_appointment.pk == row.pk
+    assert next_appointment.provider_id == w.b.pk
     detail = auth_client(w.a).get(f"/api/v1/counseling/cases/{w.case.pk}").json()
-    assert detail["appointments"][0]["appointment"] is None
+    assert detail["appointments"][0]["appointment"]["provider"]["id"] == str(w.b.pk)
+    assert detail["appointments"][0]["appointment"]["record_accessible"] is False
     # The original case owner can correct a link after eligibility changes.
     remove(w, row)
 

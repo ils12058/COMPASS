@@ -66,13 +66,15 @@ await check("my-cases-loading-then-rows", root, { handler: loadingFixture.handle
     assert.match(await row.innerText(), /CW1T-001/);
     assert.equal(await row.locator("td").nth(2).innerText(), "2");
     assert.equal(await page.locator("main h1").count(), 1);
-    assert.deepEqual(await page.locator("main h2").allTextContents(), ["My cases"]);
+    // The closed Filters dialog stays in the DOM; only the results heading is visible.
+    assert.deepEqual(await page.locator("main").getByRole("heading", { level: 2 }).allTextContents(), ["My cases"]);
+    assert.equal(await page.locator("main dialog h2").innerText(), "Filters");
     await screenshot(page, "my-cases-desktop");
   } finally { loading.release(); }
 });
 
 await check("my-cases-empty-retains-session-records", root, { handler: casesFixture({ list: [] }).handler }, async (page) => {
-  await shown(page.getByText("You have no cases yet. Sessions you recorded earlier stay in Session records until you add them to a case.", { exact: true }));
+  await shown(page.getByText("You have no Active cases. Sessions you recorded earlier stay in Session records until you add them to a case.", { exact: true }));
   assert.equal(await page.getByRole("link", { name: "Session records", exact: true }).getAttribute("href"), `${root}/encounters`);
   assert.equal(await page.locator("table").count(), 0);
   assert.equal(await page.getByRole("navigation", { name: "Case results pages" }).count(), 0);
@@ -83,6 +85,8 @@ await check("my-cases-search-empty-and-clear", `${root}?search=no-match`, { hand
   await shown(page.getByText("No cases match this search. Clear or change it to broaden the results.", { exact: true }));
   assert.equal(await searchField(page).inputValue(), "no-match");
   assert.equal(calls(searchFixture, "counselingListMyCases")[0].query.search, "no-match");
+  // Status is now a structured filter, so Clear search is in the shared Filters panel.
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await shown(page.getByRole("link", { name: student.display_name, exact: true }));
   assert.equal(new URL(page.url()).searchParams.has("search"), false);
@@ -135,7 +139,7 @@ await check("my-cases-pagination-preserves-search-and-sort", `${root}?search=CW1
   await shown(pager.getByText("Page 2", { exact: true }));
   assert.equal(await page.locator("tbody tr").count(), 2);
   assert.equal(await pager.getByRole("button", { name: "Next", exact: true }).isDisabled(), true);
-  assert.deepEqual(calls(pageFixture, "counselingListMyCases").at(-1).query, { search: "CW1T", ordering: "LATEST_OPENED", page: "2", page_size: "20" });
+  assert.deepEqual(calls(pageFixture, "counselingListMyCases").at(-1).query, { search: "CW1T", status: "ACTIVE", ordering: "LATEST_OPENED", page: "2", page_size: "20" });
   await pager.getByRole("button", { name: "Previous", exact: true }).click();
   await page.waitForURL((url) => !url.searchParams.has("page"));
   await shown(pager.getByText("Page 1", { exact: true }));
@@ -222,7 +226,7 @@ for (const mode of ["network", "server"]) {
 await check("case-overview-facts-session-access-and-history", casePath, { handler: casesFixture().handler }, async (page) => {
   await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
   assert.equal(await page.locator("main h1").count(), 1);
-  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Next actions", "Appointments", "Sessions", "Case history"]);
+  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Continuity", "Next actions", "Appointments", "Sessions", "Case history"]);
   assert.equal(await completedCount(page).innerText(), "2");
   assert.match(await page.locator('[aria-labelledby="case-details-heading"]').innerText(), /Synthetic CW-1 Counselor/);
   assert.match(await page.locator("main").innerText(), /CASE-2026-000001/);
@@ -514,13 +518,17 @@ async function phoneTableAndActions(page, width) {
   const tableGeometry = await scroller.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth, overflow: getComputedStyle(element).overflowX }));
   assert.equal(tableGeometry.overflow, "auto", "The wide table owns its horizontal scroller");
   assert.ok(tableGeometry.scroll > tableGeometry.width, "The table retains readable columns on phones");
-  const actions = await page.locator("main [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
+  const allActions = await page.locator("main [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
     const control = label.closest("a, button");
     const box = control.getBoundingClientRect();
     return { name: label.textContent, x: box.x, right: box.right, top: box.top, height: box.height };
   }));
-  assert.equal(actions.length, 2);
-  for (const action of actions) {
+  const actions = await page.locator("main [data-page-header-actions] [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
+    const box = label.closest("a, button").getBoundingClientRect();
+    return { top: box.top, height: box.height };
+  }));
+  assert.equal(actions.length, 2, "The page retains its two primary commands");
+  for (const action of allActions) {
     assert.ok(action.x >= 0 && action.right <= width + 1, `Page action ${action.name} stays inside the phone`);
     assert.ok(action.height >= 44, "Page actions retain their touch targets");
   }
@@ -653,7 +661,8 @@ await check("cw2-authorized-next-facts-panel-order-statuses-and-deadlines", case
   assert.equal(await page.getByRole("link", { name: "Protected synthetic task detail", exact: true }).count(), 0);
   assert.equal(await page.getByText("Protected synthetic task detail", { exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "Schedule session", exact: true }).count(), 0);
-  assert.deepEqual(await page.locator('[data-page-header] [data-page-action-label]').allTextContents(), ["Record session for this case", "Add next action"]);
+  assert.deepEqual(await page.locator('[data-page-header] [data-page-action-label]').allTextContents(), ["Record session for this case", "Close case"]);
+  assert.equal(await actionsPanel(page).getByRole("link", { name: "Add next action", exact: true }).count(), 1, "Add next action moves into its own panel");
   assert.equal(await appointmentPanel(page).getByRole("button", { name: "Link appointment", exact: true }).count(), 1);
   assert.equal(await page.locator('[aria-labelledby="case-sessions-heading"]').getByRole("button", { name: "Add recorded session", exact: true }).count(), 1);
   await screenshot(page, "cw2-next-facts-desktop");

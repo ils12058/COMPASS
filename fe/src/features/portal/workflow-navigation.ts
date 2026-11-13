@@ -23,6 +23,7 @@ export function workflowBackLabel(href: string): string {
   if (pathname === "/portal/work") return "Back to My work";
   if (pathname.startsWith("/portal/follow-ups")) return "Back to Follow-Ups";
   if (pathname.startsWith("/portal/counseling/cases/")) return "Back to case";
+  if (pathname.startsWith("/portal/counseling/transfers/")) return "Back to transfer review";
   if (pathname === "/portal/counseling/encounters") return "Back to session records";
   if (pathname.startsWith("/portal/counseling/encounters/")) return "Back to session record";
   if (pathname.startsWith("/portal/appointments")) return "Back to Appointments";

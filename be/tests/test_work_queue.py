@@ -142,7 +142,9 @@ def test_message_projection_never_decrypts_or_selects_ciphertext(world, settings
         "conversation_kind",
         "due_at",
         "waiting_since",
+        "case_reference_code",
     }
+    assert data["case_reference_code"] is None
     assert set(data["student"]) == {"id", "display_name"}
 
 

@@ -422,6 +422,13 @@ def get_case(*, actor: User, case_id: UUID, now: datetime | None = None) -> Case
     )
     if case is None:
         raise CounselingCaseNotFound("The requested case was not found.")
+    from .case_continuity_rules import CaseContinuityError
+    from .case_coverage_tasks import reconcile_returns
+
+    try:
+        reconcile_returns(actor=actor, case_id=case.pk)
+    except CaseContinuityError as exc:
+        raise CounselingCaseChanged(exc.message) from None
     links = list(
         _current_links()
         .filter(case_id=case.pk)
@@ -443,7 +450,8 @@ def get_case(*, actor: User, case_id: UUID, now: datetime | None = None) -> Case
     routine = case.origin_routine_interview
     encounter = case.origin_encounter
     active = case.status == CounselingCaseStatus.ACTIVE
-    from .case_appointment_services import eligible_appointments
+    from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
+
     from .case_next_actions import next_actions
 
     appointment_links = tuple(
@@ -452,7 +460,9 @@ def get_case(*, actor: User, case_id: UUID, now: datetime | None = None) -> Case
         ).order_by("-linked_at", "id")
     )
     next_appointment = (
-        eligible_appointments(actor=actor, case=case)
+        Appointment.objects.filter(
+            student_id=case.student_id, service__code=COUNSELING_SERVICE_CODE, status="SCHEDULED"
+        )
         .filter(
             case_links__case_id=case.pk,
             case_links__removed_at__isnull=True,

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, ListPlus, NotebookPen, X } from "lucide-react";
+import { CircleAlert, FolderCheck, NotebookPen, RotateCcw, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,7 +16,6 @@ import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import {
   caseErrorMessage,
-  caseEventSummary,
   caseOriginLabel,
   CASES_PATH,
   caseSessionOffers,
@@ -27,6 +26,10 @@ import { CaseStatusBadge } from "@/features/counseling/cases/case-status-badge";
 import { CaseAppointmentsPanel } from "@/features/counseling/cases/case-appointments-panel";
 import { LinkAppointmentDialog, UnlinkAppointmentDialog } from "@/features/counseling/cases/case-appointment-dialogs";
 import { CaseNextActionsPanel } from "@/features/counseling/cases/case-next-actions-panel";
+import { CaseHistoryPanel } from "@/features/counseling/cases/case-history-panel";
+import { useProtectedCase } from "@/features/counseling/cases/use-protected-case";
+import { closureReasonLabels, closureOutcomeLabels } from "@/features/counseling/cases/closure-presentation";
+import { CaseContinuityPanel } from "@/features/counseling/continuity/case-continuity-panel";
 import { followupActionLabel } from "@/features/guidance-followups/followups-presentation";
 import { useFollowupsFreshness } from "@/features/guidance-followups/followups-data";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
@@ -48,7 +51,6 @@ import {
   getCounselingGetCaseQueryKey,
   getCounselingListMyCasesQueryKey,
   getCounselingListMyEncountersQueryKey,
-  useCounselingGetCase,
   useCounselingLinkCaseSession,
 } from "@/lib/api/generated/counseling/counseling";
 import type {
@@ -93,7 +95,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
   const access = getCounselingAccess(user);
   const queryClient = useQueryClient();
   const allowed = access.isCounselor && access.canViewAssigned;
-  const query = useCounselingGetCase(caseId, { query: { enabled: allowed, retry: false, refetchOnWindowFocus: "always", refetchOnReconnect: "always", refetchInterval: 60_000 } });
+  const query = useProtectedCase(caseId, allowed);
   useFollowupsFreshness(allowed && user.capabilities.includes("guidance_followups.view"));
   const actionStatus = useActionStatus();
   const linkOrigin = useCounselingLinkCaseSession({ mutation: { retry: false } });
@@ -110,6 +112,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
   const item = query.data?.data;
 
   if (!allowed) return <CounselingUnavailable title="Counseling case" />;
+  if (query.privacy.blocked) return <><CounselingPageHeading title="Counseling case" back={backLink} /><CounselingQueryError message={caseErrorMessage(query.failure, "Protected case details have been cleared. Check access again to continue.")} onRetry={() => query.privacy.resume()} /></>;
   if (query.isPending) return <EncounterDetailSkeleton />;
   if ((query.isError && !canShowLastKnownData(query)) || !item) {
     return (
@@ -122,6 +125,8 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
 
   // A confirmed change replaces what is shown with the backend's own answer.
   function applyChange(next: CounselingCaseDetailResponse, message: string) {
+    query.privacy.barrier.assertCurrent(query.privacy.generation);
+    if (!navigator.onLine || document.visibilityState !== "visible") return;
     queryClient.setQueryData(getCounselingGetCaseQueryKey(caseId), (current: typeof query.data) => current ? { ...current, data: next } : current);
     setNotice(null);
     setOriginError(null);
@@ -158,7 +163,8 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
     }
   }
 
-  const canManage = item.can_manage && !query.isError;
+  const canManage = item.can_manage && item.status === "ACTIVE" && !query.isError;
+  const canReopen = item.can_reopen && item.status === "CLOSED" && !query.isError;
   const offers = caseSessionOffers(item);
 
   return (
@@ -169,23 +175,18 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
         back={backLink}
         action={canManage ? (
           <>
-            {recordUncertain ? (
-              <PageAction icon={CircleAlert} label="Unconfirmed" labelDetail="recording result" disabled />
-            ) : (
-              <PageAction
-                icon={recordOpen ? X : NotebookPen}
-                label={recordOpen ? "Close" : "Record session"}
-                labelDetail={recordOpen ? "recording" : "for this case"}
-                variant={recordOpen ? "secondary" : "primary"}
-                aria-expanded={recordOpen}
-                onClick={() => { actionStatus.dismiss(); setRecordOpen((open) => !open); }}
-              />
-            )}
-            {recordOpen ? null : (
-              item.can_add_next_action ? <PageActionLink icon={ListPlus} label="Add next action" variant="secondary" href={withWorkflowReturn(`/portal/follow-ups/new?case_id=${encodeURIComponent(caseId)}`, here)} /> : null
-            )}
+            <PageAction
+              icon={recordUncertain ? CircleAlert : recordOpen ? X : NotebookPen}
+              label={recordUncertain ? "Unconfirmed" : recordOpen ? "Close" : "Record session"}
+              labelDetail={recordUncertain ? "recording result" : recordOpen ? "recording" : "for this case"}
+              variant={recordOpen ? "secondary" : "primary"}
+              disabled={recordUncertain}
+              aria-expanded={recordOpen}
+              onClick={() => { actionStatus.dismiss(); setRecordOpen((open) => !open); }}
+            />
+            {!recordOpen ? <PageActionLink icon={FolderCheck} label="Close case" variant="secondary" href={withWorkflowReturn(`${pathname}/close`, here)} /> : null}
           </>
-        ) : undefined}
+        ) : canReopen ? <PageActionLink icon={RotateCcw} label="Reopen case" href={withWorkflowReturn(`${pathname}/reopen`, here)} /> : undefined}
       />
 
       {query.isError ? <RefreshFailureNotice onRetry={() => void query.refetch()} /> : null}
@@ -216,10 +217,16 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
           <Fact label="Responsible counselor"><Person person={item.primary_counselor} /></Fact>
           <Fact label="Completed sessions">{item.session_count}</Fact>
           <Fact label="Latest session">{item.latest_session_at ? formatCounselingDateTime(item.latest_session_at) : "No session yet"}</Fact>
-          <Fact label="Next appointment">{item.next_appointment ? <Link href={withWorkflowReturn(`/portal/appointments/${item.next_appointment.id}`, here)} className={textLink}>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</Link> : "No upcoming appointment is linked to this case."}</Fact>
+          <Fact label="Next appointment">{item.next_appointment ? <>{item.next_appointment.record_accessible ? <Link href={withWorkflowReturn(`/portal/appointments/${item.next_appointment.id}`, here)} className={textLink}>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</Link> : <span>{formatCounselingDateTime(item.next_appointment.starts_at)} · {item.next_appointment.reference_code}</span>}{item.next_appointment.provider ? <span className="mt-1 block">{item.next_appointment.provider.display_name}</span> : null}</> : "No upcoming appointment is linked to this case."}</Fact>
           <Fact label="Next action">{!item.next_actions_available ? "Next actions are unavailable to your account." : item.next_action ? <><Link href={withWorkflowReturn(`/portal/follow-ups/${item.next_action.id}`, here)} className={textLink}>{followupActionLabel(item.next_action)}</Link><span className="mt-1 block">Due {formatCounselingDateTime(item.next_action.due_at)} · {item.next_action.assigned_to_name}</span></> : "No pending next action in this case."}</Fact>
           <Fact label="Opened">{formatCounselingDateTime(item.opened_at)} · {originDescription(item, here)}</Fact>
+          {item.status === "CLOSED" && item.closure ? <>
+            <Fact label="Closed">{formatCounselingDateTime(item.closure.closed_at)} · {item.closure.closed_by.display_name}</Fact>
+            <Fact label="Closure reason">{closureReasonLabels[item.closure.reason]}</Fact>
+            <Fact label="Outcome">{closureOutcomeLabels[item.closure.outcome]}</Fact>
+          </> : null}
         </dl>
+        {item.status === "CLOSED" && !query.isError && item.closure?.note ? <div className="border-t border-border px-4 py-4 sm:px-5"><h3 className="text-sm font-semibold text-brand">Confidential closure note</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm">{item.closure.note}</p></div> : null}
       </Panel>
 
       {offers.length > 0 && canManage ? offers.map(offer => (
@@ -233,7 +240,8 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
         </Notice>
       )) : null}
 
-      <CaseNextActionsPanel item={item} returnTo={here} />
+      <CaseContinuityPanel item={item} returnTo={here} confirmed={!query.isError} />
+      <CaseNextActionsPanel item={item} returnTo={here} confirmed={!query.isError} />
       <CaseAppointmentsPanel item={item} returnTo={here} confirmed={!query.isError} onLink={() => { actionStatus.dismiss(); setAppointmentOpen(true); }} onUnlink={link => { actionStatus.dismiss(); setUnlinking(link); }} />
 
       <Panel className="mt-5" aria-labelledby="case-sessions-heading">
@@ -282,17 +290,7 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
         )}
       </Panel>
 
-      <Panel className="mt-5" aria-labelledby="case-history-heading">
-        <PanelHeader title="Case history" titleId="case-history-heading" />
-        <ol className="divide-y divide-border">
-          {item.history.map((event) => (
-            <li key={event.id} className="px-4 py-3 sm:px-5">
-              <p className="text-sm text-ink">{caseEventSummary(event)}</p>
-              <p className="mt-0.5 text-xs text-muted">{formatCounselingDateTime(event.occurred_at)} · {event.actor.display_name}{event.primary_counselor.id !== event.actor.id ? ` · Responsible counselor: ${event.primary_counselor.display_name}` : ""}</p>
-            </li>
-          ))}
-        </ol>
-      </Panel>
+      <CaseHistoryPanel item={item} />
 
       {canManage ? (
         <>

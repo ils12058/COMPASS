@@ -14,6 +14,7 @@ from compass.accounts.models import User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.counseling.case_coverage_tasks import coverage_task_write, task_read_guard
 from compass.organization.integrity import catalog_dependent_write
 
 from . import policy
@@ -177,7 +178,7 @@ def create_followup(
             policy.valid_student(existing.student_id)
             return existing
         if case is not None and case.status != "ACTIVE":
-            raise FollowUpInvalid("Next actions can only be added to an Active case.")
+            raise FollowUpConflict("Next actions can only be added to an Active case.")
         _due(due_at, now=at)
         student = policy.valid_student(student_id, lock=True)
         if source_kind:
@@ -233,6 +234,7 @@ def create_followup(
 
 def get_followup(*, actor, followup_id):
     actor = policy.current_actor(actor)
+    policy.reconcile_coverage(actor=actor, task_id=followup_id)
     return policy.require_followup(actor, _load(followup_id))
 
 
@@ -317,6 +319,7 @@ def _lock_for_mutation(*, actor, followup_id, expected_version, allow_recovery=F
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def update_followup(
     *,
@@ -384,6 +387,7 @@ def update_followup(
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, context):
     with transaction.atomic():
@@ -420,6 +424,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def record_activity(*, actor, followup_id, expected_version, remarks, context):
     with transaction.atomic():
@@ -437,6 +442,7 @@ def record_activity(*, actor, followup_id, expected_version, remarks, context):
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def complete_followup(*, actor, followup_id, expected_version, outcome, context, now=None):
     at = now or timezone.now()
@@ -468,6 +474,7 @@ def complete_followup(*, actor, followup_id, expected_version, outcome, context,
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def cancel_followup(*, actor, followup_id, expected_version, reason, context, now=None):
     at = now or timezone.now()
@@ -514,6 +521,11 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
 
 
 def followup_detail(*, actor, item, history_page=1):
+    with task_read_guard(actor, item) as (actor, item):
+        return _followup_detail(actor=actor, item=item, history_page=history_page)
+
+
+def _followup_detail(*, actor, item, history_page=1):
     actor = policy.current_actor(actor)
     policy.require_followup(actor, item)
     can_create_next = actor.has_capability("guidance_followups.manage") and policy.authorized(
@@ -540,7 +552,11 @@ def followup_detail(*, actor, item, history_page=1):
     if type(history_page) is not int or not 1 <= history_page <= MAX_PAGE:
         raise FollowUpInvalid("Choose a valid History page.")
     offset = (history_page - 1) * 20
-    rows = list(item.events.select_related("actor").order_by("revision")[offset : offset + 21])
+    rows = list(
+        item.events.select_related("actor", "case_transfer", "case_coverage").order_by("revision")[
+            offset : offset + 21
+        ]
+    )
     events = []
     for event in rows[:20]:
         events.append(
@@ -555,6 +571,15 @@ def followup_detail(*, actor, item, history_page=1):
                 "new_assignee_id": event.new_assignee_id,
                 "old_due_at": event.old_due_at,
                 "new_due_at": event.new_due_at,
+                "case_transfer_id": event.case_transfer_id,
+                "case_coverage_id": event.case_coverage_id,
+                "case_coverage_reference": event.case_coverage.reference_code
+                if event.case_coverage
+                else None,
+                "coverage_effective_at": event.coverage_effective_at,
+                "case_transfer_reference": event.case_transfer.reference_code
+                if event.case_transfer
+                else None,
                 "remarks": (
                     decrypt_text(item.pk, "remarks", event.remarks_ciphertext, event_id=event.pk)
                     if event.remarks_ciphertext
@@ -583,4 +608,7 @@ def followup_detail(*, actor, item, history_page=1):
         ),
         "events": events,
         "events_has_next": len(rows) > 20,
+        "can_reassign": not item.coverage_plans.filter(
+            coverage__state="ACCEPTED", coverage__expires_at__gt=timezone.now()
+        ).exists(),
     }
