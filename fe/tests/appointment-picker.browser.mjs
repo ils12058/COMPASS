@@ -96,7 +96,10 @@ for (const width of [1440, 1024, 390, 320]) {
     const timeBox = await page.getByRole('region', { name: 'Appointment times' }).boundingBox();
     if (width === 1440) assert.ok(timeBox.x > dateBox.x + dateBox.width - 1, 'times beside calendar');
     if (width <= 390) assert.ok(timeBox.y > dateBox.y + dateBox.height - 1, 'times below calendar');
-    assert.equal(await page.getByRole('button', { name: /About/ }).count(), 0, 'no unsupported About action');
+    // CW-6: About is now backed by the Counselor About API; one plain button beside each choice.
+    const about = page.getByRole('button', { name: /^About / });
+    assert.equal(await about.count(), counselors.length, 'one About action per offered Counselor');
+    assert.deepEqual(await about.evaluateAll(buttons => buttons.map(button => [button.type, Boolean(button.closest('label'))])), counselors.map(() => ['button', false]), 'About is a plain button outside each choice label');
     await h.screenshot(page, `booking-${width}`);
     assert.equal(w.state.reads.every(read => read.date === day), true, `no visible-month availability fan-out: ${JSON.stringify(w.state.reads)}`);
   });
@@ -115,7 +118,7 @@ await h.check('keyboard radio and calendar navigation do not select until activa
   await radio.focus();
   await page.keyboard.press('ArrowRight');
   assert.equal(await page.getByRole('radio', { name: /Alexandra/ }).isChecked(), true);
-  assert.ok(await page.getByRole('radio', { name: /Alexandra/ }).evaluate(el => getComputedStyle(el.closest('label')).boxShadow !== 'none'), 'visible keyboard ring');
+  assert.ok(await page.getByRole('radio', { name: /Alexandra/ }).evaluate(el => getComputedStyle(el.closest('label').parentElement).boxShadow !== 'none'), 'visible keyboard ring on the choice, which now also holds its About button');
   const first = calendar(page).locator('[data-day="2027-01-01"] button');
   await first.focus();
   await page.keyboard.press('ArrowRight');

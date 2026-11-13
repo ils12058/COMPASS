@@ -1,6 +1,11 @@
 "use client";
 
 import { NotebookPen, Video } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { portalReturnHref, workflowBackLabel } from "@/features/portal/workflow-navigation";
+import { getCounselingGetCaseQueryKey } from "@/lib/api/generated/counseling/counseling";
 import { DisclosureSection } from "@/components/ui/disclosure";
 import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { ReminderSender } from "@/features/appointments/appointment-reminders";
@@ -273,6 +278,8 @@ function ActionConfirmation({
 
 function DetailContent({ appointmentId }: { appointmentId: string }) {
   const { user } = usePortalSession();
+  const params = useSearchParams();
+  const back = portalReturnHref(params.get("return_to"), "/portal/appointments");
   const access = getAppointmentAccess(user);
   const ecounselingAccess = getECounselingAccess(user);
   const queryClient = useQueryClient();
@@ -373,6 +380,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   async function refreshAppointmentQueries(includeSchedulingSlots = false) {
     const invalidations = [
       invalidateGuidanceWork(queryClient),
+      queryClient.invalidateQueries({ predicate: query => typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith(getCounselingGetCaseQueryKey("")[0]) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetHistoryQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsListRemindersQueryKey(appointmentId) }),
@@ -669,6 +677,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
         title={appointment.service.name}
+        back={params.has("return_to") ? <GuardedPortalLink href={back} className={pageBackLinkClass}>{workflowBackLabel(back)}</GuardedPortalLink> : undefined}
         context="Appointment"
         description={
           <span className="inline-flex flex-wrap items-baseline gap-x-1">

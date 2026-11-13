@@ -29,7 +29,11 @@ class Command(BaseCommand):
         for model, fields in [
             (
                 GuidanceFollowUp,
-                [("description_ciphertext", "description"), ("outcome_ciphertext", "outcome")],
+                [
+                    ("description_ciphertext", "description"),
+                    ("outcome_ciphertext", "outcome"),
+                    ("title_ciphertext", "title"),
+                ],
             ),
             (GuidanceFollowUpEvent, [("remarks_ciphertext", "remarks")]),
         ]:

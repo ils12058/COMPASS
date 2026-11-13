@@ -3,6 +3,7 @@ import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   CounselingCaseOrdering,
   type CounselingCaseEventResponse,
+  type CounselingCaseDetailResponse,
   type CounselingCaseOrigin,
   type CounselingCaseSessionRemovalReason,
   type CounselingCaseStatus,
@@ -11,6 +12,15 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const CASES_PATH = "/portal/counseling";
 export const SESSION_RECORDS_PATH = "/portal/counseling/encounters";
+
+// The backend offers only explicit authorized source relationships. The same session may be
+// both an origin session and a linked Appointment's session, so offer it once by record ID.
+export function caseSessionOffers(item: Pick<CounselingCaseDetailResponse, "unlinked_origin_session" | "unlinked_appointment_sessions">) {
+  const candidates = item.unlinked_origin_session
+    ? [item.unlinked_origin_session, ...item.unlinked_appointment_sessions]
+    : item.unlinked_appointment_sessions;
+  return candidates.filter((candidate, index) => candidates.findIndex(other => other.encounter_id === candidate.encounter_id) === index);
+}
 
 export function caseHref(caseId: string): string {
   return `/portal/counseling/cases/${caseId}`;

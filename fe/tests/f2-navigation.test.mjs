@@ -67,3 +67,15 @@ test('renamed destinations retain their formal names as search aliases', () => {
   }
   assert.ok(searchPortalCommands(portalCommandDestinations(profiles['IT Admin']), 'Platform Operations').some(x=>x.href==='/portal/platform/health'));
 });
+
+test('CW-2 moves only the Counselor daily Follow-ups entry to More and preserves destination search', () => {
+  const navigation = portalNavigationGroups(profiles.Counselor, available);
+  assert.deepEqual(hrefs(navigation.daily), ['/portal', '/portal/work', '/portal/appointments', '/portal/messages', '/portal/counseling', '/portal/routine-interviews']);
+  assert.equal(hrefs(navigation.secondary.links)[0], '/portal/follow-ups');
+  assert.ok(searchPortalCommands(portalCommandDestinations(profiles.Counselor), 'Follow-ups').some(command => command.href === '/portal/follow-ups'));
+  for (const role of ['Head', 'GOA']) {
+    const other = portalNavigationGroups(profiles[role], available);
+    assert.deepEqual(fields(other.daily), expected[role].daily);
+    assert.deepEqual(fields(other.secondary.links), expected[role].more);
+  }
+});

@@ -13,6 +13,17 @@ SCHEMA_VERSION = 1
 MAX_DESCRIPTION = 4000
 MAX_REMARKS = 4000
 MAX_OUTCOME = 4000
+MAX_TITLE = 120
+
+
+def _limit(section):
+    return (
+        MAX_TITLE
+        if section == "title"
+        else MAX_DESCRIPTION
+        if section == "description"
+        else (MAX_OUTCOME if section == "outcome" else MAX_REMARKS)
+    )
 
 
 def _keyring():
@@ -45,13 +56,7 @@ def _binding(followup_id, section, event_id=None):
 
 
 def encrypt_text(followup_id, section, text, *, event_id=None, required=False):
-    limit = (
-        MAX_DESCRIPTION
-        if section == "description"
-        else MAX_OUTCOME
-        if section == "outcome"
-        else MAX_REMARKS
-    )
+    limit = _limit(section)
     validated = _text(text, section, limit, required=required)
     try:
         return crypto.encrypt_bound_json(
@@ -74,13 +79,7 @@ def decrypt_text(followup_id, section, token, *, event_id=None):
         )
         if set(payload) != {"text"}:
             raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.")
-        limit = (
-            MAX_DESCRIPTION
-            if section == "description"
-            else MAX_OUTCOME
-            if section == "outcome"
-            else MAX_REMARKS
-        )
+        limit = _limit(section)
         return _text(payload["text"], section, limit)
     except (ConfidentialDataUnavailable, FollowUpInvalid, UnicodeError):
         raise FollowUpContentUnavailable("Couldn't load the Follow-Up. Try again.") from None

@@ -22,6 +22,8 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.institutional_time import to_institution_time
+from compass.guidance_followups.api import FollowUpSummary, _summaries
+from compass.guidance_followups.errors import FollowUpError
 from compass.service_catalog.api import DeliveryMode
 
 from .api import (
@@ -29,6 +31,20 @@ from .api import (
     CounselingCaseStatus,
     CounselingEntryMode,
     IdentitySummaryResponse,
+)
+from .case_appointment_services import (
+    appointment_accessible,
+    link_appointment,
+    list_appointment_candidates,
+    unlink_appointment,
+)
+from .case_closure_models import CaseClosureReason
+from .case_closure_schemas import (
+    CaseCloseRequest,
+    CaseClosureContextResponse,
+    CaseClosureResponse,
+    CasePostClosureTaskRequest,
+    CaseReopenRequest,
 )
 from .case_services import (
     MANAGE_CAPABILITY,
@@ -46,9 +62,49 @@ from .case_services import (
     open_case,
     unlink_session,
 )
+from .case_transfer_projections import appointment_record_accessible, case_continuity
+from .case_transfer_schemas import CaseContinuityPanelResponse, CaseContinuityPerson
 from .services import DEFAULT_PAGE_SIZE, CounselingError
 
 router = Router(tags=["counseling"])
+
+
+def _closure_action(request, case_id, operation, payload):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        operation(
+            actor=request.auth_user,
+            case_id=case_id,
+            context=_context(request),
+            **payload.model_dump(),
+        )
+        return _detail(get_case(actor=request.auth_user, case_id=case_id), request)
+    except CounselingError as exc:
+        _raise(exc)
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise as raise_followup
+
+        raise_followup(exc)
+
+
+@router.get(
+    "/{case_id}/closure-context",
+    auth=session_auth,
+    response=response_with_errors(CaseClosureContextResponse, 401, 403, 404, 409, 422, 503),
+    operation_id="counselingGetCaseClosureContext",
+)
+def counseling_closure_context(request, case_id: UUID):
+    from .case_closure_services import get_closure_context
+
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        return get_closure_context(actor=request.auth_user, case_id=case_id)
+    except CounselingError as exc:
+        _raise(exc)
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise as raise_followup
+
+        raise_followup(exc)
 
 
 class StrictSchema(Schema):
@@ -72,6 +128,22 @@ class CounselingCaseEventKind(StrEnum):
     OPENED = "OPENED"
     SESSION_LINKED = "SESSION_LINKED"
     SESSION_UNLINKED = "SESSION_UNLINKED"
+
+
+class CounselingCaseAppointmentRemovalReason(StrEnum):
+    BELONGS_TO_ANOTHER_CASE = "BELONGS_TO_ANOTHER_CASE"
+    NOT_PART_OF_THIS_CASE = "NOT_PART_OF_THIS_CASE"
+    LINKED_BY_MISTAKE = "LINKED_BY_MISTAKE"
+
+
+class CounselingCaseLinkAppointmentRequest(StrictSchema):
+    appointment_id: UUID
+    expected_version: int = Field(ge=1)
+
+
+class CounselingCaseUnlinkAppointmentRequest(StrictSchema):
+    reason: CounselingCaseAppointmentRemovalReason
+    expected_version: int = Field(ge=1)
 
 
 class CounselingCaseOpenRequest(StrictSchema):
@@ -119,6 +191,8 @@ class CounselingCaseSummaryResponse(StrictSchema):
     session_count: int
     latest_session_at: datetime | None
     version: int
+    closed_at: datetime | None = None
+    closure_reason: CaseClosureReason | None = None
 
 
 class CounselingCasePageResponse(StrictSchema):
@@ -188,6 +262,35 @@ class CounselingCaseEventResponse(StrictSchema):
     detail_code: str | None
 
 
+class CounselingCaseAppointmentCandidate(StrictSchema):
+    id: UUID
+    reference_code: str
+    starts_at: datetime
+    ends_at: datetime
+    status: AppointmentStatus
+    delivery_mode: DeliveryMode
+    provider: CaseContinuityPerson | None = None
+    record_accessible: bool = True
+
+
+class CounselingCaseAppointmentCandidatePage(StrictSchema):
+    items: list[CounselingCaseAppointmentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CounselingCaseAppointmentResponse(StrictSchema):
+    id: UUID
+    appointment_id: UUID
+    appointment: CounselingCaseAppointmentCandidate | None
+    linked_at: datetime
+    linked_by: CounselingCasePerson
+    removed_at: datetime | None
+    removed_by: CounselingCasePerson | None
+    removal_reason: CounselingCaseAppointmentRemovalReason | None
+
+
 class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     source: CounselingCaseSourceResponse
     sessions: list[CounselingCaseSessionResponse]
@@ -196,6 +299,20 @@ class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     history: list[CounselingCaseEventResponse]
     # Whether the reader may link or correct sessions now.
     can_manage: bool
+    appointments: list[CounselingCaseAppointmentResponse]
+    next_appointment: CounselingCaseAppointmentCandidate | None
+    unlinked_appointment_sessions: list[CounselingCaseSessionCandidate]
+    next_action: FollowUpSummary | None
+    next_actions: list[FollowUpSummary]
+    next_actions_has_more: bool
+    next_actions_available: bool
+    can_add_next_action: bool
+    can_link_appointments: bool
+    continuity: CaseContinuityPanelResponse | None = None
+    closure: CaseClosureResponse | None = None
+    closures: list[CaseClosureResponse] = Field(default_factory=list)
+    can_close: bool = False
+    can_reopen: bool = False
 
 
 class CounselingCaseOpeningContextResponse(StrictSchema):
@@ -222,7 +339,16 @@ def _require_counselor(request, capability: str) -> None:
 
 def _raise(exc: CounselingError) -> NoReturn:
     if isinstance(exc, CounselingCaseError):
-        raise APIError(exc.status, exc.code, str(exc)) from exc
+        from .case_closure_services import CaseCloseBlocked
+
+        raise APIError(
+            exc.status,
+            exc.code,
+            str(exc),
+            details={"blocking_item_kinds": exc.blockers}
+            if isinstance(exc, CaseCloseBlocked)
+            else None,
+        ) from exc
     raise APIError(409, "counseling_not_permitted", str(exc)) from exc
 
 
@@ -244,6 +370,9 @@ def _person(user) -> dict[str, object]:
 
 def _summary(item: CaseSummary) -> dict[str, object]:
     case = item.case
+    closure = (
+        case.closures.filter(reopened_at__isnull=True).first() if case.status == "CLOSED" else None
+    )
     return {
         "id": case.pk,
         "reference_code": case.reference_code,
@@ -258,6 +387,8 @@ def _summary(item: CaseSummary) -> dict[str, object]:
         "session_count": item.session_count,
         "latest_session_at": _institutional(item.latest_session_at),
         "version": case.version,
+        "closed_at": _institutional(closure.closed_at) if closure else None,
+        "closure_reason": closure.reason if closure else None,
     }
 
 
@@ -296,7 +427,45 @@ def _source(*, appointment, encounter_id, routine_interview_id) -> dict[str, obj
     }
 
 
-def _detail(overview: CaseOverview) -> dict[str, object]:
+def _appointment_candidate(appointment, actor=None):
+    return {
+        "id": appointment.pk,
+        "reference_code": appointment.reference_code,
+        "starts_at": _institutional(appointment.starts_at),
+        "ends_at": _institutional(appointment.ends_at),
+        "status": appointment.status,
+        "delivery_mode": appointment.delivery_mode,
+        "provider": _person(appointment.provider),
+        "record_accessible": appointment_record_accessible(actor, appointment)
+        if actor is not None
+        else True,
+    }
+
+
+def _detail(overview: CaseOverview, request=None) -> dict[str, object]:
+    # The case's primary Counselor is the reader. Source-based task policy was applied in SQL;
+    # the shared Follow-Up projection rechecks before decrypting any title.
+    actor = overview.summary.case.primary_counselor
+    from .case_closure_services import protected_closures
+
+    try:
+        closures = protected_closures(
+            actor=request.auth_user if request else actor,
+            case_id=overview.summary.case.pk,
+            actor_session_id=request.auth_session.pk if request else None,
+            actor_session_digest=request.auth_session.token_digest if request else None,
+        )
+    except CounselingCaseError as exc:
+        _raise(exc)
+    for closure in closures:
+        closure["closed_at"] = _institutional(closure["closed_at"])
+        closure["reopened_at"] = _institutional(closure["reopened_at"])
+    try:
+        actions = _summaries(actor, overview.next_actions.items)
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise as raise_followup_error
+
+        raise_followup_error(exc)
     return {
         **_summary(overview.summary),
         "source": _source(
@@ -341,6 +510,53 @@ def _detail(overview: CaseOverview) -> dict[str, object]:
             for event in overview.events
         ],
         "can_manage": overview.can_manage,
+        "appointments": [
+            {
+                "id": link.pk,
+                "appointment_id": link.appointment_id,
+                "appointment": (
+                    _appointment_candidate(link.appointment, actor)
+                    if appointment_accessible(
+                        actor=actor, case=overview.summary.case, appointment=link.appointment
+                    )
+                    else None
+                ),
+                "linked_at": _institutional(link.linked_at),
+                "linked_by": _person(link.linked_by),
+                "removed_at": _institutional(link.removed_at),
+                "removed_by": _person(link.removed_by) if link.removed_by else None,
+                "removal_reason": link.removal_reason or None,
+            }
+            for link in overview.appointments
+        ],
+        "next_appointment": (
+            _appointment_candidate(overview.next_appointment, actor)
+            if overview.next_appointment
+            else None
+        ),
+        "unlinked_appointment_sessions": [
+            _candidate(session) for session in overview.unlinked_appointment_sessions
+        ],
+        "next_action": next(
+            (
+                item
+                for item in actions
+                if overview.next_actions.next_action is not None
+                and item["id"] == overview.next_actions.next_action.pk
+            ),
+            None,
+        ),
+        "next_actions": actions,
+        "next_actions_has_more": overview.next_actions.has_more,
+        "next_actions_available": overview.next_actions.available,
+        "can_add_next_action": overview.next_actions.can_add,
+        "can_link_appointments": overview.can_link_appointments,
+        "continuity": case_continuity(overview.summary.case, actor),
+        "closure": next((row for row in reversed(closures) if row["reopened_at"] is None), None),
+        "closures": closures,
+        "can_close": overview.can_manage,
+        "can_reopen": overview.summary.case.status == "CLOSED"
+        and actor.has_capability(MANAGE_CAPABILITY),
     }
 
 
@@ -384,7 +600,7 @@ def counseling_list_my_cases(
 @router.post(
     "",
     response=response_with_errors(
-        CounselingCaseDetailResponse, 401, 403, 404, 409, 422, success_status=201
+        CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503, success_status=201
     ),
     auth=session_auth,
     operation_id="counselingOpenCase",
@@ -403,7 +619,7 @@ def counseling_open_case(request, payload: CounselingCaseOpenRequest):
         overview = get_case(actor=request.auth_user, case_id=case.pk)
     except CounselingError as exc:
         _raise(exc)
-    return Status(201, _detail(overview))
+    return Status(201, _detail(overview, request))
 
 
 @router.get(
@@ -446,7 +662,7 @@ def counseling_get_case_opening_context(
 
 @router.get(
     "/{case_id}",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 422, 503),
     auth=session_auth,
     operation_id="counselingGetCase",
 )
@@ -456,7 +672,7 @@ def counseling_get_case(request, case_id: UUID):
         overview = get_case(actor=request.auth_user, case_id=case_id)
     except CounselingError as exc:
         _raise(exc)
-    return _detail(overview)
+    return _detail(overview, request)
 
 
 @router.get(
@@ -488,7 +704,7 @@ def counseling_list_case_session_candidates(
 
 @router.post(
     "/{case_id}/sessions",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="counselingLinkCaseSession",
 )
@@ -505,12 +721,12 @@ def counseling_link_case_session(request, case_id: UUID, payload: CounselingCase
         overview = get_case(actor=request.auth_user, case_id=case_id)
     except CounselingError as exc:
         _raise(exc)
-    return _detail(overview)
+    return _detail(overview, request)
 
 
 @router.post(
     "/{case_id}/sessions/{encounter_id}/unlink",
-    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422),
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
     auth=session_auth,
     operation_id="counselingUnlinkCaseSession",
 )
@@ -533,4 +749,141 @@ def counseling_unlink_case_session(
         overview = get_case(actor=request.auth_user, case_id=case_id)
     except CounselingError as exc:
         _raise(exc)
-    return _detail(overview)
+    return _detail(overview, request)
+
+
+@router.get(
+    "/{case_id}/appointment-candidates",
+    response=response_with_errors(CounselingCaseAppointmentCandidatePage, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="counselingListCaseAppointmentCandidates",
+)
+def counseling_list_case_appointment_candidates(
+    request,
+    case_id: UUID,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        result = list_appointment_candidates(
+            actor=request.auth_user, case_id=case_id, page=page, page_size=page_size
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "items": [_appointment_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.post(
+    "/{case_id}/appointments",
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="counselingLinkCaseAppointment",
+)
+def counseling_link_case_appointment(
+    request,
+    case_id: UUID,
+    payload: CounselingCaseLinkAppointmentRequest,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        link_appointment(
+            actor=request.auth_user,
+            case_id=case_id,
+            appointment_id=payload.appointment_id,
+            expected_version=payload.expected_version,
+            context=_context(request),
+        )
+        overview = get_case(actor=request.auth_user, case_id=case_id)
+    except CounselingError as exc:
+        _raise(exc)
+    return _detail(overview, request)
+
+
+@router.post(
+    "/{case_id}/appointments/{appointment_id}/unlink",
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    auth=session_auth,
+    operation_id="counselingUnlinkCaseAppointment",
+)
+def counseling_unlink_case_appointment(
+    request,
+    case_id: UUID,
+    appointment_id: UUID,
+    payload: CounselingCaseUnlinkAppointmentRequest,
+):
+    _require_counselor(request, MANAGE_CAPABILITY)
+    try:
+        unlink_appointment(
+            actor=request.auth_user,
+            case_id=case_id,
+            appointment_id=appointment_id,
+            reason=payload.reason.value,
+            expected_version=payload.expected_version,
+            context=_context(request),
+        )
+        overview = get_case(actor=request.auth_user, case_id=case_id)
+    except CounselingError as exc:
+        _raise(exc)
+    return _detail(overview, request)
+
+
+@router.post(
+    "/{case_id}/close",
+    auth=session_auth,
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    operation_id="counselingCloseCase",
+)
+def counseling_close_case(request, case_id: UUID, payload: CaseCloseRequest):
+    from .case_closure_services import close_case
+
+    return _closure_action(request, case_id, close_case, payload)
+
+
+@router.post(
+    "/{case_id}/reopen",
+    auth=session_auth,
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    operation_id="counselingReopenCase",
+)
+def counseling_reopen_case(request, case_id: UUID, payload: CaseReopenRequest):
+    from .case_closure_services import reopen_case
+
+    return _closure_action(request, case_id, reopen_case, payload)
+
+
+@router.post(
+    "/{case_id}/tasks/{task_id}/after-closure",
+    auth=session_auth,
+    response=response_with_errors(CounselingCaseDetailResponse, 401, 403, 404, 409, 422, 503),
+    operation_id="counselingDesignateCaseTaskAfterClosure",
+)
+def counseling_designate_case_task(
+    request, case_id: UUID, task_id: UUID, payload: CasePostClosureTaskRequest
+):
+    from compass.authentication.step_up import require_recent_mfa_for_request
+
+    from .case_closure_services import designate_task
+
+    _require_counselor(request, MANAGE_CAPABILITY)
+    require_recent_mfa_for_request(request)
+    try:
+        designate_task(
+            actor=request.auth_user,
+            case_id=case_id,
+            task_id=task_id,
+            context=_context(request),
+            **payload.model_dump(),
+        )
+        return _detail(get_case(actor=request.auth_user, case_id=case_id), request)
+    except CounselingError as exc:
+        _raise(exc)
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise as raise_followup
+
+        raise_followup(exc)

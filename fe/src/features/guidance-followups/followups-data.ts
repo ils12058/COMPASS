@@ -3,11 +3,13 @@ import { useEffect, useRef } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useRealtimeEvent, useRealtimeStatus } from "@/features/realtime/realtime-provider";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+import { getCounselingGetCaseQueryKey } from "@/lib/api/generated/counseling/counseling";
 
 export function invalidateFollowups(client: QueryClient) {
   return Promise.all([
     client.invalidateQueries({ predicate: query => typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith("/api/v1/guidance-followups") }),
     invalidateGuidanceWork(client),
+    client.invalidateQueries({ predicate: query => typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith(getCounselingGetCaseQueryKey("")[0]) }),
   ]);
 }
 export function useFollowupsFreshness(enabled: boolean) {

@@ -12,13 +12,21 @@ import { portalWorkspaceGroups } from "../src/features/portal/components/portal-
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { getWorkQueueListQueryKey } from "../src/lib/api/generated/work/work.ts";
 import { messagesAccount, sessionFor } from "./support/guidance-messages-fixtures.mjs";
+import { withNextRouter } from "./support/next-router.mjs";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 
-function render(items) {
+function render(items, search = "") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-  client.setQueryData(getWorkQueueListQueryKey({ page: 1, page_size: 20 }), {
-    data: { items, page: 1, page_size: 20, has_next: false, generated_at: "2026-10-10T00:00:00Z" }, status: 200, headers: {},
+  const account = messagesAccount("COUNSELOR");
+  account.capabilities.push("guidance_followups.view");
+  const page = Number(new URLSearchParams(search).get("page") ?? 1);
+  client.setQueryData(getWorkQueueListQueryKey({ page, page_size: 20 }), {
+    data: { items, page, page_size: 20, has_next: false, generated_at: "2026-10-10T00:00:00Z" }, status: 200, headers: {},
   });
-  const html = renderToStaticMarkup(h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: sessionFor(messagesAccount("COUNSELOR")) }, h(WorkQueuePage))));
+  const html = renderToStaticMarkup(withNextRouter(
+    h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: sessionFor(account) }, h(UnsavedChangesProvider, null, h(WorkQueuePage)))),
+    { pathname: "/portal/work", search },
+  ));
   client.clear();
   return html;
 }
@@ -64,6 +72,15 @@ test("confirmed queue order renders unchanged as a semantic list with visible li
 
 test("confirmed empty queue has the requested empty copy", () => {
   assert.match(render([]), /You’re caught up\./);
+});
+
+test("Follow-Up links and the complete workspace retain the originating work page", () => {
+  const html = render([
+    { id: "f", kind: "GUIDANCE_FOLLOW_UP", source_id: "f", student: { display_name: "Task Student" }, due_at: "2026-10-10T00:00:00Z" },
+  ], "page=2");
+  assert.match(html, /View all Follow-Ups/);
+  assert.match(html, /href="\/portal\/follow-ups\?return_to=%2Fportal%2Fwork%3Fpage%3D2"/);
+  assert.match(html, /href="\/portal\/follow-ups\/f\?return_to=%2Fportal%2Fwork%3Fpage%3D2"/);
 });
 
 test("frontend CI runs Work Queue in both engines against the production build", () => {

@@ -1,18 +1,19 @@
 "use client";
 
 import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data";
-import Link from "next/link";
-import { useState } from "react";
+import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FollowupsHelp } from "./followups-help";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -20,37 +21,59 @@ import { useGuidanceFollowupsList, useGuidanceFollowupsReport } from "@/lib/api/
 import { DueWindow, StatusValue, type FollowUpQuery } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { categoryLabel, statusLabel, followupAccess, FollowupRestricted, FollowupFailure } from "./followups-shared";
+import { followupActionLabel, readFollowupFilters } from "./followups-presentation";
+import { portalReturnHref, withWorkflowReturn, workflowBackLabel } from "@/features/portal/workflow-navigation";
+
+export function FollowupsListLoading() {
+  return <><PageHeader title="Follow-Ups" /><Panel><PanelHeader title="Follow-Up tasks" /><RowsSkeleton label="Loading Follow-Ups…" framed={false} /></Panel></>;
+}
 
 export function FollowupsList() {
   const { user } = usePortalSession();
   const access = followupAccess(user);
   useFollowupsFreshness(access.view);
-  const [filters, setFilters] = useState<FollowUpQuery>({ status: StatusValue.PENDING, page: 1 });
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const router = useRouter();
+  const filters = readFollowupFilters(params);
+  const here = `${pathname}${params.size ? `?${params}` : ""}`;
+  const back = portalReturnHref(params.get("return_to"), "/portal/follow-ups");
   const query = useGuidanceFollowupsList(filters, { query: { ...followupQueryFreshness, enabled: access.view, refetchOnWindowFocus: "always" } });
   const report = useGuidanceFollowupsReport({ horizon_days: 7 }, { query: { ...followupQueryFreshness, enabled: access.view, retry: false } });
   const data = query.data?.data;
   const workload = report.data?.data;
   const workloadTotal = workload ? workload.pending + workload.completed + workload.cancelled : null;
-  function change(next: Partial<FollowUpQuery>) { setFilters(previous => ({ ...previous, ...next, page: 1 })); }
+  function updateFilters(next: Partial<FollowUpQuery>) {
+    const query = new URLSearchParams(params.toString());
+    for (const [key, value] of Object.entries(next)) {
+      if (key === "status" && value === undefined) query.set(key, "all");
+      else if (value === undefined || value === null) query.delete(key);
+      else query.set(key, String(value));
+    }
+    router.replace(`${pathname}${query.size ? `?${query}` : ""}`, { scroll: false });
+  }
+  function change(next: Partial<FollowUpQuery>) { updateFilters({ ...next, page: 1 }); }
   const activeFilterCount = Number(filters.status !== StatusValue.PENDING)
     + Number(Boolean(filters.due_window))
-    + Number(Boolean(filters.assigned_to_id));
+    + Number(Boolean(filters.assigned_to_id)) + Number(Boolean(filters.case_id))
+    + Number(Boolean(filters.student_id));
   const emptyTitle = activeFilterCount ? "No matching Follow-Ups" : workloadTotal === 0 ? "No Follow-Ups assigned" : workload?.pending === 0 ? "No Pending Follow-Ups" : "No Follow-Ups on this page";
   const emptyCopy = activeFilterCount ? "Change Status or open Filters to adjust the due date and responsibility filters." : workloadTotal === 0 ? "Follow-Ups appear here when a next action is assigned to you." : workload?.pending === 0 ? "Choose another Status to review completed or cancelled work." : "Try another page or adjust the filters to find the Pending Follow-Up you need.";
   const hasActiveFilters = activeFilterCount > 0;
   function clearFilters() {
-    setFilters(previous => ({
-      ...previous,
+    updateFilters({
       status: StatusValue.PENDING,
       due_window: undefined,
       assigned_to_id: undefined,
+      case_id: undefined,
+      student_id: undefined,
       page: 1,
-    }));
+    });
   }
   if (!access.view) return <FollowupRestricted />;
   return <>
-    <PageHeader help={<FollowupsHelp />} title="Follow-Ups" description="Track the next actions assigned to Guidance staff." actions={<>
-      {access.manage ? <PageActionLink href="/portal/follow-ups/new" icon={Plus} label="Create" labelDetail="follow-up" /> : null}
+    <PageHeader help={<FollowupsHelp />} title="Follow-Ups" description="Track the next actions assigned to Guidance staff." back={params.has("return_to") ? <Link className={pageBackLinkClass} href={back}>{workflowBackLabel(back)}</Link> : undefined} actions={<>
+      {access.manage ? <PageActionLink href={withWorkflowReturn("/portal/follow-ups/new", here)} icon={Plus} label="Create" labelDetail="follow-up" /> : null}
     </>} />
     <section aria-labelledby="followup-workload-heading" className="mb-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
@@ -147,20 +170,20 @@ export function FollowupsList() {
     </span>
     <Panel>
       <PanelHeader title="Follow-Up tasks" context={data ? `${data.items.length} on this page` : "Loading…"} />
-      {query.isPending ? <p role="status" className="p-5">Loading Follow-Ups…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
-        {data.items.length ? <div className={dataTable.scroll}><table className={dataTable.table}><thead className={dataTable.head}><tr>{["Student", "Category", "Due", "Responsible staff member", "Status"].map(label => <th key={label} scope="col" className={dataTable.headerCell}>{label}</th>)}</tr></thead><tbody>{data.items.map(row => {
+      {query.isPending ? <RowsSkeleton label="Loading Follow-Ups…" framed={false} /> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
+        {data.items.length ? <div className={`relative ${dataTable.scroll}`}><table className={dataTable.table}><thead className={dataTable.head}><tr>{["Next action", "Due", "Student", "Responsible staff member", "Status", "Category"].map(label => <th key={label} scope="col" className={dataTable.headerCell}>{label}</th>)}</tr></thead><tbody>{data.items.map(row => {
           const dueAt = Date.parse(row.due_at);
           const reportAt = workload ? Date.parse(workload.generated_at) : Number.NaN;
           const dueSoon = Boolean(workload && row.status === StatusValue.PENDING && !row.overdue && Number.isFinite(dueAt) && Number.isFinite(reportAt)
             && dueAt >= reportAt && dueAt <= reportAt + workload.horizon_days * 24 * 60 * 60 * 1000);
           return <tr key={row.id} className={dataTable.row}>
-          <th scope="row" className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.student_name} photoUrl={row.student_profile_photo_url} photoUpdatedAt={row.student_profile_photo_updated_at} size="compact" /><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></span></th>
-          <td className={dataTable.cell}>{categoryLabel(row.category)}</td><td className={dataTable.cell}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" />{row.assigned_to_name}</span></td><td className={dataTable.cell}>{statusLabel(row.status)}{row.source_unavailable ? <span className="block text-sm text-muted">Can&apos;t open related record</span> : null}</td>
+          <th scope="row" className={`${dataTable.cell} min-w-44 max-w-72`}><Link className="block whitespace-normal break-words font-semibold text-brand underline underline-offset-4" href={withWorkflowReturn(`/portal/follow-ups/${row.id}`, here)}>{followupActionLabel(row)}</Link>{row.case ? <Link className="mt-1 block text-sm font-normal text-brand underline" href={withWorkflowReturn(`/portal/counseling/cases/${row.case.id}`, here)}>Case {row.case.reference_code}</Link> : null}</th>
+          <td className={`${dataTable.cell} min-w-44`}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.student_name} photoUrl={row.student_profile_photo_url} photoUpdatedAt={row.student_profile_photo_updated_at} size="compact" /><span>{row.student_name}</span></span></td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" /><span>{row.assigned_to_name}</span></span></td><td className={dataTable.cell}>{statusLabel(row.status)}{row.source_unavailable ? <span className="block text-sm text-muted">Can&apos;t open related record</span> : null}</td><td className={dataTable.cell}>{categoryLabel(row.category)}</td>
         </tr>;
         })}</tbody></table></div> : <PanelMessage>
           <span className="font-semibold text-ink">{emptyTitle}.</span> {emptyCopy}
         </PanelMessage>}
-        <div className="px-5"><CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={page => setFilters(previous => ({ ...previous, page }))} /></div>
+        <div className="px-5"><CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={page => updateFilters({ page })} /></div>
       </> : null}
     </Panel>
   </>;

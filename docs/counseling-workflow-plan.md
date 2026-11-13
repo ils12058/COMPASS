@@ -1,7 +1,7 @@
 # COMPASS counseling workflow: decisions and implementation plan
 
 **Date:** 12 November 2026 · Philippine Time  
-**Status:** Decided planning baseline. CW-1 is implemented in source on `codex/counseling-cw1-case-foundation` and awaits testing and review ([CW-1 record](cw-1/README.md)); CW-2 to CW-7 are not started.  
+**Status:** Decided planning baseline. CW-1 is implemented and verified locally, in review as pull request #360 ([CW-1 record](cw-1/README.md)). CW-2 is implemented and verified locally on `codex/counseling-cw2-next-actions`, stacked on CW-1 ([CW-2 record](cw-2/README.md)). CW-3a transfer, CW-3b structured handoff and CW-3c temporary coverage are implemented and verified locally, stacked in that order on CW-2 ([CW-3 record](cw-3/README.md)). CW-4 closure and reopening is implemented and verified locally, stacked on CW-3c ([CW-4 record](cw-4/README.md)). CW-6 Counselor About and Messages context is implemented and verified locally, stacked on CW-4 ([CW-6 record](cw-6/README.md)). CW-5 is in review separately as draft pull request #362, stacked on CW-1; CW-7 remains open.
 **Purpose:** Turn the related counseling features into one understandable student-care workflow, and capture the related Referral, Counselor About, and Guidance Messages improvements.
 
 The owner has asked us to make the remaining product decisions using the Guidance Head's insights and the discussions in both chats. The decisions below are the team's chosen implementation direction. Statements attributed to the Guidance Head are the owner's recollection, not a verbatim institutional specification. In particular, a ten-session closure rule was never established.
@@ -101,10 +101,10 @@ Temporary coverage retains the current 30-day duration and 14-day advance limits
 | A requests temporary coverage from C | A requests; an uninvolved Head approves. | C accepts; selected coverage starts at the approved start time. A remains primary. |
 | Head requests temporary coverage for her own case | Direct outgoing-Head authorization, confined to her own case. | C accepts; Head remains primary. |
 | Original counselor is unavailable or should not be required to initiate a conflict-related move | An eligible office staff member prepares the scoped request; an independent Head authorizes. No original-counselor signature or impersonation is required. | Receiver reviews available information and explicitly accepts. |
-| Head is the proposed receiver | Another independent current Head must authorize. | Receiving Head accepts separately. |
+| Head is the proposed receiver | Use an eligible Head other than requester and receiver when one exists. When none exists, only the current primary Counselor's personal request may go directly to the receiving Head; office-prepared incoming requests are blocked. This is the owner's decision on 13 November 2026 for an office with one Head. | Receiving Head accepts explicitly. The personal-request route records `independent_authorization = false` in continuity history, audit metadata and Privacy governance activity. |
 | Requester/receiver is the only possible approver, or the Head is implicated as reviewer of another counselor's case | Do not self-approve. Show the blocked reason and retain the existing owner. | An independent authorized arrangement is required before the system can execute it. |
 
-**CONT-03 — Keep the outgoing-Head exception narrow.** It does not permit the Head to approve incoming access to herself or to approve her own request for somebody else's case. Do not create a generic self-approval bypass, an automatic Acting Head, or a new delegated-approver role in this package. Where no eligible independent approver exists, the software must make the limitation clear rather than manufacture authority.
+**CONT-03 — Keep the Head exceptions narrow.** The Head may directly authorize only her own outgoing case, never an incoming arrangement or her own request for somebody else's case. By the owner's decision on 13 November 2026 for an office with one Head, when no eligible authorizer other than requester and receiver exists, the current primary Counselor may personally request the Head as receiver with a neutral reason; the Head must accept explicitly and the arrangement records `independent_authorization = false`. Office-prepared incoming requests remain blocked as “No independent approver is available.” If another eligible Head exists, ordinary independent authorization applies. Do not create a generic self-approval bypass, an automatic Acting Head, or a new delegated-approver role.
 
 **CONT-04 — Use neutral reasons.** Include potential conflict of interest / impartiality concern, planned absence, unexpected absence, temporary support, and an appropriate change in service responsibility. A conflict reason does not label the outgoing counselor “biased” or establish misconduct. Sensitive explanation belongs in restricted content, not list rows, notifications, or reports.
 
@@ -278,10 +278,17 @@ The following are domain responsibilities to implement, not invented endpoint na
 
 Each package includes its own API, UI, meaningful tests, and documentation. The labels below are this plan's work packages.
 
-| Package | State on 12 November 2026 |
+| Package | State on 14 November 2026 |
 |---|---|
-| CW-1 | Implemented in source, not merged. Backend verified locally; frontend tests, build, browser journeys and the upgrade rehearsal are still to run. See the [CW-1 record](cw-1/README.md). |
-| CW-2 to CW-7 | Not started. |
+| CW-1 | Implemented and verified locally (backend, frontend, browser journeys in Chromium and WebKit, upgrade rehearsal). In review as pull request #360; not merged or deployed. See the [CW-1 record](cw-1/README.md). |
+| CW-2 | Implemented and verified locally with mocked and real local backends, in Chromium and WebKit, plus an upgrade rehearsal. Stacked on CW-1; not merged or deployed. Staff-side booking remains an open gap. See the [CW-2 record](cw-2/README.md). |
+| CW-3a | Transfer implemented and verified locally: backend, frontend, Chromium/WebKit mocked and real-backend journeys, and upgrade rehearsal. Stacked on CW-2; not merged or deployed. See the [CW-3 record](cw-3/README.md). |
+| CW-3b | Structured handoff implemented and verified locally: backend, immutable encrypted snapshots/addenda, receipt, Head unavailable exception, Chromium/WebKit mocked and real-backend journeys, and upgrade rehearsal. Stacked on CW-3a; not merged or deployed. See the [CW-3 record](cw-3/README.md). |
+| CW-3c | Case coverage implemented and verified locally: backend, frontend, Chromium/WebKit mocked journeys, and upgrade rehearsal. No real-backend browser journey yet. Stacked on CW-3b; not merged or deployed. See the [CW-3 record](cw-3/README.md). |
+| CW-4 | Closure and reopening implemented, including outstanding-work review, confidential closure cycles, retained administrative actions and independently accepted reopening transfers. Backend, contract, unit, Chromium/WebKit mocked and real-backend journeys, and upgrade rehearsal pass locally. Its real-backend journey also exercises CW-3c coverage. Stacked on CW-3c; not merged or deployed. See the [CW-4 record](cw-4/README.md). |
+| CW-5 | Referral timing is in review separately as draft pull request #362, stacked on CW-1; its record is on that branch. |
+| CW-6 | Counselor About and Messages context implemented: shared no-store About summary with Head fallback marked as fallback, About in booking, new-message recipients, the Student's Counseling conversation header and transfer/coverage preparation, plus Counselor photo and a rechecked Appointment summary in Messages. Backend, contract, unit, Chromium/WebKit mocked and real-backend journeys pass locally. No migration. Stacked on CW-4; not merged or deployed. See the [CW-6 record](cw-6/README.md). |
+| CW-7 | Not started. |
 
 | Order | Package | Deliverable and completion condition |
 |---|---|---|
@@ -307,6 +314,7 @@ These are checks to run during implementation, not claims that tests have alread
 - [ ] Ten completed sessions never trigger automatic closure.
 - [ ] A → C transfer requires Head authorization and C's acceptance; A remains responsible while pending or declined.
 - [ ] The Head can authorize her own outgoing case without a self-approval deadlock, but cannot use that exception for an incoming case.
+- [ ] For an office with one Head, the current primary Counselor's personal request to the Head requires explicit acceptance and records no independent authorization; office-prepared requests to that Head are blocked. With another eligible Head present, ordinary independent authorization applies (owner decision, 13 November 2026).
 - [ ] An unavailable original counselor can be handled without impersonation or a fabricated handoff; missing information is visible to the receiver.
 - [ ] An implicated/absent independent approver results in a clear blocked arrangement, not silent self-approval.
 - [ ] Review access is limited and expires; changing the package invalidates earlier authorization/acceptance.
@@ -362,4 +370,4 @@ Conversation sources:
 - Subsequent continuation chat **“aruy naputol na naman tayo sa kabilang chat, basahin mo daw…”**, ID `01a1cf4d-5104-75a3-bdef-a52324642b4a`: the final unanswered product question asked which pages to simplify or remove because the frontend feels fragmented. Sections UX-07 and UX-08 complete that review after recovering the conversation in chat `01a1cf67-4479-75b3-8465-211bc42bf612` and checking the current owning frontend sources.
 - The earlier fifteen-proposal document was consulted for continuity and referral context. Its technical suggestions are not all direct panel requirements, and it does not establish automatic closure after ten sessions.
 
-**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1 is implemented in source and not yet fully verified or merged ([CW-1 record](cw-1/README.md)); CW-2 to CW-7 and every acceptance check in section 13 remain open. No box in section 13 is ticked, because none has been confirmed in a browser on a combined candidate.
+**Document completion:** the discussions have been consolidated, product decisions selected, and the specific navigation/page consolidation recorded. **Implementation completion:** CW-1, CW-2 and CW-3 (a, b, c) are implemented and verified locally but not merged ([CW-1 record](cw-1/README.md), [CW-2 record](cw-2/README.md), [CW-3 record](cw-3/README.md)); CW-4 and CW-6 are implemented and verified locally but not merged ([CW-4 record](cw-4/README.md), [CW-6 record](cw-6/README.md)); CW-5 is in draft pull request #362 and CW-7 remains open. Package records contain the executed local scenarios. The section 13 checklist remains the integrated acceptance handover; institutional UAT is not claimed.

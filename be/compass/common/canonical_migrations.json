@@ -38,6 +38,16 @@
     "compass/student_support/migrations/0001_release_baseline.py": "acf658dfe1496c9ed0c4f9afee406dfc1f6189fb9b17ca3cd4f7f774b4bd4e13"
   },
   "additive_migrations": [
-    "counseling/migrations/0003_counseling_cases.py"
+    "counseling/migrations/0003_counseling_cases.py",
+    "counseling/migrations/0004_case_appointments.py",
+    "counseling/migrations/0005_case_transfers.py",
+    "counseling/migrations/0006_transfer_history.py",
+    "counseling/migrations/0007_case_handoffs.py",
+    "counseling/migrations/0008_case_coverage.py",
+    "counseling/migrations/0009_case_closure.py",
+    "guidance_followups/migrations/0002_next_actions.py",
+    "guidance_followups/migrations/0003_case_transfers.py",
+    "guidance_followups/migrations/0004_case_coverage.py",
+    "guidance_followups/migrations/0005_case_closure.py"
   ]
 }

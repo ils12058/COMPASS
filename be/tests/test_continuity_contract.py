@@ -77,7 +77,11 @@ def test_handoff_wire_contract_keeps_identity_and_body_audiences_separate():
             "grant_id",
             "published_at",
         }
-    paths = {p: route for p, route in contract["paths"].items() if "/handoff/" in p}
+    paths = {
+        p: route
+        for p, route in contract["paths"].items()
+        if "/continuity-grants/{grant_id}/handoff/" in p
+    }
     assert len(paths) == 5
     assert all("/continuity-grants/{grant_id}/handoff/" in p for p in paths)
     assert not any("/me/" in p for p in paths)
