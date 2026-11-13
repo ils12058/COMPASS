@@ -182,6 +182,14 @@ class GuidanceFollowUpEvent(models.Model):
         blank=True,
         related_name="followup_events",
     )
+    case_coverage = models.ForeignKey(
+        "counseling.CounselingCaseCoverage",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="followup_events",
+    )
+    coverage_effective_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

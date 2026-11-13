@@ -149,3 +149,9 @@ from compass.counseling.continuity_models import (  # noqa: E402, F401
     CounselorCaseContinuityScope,
 )
 from compass.counseling.handoff_models import CounselorHandoffSummary  # noqa: E402, F401
+
+from .case_coverage_models import (  # noqa: E402, F401
+    CounselingCaseCoverage,
+    CounselingCaseCoverageEvent,
+    CounselingCaseCoverageTask,
+)

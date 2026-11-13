@@ -43,7 +43,9 @@
     "counseling/migrations/0005_case_transfers.py",
     "counseling/migrations/0006_transfer_history.py",
     "counseling/migrations/0007_case_handoffs.py",
+    "counseling/migrations/0008_case_coverage.py",
     "guidance_followups/migrations/0002_next_actions.py",
-    "guidance_followups/migrations/0003_case_transfers.py"
+    "guidance_followups/migrations/0003_case_transfers.py",
+    "guidance_followups/migrations/0004_case_coverage.py"
   ]
 }
