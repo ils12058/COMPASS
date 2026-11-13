@@ -43,6 +43,16 @@ export function enumChoice<T extends string>(options: readonly T[], value: strin
   return options.find(option => option === value);
 }
 const errorMessages: Record<string, string> = {
+  case_continuity_handoff_required: "Submit the structured handoff or have an eligible Head record why it is unavailable.",
+  case_continuity_handoff_content_invalid: "Review the handoff text and keep the total narrative within 12,000 characters.",
+  case_continuity_handoff_content_required: "Include the concern and purpose, and what the receiver should do next.",
+  case_continuity_handoff_immutable: "The submitted handoff is immutable. Add an attributed addendum.",
+  case_continuity_handoff_not_found: "The protected handoff is unavailable to this account or the review ended.",
+  case_continuity_handoff_unavailable: "The protected handoff is unavailable. Try again when access is restored.",
+  case_continuity_handoff_write_denied: "Only the current outgoing Counselor can write this handoff.",
+  case_continuity_handoff_addendum_denied: "An authorized author or current case owner must add this information.",
+  case_continuity_handoff_exception_denied: "An eligible Head must record the exception. The receiving Head cannot record it.",
+  case_continuity_session_unavailable: "Sign in again to open this protected handoff.",
   case_continuity_no_independent_approver: "No independent approver is available.",
   case_continuity_receiver_ineligible: "The receiving Counselor is no longer eligible. Choose another Counselor.",
   case_continuity_changed: "This arrangement changed. The latest details are now shown; review them before acting.",

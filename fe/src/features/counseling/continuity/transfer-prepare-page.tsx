@@ -27,6 +27,8 @@ import {
 import { institutionalDateTimeInputToISO, isoToInstitutionalDateTimeInput } from "@/lib/institutional-time";
 import { authorizationLabel, continuityError, continuityReasonLabels, enumChoice, transferHref } from "./continuity-presentation";
 import { TransferWorkFields, type TaskChoice, type AppointmentChoice } from "./transfer-work-fields";
+import { HandoffFields, emptyHandoff, handoffLength } from "./handoff-fields";
+import { useCoveragePrivacy } from "@/features/counseling/coverage/use-coverage-privacy";
 
 function TransferForm({ context, existing, reason, setReason, confirmed, returnTo, refresh }: {
   context: CaseTransferContextResponse;
@@ -51,6 +53,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
   const [deferral, setDeferral] = useState<CaseCommunicationDeferral | "">(existing?.communication_deferral_reason ?? "");
   const [communicationTitle, setCommunicationTitle] = useState("");
   const [communicationDue, setCommunicationDue] = useState("");
+  const [handoff, setHandoff] = useState(emptyHandoff);
   const [caseVersion, setCaseVersion] = useState(context.case.version);
   const [offerVersion, setOfferVersion] = useState(existing?.version);
   const [dirty, setDirty] = useState(false);
@@ -81,9 +84,11 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
       appointmentInputs.push({ link_id: appointment.link_id, disposition: choice.disposition, ...(choice.disposition === "RETAIN_WITH_PROVIDER" && choice.retention ? { retention_reason: choice.retention } : {}) });
     }
     if (!receiver || blocked || (context.office_prepared && !officeReason)) { setError(blocked ?? "Choose the receiver and explain office preparation when required."); return; }
+    if (handoffLength(handoff) > 12000) { setError("The handoff narrative may contain at most 12,000 characters across all sections."); return; }
     const data: CaseTransferPrepareRequest = {
       expected_case_version: caseVersion, receiving_counselor_id: receiver, reason,
       tasks: taskInputs, appointments: appointmentInputs, student_communication: communication,
+      ...(!context.office_prepared && Object.values(handoff).some(text => text.trim()) ? { handoff_sections: handoff } : {}),
       ...(officeReason ? { office_preparation_reason: officeReason } : {}),
       ...(communication === "YES" ? { student_informed_at: institutionalDateTimeInputToISO(informedAt) } : {}),
       ...(communication === "DEFERRED" && deferral ? { communication_deferral_reason: deferral, ...(!existingCommunication ? { communication_next_action: communicationTitle, communication_due_at: institutionalDateTimeInputToISO(communicationDue) } : {}) } : {}),
@@ -116,7 +121,14 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
         {blocked ? <Notice role="alert" tone="warning" className="mt-4">{blocked} The case stays with its current primary Counselor.</Notice> : option?.authorization_route ? <p className="mt-3 text-sm text-muted">{authorizationLabel(option.authorization_route)}</p> : null}
       </PanelSection>
       <TransferWorkFields context={context} tasks={tasks} appointments={appointments} changeTask={(id, choice) => { setTasks(current => ({ ...current, [id]: choice })); setDirty(true); }} changeAppointment={(id, choice) => { setAppointments(current => ({ ...current, [id]: choice })); setDirty(true); }} returnTo={returnTo} />
-      <PanelSection title="4. Student communication" titleId="transfer-communication-heading">
+      <PanelSection title="4. Handoff" titleId="transfer-form-handoff-heading">
+        {context.office_prepared ? <p className="text-sm">The Head must record why a clinical handoff is unavailable before this transfer can be submitted.</p> : <>
+          <p className="mb-4 text-sm text-muted">Save a structured draft here or write it from the review page. Submit the handoff before submitting the transfer. The selected action and Appointment plans are saved as read-only work.</p>
+          {existing?.handoff?.state === "SUBMITTED" ? <p className="mb-4 text-sm text-warning">Changing the plan requires a new handoff. The previous submitted snapshot remains immutable.</p> : null}
+          <HandoffFields value={handoff} onChange={setHandoff} disabled={pending} />
+        </>}
+      </PanelSection>
+      <PanelSection title="5. Student communication" titleId="transfer-communication-heading">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-1"><Label htmlFor="student-communication">Has the Student been informed?</Label><Select id="student-communication" value={communication} onChange={event => { const value = enumChoice(Object.values(CaseStudentCommunication), event.target.value); if (value) setCommunication(value); }}><option value="YES">Yes</option><option value="NO">No</option><option value="DEFERRED">Deferred</option></Select></div>
           {communication === "YES" ? <div className="grid gap-1"><Label htmlFor="student-informed-at">When informed (Philippine Time)</Label><Input id="student-informed-at" type="datetime-local" required value={informedAt} onChange={event => setInformedAt(event.target.value)} /></div> : null}
@@ -131,7 +143,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
         </div>
         <p className="mt-3 text-sm text-muted">Your identity records who entered this communication status. COMPASS sends no message to the Student.</p>
       </PanelSection>
-      <PanelSection title="5. Review and save" titleId="transfer-save-heading"><p className="text-sm">Responsibility changes only when the receiving Counselor accepts. Saving this plan starts no transfer; the review page provides the submission step.</p></PanelSection>
+      <PanelSection title="6. Review and save" titleId="transfer-save-heading"><p className="text-sm">Responsibility changes only when the receiving Counselor accepts. Saving this plan starts no transfer; the review page provides the submission step.</p></PanelSection>
       <PanelFooter>
         <Button type="submit" disabled={pending || stale || !confirmed || Boolean(blocked)}>{pending ? "Saving transfer plan…" : "Save transfer plan"}</Button>
         {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
@@ -144,6 +156,7 @@ export function TransferPreparePage({ caseId }: { caseId: string }) {
   const { user } = usePortalSession();
   const params = useSearchParams();
   const editId = params.get("edit") ?? "";
+  const privacy = useCoveragePrivacy(user.id, editId || caseId);
   const back = portalReturnHref(params.get("return_to"), `/portal/counseling/cases/${caseId}`);
   const [reasonChoice, setReasonChoice] = useState<{ editId: string; reason: CaseContinuityReason } | null>(null);
   const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.request");
@@ -152,10 +165,11 @@ export function TransferPreparePage({ caseId }: { caseId: string }) {
   const query = useCounselingGetCaseTransferContext(caseId, { reason }, { query: { enabled: allowed && (!editId || existing.data?.data.can_edit === true), retry: false, gcTime: 0, staleTime: 0, placeholderData: keepPreviousData, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } });
   if (!allowed) return <CounselingUnavailable title="Transfer case" />;
   const heading = <CounselingPageHeading title="Transfer case" back={<Link href={back} className={pageBackLinkClass}>{workflowBackLabel(back)}</Link>} />;
+  if (privacy.blocked) return <>{heading}<Notice tone="warning" action={<Button variant="secondary" onClick={() => { privacy.resume(); void query.refetch(); }}>Check preparation access</Button>}>Protected preparation text has been cleared. Check access again to continue.</Notice></>;
   const unavailable = <>{heading}<CounselingQueryError message={continuityError(query.error ?? existing.error, "The transfer preparation isn't available. Check access and try again.")} onRetry={() => { void query.refetch(); if (editId) void existing.refetch(); }} /></>;
   if (editId && existing.isPending) return <>{heading}<EncounterDetailSkeleton /></>;
   if (editId && (existing.isError || !existing.data?.data.can_edit)) return unavailable;
   if (query.isPending) return <>{heading}<EncounterDetailSkeleton /></>;
   if (query.isError || !query.data) return unavailable;
-  return <>{heading}<TransferForm key={`${user.id}:${editId}`} context={query.data.data} existing={existing.data?.data} reason={reason} setReason={value => setReasonChoice({ editId, reason: value })} confirmed={!query.isPlaceholderData} returnTo={back} refresh={() => Promise.all([query.refetch(), editId ? existing.refetch() : Promise.resolve()])} /></>;
+  return <>{heading}<TransferForm key={`${user.id}:${editId}:${privacy.generation}`} context={query.data.data} existing={existing.data?.data} reason={reason} setReason={value => setReasonChoice({ editId, reason: value })} confirmed={!query.isPlaceholderData} returnTo={back} refresh={() => Promise.all([query.refetch(), editId ? existing.refetch() : Promise.resolve()])} /></>;
 }

@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/generated/counseling/counseling";
 import { CaseArrangementDecisionReason, type CaseTransferDetailResponse } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
+import { TransferHandoffSection } from "./transfer-handoff-section";
 import { arrangementLabel, authorizationLabel, continuityError, continuityReasonLabels, continuityStale, decisionReasonLabels, enumChoice, taskDispositionLabels, appointmentDispositionLabels, transferHref, transferPrepareHref } from "./continuity-presentation";
 
 type Decision = "submit" | "authorize" | "accept" | "decline" | "cancel";
@@ -98,6 +99,7 @@ function TransferReview({ item, confirmed, onChanged, onStale, here }: {
       </> : null}
       <PanelSection title="Student communication" titleId="review-communication-heading"><p className="text-sm">{item.student_communication === "YES" ? `Informed ${item.student_informed_at ? formatCounselingDateTime(item.student_informed_at) : ""}` : item.student_communication === "DEFERRED" ? "Informing deferred" : "Not informed"} · Recorded by {item.communication_recorded_by.display_name}</p>{item.communication_responsible ? <p className="mt-1 text-sm text-muted">Communication action: {item.communication_responsible.display_name}</p> : null}</PanelSection>
     </Panel>
+    <TransferHandoffSection item={item} here={here} confirmed={confirmed} onChanged={onChanged} onStale={onStale} />
     {item.needs_new_arrangement ? <Notice role="status" className="mt-5" tone="warning">{item.decision_reason ? decisionReasonLabels[item.decision_reason] : "The review ended."} The owner is unchanged; another arrangement is needed.</Notice> : null}
     {item.state === "ACCEPTED" ? <Notice role="status" className="mt-5">The case is now the responsibility of {item.receiving_counselor.display_name}. Acceptance does not complete any action or endorse a handoff.</Notice> : null}
     {item.can_edit || item.can_open_case || item.can_submit || item.can_authorize || item.can_accept || item.can_decline || item.can_cancel ? <Panel className="mt-5" aria-labelledby="transfer-decisions-heading"><PanelHeader title="Next step" titleId="transfer-decisions-heading" /><PanelBody>

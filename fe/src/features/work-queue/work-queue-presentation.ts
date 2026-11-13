@@ -7,6 +7,8 @@ export function presentWork(item: WorkItem, generatedAt?: string) {
     ? `Report time: ${formatInstitutionalDateTime(item.due_at)}`
     : item.waiting_since ? `Waiting since ${formatInstitutionalDateTime(item.waiting_since)}` : "Awaiting your review";
   switch (item.kind) {
+    case WorkKind.CASE_HANDOFF_EXCEPTION:
+      return { title: `Review unavailable handoff${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: "A Head exception is needed before transfer submission", href: `/portal/counseling/transfers/${item.source_id}`, actionLabel: "Review handoff exception" };
     case WorkKind.CASE_TRANSFER_AUTHORIZATION:
       return { title: `Authorize case transfer${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: "Waiting for Head approval", href: `/portal/counseling/transfers/${item.source_id}`, actionLabel: "Review transfer" };
     case WorkKind.CASE_TRANSFER_ACCEPTANCE:
