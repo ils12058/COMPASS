@@ -222,7 +222,7 @@ for (const mode of ["network", "server"]) {
 await check("case-overview-facts-session-access-and-history", casePath, { handler: casesFixture().handler }, async (page) => {
   await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
   assert.equal(await page.locator("main h1").count(), 1);
-  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Next actions", "Appointments", "Sessions", "Case history"]);
+  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Continuity", "Next actions", "Appointments", "Sessions", "Case history"]);
   assert.equal(await completedCount(page).innerText(), "2");
   assert.match(await page.locator('[aria-labelledby="case-details-heading"]').innerText(), /Synthetic CW-1 Counselor/);
   assert.match(await page.locator("main").innerText(), /CASE-2026-000001/);
@@ -514,13 +514,17 @@ async function phoneTableAndActions(page, width) {
   const tableGeometry = await scroller.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth, overflow: getComputedStyle(element).overflowX }));
   assert.equal(tableGeometry.overflow, "auto", "The wide table owns its horizontal scroller");
   assert.ok(tableGeometry.scroll > tableGeometry.width, "The table retains readable columns on phones");
-  const actions = await page.locator("main [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
+  const allActions = await page.locator("main [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
     const control = label.closest("a, button");
     const box = control.getBoundingClientRect();
     return { name: label.textContent, x: box.x, right: box.right, top: box.top, height: box.height };
   }));
-  assert.equal(actions.length, 2);
-  for (const action of actions) {
+  const actions = await page.locator("main [data-page-header-actions] [data-page-action-label]").evaluateAll((labels) => labels.map((label) => {
+    const box = label.closest("a, button").getBoundingClientRect();
+    return { top: box.top, height: box.height };
+  }));
+  assert.equal(actions.length, 2, "The page retains its two primary commands");
+  for (const action of allActions) {
     assert.ok(action.x >= 0 && action.right <= width + 1, `Page action ${action.name} stays inside the phone`);
     assert.ok(action.height >= 44, "Page actions retain their touch targets");
   }

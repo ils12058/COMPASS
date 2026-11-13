@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointment, appointmentId, user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 import { casePath, casesFixture, followup, student as caseStudent } from "./support/counseling-cases-fixtures.mjs";
+import { continuityAPI, continuityFixture } from "./support/counseling-continuity-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("counseling-encounter-consistency");
 const ePath = `/portal/e-counseling/${appointmentId}`;
@@ -20,6 +21,16 @@ const SCHEDULED = /Thu, Oct 8, 2026 · 10:00\sAM–11:00\sAM/;
 const stage = (page) => page.getByRole("region", { name: "Video call" });
 const fakeCount = (page, method) => page.evaluate((name) => window.__COMPASS_FAKE_DAILY__.count(name), method);
 const posts = (requests, suffix) => requests.filter((request) => request.method !== "GET" && request.pathname.endsWith(suffix));
+
+async function activeCallAvailable(page) {
+  const dock = page.getByRole("region", { name: "Active E-Counseling call", exact: true });
+  try {
+    await shown(dock);
+    await shown(dock.getByRole("button", { name: "Leave session", exact: true }));
+  } catch (error) {
+    throw new Error(`The active call and its leave control remain available: ${error.message}`);
+  }
+}
 
 function savedEncounter(overrides = {}) {
   return {
@@ -248,11 +259,13 @@ await check("ecounseling-page-already-recorded", recordPath, session({ post: ({ 
 
 const connectedSession = session();
 const connectedCase = casesFixture({ followups: [followup()] });
+const connectedContinuity = continuityFixture();
+connectedCase.detail.continuity.transfers = [connectedContinuity.projection()];
 await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, ...connectedSession,
-  handler: (args) => args.pathname.startsWith("/api/v1/counseling/cases") || args.pathname.startsWith("/api/v1/guidance-followups") ? connectedCase.handler(args) : false,
+  handler: (args) => args.pathname.startsWith(continuityAPI) ? connectedContinuity.handler(args) : args.pathname.startsWith("/api/v1/counseling/cases") || args.pathname.startsWith("/api/v1/guidance-followups") ? connectedCase.handler(args) : false,
   overrides: {
   ...connectedSession.overrides,
-  "/api/v1/auth/session": { user: { ...user(), capabilities: [...user().capabilities, "guidance_followups.view", "guidance_followups.manage"] }, session: { id: "test-session", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
+  "/api/v1/auth/session": { user: { ...user(), capabilities: [...user().capabilities, "guidance_followups.view", "guidance_followups.manage", "counseling.continuity.view", "counseling.continuity.request"] }, session: { id: "test-session", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
   "/api/v1/counseling/me/encounters": { items: [], page: 1, page_size: 20, has_next: false, ordering: "LATEST_ENCOUNTER" },
   "/api/v1/counseling/appointment-candidates": {
     items: [{ id: appointmentId, reference_code: appointment.reference_code, student: { id: "student", display_name: STUDENT, institutional_id: SYNTH_ID }, delivery_mode: "ONLINE", starts_at: appointment.starts_at, ends_at: appointment.ends_at, status: "SCHEDULED" }],
@@ -270,14 +283,27 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   assert.equal(await fakeCount(page, "join"), 1, "Opening a case does not rejoin the call");
   assert.equal(await fakeCount(page, "leave"), 0, "Opening a case does not leave the call");
   assert.equal(await fakeCount(page, "destroy"), 0, "Opening a case does not destroy the call");
-  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await activeCallAvailable(page);
+  await page.getByRole("link", { name: "Transfer case", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Transfer case", exact: true }));
+  await shown(page.getByLabel("Receiving counselor", { exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Transfer preparation keeps the same Call Object");
+  assert.equal(await fakeCount(page, "join"), 1, "Transfer preparation does not rejoin");
+  assert.equal(await fakeCount(page, "leave"), 0, "Transfer preparation does not leave");
+  await page.getByRole("link", { name: "Back to case", exact: true }).click();
+  await page.getByRole("link", { name: connectedContinuity.item.reference_code, exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Transfer review", exact: true }));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Transfer review keeps the same Call Object");
+  assert.equal(await fakeCount(page, "destroy"), 0, "Transfer review does not end the call");
+  await shown(page.getByRole("region", { name: "Active E-Counseling call" }));
+  await page.getByRole("link", { name: "Back to case", exact: true }).click();
   await page.locator('[aria-labelledby="case-next-actions-heading"]').getByRole("link", { name: "Check progress with Student", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Check progress with Student", exact: true }));
   assert.equal(await fakeCount(page, "createCallObject"), 1, "Opening a Follow-Up keeps the same Call Object");
   assert.equal(await fakeCount(page, "join"), 1, "Opening a Follow-Up does not rejoin the call");
   assert.equal(await fakeCount(page, "leave"), 0, "Opening a Follow-Up does not leave the call");
   assert.equal(await fakeCount(page, "destroy"), 0, "Opening a Follow-Up does not destroy the call");
-  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await activeCallAvailable(page);
   await page.getByRole("link", { name: "Back to case", exact: true }).click();
   await shown(page.getByRole("heading", { name: caseStudent.display_name, exact: true }));
   await page.getByRole("link", { name: "Back to Counseling", exact: true }).click();
@@ -292,7 +318,7 @@ await check("ecounseling-page-keeps-call-connected", ePath, { fakeDaily: true, .
   await page.waitForURL((url) => url.pathname === "/portal/counseling/encounters");
   assert.equal(await fakeCount(page, "createCallObject"), 1, "The call object is never recreated");
   assert.equal(await fakeCount(page, "destroy"), 0, "Opening and leaving the record page never ends the call");
-  await shown(page.getByRole("region", { name: "Active E-Counseling call" }).getByRole("button", { name: "Leave session", exact: true }));
+  await activeCallAvailable(page);
 });
 
 for (const device of ["narrowPhone", "phone", "tablet"]) {

@@ -331,6 +331,16 @@ EXPECTED_OPERATION_IDS = {
     "counselingListCaseAppointmentCandidates",
     "counselingLinkCaseAppointment",
     "counselingUnlinkCaseAppointment",
+    "counselingListContinuityOfficeCases",
+    "counselingGetCaseTransferContext",
+    "counselingPrepareCaseTransfer",
+    "counselingGetCaseTransfer",
+    "counselingUpdateCaseTransfer",
+    "counselingSubmitCaseTransfer",
+    "counselingAuthorizeCaseTransfer",
+    "counselingAcceptCaseTransfer",
+    "counselingDeclineCaseTransfer",
+    "counselingCancelCaseTransfer",
     "counselingUpdateEncounter",
     "counselingListStudents",
     "counselingGetAssignedStudentSessionSummary",
@@ -3476,6 +3486,8 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
     assert set(schema["paths"]["/api/v1/work"]) == {"get"}
     schemas = schema["components"]["schemas"]
     assert schemas["WorkKind"]["enum"] == [
+        "CASE_TRANSFER_AUTHORIZATION",
+        "CASE_TRANSFER_ACCEPTANCE",
         "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
@@ -3494,6 +3506,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "conversation_kind",
         "due_at",
         "waiting_since",
+        "case_reference_code",
     }
     assert schemas["WorkStudent"]["additionalProperties"] is False
     assert set(schemas["WorkStudent"]["properties"]) == {"id", "display_name"}
