@@ -162,7 +162,14 @@ def classify(*, source_kind, category, case_id=None):
 
 
 def require_assignee(
-    candidate_id, *, student_id, visibility, source_kind=None, source_id=None, case_id=None
+    candidate_id,
+    *,
+    student_id,
+    visibility,
+    source_kind=None,
+    source_id=None,
+    case_id=None,
+    post_closure_designated=False,
 ):
     candidate = User.objects.select_related("role").filter(pk=candidate_id, is_active=True).first()
     if candidate is None or candidate.role.code not in ROLES:
@@ -173,7 +180,11 @@ def require_assignee(
         if candidate.role.code != "COUNSELOR":
             raise FollowUpInvalid("Confidential Follow-Ups require an assigned Counselor.")
         try:
-            if source_kind is None and case_id is not None:
+            if post_closure_designated and source_kind is None and case_id is not None:
+                # Explicit authority is confined to this administrative task; no case/source read.
+                if not candidate.has_capability("counseling.manage_assigned"):
+                    raise FollowUpNotFound("The selected Counselor cannot manage this action.")
+            elif source_kind is None and case_id is not None:
                 require_case(candidate, case_id=case_id, student_id=student_id, manage=True)
             else:
                 require_source(
@@ -208,7 +219,18 @@ def authorized(actor, followup, *, manage=False):
         if actor.role.code != "COUNSELOR":
             return False
         try:
-            if followup.source_kind is None and followup.source_id is None and followup.case_id:
+            if (
+                followup.source_kind is None
+                and followup.source_id is None
+                and followup.case_id
+                and followup.post_closure_designated_at is not None
+            ):
+                # A REOPEN transfer preserves this task's explicit owner. It grants no case read.
+                if not actor.has_capability(
+                    "counseling.manage_assigned" if manage else "counseling.view_assigned"
+                ):
+                    return False
+            elif followup.source_kind is None and followup.source_id is None and followup.case_id:
                 require_case(
                     actor, case_id=followup.case_id, student_id=followup.student_id, manage=manage
                 )
@@ -283,6 +305,14 @@ def scope(actor, queryset, *, manage=False, include_owned_delegated=False):
             source_id__isnull=True,
             case__primary_counselor_id=actor.pk,
             case__student_id=F("student_id"),
+        )
+        confidential |= Q(
+            visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL,
+            category=FollowUpCategory.COUNSELING,
+            source_kind__isnull=True,
+            source_id__isnull=True,
+            case__student_id=F("student_id"),
+            post_closure_designated_at__isnull=False,
         )
     if actor.has_capability(
         "routine_interviews.manage_assigned" if manage else "routine_interviews.view_assigned"

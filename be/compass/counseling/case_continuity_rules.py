@@ -15,7 +15,7 @@ from compass.counseling.continuity_rules import (
 )
 
 from .case_models import CounselingCase
-from .case_transfer_models import CaseAuthorizationRoute
+from .case_transfer_models import CaseAuthorizationRoute, CaseTransferPurpose
 
 REVIEW_WINDOW = timedelta(days=7)
 
@@ -87,7 +87,13 @@ def authorization_route(*, requester, receiver, case, now):
     fail("no_independent_approver", "No independent approver is available.")
 
 
-def may_prepare(actor, case):
+def may_prepare(actor, case, purpose=None):
+    if purpose == CaseTransferPurpose.REOPEN:
+        return (
+            actor.pk != case.primary_counselor_id
+            and is_office_requester(actor)
+            and (is_head(actor) or office_can_select(actor, case.student_id))
+        )
     if actor.pk == case.primary_counselor_id:
         return actor.role.code == "COUNSELOR" and actor.has_capability("counseling.manage_assigned")
     return is_office_requester(actor) and (
@@ -95,9 +101,15 @@ def may_prepare(actor, case):
     )
 
 
-def require_preparer(actor, case, office_reason):
-    if not may_prepare(actor, case):
+def require_preparer(actor, case, office_reason, purpose=None):
+    if not may_prepare(actor, case, purpose):
         fail("case_not_found", "The case is not available for this arrangement.", 404)
+    if purpose == CaseTransferPurpose.REOPEN and office_reason != "OWNER_UNAVAILABLE":
+        fail(
+            "office_reason_required",
+            "Reopening transfer requires office preparation because the owner is unavailable.",
+            422,
+        )
     if actor.pk != case.primary_counselor_id and office_reason not in {
         "OWNER_UNAVAILABLE",
         "IMPARTIALITY_CONCERN",
@@ -105,10 +117,18 @@ def require_preparer(actor, case, office_reason):
         fail("office_reason_required", "Record why the office is preparing this arrangement.", 422)
 
 
-def require_case_current(case, outgoing_id):
+def transfer_case_is_current(case, outgoing_id, purpose=None):
+    status = "CLOSED" if purpose == CaseTransferPurpose.REOPEN else "ACTIVE"
+    return case.primary_counselor_id == outgoing_id and case.status == status
+
+
+def require_case_current(case, outgoing_id, purpose=None):
     if case.primary_counselor_id != outgoing_id:
         fail("owner_changed", "The primary Counselor changed. Prepare another arrangement.")
-    if case.status != "ACTIVE":
+    if purpose == CaseTransferPurpose.REOPEN:
+        if case.status != "CLOSED":
+            fail("case_not_closed", "Only a Closed case can use a reopening transfer.")
+    elif case.status != "ACTIVE":
         fail("case_not_active", "This case is no longer Active.")
 
 

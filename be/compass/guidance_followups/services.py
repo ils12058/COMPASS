@@ -178,7 +178,7 @@ def create_followup(
             policy.valid_student(existing.student_id)
             return existing
         if case is not None and case.status != "ACTIVE":
-            raise FollowUpInvalid("Next actions can only be added to an Active case.")
+            raise FollowUpConflict("Next actions can only be added to an Active case.")
         _due(due_at, now=at)
         student = policy.valid_student(student_id, lock=True)
         if source_kind:
