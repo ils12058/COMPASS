@@ -9,6 +9,7 @@ import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { referralsFacultyConfirmStudent, referralsFacultySubmit, getReferralsFacultyListMineQueryKey } from "@/lib/api/generated/referrals/referrals";
 import type { FacultyReferralSubmitRequest, FacultyStudentConfirmationResponse, FacultyReferralSubmissionResponse } from "@/lib/api/generated/model";
 import { confirmationRetryDeadline, facultyReferralError, uncertainSubmission } from "./presentation";
+import { emptyTimingDraft, focusTimingError, timingBackendErrors, timingDraftDirty, timingStatementRequest, validateTimingDraft, type TimingDraft, type TimingFieldErrors } from "@/features/referral-timing/timing-draft";
 
 type IntendedSubmission = { key: string; body: FacultyReferralSubmitRequest };
 type Confirmed = { response: FacultyStudentConfirmationResponse; serverDate?: string; receivedAt: number; deadline: number };
@@ -27,6 +28,8 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   const [identifier, setIdentifier] = useState("");
   const [course, setCourse] = useState("");
   const [reason, setReason] = useState("");
+  const [timing, setTiming] = useState<TimingDraft>(emptyTimingDraft);
+  const [timingErrors, setTimingErrors] = useState<TimingFieldErrors>({});
   const [confirmed, setConfirmed] = useState<Confirmed | null>(null);
   const [expired, setExpired] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -37,7 +40,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   const [result, setResult] = useState<FacultyReferralSubmissionResponse | null>(null);
   const intent = useRef<IntendedSubmission | null>(null);
   const busy = useRef(false);
-  const dirty = !!(identifier || course || reason);
+  const dirty = !!(identifier || course || reason) || timingDraftDirty(timing);
   useUnsavedChangesGuard({ dirty, message: uncertain
     ? "The submission outcome is not confirmed. Check My Referrals before starting another. Discard this draft and its retry information?"
     : "Discard your unsaved Referral? Its confidential information is kept only on this page." });
@@ -65,7 +68,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     const reply = await referralsFacultySubmit(intended.body, { headers: { "Idempotency-Key": intended.key } });
     if ((reply.status !== 200 && reply.status !== 201) || !["SUBMITTED", "RECEIVED_BY_GCO", "ADMINISTRATIVELY_CLOSED"].includes(reply.data.state)) throw new Error("Unconfirmed submission result");
     setResult(reply.data);
-    setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null);
+    setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null); setTiming(emptyTimingDraft()); setTimingErrors({});
     intent.current = null; setUncertain(false); setReviewing(false); setError("");
     void client.invalidateQueries({ queryKey: getReferralsFacultyListMineQueryKey() });
   } });
@@ -84,9 +87,12 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   function review() {
     if (busy.current || !available || uncertain) return;
     const invalid = validateReferralFields(identifier, course, reason);
+    const invalidTiming = validateTimingDraft(timing);
+    setTimingErrors(invalidTiming);
     setErrors(invalid); setError("");
     const first = invalid.identifier ? "faculty-student-id" : invalid.course ? "faculty-course" : invalid.reason ? "faculty-reason" : null;
     if (first) { document.getElementById(first)?.focus(); return; }
+    if (Object.keys(invalidTiming).length) { focusTimingError("faculty-timing", timing, invalidTiming); return; }
     if (!confirmed?.response.confirmation || expired || Date.now() >= confirmed.deadline) { setExpired(true); setError("Confirm the Student again before reviewing your Referral."); return; }
     intent.current = null; setReviewing(true);
   }
@@ -94,12 +100,16 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     if (busy.current || !available || !reviewing) return;
     if (!intent.current) {
       if (!confirmed?.response.confirmation || expired || Date.now() >= confirmed.deadline) { setExpired(true); setError("Confirm the Student again before preparing a new submission."); return; }
-      intent.current = { key: crypto.randomUUID(), body: { confirmation: confirmed.response.confirmation, course_year_block: course, reason } };
+      const statement = timingStatementRequest(timing);
+      if (!statement) return;
+      intent.current = { key: crypto.randomUUID(), body: { confirmation: confirmed.response.confirmation, course_year_block: course, reason, scheduling_statement: statement } };
     }
     busy.current = true; setError("");
     try { await submission.mutateAsync(); }
     catch (caught) {
       setError(facultyReferralError(caught, "submit")); setUncertain(uncertainSubmission(caught));
+      const invalidTiming = timingBackendErrors(caught);
+      if (Object.keys(invalidTiming).length) { setTimingErrors(invalidTiming); setReviewing(false); intent.current = null; focusTimingError("faculty-timing", timing, invalidTiming); }
       if (caught instanceof CompassApiError && readApiErrorCode(caught.body) === "faculty_referral_student_unavailable") { setExpired(true); }
       if (caught instanceof CompassApiError && caught.status === 403) onPolicyChange();
     } finally { busy.current = false; submission.reset(); }
@@ -107,6 +117,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   function discard() {
     if (busy.current || (dirty && !confirmDiscard())) return;
     setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null); setError(""); setErrors({ identifier: "", course: "", reason: "" });
+    setTiming(emptyTimingDraft()); setTimingErrors({});
     setReviewing(false); setUncertain(false); setExpired(false); intent.current = null;
   }
   function edit() {
@@ -114,7 +125,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     intent.current = null; setReviewing(false); setError("");
     requestAnimationFrame(() => document.getElementById("faculty-student-id")?.focus());
   }
-  return { identifier, course, reason, confirmed: confirmed?.response, expired, reviewing, uncertain, error, errors, cooldown, result, pending, dirty,
+  return { identifier, course, reason, timing, timingErrors, changeTiming: setTiming, confirmed: confirmed?.response, expired, reviewing, uncertain, error, errors, cooldown, result, pending, dirty,
     confirming: confirmation.isPending, submitting: submission.isPending,
     changeIdentifier(value: string) { if (busy.current || uncertain) return; setIdentifier(value); setConfirmed(null); setExpired(false); intent.current = null; },
     changeCourse: setCourse, changeReason: setReason, confirmStudent, review, submit, discard, edit };
