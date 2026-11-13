@@ -8,10 +8,13 @@ from enum import StrEnum
 from typing import Annotated, NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
+from django.utils import timezone
 from ninja import Router, Schema
 from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from compass.accounts.api_codes import RoleCode
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.authentication.sessions import RecentMFARequired
@@ -19,6 +22,12 @@ from compass.authentication.step_up import require_recent_mfa_for_request, step_
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.organization import catalog_services as catalog
+from compass.organization.counselor_about import (
+    AssignmentBasis,
+    CounselorAboutDenied,
+    CounselorAboutUnavailable,
+    get_counselor_about,
+)
 from compass.organization.models import (
     Campus,
     College,
@@ -870,3 +879,87 @@ def catalog_program_policy(request, target_id: UUID, payload: CatalogPolicyReque
         **payload.model_dump(),
     )
     return _program(item)
+
+
+# ── Counselor About (CW-6) ───────────────────────────────────────────────────────────────────────
+# A focused identity summary for Students and Guidance staff. It is not the administration payload
+# above: no email, role, designation, supervision, capability or assignment authorship.
+
+
+class CounselorAboutPerson(StrictSchema):
+    id: UUID
+    display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
+
+
+class CounselorAboutCollege(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    basis: AssignmentBasis
+
+
+class CounselorAboutCampus(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    colleges: list[CounselorAboutCollege]
+
+
+class CounselorAboutResponse(StrictSchema):
+    counselor: CounselorAboutPerson
+    # Current active College assignments by Campus; empty when none are recorded.
+    campuses: list[CounselorAboutCampus]
+    checked_at: datetime
+
+
+@router.get(
+    "/counselors/{counselor_id}/about",
+    response=response_with_errors(CounselorAboutResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="organizationGetCounselorAbout",
+)
+def counselor_about(request, response: HttpResponse, counselor_id: UUID):
+    # Assignments and access change; a cached copy must never outlive them.
+    response["Cache-Control"] = "no-store, private"
+    try:
+        about = get_counselor_about(viewer=request.auth_user, counselor_id=counselor_id)
+    except CounselorAboutDenied:
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to view Counselor details.",
+            headers={"Cache-Control": "no-store, private"},
+        ) from None
+    except CounselorAboutUnavailable:
+        raise APIError(
+            404,
+            "counselor_about_unavailable",
+            "This Counselor's details aren't available.",
+            headers={"Cache-Control": "no-store, private"},
+        ) from None
+    campuses: dict[UUID, CounselorAboutCampus] = {}
+    for item in about.colleges:
+        campus = item.college.campus
+        if campus.pk not in campuses:
+            campuses[campus.pk] = CounselorAboutCampus(
+                id=campus.pk, code=campus.code, name=campus.name, colleges=[]
+            )
+        campuses[campus.pk].colleges.append(
+            CounselorAboutCollege(
+                id=item.college.pk,
+                code=item.college.code,
+                name=item.college.name,
+                basis=item.basis,
+            )
+        )
+    return CounselorAboutResponse(
+        counselor=CounselorAboutPerson(
+            id=about.counselor.pk,
+            display_name=about.counselor.get_full_name(),
+            **profile_photo_projection(about.counselor),
+        ),
+        campuses=list(campuses.values()),
+        checked_at=timezone.now(),
+    )

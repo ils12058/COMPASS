@@ -2,11 +2,37 @@ import {
   CaseContinuityReason, CaseTaskDisposition, CaseAppointmentDisposition,
   CaseAppointmentRetentionReason, CaseArrangementDecisionReason,
   type CaseTransferSummary, type CaseAuthorizationRoute,
+  type CaseCoverageSummary, type CaseCoverageReturnPlan, type CaseCoverageContextResponse,
 } from "@/lib/api/generated/model";
 import { caseErrorCode } from "@/features/counseling/cases/case-presentation";
 
 export const transferHref = (id: string) => `/portal/counseling/transfers/${encodeURIComponent(id)}`;
 export const transferPrepareHref = (caseId: string) => `/portal/counseling/cases/${encodeURIComponent(caseId)}/transfer`;
+export const coverageHref = (id: string) => `/portal/counseling/coverages/${encodeURIComponent(id)}`;
+export const coveragePrepareHref = (caseId: string) => `/portal/counseling/cases/${encodeURIComponent(caseId)}/coverage`;
+export const returnPlanLabels: Record<CaseCoverageReturnPlan, string> = {
+  RETURN_TO_PRIMARY: "Return to the primary Counselor when coverage ends",
+  REVIEW_WITH_PRIMARY: "Review with the primary Counselor before coverage ends",
+};
+// Short option text: WebKit counts hidden option text toward a narrow wrapper's scroll width.
+export const returnPlanOptionLabels: Record<CaseCoverageReturnPlan, string> = {
+  RETURN_TO_PRIMARY: "Return at the end",
+  REVIEW_WITH_PRIMARY: "Review before the end",
+};
+export function coverageStateLabel(item: Pick<CaseCoverageSummary, "state" | "waiting_for" | "receiving_counselor" | "expires_at" | "starts_at">, format: (iso: string) => string) {
+  const who = item.receiving_counselor.display_name;
+  switch (item.state) {
+    case "PREPARED": return item.waiting_for ? "Waiting for Head approval" : "Prepared — ready for review";
+    case "AUTHORIZED": return `Waiting for ${who} to accept`;
+    case "SCHEDULED": return `${who} covers from ${format(item.starts_at)} until ${format(item.expires_at)}`;
+    case "ACTIVE": return `Covering counselor: ${who} until ${format(item.expires_at)}`;
+    case "ENDED": return `Coverage by ${who} ended ${format(item.expires_at)}`;
+    case "DECLINED": return "Declined — another arrangement is needed";
+    case "CANCELLED": return "Cancelled — another arrangement is needed";
+    case "REVOKED": return "Revoked — the primary Counselor keeps the work";
+    case "EXPIRED": return "Expired — another arrangement is needed";
+  }
+}
 export const continuityReasonLabels: Record<CaseContinuityReason, string> = {
   IMPARTIALITY_CONCERN: "Potential conflict of interest or impartiality concern",
   PLANNED_ABSENCE: "Planned absence", UNEXPECTED_ABSENCE: "Unexpected absence",
@@ -59,6 +85,7 @@ const errorMessages: Record<string, string> = {
   case_continuity_case_changed: "This case changed. Review its latest pending work before saving.",
   case_continuity_owner_changed: "The primary Counselor changed. Another arrangement is needed.",
   case_continuity_case_not_active: "This case is no longer Active.",
+  case_continuity_case_not_closed: "This case is no longer Closed, so this reopening transfer can't be accepted.",
   case_continuity_case_not_found: "You don't have access to prepare an arrangement for this case.",
   case_continuity_arrangement_not_found: "This arrangement isn't available to your account.",
   case_continuity_access_denied: "Case continuity is unavailable to your account.",
@@ -76,6 +103,13 @@ const errorMessages: Record<string, string> = {
   case_continuity_conflicted_provider: "An impartiality-related transfer cannot retain the outgoing Counselor as provider.",
   case_continuity_task_disposition_forbidden: "A task disposition is no longer available. Review the plan.",
   case_continuity_work_busy: "The case's work is being changed. Review it again.",
+  case_continuity_return_plan_required: "Choose a return plan for every delegated action.",
+  case_continuity_task_plan_invalid: "A selected action can no longer be delegated. Review the selection.",
+  case_continuity_acceptance_denied: "Only the receiving Counselor can accept this coverage.",
+  case_continuity_submission_unavailable: "This coverage can't be submitted in its current state.",
+  case_continuity_decision_reason_required: "Choose a reason for this decision.",
+  case_continuity_reason_invalid: "Choose an available reason.",
+  case_continuity_action_invalid: "This action isn't available for the coverage now.",
   case_continuity_authority_busy: "Account authority is being updated. Review the arrangement again.",
 };
 export function continuityError(error: unknown, fallback = "The arrangement couldn't be saved. Review the details and try again.") {
@@ -84,5 +118,26 @@ export function continuityError(error: unknown, fallback = "The arrangement coul
 }
 export function continuityStale(error: unknown) {
   const code = caseErrorCode(error);
-  return Boolean(code && ["case_continuity_changed", "case_continuity_owner_changed", "case_continuity_review_expired", "case_continuity_terminal_arrangement", "case_continuity_authorization_changed", "case_continuity_case_not_active"].includes(code));
+  return Boolean(code && ["case_continuity_changed", "case_continuity_owner_changed", "case_continuity_review_expired", "case_continuity_terminal_arrangement", "case_continuity_authorization_changed", "case_continuity_case_not_active", "case_continuity_case_not_closed"].includes(code));
+}
+
+export type CoverageTaskChoice = { selected: boolean; plan: CaseCoverageReturnPlan };
+
+// Pure, so the delegation rules are unit-testable: only selected, delegable actions are sent.
+export function coverageTaskInputs(context: Pick<CaseCoverageContextResponse, "tasks">, choices: Record<string, CoverageTaskChoice>) {
+  return context.tasks
+    .filter(task => task.can_delegate && choices[task.task_id]?.selected)
+    .map(task => ({ task_id: task.task_id, expected_version: task.version, return_plan: choices[task.task_id].plan }));
+}
+
+const DAY = 86_400_000;
+export function coverageIntervalError(startISO: string | null, endISO: string | null, now = Date.now()) {
+  if (!startISO || !endISO) return "Enter when coverage starts and ends.";
+  const start = new Date(startISO).getTime();
+  const end = new Date(endISO).getTime();
+  if (end <= start) return "Coverage must end after it starts.";
+  if (end - start > 30 * DAY) return "Coverage can last at most 30 days. Arrange a new coverage to extend it.";
+  if (start - now > 14 * DAY) return "Coverage can start at most 14 days ahead.";
+  if (end <= now) return "Coverage must end in the future.";
+  return null;
 }

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { PanelMessage } from "@/components/ui/panel";
+import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useSendThreadMessage } from "@/features/guidance-messages/guidance-conversation-data";
 import { ConversationIdentityAvatar } from "@/features/guidance-messages/guidance-conversation-identity";
@@ -31,6 +32,10 @@ import { describeSendError } from "@/features/guidance-messages/guidance-message
 import {
   COUNSELOR_DIRECT_NOTICE,
   threadRoutingFacts,
+  appointmentSummaryLabel,
+  personName,
+  threadAppointmentWithheld,
+  threadCounselorIdentity,
   threadStartedLabel,
   threadSubtitle,
   threadTitle,
@@ -134,6 +139,9 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
         thread.kind === "REFERRAL_COORDINATION" &&
         access.canManageReferralSelf));
 
+  // A Student's Counseling conversation offers the same About as booking (ABOUT-02).
+  const counselor = threadCounselorIdentity(thread, viewer);
+
   return (
     <ConversationFrame
       title={threadTitle(thread, viewer, currentUserId)}
@@ -149,8 +157,19 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
         />
       }
       actions={
-        canChangeStatus ? (
-          <ThreadStatusControl thread={thread} viewer={viewer} onChanged={workspace.showStatus} />
+        counselor || canChangeStatus ? (
+          <>
+            {counselor ? (
+              <CounselorAboutButton
+                counselorId={counselor.id}
+                counselorName={personName(counselor, "Counselor")}
+                variant="secondary"
+              />
+            ) : null}
+            {canChangeStatus ? (
+              <ThreadStatusControl thread={thread} viewer={viewer} onChanged={workspace.showStatus} />
+            ) : null}
+          </>
         ) : null
       }
     >
@@ -250,6 +269,7 @@ function ThreadDetails({
   const subtitle = threadSubtitle(thread, viewer);
   const { college, assignedTo } = threadRoutingFacts(thread, viewer);
   const started = threadStartedLabel(thread);
+  const appointment = thread.relationship_appointment;
   const resolved = thread.status === "RESOLVED";
   const referralVoided =
     thread.kind === "REFERRAL_COORDINATION" && thread.relationship_referral_voided === true;
@@ -260,6 +280,14 @@ function ThreadDetails({
         {resolved ? <ResolvedBadge /> : null}
         {referralVoided ? <ReferralVoidedBadge /> : null}
       </p> : null}
+      {appointment ? (
+        <p>
+          <span className="sr-only">Appointment </span>
+          <span className="font-mono text-xs">{appointment.reference_code}</span> · {appointmentSummaryLabel(appointment)}
+        </p>
+      ) : threadAppointmentWithheld(thread) ? (
+        <p>Appointment details aren&apos;t available to you.</p>
+      ) : null}
       {started ? <p>{started}</p> : null}
       {assignedTo || canAssign ? (
         <ThreadAssignment thread={thread} currentUserId={currentUserId} canChange={canAssign} onAssigned={onAssigned} />

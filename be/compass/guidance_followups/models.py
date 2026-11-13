@@ -63,6 +63,15 @@ class GuidanceFollowUp(models.Model):
     predecessor = models.ForeignKey(
         "self", on_delete=models.PROTECT, null=True, blank=True, related_name="successors"
     )
+    # A deliberate administrative action retained after one closure cycle; no implicit backfill.
+    post_closure_designated_at = models.DateTimeField(null=True, blank=True)
+    post_closure_closure = models.ForeignKey(
+        "counseling.CounselingCaseClosure",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="administrative_tasks",
+    )
     visibility = models.CharField(max_length=32, choices=FollowUpVisibility.choices)
     category = models.CharField(max_length=32, choices=FollowUpCategory.choices)
     assigned_to = models.ForeignKey(
@@ -182,6 +191,14 @@ class GuidanceFollowUpEvent(models.Model):
         blank=True,
         related_name="followup_events",
     )
+    case_coverage = models.ForeignKey(
+        "counseling.CounselingCaseCoverage",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="followup_events",
+    )
+    coverage_effective_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

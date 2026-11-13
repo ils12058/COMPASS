@@ -47,6 +47,33 @@ export const sessionFor = (account) => ({
 });
 
 const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+// CW-6: the Counselor participant carries the optional photo; none of these synthetic people has one.
+export const counselorIdentity = (person = COUNSELOR) => ({ profile_photo_url: null, profile_photo_updated_at: null, ...person });
+
+/** The linked Appointment as the backend summarizes it to a reader who may see it now (MSG-01). */
+export const appointmentSummary = (overrides = {}) => ({
+  id: appointmentId,
+  reference_code: "APT-2026-0001",
+  service_name: "Counseling",
+  starts_at: "2026-10-05T02:00:00Z",
+  ends_at: "2026-10-05T03:00:00Z",
+  status: "SCHEDULED",
+  ...overrides,
+});
+
+/** A Student's Counseling recipient option: the Counselor and their own Appointment. */
+export const relationshipOption = ({ counselor = COUNSELOR, ...overrides } = {}) => {
+  const summary = appointmentSummary(overrides);
+  return {
+    appointment_id: summary.id,
+    counselor: counselorIdentity(counselor),
+    starts_at: summary.starts_at,
+    reference_code: summary.reference_code,
+    service_name: summary.service_name,
+    status: summary.status,
+  };
+};
 const error = (code, message) => ({ error: { code, message } });
 
 export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUDENT.id ? "STUDENT" : "COUNSELOR" }) {
@@ -67,7 +94,7 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       { id: STUDENT.id, display_name: STUDENT.display_name, institutional_id: "2026-0001", college: COLLEGE },
       { id: OTHER_STUDENT.id, display_name: OTHER_STUDENT.display_name, institutional_id: "2026-0002", college: COLLEGE },
     ],
-    relationships: [{ appointment_id: appointmentId, counselor: COUNSELOR, starts_at: "2026-10-05T02:00:00Z" }],
+    relationships: [relationshipOption()],
     // Current eligible Office handlers (ADR-104), as the backend's workload check would list them.
     handlers: [
       { ...COUNSELOR, role: "COUNSELOR" },
@@ -85,12 +112,15 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     nextThread: 100,
   };
 
-  function addThread({ id, kind = "OFFICE", status = "OPEN", student = STUDENT, counselor = null, assigned = COUNSELOR, appointment = null, ownRead = 0, created = 600 }) {
+  // `summary: null` models a reader who may no longer see the linked Appointment (e.g. reassigned).
+  function addThread({ id, kind = "OFFICE", status = "OPEN", student = STUDENT, counselor = null, assigned = COUNSELOR, appointment = null, summary, ownRead = 0, created = 600 }) {
+    const counseling = kind === "COUNSELING";
     state.threads.set(id, {
-      id, kind, status, student, counselor: kind === "COUNSELING" ? counselor ?? COUNSELOR : null,
+      id, kind, status, student, counselor: counseling ? counselorIdentity(counselor ?? COUNSELOR) : null,
       routing_college: kind === "OFFICE" ? COLLEGE : null,
       assigned_to: kind === "OFFICE" ? assigned : null,
-      relationship_appointment_id: kind === "COUNSELING" ? appointment ?? appointmentId : null,
+      relationship_appointment_id: counseling ? appointment ?? appointmentId : null,
+      relationship_appointment: counseling && summary !== null ? appointmentSummary({ id: appointment ?? appointmentId, ...summary }) : null,
       created_at: minutesAgo(created),
     });
     state.messages.set(id, []);

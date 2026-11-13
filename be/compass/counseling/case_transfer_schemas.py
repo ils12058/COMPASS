@@ -19,6 +19,7 @@ from .case_transfer_models import (
     CaseOfficePreparationReason,
     CaseStudentCommunication,
     CaseTaskDisposition,
+    CaseTransferPurpose,
 )
 
 
@@ -32,6 +33,18 @@ class CaseArrangementStatus(StrEnum):
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
     CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+
+
+class CaseCoverageStatus(StrEnum):
+    PREPARED = "PREPARED"
+    AUTHORIZED = "AUTHORIZED"
+    SCHEDULED = "SCHEDULED"
+    ACTIVE = "ACTIVE"
+    ENDED = "ENDED"
+    DECLINED = "DECLINED"
+    CANCELLED = "CANCELLED"
+    REVOKED = "REVOKED"
     EXPIRED = "EXPIRED"
 
 
@@ -80,6 +93,7 @@ class CaseTransferAppointmentContext(StrictSchema):
 
 class CaseTransferContextResponse(StrictSchema):
     case: CaseContinuityIdentity
+    purpose: CaseTransferPurpose | None = None
     office_prepared: bool
     receiver_options: list[CaseTransferReceiverOption]
     tasks: list[CaseTransferTaskContext]
@@ -123,6 +137,7 @@ class CaseHandoffExceptionMetadata(StrictSchema):
 
 
 class CaseTransferPrepareRequest(StrictSchema):
+    purpose: CaseTransferPurpose | None = None
     expected_case_version: int = Field(ge=1)
     receiving_counselor_id: UUID
     reason: CaseContinuityReason
@@ -170,6 +185,7 @@ class CaseTransferAppointmentPlanResponse(CaseTransferAppointmentContext):
 
 
 class CaseTransferSummary(StrictSchema):
+    purpose: CaseTransferPurpose | None = None
     id: UUID
     reference_code: str
     state: CaseArrangementStatus
@@ -202,11 +218,42 @@ class CaseResponsibilityResponse(StrictSchema):
     derived_opening: bool
 
 
+class CaseCoverageSummary(StrictSchema):
+    id: UUID
+    reference_code: str
+    state: CaseCoverageStatus
+    version: int
+    receiving_counselor: CaseContinuityPerson
+    starts_at: datetime
+    expires_at: datetime
+    waiting_for: str | None
+    review_expires_at: datetime | None
+    independent_authorization: bool
+    authorization_route: CaseAuthorizationRoute | None
+    needs_new_arrangement: bool
+    recovery_required_count: int
+
+
+class CaseCoverageHistoryResponse(StrictSchema):
+    id: UUID
+    coverage_id: UUID
+    reference_code: str
+    kind: str
+    version: int
+    actor: CaseContinuityPerson
+    occurred_at: datetime
+    independent_authorization: bool
+    authorization_route: CaseAuthorizationRoute | None
+
+
 class CaseContinuityPanelResponse(StrictSchema):
     transfers: list[CaseTransferSummary]
     responsibility: list[CaseResponsibilityResponse]
     history: list[CaseTransferHistoryResponse]
     can_transfer: bool
+    coverages: list[CaseCoverageSummary] = Field(default_factory=list)
+    coverage_history: list[CaseCoverageHistoryResponse] = Field(default_factory=list)
+    can_arrange_coverage: bool = False
 
 
 class CaseTransferDetailResponse(CaseTransferSummary):

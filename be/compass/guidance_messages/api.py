@@ -9,13 +9,15 @@ from django.http import HttpResponse
 from ninja import Router, Schema, Status
 from pydantic import ConfigDict, Field, StrictInt, StrictStr
 
+from compass.accounts.profile_photos import profile_photo_projection
+from compass.appointments.api import AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.operational_students import InvalidOperationalStudentQuery
 
-from . import content, services, templates
+from . import content, policy, services, templates
 from .errors import (
     CaseCoordinationEnded,
     GuidanceMessageContentUnavailable,
@@ -42,6 +44,24 @@ class GuidancePerson(StrictSchema):
     display_name: str
 
 
+class GuidanceCounselorPerson(GuidancePerson):
+    """A Counselor participant: the safe public identity, with the optional profile photo."""
+
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
+
+
+class GuidanceAppointmentSummary(StrictSchema):
+    """The linked Appointment, only while this reader may see it now (MSG-01)."""
+
+    id: UUID
+    reference_code: str
+    service_name: str
+    starts_at: datetime
+    ends_at: datetime
+    status: AppointmentStatus
+
+
 class GuidanceCollege(StrictSchema):
     id: UUID
     code: str
@@ -60,7 +80,7 @@ class GuidanceThreadResponse(StrictSchema):
     kind: ThreadKind
     status: ThreadStatus
     student: GuidancePerson | None
-    counselor: GuidancePerson | None
+    counselor: GuidanceCounselorPerson | None
     requester: GuidancePerson | None
     direct_first_user: GuidancePerson | None
     direct_second_user: GuidancePerson | None
@@ -68,6 +88,7 @@ class GuidanceThreadResponse(StrictSchema):
     routing_college: GuidanceCollege | None
     assigned_to: GuidancePerson | None
     relationship_appointment_id: UUID | None
+    relationship_appointment: GuidanceAppointmentSummary | None
     relationship_referral_id: UUID | None
     relationship_referral_reference: str | None
     relationship_referral_voided: bool | None
@@ -131,8 +152,12 @@ class GuidanceOpenResponse(StrictSchema):
 
 class GuidanceRelationshipOption(StrictSchema):
     appointment_id: UUID
-    counselor: GuidancePerson
+    counselor: GuidanceCounselorPerson
     starts_at: datetime
+    # The Student's own Appointment, so several conversations with one Counselor stay distinct.
+    reference_code: str
+    service_name: str
+    status: AppointmentStatus
 
 
 class GuidanceRecipientOptions(StrictSchema):
@@ -275,6 +300,30 @@ def _person(user):
     return GuidancePerson(id=user.pk, display_name=user.get_full_name()) if user else None
 
 
+def _counselor(user):
+    if not user:
+        return None
+    return GuidanceCounselorPerson(
+        id=user.pk, display_name=user.get_full_name(), **profile_photo_projection(user)
+    )
+
+
+def _appointment_summary(thread, actor):
+    if not thread.relationship_appointment_id:
+        return None
+    appointment = thread.relationship_appointment
+    if not policy.appointment_summary_visible(actor, appointment):
+        return None
+    return GuidanceAppointmentSummary(
+        id=appointment.pk,
+        reference_code=appointment.reference_code,
+        service_name=appointment.service_name_snapshot,
+        starts_at=appointment.starts_at,
+        ends_at=appointment.ends_at,
+        status=AppointmentStatus(appointment.status),
+    )
+
+
 def _thread(thread, actor):
     # D-GMSG-22: Office handling identity and College routing are staff-only payload.
     staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
@@ -285,7 +334,7 @@ def _thread(thread, actor):
         kind=thread.kind,
         status=thread.status,
         student=_person(thread.student),
-        counselor=_person(thread.counselor),
+        counselor=_counselor(thread.counselor),
         requester=_person(thread.requester),
         direct_first_user=_person(thread.direct_first_user),
         direct_second_user=_person(thread.direct_second_user),
@@ -306,6 +355,7 @@ def _thread(thread, actor):
         ),
         assigned_to=_person(thread.assigned_to) if staff_viewer else None,
         relationship_appointment_id=thread.relationship_appointment_id,
+        relationship_appointment=_appointment_summary(thread, actor),
         relationship_referral_id=thread.relationship_referral_id,
         relationship_referral_reference=referral.reference_code if referral else None,
         relationship_referral_voided=(referral.voided_at is not None) if referral else None,
@@ -483,7 +533,12 @@ def recipient_options(request, response: HttpResponse, page: int = 1, page_size:
     return GuidanceRecipientOptions(
         counseling_relationships=[
             GuidanceRelationshipOption(
-                appointment_id=row.pk, counselor=_person(row.provider), starts_at=row.starts_at
+                appointment_id=row.pk,
+                counselor=_counselor(row.provider),
+                starts_at=row.starts_at,
+                reference_code=row.reference_code,
+                service_name=row.service_name_snapshot,
+                status=AppointmentStatus(row.status),
             )
             for row in rows
         ],

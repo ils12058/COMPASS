@@ -1,4 +1,7 @@
 import type {
+  AppointmentStatus,
+  GuidanceAppointmentSummary,
+  GuidanceCounselorPerson,
   GuidanceHandlerRole,
   GuidanceMessageResponse,
   GuidancePerson,
@@ -56,10 +59,55 @@ export function threadUsesOfficeIdentity(thread: GuidanceThreadResponse, viewer:
     (thread.kind === "OFFICE" || thread.kind === "FACULTY_INQUIRY" || thread.kind === "REFERRAL_COORDINATION");
 }
 
-/** The contract has no appointment time on a thread. Never label its creation as an appointment. */
+/** When the conversation began. Never label its creation as an appointment. */
 export function threadStartedLabel(thread: GuidanceThreadResponse): string | null {
   if (!thread.created_at || Number.isNaN(new Date(thread.created_at).getTime())) return null;
   return `Started ${guidanceDateTime(thread.created_at)}`;
+}
+
+const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  SCHEDULED: "Scheduled",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  NO_SHOW: "No show",
+};
+
+export function appointmentStatusLabel(status: AppointmentStatus): string {
+  return APPOINTMENT_STATUS_LABELS[status];
+}
+
+/**
+ * The linked Appointment, so several conversations with one Counselor stay distinct (MSG-01). The
+ * backend sends it only while this reader may see the Appointment now; otherwise there is none.
+ */
+export function appointmentSummaryLabel(
+  appointment: Pick<GuidanceAppointmentSummary, "service_name" | "starts_at" | "status">,
+): string {
+  // A Counseling conversation's Appointment is a Counseling one; repeat the Service only if it differs.
+  const service = appointment.service_name.trim();
+  const distinct = service && service.toLocaleLowerCase() !== KIND_LABELS.COUNSELING.toLocaleLowerCase();
+  return [distinct ? service : null, guidanceDateTime(appointment.starts_at), appointmentStatusLabel(appointment.status)]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The reference always tells two Appointments apart, even at the same time. */
+export function threadAppointmentLabel(thread: GuidanceThreadResponse): string | null {
+  const appointment = thread.relationship_appointment;
+  return appointment ? `Appointment ${appointment.reference_code} · ${appointmentSummaryLabel(appointment)}` : null;
+}
+
+/** A Counseling conversation whose Appointment this reader can no longer see, e.g. after reassignment. */
+export function threadAppointmentWithheld(thread: GuidanceThreadResponse): boolean {
+  return thread.kind === "COUNSELING" && Boolean(thread.relationship_appointment_id) && !thread.relationship_appointment;
+}
+
+/** The Counselor shown as the conversation's identity, with their photo, when there is one. */
+export function threadCounselorIdentity(
+  thread: GuidanceThreadResponse,
+  viewer: GuidanceViewer,
+): GuidanceCounselorPerson | null {
+  return thread.kind === "COUNSELING" && viewer !== "staff" ? thread.counselor ?? null : null;
 }
 
 /** Who the conversation is with, from the reader's side. */

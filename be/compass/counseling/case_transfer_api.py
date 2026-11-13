@@ -11,6 +11,7 @@ from compass.common.errors import APIError
 from compass.guidance_followups.errors import FollowUpError
 
 from .case_continuity_rules import CaseContinuityError
+from .case_services import CounselingCaseError
 from .case_transfer_projections import lookup_cases, transfer_context, transfer_detail
 from .case_transfer_schemas import (
     CaseContinuityLookupPage,
@@ -19,8 +20,10 @@ from .case_transfer_schemas import (
     CaseTransferDecisionRequest,
     CaseTransferDetailResponse,
     CaseTransferPrepareRequest,
+    CaseTransferPurpose,
     CaseTransferUpdateRequest,
     CaseTransferVersionRequest,
+    CounselingCaseStatus,
 )
 from .case_transfer_services import decide_transfer, get_transfer, prepare_transfer, submit_transfer
 
@@ -30,8 +33,14 @@ router = Router(tags=["counseling"])
 def invoke(operation, request, **values):
     try:
         return operation(actor=request.auth_user, **values)
-    except (CaseContinuityError, FollowUpError) as exc:
+    except CaseContinuityError as exc:
         raise APIError(exc.status, exc.code, str(exc)) from None
+    except CounselingCaseError as exc:
+        raise APIError(exc.status, exc.code, str(exc)) from None
+    except FollowUpError as exc:
+        from compass.guidance_followups.api import _raise
+
+        _raise(exc)
 
 
 def context(request):
@@ -47,8 +56,16 @@ ERRORS = (401, 403, 404, 409, 422, 503)
     auth=session_auth,
     operation_id="counselingListContinuityOfficeCases",
 )
-def office_cases(request, search: str | None = None, page: int = 1, page_size: int = 20):
-    return invoke(lookup_cases, request, search=search, page=page, page_size=page_size)
+def office_cases(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    status: CounselingCaseStatus = CounselingCaseStatus.ACTIVE,
+):
+    return invoke(
+        lookup_cases, request, search=search, page=page, page_size=page_size, status=status
+    )
 
 
 @router.get(
@@ -61,8 +78,9 @@ def get_context(
     request,
     case_id: UUID,
     reason: CaseContinuityReason = CaseContinuityReason.SERVICE_RESPONSIBILITY_CHANGE,
+    purpose: CaseTransferPurpose | None = None,
 ):
-    return invoke(transfer_context, request, case_id=case_id, reason=reason)
+    return invoke(transfer_context, request, case_id=case_id, reason=reason, purpose=purpose)
 
 
 @router.post(

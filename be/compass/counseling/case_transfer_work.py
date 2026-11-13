@@ -13,7 +13,8 @@ def pending_transfer_work(*, actor, limit, now):
     if not actor.has_capability("counseling.continuity.view", at=now):
         return ()
     query = CounselingCaseTransfer.objects.filter(
-        case__status="ACTIVE", case__primary_counselor_id=F("outgoing_counselor_id")
+        Q(case__status="ACTIVE", purpose__isnull=True) | Q(case__status="CLOSED", purpose="REOPEN"),
+        case__primary_counselor_id=F("outgoing_counselor_id"),
     ).select_related(
         "case__student",
         "case__primary_counselor",

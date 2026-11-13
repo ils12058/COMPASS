@@ -4,8 +4,10 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from compass.confidential_data import crypto
-from compass.counseling import case_handoff_content
+from compass.counseling import case_closure_content, case_handoff_content
 from compass.counseling import handoff_content as content
+from compass.counseling.case_closure_content import ClosureContentUnavailable
+from compass.counseling.case_closure_models import CounselingCaseClosure
 from compass.counseling.case_continuity_rules import CaseContinuityError
 from compass.counseling.case_handoff_models import (
     CounselingCaseHandoff,
@@ -62,6 +64,12 @@ class Command(BaseCommand):
         # immutability, timestamps, receipt and business/audit history stay intact.
         for model, reader, _binder, label in (
             (
+                CounselingCaseClosure,
+                case_closure_content.read,
+                case_closure_content.binding,
+                "Case closure note",
+            ),
+            (
                 CounselingCaseHandoff,
                 case_handoff_content.read,
                 case_handoff_content.binding,
@@ -79,6 +87,8 @@ class Command(BaseCommand):
             while True:
                 with transaction.atomic():
                     qs = model.objects.order_by("pk")
+                    if model is CounselingCaseClosure:
+                        qs = qs.filter(content_ciphertext__isnull=False)
                     if not dry_run:
                         qs = qs.select_for_update(of=("self",))
                     if last is not None:
@@ -100,7 +110,7 @@ class Command(BaseCommand):
                                     model.objects.filter(pk=item.pk).update(
                                         content_ciphertext=replacement
                                     )
-                        except CaseContinuityError:
+                        except (CaseContinuityError, ClosureContentUnavailable):
                             unreadable += 1
                 if not batch:
                     break
