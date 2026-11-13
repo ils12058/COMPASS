@@ -274,6 +274,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_referrals.py",
             "test_fup3a_faculty_referral_journey.py",
             "test_referral_confidential_content_encryption.py",
+            "test_referral_timing.py",
+            "test_referral_timing_concurrency.py",
             "test_referral_call_slip_lifecycle.py",
             "test_call_slips.py",
             "test_call_slip_issuance_provenance.py",

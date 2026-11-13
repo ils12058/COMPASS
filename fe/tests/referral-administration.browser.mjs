@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
+import { emptyReferralTiming } from "./support/referral-timing-fixtures.mjs";
 const { check, finish, shown, artifacts } = await createBrowserHarness("referral-administration");
 const id = "f4000000-0000-4000-8000-000000000001";
 const source = "/api/v1/referrals/" + id;
@@ -20,6 +21,7 @@ function fixture(options = {}) {
   const own = () => ({ id, reference_code: ref.reference_code, submitted_at: ref.submitted_at, student: { display_name: ref.student_name_snapshot }, state: stages[state.version-1], received_at: facts().received_at, closed_at: facts().closed_at });
   return { state, handler: async ({ pathname, reply, route, request }) => {
     if (pathname === "/api/v1/auth/session") { await reply(sessionFor(state.faculty ? faculty : gco)); return true; }
+    if (pathname === source + "/timing") { await reply(emptyReferralTiming(id, { referral_closed: state.version === 3 })); return true; }
     if (pathname === source + "/administration") {
       if (state.readError) { await reply({ error: { code: "referral_not_found", message: "Synthetic" } }, state.readError); return true; }
       if (state.delay) await new Promise(r => setTimeout(r, 500));
