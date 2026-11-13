@@ -31,6 +31,8 @@ import { useGuidanceFollowupsHistory, useGuidanceFollowupsGet, useGuidanceFollow
 import { Category, type FollowUpDetail } from "@/lib/api/generated/model";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, isoToInstitutionalDateTimeInput, institutionalDateTimeInputToISO } from "@/lib/institutional-time";
+import { NextActionShortcuts } from "@/features/counseling/session-proposals/next-action-shortcuts";
+import { Notice } from "@/components/ui/notice";
 import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel, statusLabel, sourceDestination, nextFollowupHref } from "./followups-shared";
 
 type Action = "edit" | "reschedule" | "reassign" | "activity" | "complete" | "cancel";
@@ -95,6 +97,7 @@ export function FollowupsDetail({ id }: { id: string }) {
       </PanelSection> : null}
     </Panel>
     {access.manage && item.can_create_next_action && !query.isError ? <Panel className="mt-5"><PanelSection title="Continue the work" titleId="followup-next-action"><p>A new action gets its own deadline and keeps a link to this task.</p><p className="mt-3"><Link href={nextFollowupHref(item, here)} className={buttonVariants({ variant: "secondary" })}>Create next action</Link></p></PanelSection></Panel> : null}
+    {access.manage && item.status === "PENDING" && item.shortcuts && !query.isError ? <FollowupShortcutsPanel item={item} returnTo={here} busy={query.isFetching || Boolean(action)} onComplete={trigger => beginAction("complete", trigger)} /> : null}
     {access.manage && item.status === "PENDING" ? <Panel className="mt-5"><PanelHeader title="Next actions" /><div className="space-y-4 p-5">
       <PageActionGroup aria-label="Primary Follow-Up actions">
         <PageAction icon={ClipboardPenLine} label="Record activity" variant="secondary" disabled={query.isFetching || Boolean(action)} onClick={event => beginAction("activity", event.currentTarget)} />
@@ -121,6 +124,32 @@ export function FollowupsDetail({ id }: { id: string }) {
     </Panel>
     <ActionStatus status={actionStatus.status} onDismiss={actionStatus.dismiss} />
   </>;
+}
+
+// NS-1: ways to reach the Student, and a prompt (never an automatic change) to complete the task.
+function FollowupShortcutsPanel({ item, returnTo, busy, onComplete }: { item: FollowUpDetail; returnTo: string; busy: boolean; onComplete: (trigger: HTMLButtonElement | null) => void }) {
+  const shortcuts = item.shortcuts;
+  if (!shortcuts) return null;
+  const prompt = shortcuts.completion_prompt;
+  const any = shortcuts.message_thread_id || shortcuts.can_issue_call_slip || shortcuts.propose_session_case_id;
+  if (!any && !prompt) return null;
+  return <Panel className="mt-5" aria-labelledby="followup-shortcuts-heading">
+    <PanelHeader title="Reach the Student" titleId="followup-shortcuts-heading" />
+    <div className="space-y-3 px-4 py-4 sm:px-5">
+      {prompt ? <Notice role="status" title="Complete this follow-up?" action={<Button variant="secondary" disabled={busy} onClick={event => onComplete(event.currentTarget)}>Mark complete</Button>}>
+        {prompt.reason === "SESSION_RECORDED" ? `The session for Appointment ${prompt.appointment_reference} was recorded.` : `The Student accepted a proposed session (Appointment ${prompt.appointment_reference}).`} Record the outcome if this task is done, or keep it open.
+      </Notice> : null}
+      {any ? <NextActionShortcuts
+        label={followupActionLabel(item)}
+        studentId={item.student_id}
+        threadId={shortcuts.message_thread_id ?? null}
+        callSlip={shortcuts.can_issue_call_slip ? { caseId: shortcuts.call_slip_case_id ?? null } : null}
+        proposeCaseId={shortcuts.propose_session_case_id ?? null}
+        followUpId={item.id}
+        returnTo={returnTo}
+      /> : null}
+    </div>
+  </Panel>;
 }
 
 function FollowupActionForm({ item, action, onClose, confirmed, onSaved }: { item: FollowUpDetail; confirmed: boolean; action: Action; onClose: () => void; onSaved: () => void }) {

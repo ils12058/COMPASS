@@ -356,6 +356,16 @@ EXPECTED_OPERATION_IDS = {
     "counselingListCaseAppointmentCandidates",
     "counselingLinkCaseAppointment",
     "counselingUnlinkCaseAppointment",
+    # NS-1 Counselor-proposed sessions with Student consent.
+    "counselingProposeSession",
+    "counselingGetSessionProposalContext",
+    "counselingListSessionProposalSlots",
+    "counselingGetSessionProposal",
+    "counselingWithdrawSessionProposal",
+    "counselingListMySessionProposals",
+    "counselingGetMySessionProposal",
+    "counselingAcceptSessionProposal",
+    "counselingDeclineSessionProposal",
     "counselingListContinuityOfficeCases",
     "counselingGetCaseTransferContext",
     "counselingPrepareCaseTransfer",
@@ -3582,7 +3592,7 @@ def test_student_actions_contract_is_closed_read_only_and_structural():
         "conversation_kind",
         "pending_count",
     }
-    assert len(schema["components"]["schemas"]["StudentActionKind"]["enum"]) == 11
+    assert len(schema["components"]["schemas"]["StudentActionKind"]["enum"]) == 12
     assert schema["components"]["schemas"]["StudentActionPriority"]["enum"] == [
         "TIME_SENSITIVE",
         "ACTION_REQUIRED",

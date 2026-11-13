@@ -5,7 +5,7 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 export function presentStudentAction(item: StudentActionItem) {
   const id = item.source_id;
   const timing = item.due_at
-    ? `${item.kind === StudentActionKind.ECOUNSELING_JOIN ? "Join until" : "Report time"}: ${formatInstitutionalDateTime(item.due_at)}`
+    ? `${item.kind === StudentActionKind.ECOUNSELING_JOIN ? "Join until" : item.kind === StudentActionKind.SESSION_PROPOSAL_RESPONSE ? "Answer by" : "Report time"}: ${formatInstitutionalDateTime(item.due_at)}`
     : item.waiting_since ? `Waiting since ${formatInstitutionalDateTime(item.waiting_since)}` : null;
   let row: { title: string; detail: string; href: string; actionLabel: string };
   switch (item.kind) {
@@ -25,6 +25,8 @@ export function presentStudentAction(item: StudentActionItem) {
       row = { title: "Graduate Tracer Survey", detail: "Your response is still in draft.", href: "/portal/graduate-tracer", actionLabel: "Continue survey" }; break;
     case StudentActionKind.CALL_SLIP_ACTIVE:
       row = { title: "Call Slip", detail: "Review where and when you are expected to report.", href: `/portal/call-slips/${id}`, actionLabel: "Review Call Slip" }; break;
+    case StudentActionKind.SESSION_PROPOSAL_RESPONSE:
+      row = { title: "Proposed session", detail: "Your Counselor proposed a session time. Please choose one.", href: `/portal/appointments/proposals/${id}`, actionLabel: "Choose a session time" }; break;
     case StudentActionKind.ECOUNSELING_CONSENT:
       row = { title: "E-Counseling consent", detail: item.pending_count && item.pending_count > 1 ? `${item.pending_count} consent decisions require your review.` : "A consent decision requires your review.", href: `/portal/e-counseling/${id}`, actionLabel: "Review consent" }; break;
     case StudentActionKind.ECOUNSELING_JOIN:

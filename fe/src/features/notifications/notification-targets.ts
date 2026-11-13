@@ -14,6 +14,12 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.CASE_COVERAGE && notification.target_id) {
     return { href: `/portal/counseling/coverages/${notification.target_id}`, label: "Review case coverage" };
   }
+  if (notification.target_type === NotificationTargetType.SESSION_PROPOSAL && notification.target_id) {
+    return { href: `/portal/appointments/proposals/${notification.target_id}`, label: "Choose a session time" };
+  }
+  if (notification.target_type === NotificationTargetType.COUNSELING_CASE && notification.target_id) {
+    return { href: `/portal/counseling/cases/${notification.target_id}`, label: "Open case" };
+  }
   if (notification.target_type === NotificationTargetType.ACCOUNT_SECURITY && notification.target_id === currentUserId) {
     return { href: "/portal/account/security", label: "Open Security" };
   }

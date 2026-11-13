@@ -23,9 +23,12 @@ export type CallSlipDraft = {
 export function CallSlipFormFields({
   draft,
   onChange,
+  liveOnly = false,
 }: {
   draft: CallSlipDraft;
   onChange: (next: CallSlipDraft) => void;
+  // A Call Slip issued from a counseling case is always a live issuance to the Student.
+  liveOnly?: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -86,7 +89,7 @@ export function CallSlipFormFields({
           Enter the date and time the Student was instructed to report. Times use {INSTITUTION_TIME_ZONE_LABEL}. Past, present, and future source dates are allowed.
         </p>
       </div>
-      <fieldset className="min-w-0">
+      {liveOnly ? null : <fieldset className="min-w-0">
         <legend className="text-sm font-semibold text-ink">Issuance mode</legend>
         <div className="mt-3 space-y-3">
           <label className="flex items-start gap-3 text-sm leading-5 text-ink">
@@ -116,7 +119,7 @@ export function CallSlipFormFields({
             </span>
           </label>
         </div>
-      </fieldset>
+      </fieldset>}
     </div>
   );
 }

@@ -31,6 +31,7 @@ from compass.referrals.confidential_content import ReferralConfidentialContentUn
 from .models import CallSlipDestinationType, CallSlipIssuanceMode, CallSlipLifecycleState
 from .services import (
     DEFAULT_PAGE_SIZE,
+    CallSlipCaseConflict,
     CallSlipConfigurationConflict,
     CallSlipCreationConflict,
     CallSlipDocumentUnavailable,
@@ -98,6 +99,9 @@ class CallSlipCreateRequest(StrictSchema):
     report_at: datetime
     referral_id: UUID | None = None
     notify_student: bool = True
+    # NS-1: issue from a counseling case (Counselor only), optionally for its In person Appointment.
+    counseling_case_id: UUID | None = None
+    appointment_id: UUID | None = None
 
 
 class CallSlipReferralActionInput(StrictSchema):
@@ -180,9 +184,22 @@ class CallSlipStudentResponse(StrictSchema):
     created_at: datetime
 
 
+class CallSlipCaseSummary(StrictSchema):
+    id: UUID
+    reference_code: str
+
+
+class CallSlipAppointmentSummary(StrictSchema):
+    id: UUID
+    reference_code: str
+
+
 class CallSlipOperationalResponse(CallSlipStudentResponse):
     student_institutional_id: str | None
     referral: CallSlipReferralSummary | None
+    # Shown only to the case's primary Counselor; null for everyone else and for other Call Slips.
+    counseling_case: CallSlipCaseSummary | None = None
+    appointment: CallSlipAppointmentSummary | None = None
     recorded_by: CallSlipPersonSummary | None
     voided_by: CallSlipPersonSummary | None
     issuance_mode: CallSlipIssuanceModeValue
@@ -248,6 +265,7 @@ def _raise(exc: CallSlipError) -> NoReturn:
         exc,
         (
             CallSlipConfigurationConflict,
+            CallSlipCaseConflict,
             CallSlipCreationConflict,
             CallSlipReferralConflict,
             CallSlipInterviewEndConflict,
@@ -346,8 +364,28 @@ def _student_view(item) -> dict[str, object]:
     }
 
 
-def _operational_view(item) -> dict[str, object]:
+def _case_link(item, reader):
+    link = getattr(item, "case_link", None) if reader is not None else None
+    if link is None or link.case.primary_counselor_id != reader.pk:
+        return None, None
+    appointment = (
+        {"id": link.appointment_id, "reference_code": link.appointment.reference_code}
+        if link.appointment_id
+        else None
+    )
+    return {"id": link.case_id, "reference_code": link.case.reference_code}, appointment
+
+
+def _operational_view(item, reader=None) -> dict[str, object]:
+    from django.core.exceptions import ObjectDoesNotExist
+
+    try:
+        counseling_case, appointment = _case_link(item, reader)
+    except ObjectDoesNotExist:
+        counseling_case, appointment = None, None
     return {
+        "counseling_case": counseling_case,
+        "appointment": appointment,
         **_student_view(item),
         "student_institutional_id": item.student.institutional_id,
         "referral": (
@@ -471,10 +509,12 @@ def call_slips_create(
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
             context=_context(request),
+            counseling_case_id=payload.counseling_case_id,
+            appointment_id=payload.appointment_id,
         )
     except CallSlipError as exc:
         _raise(exc)
-    return Status(201, _operational_view(item))
+    return Status(201, _operational_view(item, reader=request.auth_user))
 
 
 @router.get(
@@ -518,7 +558,7 @@ def call_slips_list(
     except CallSlipError as exc:
         _raise(exc)
     return {
-        "items": [_operational_view(item) for item in result.items],
+        "items": [_operational_view(item, reader=request.auth_user) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
@@ -642,7 +682,7 @@ def call_slips_get(request, call_slip_id: UUID):
         item = get_call_slip(actor=request.auth_user, call_slip_id=call_slip_id)
     except CallSlipError as exc:
         _raise(exc)
-    return _operational_view(item)
+    return _operational_view(item, reader=request.auth_user)
 
 
 @router.patch(
@@ -673,7 +713,7 @@ def call_slips_record_interview_ended(
         )
     except CallSlipError as exc:
         _raise(exc)
-    return _operational_view(item)
+    return _operational_view(item, reader=request.auth_user)
 
 
 @router.post(
@@ -693,4 +733,4 @@ def call_slips_void(request, call_slip_id: UUID, payload: CallSlipVoidRequest):
         )
     except CallSlipError as exc:
         _raise(exc)
-    return _operational_view(item)
+    return _operational_view(item, reader=request.auth_user)

@@ -192,6 +192,30 @@ class FollowUpHistoryEvent(StrictSchema):
     coverage_effective_at: datetime | None = None
 
 
+class FollowUpCompletionPromptReason(StrEnum):
+    SESSION_ACCEPTED = "SESSION_ACCEPTED"
+    SESSION_RECORDED = "SESSION_RECORDED"
+
+
+class FollowUpCompletionPrompt(StrictSchema):
+    reason: FollowUpCompletionPromptReason
+    appointment_id: UUID
+    appointment_reference: str
+
+
+class FollowUpShortcuts(StrictSchema):
+    """NS-1: where the reader can reach the Student from this task. Nothing here acts by itself."""
+
+    # The reader's existing Counseling conversation with the Student; never a new one.
+    message_thread_id: UUID | None
+    can_issue_call_slip: bool
+    # Set when the Call Slip may also be linked to the task's case.
+    call_slip_case_id: UUID | None
+    propose_session_case_id: UUID | None
+    # D5: a prompt only. Completing the task stays the reader's decision and outcome.
+    completion_prompt: FollowUpCompletionPrompt | None
+
+
 class FollowUpDetail(FollowUpSummary):
     completed_at: datetime | None
     completed_by_name: str | None
@@ -206,6 +230,7 @@ class FollowUpDetail(FollowUpSummary):
     predecessor_id: UUID | None
     can_create_next_action: bool
     can_reassign: bool = True
+    shortcuts: FollowUpShortcuts | None = None
 
 
 class FollowUpPage(StrictSchema):

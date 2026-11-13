@@ -8,6 +8,7 @@ import { statusLabel } from "@/features/guidance-followups/followups-shared";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { withWorkflowReturn } from "@/features/portal/workflow-navigation";
 import type { CounselingCaseDetailResponse } from "@/lib/api/generated/model";
+import { NextActionShortcuts } from "@/features/counseling/session-proposals/next-action-shortcuts";
 
 export function CaseNextActionsPanel({ item, returnTo, confirmed }: { item: CounselingCaseDetailResponse; returnTo: string; confirmed: boolean }) {
   return <Panel className="mt-5" aria-labelledby="case-next-actions-heading">
@@ -17,6 +18,15 @@ export function CaseNextActionsPanel({ item, returnTo, confirmed }: { item: Coun
         {item.next_actions.map(action => <li key={action.id} className="px-4 py-4 text-sm sm:px-5">
           <Link className="block break-words font-semibold text-brand underline underline-offset-4" href={withWorkflowReturn(`/portal/follow-ups/${action.id}`, returnTo)}>{followupActionLabel(action)}</Link>
           <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1"><span>Due {formatInstitutionalDateTime(action.due_at)}</span><span>{action.assigned_to_name}</span><span>{statusLabel(action.status)}{action.overdue ? " · Overdue" : ""}{action.post_closure_designated_at ? " · After closure" : ""}</span></div>
+          {confirmed && item.status === "ACTIVE" && action.status === "PENDING" ? <NextActionShortcuts
+            label={followupActionLabel(action)}
+            studentId={item.student.id}
+            threadId={item.message_thread_id ?? null}
+            callSlip={item.can_issue_call_slip ? { caseId: item.id } : null}
+            proposeCaseId={item.can_propose_session ? item.id : null}
+            followUpId={action.id}
+            returnTo={returnTo}
+          /> : null}
         </li>)}
       </ul> : <PanelMessage>No next actions are linked to this case.</PanelMessage>}
     {item.next_actions_available ? <PanelFooter>

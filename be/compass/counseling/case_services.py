@@ -811,6 +811,10 @@ def _link(
         target_id=case.pk,
         metadata={"encounter_id": str(encounter.pk)},
     )
+    from .case_call_slips import end_linked_call_slips
+
+    # NS-1: the linked Appointment's case Call Slip is marked "interview ended" with the session.
+    end_linked_call_slips(case=case, encounter=encounter, context=context, at=at)
     return link
 
 

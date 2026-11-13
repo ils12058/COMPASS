@@ -65,6 +65,12 @@ from .case_services import (
 from .case_transfer_projections import appointment_record_accessible, case_continuity
 from .case_transfer_schemas import CaseContinuityPanelResponse, CaseContinuityPerson
 from .services import DEFAULT_PAGE_SIZE, CounselingError
+from .session_proposal_api import (
+    CaseCallSlipResponse,
+    SessionProposalStaffResponse,
+    case_call_slip_projection,
+    staff_projection,
+)
 
 router = Router(tags=["counseling"])
 
@@ -313,6 +319,13 @@ class CounselingCaseDetailResponse(CounselingCaseSummaryResponse):
     closures: list[CaseClosureResponse] = Field(default_factory=list)
     can_close: bool = False
     can_reopen: bool = False
+    # NS-1: Counselor-proposed sessions and Call Slips issued from this case.
+    session_proposals: list[SessionProposalStaffResponse] = Field(default_factory=list)
+    can_propose_session: bool = False
+    call_slips: list[CaseCallSlipResponse] = Field(default_factory=list)
+    # Shortcuts for the Next actions panel; never creates a conversation.
+    message_thread_id: UUID | None = None
+    can_issue_call_slip: bool = False
 
 
 class CounselingCaseOpeningContextResponse(StrictSchema):
@@ -557,6 +570,27 @@ def _detail(overview: CaseOverview, request=None) -> dict[str, object]:
         "can_close": overview.can_manage,
         "can_reopen": overview.summary.case.status == "CLOSED"
         and actor.has_capability(MANAGE_CAPABILITY),
+        **_next_session_fields(overview.summary.case, actor),
+    }
+
+
+def _next_session_fields(case, actor) -> dict[str, object]:
+    from .case_call_slips import case_call_slips
+    from .next_session_shortcuts import counseling_thread_id, may_link_case_call_slip
+    from .session_proposal_services import case_proposals, may_propose
+
+    active = case.status == "ACTIVE"
+    return {
+        "message_thread_id": counseling_thread_id(actor, case.student_id),
+        "can_issue_call_slip": active and may_link_case_call_slip(actor, case),
+        "session_proposals": [
+            staff_projection(proposal, reader=actor)
+            for proposal in case_proposals(actor=actor, case=case)
+        ],
+        "can_propose_session": may_propose(actor=actor, case=case),
+        "call_slips": [
+            case_call_slip_projection(link) for link in case_call_slips(actor=actor, case=case)
+        ],
     }
 
 

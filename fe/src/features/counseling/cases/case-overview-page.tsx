@@ -26,6 +26,7 @@ import { CaseStatusBadge } from "@/features/counseling/cases/case-status-badge";
 import { CaseAppointmentsPanel } from "@/features/counseling/cases/case-appointments-panel";
 import { LinkAppointmentDialog, UnlinkAppointmentDialog } from "@/features/counseling/cases/case-appointment-dialogs";
 import { CaseNextActionsPanel } from "@/features/counseling/cases/case-next-actions-panel";
+import { CaseSessionProposalsPanel } from "@/features/counseling/session-proposals/case-session-proposals-panel";
 import { CaseHistoryPanel } from "@/features/counseling/cases/case-history-panel";
 import { useProtectedCase } from "@/features/counseling/cases/use-protected-case";
 import { closureReasonLabels, closureOutcomeLabels } from "@/features/counseling/cases/closure-presentation";
@@ -242,6 +243,13 @@ export function CaseOverviewPage({ caseId }: { caseId: string }) {
 
       <CaseContinuityPanel item={item} returnTo={here} confirmed={!query.isError} />
       <CaseNextActionsPanel item={item} returnTo={here} confirmed={!query.isError} />
+      <CaseSessionProposalsPanel
+        item={item}
+        returnTo={here}
+        confirmed={!query.isError}
+        onChanged={message => { setNotice(null); void query.refetch().then(() => actionStatus.show(message)); }}
+        onStale={reloadAfterStale}
+      />
       <CaseAppointmentsPanel item={item} returnTo={here} confirmed={!query.isError} onLink={() => { actionStatus.dismiss(); setAppointmentOpen(true); }} onUnlink={link => { actionStatus.dismiss(); setUnlinking(link); }} />
 
       <Panel className="mt-5" aria-labelledby="case-sessions-heading">

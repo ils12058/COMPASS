@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.call_slips.student_actions import live_instructions
+from compass.counseling.session_proposal_services import pending_for_student
 from compass.ecounseling.student_actions import open_join_windows, pending_consents
 from compass.exit_interviews.student_actions import editable_drafts, start_opportunity
 from compass.graduate_tracer.student_actions import personal_draft
@@ -115,6 +116,15 @@ def list_actions(*, actor, page=1, page_size=20):
             priority=Priority.TIME_SENSITIVE if row.report_at <= now else Priority.ACTION_REQUIRED,
         )
         for row in live_instructions(student=student, now=now, limit=limit)
+    )
+    items.extend(
+        _item(
+            Kind.SESSION_PROPOSAL_RESPONSE,
+            row.pk,
+            due=row.expires_at,
+            waiting=row.created_at,
+        )
+        for row in pending_for_student(student=student, now=now, limit=limit)
     )
     items.extend(
         _item(

@@ -1,5 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { portalReturnHref, workflowBackLabel } from "@/features/portal/workflow-navigation";
+
 import { ArrowUpRight, Download } from "lucide-react";
 import { PageAction, PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
@@ -110,6 +113,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
 
 function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const { user } = usePortalSession();
+  const back = portalReturnHref(useSearchParams()?.get("return_to"), "/portal/call-slips");
   const access = getCallSlipAccess(user);
   const referralAccess = getReferralAccess(user);
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
@@ -123,7 +127,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" help={<CallSlipHelp />} />
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref={back} backLabel={back === "/portal/call-slips" ? undefined : workflowBackLabel(back)} help={<CallSlipHelp />} />
       <div data-page-action-layout="call-slip" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
         <PageActionGroup
           aria-label="Call Slip page actions"

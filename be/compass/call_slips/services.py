@@ -110,6 +110,10 @@ class CallSlipVoidConflict(CallSlipError):
     pass
 
 
+class CallSlipCaseConflict(CallSlipError):
+    pass
+
+
 class CallSlipDocumentUnavailable(CallSlipError):
     pass
 
@@ -278,6 +282,9 @@ def _queryset():
         "recorded_by",
         "voided_by",
         "referral",
+        "case_link",
+        "case_link__case",
+        "case_link__appointment",
     )
 
 
@@ -633,6 +640,8 @@ def create_call_slip(
     idempotency_key: str,
     request_fingerprint: str,
     context: AuditContext,
+    counseling_case_id: UUID | None = None,
+    appointment_id: UUID | None = None,
 ) -> CallSlip:
     prepared = _prepare_creation_input(
         actor=actor,
@@ -643,6 +652,19 @@ def create_call_slip(
         idempotency_key=idempotency_key,
         request_fingerprint=request_fingerprint,
     )
+    if appointment_id is not None and counseling_case_id is None:
+        raise InvalidCallSlipInput("An Appointment can be linked only together with its case.")
+    if counseling_case_id is not None:
+        return _create_case_call_slip(
+            actor=actor,
+            student_id=student_id,
+            prepared=prepared,
+            referral_id=referral_id,
+            notify_student=notify_student,
+            counseling_case_id=counseling_case_id,
+            appointment_id=appointment_id,
+            context=context,
+        )
 
     with transaction.atomic():
         locked_actor = _lock_creation_actor(actor)
@@ -661,6 +683,71 @@ def create_call_slip(
             notify_student=notify_student,
             context=context,
         )
+
+
+def _create_case_call_slip(
+    *,
+    actor: User,
+    student_id: UUID,
+    prepared: _CallSlipCreationInput,
+    referral_id: UUID | None,
+    notify_student: bool,
+    counseling_case_id: UUID,
+    appointment_id: UUID | None,
+    context: AuditContext,
+) -> CallSlip:
+    """NS-1: an ordinary live Call Slip, also linked to the issuing Counselor's case."""
+
+    from compass.counseling.case_call_slips import (
+        CaseCallSlipRefused,
+        link_case_call_slip,
+        lock_case_call_slip_target,
+    )
+
+    if referral_id is not None:
+        raise InvalidCallSlipInput("A Call Slip links to a Referral or a case, not both.")
+    if not notify_student:
+        raise InvalidCallSlipInput("A case Call Slip is issued to the Student.")
+    if actor.role.code != "COUNSELOR":
+        raise CallSlipNotPermitted("Only a Counselor can issue a Call Slip from a case.")
+    with transaction.atomic():
+        existing = _existing_creation_locked(
+            actor=actor, digest=prepared.digest, fingerprint=prepared.fingerprint
+        )
+        if existing is not None:
+            return existing
+        # Lock order: case, Appointment, then users (as every case operation does).
+        try:
+            case, appointment, proposal = lock_case_call_slip_target(
+                actor=actor,
+                case_id=counseling_case_id,
+                appointment_id=appointment_id,
+                student_id=student_id,
+            )
+        except CaseCallSlipRefused as exc:
+            if exc.kind == "not_found":
+                raise CallSlipNotFound(str(exc)) from exc
+            if exc.kind == "invalid":
+                raise InvalidCallSlipInput(str(exc)) from exc
+            raise CallSlipCaseConflict(str(exc)) from exc
+        locked_actor = _lock_creation_actor(actor)
+        item = _create_new_call_slip_locked(
+            actor=locked_actor,
+            student_id=student_id,
+            prepared=prepared,
+            referral_id=None,
+            notify_student=True,
+            context=context,
+        )
+        link_case_call_slip(
+            case=case,
+            appointment=appointment,
+            proposal=proposal,
+            call_slip=item,
+            actor=locked_actor,
+            context=context,
+        )
+        return item
 
 
 def _lock_referral_for_atomic_issuance(*, actor: User, referral_id: UUID) -> Referral:

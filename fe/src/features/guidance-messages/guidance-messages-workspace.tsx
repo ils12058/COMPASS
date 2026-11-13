@@ -3,7 +3,7 @@
 import { TaskGuideAction } from "@/features/portal/orientation/task-guide-action";
 
 import { FileText, SquarePen } from "lucide-react";
-import { useSelectedLayoutSegment } from "next/navigation";
+import { useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -13,10 +13,12 @@ import {
   useRef,
   useState,
   type ReactNode,
+  Suspense,
 } from "react";
 
 import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
 import { buttonVariants } from "@/components/ui/button";
+import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { getGuidanceMessagesAccess, type GuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
@@ -25,6 +27,7 @@ import type { GuidanceViewer } from "@/features/guidance-messages/guidance-messa
 import { MESSAGES_HEADING_ID } from "@/features/guidance-messages/guidance-messages-shared";
 import { GuidanceThreadDirectory } from "@/features/guidance-messages/guidance-thread-directory";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { portalReturnHref, workflowBackLabel } from "@/features/portal/workflow-navigation";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { focusHeading } from "@/lib/focus-heading";
 import { cn } from "@/lib/utils/cn";
@@ -123,6 +126,7 @@ function MessagesFrame({
 
   return (
     <GuidanceWorkspaceContext.Provider value={value}>
+      <Suspense fallback={null}><WorkflowReturnLink /></Suspense>
       <div data-guidance-layout className="@container/messages">
         {/* One page heading at every width: beside the directory, or for assistive technology while a
             narrow screen shows only the conversation. */}
@@ -191,5 +195,19 @@ function MessagesFrame({
       </div>
       <ActionStatus status={status.status} onDismiss={status.dismiss} />
     </GuidanceWorkspaceContext.Provider>
+  );
+}
+
+// NS-1: a Follow-up or case shortcut opens a conversation with ?return_to; offer the way back.
+// Only bounded portal paths are accepted, and nothing renders without one.
+function WorkflowReturnLink() {
+  const value = useSearchParams()?.get("return_to");
+  if (!value) return null;
+  const back = portalReturnHref(value, "");
+  if (!back || back.startsWith("/portal/messages")) return null;
+  return (
+    <GuardedPortalLink href={back} className={cn(pageBackLinkClass, "mb-2 inline-block")}>
+      {workflowBackLabel(back)}
+    </GuardedPortalLink>
   );
 }

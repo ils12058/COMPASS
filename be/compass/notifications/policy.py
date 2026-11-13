@@ -27,6 +27,8 @@ class NotificationTargetType(StrEnum):
     GUIDANCE_FOLLOW_UP = "GUIDANCE_FOLLOW_UP"
     CASE_TRANSFER = "CASE_TRANSFER"
     CASE_COVERAGE = "CASE_COVERAGE"
+    SESSION_PROPOSAL = "SESSION_PROPOSAL"
+    COUNSELING_CASE = "COUNSELING_CASE"
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
     CALL_SLIP = "CALL_SLIP"
@@ -45,6 +47,8 @@ class NotificationTargetType(StrEnum):
 class NotificationEvent(StrEnum):
     CASE_TRANSFER_REVIEW = "counseling.case_transfer.review"
     CASE_COVERAGE_REVIEW = "counseling.case_coverage.review"
+    SESSION_PROPOSAL_RECEIVED = "counseling.session_proposal.received"
+    SESSION_PROPOSAL_DECIDED = "counseling.session_proposal.decided"
     FACULTY_REFERRAL_RECEIVED = "referral.received_by_guidance_office"
     FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
@@ -104,6 +108,25 @@ _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMA
 
 
 _EVENT_CATALOG = {
+    # NS-1 D4: content-free. No case, purpose, Counselor note or time appears in the notice.
+    NotificationEvent.SESSION_PROPOSAL_RECEIVED: NotificationEventDefinition(
+        event=NotificationEvent.SESSION_PROPOSAL_RECEIVED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Session time proposed",
+        message="Your Counselor proposed a session time. Please choose one.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.SESSION_PROPOSAL_DECIDED: NotificationEventDefinition(
+        event=NotificationEvent.SESSION_PROPOSAL_DECIDED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Session proposal answered",
+        message="A Student answered your session proposal. Open COMPASS to review it.",
+        email_subject="",
+        email_template="",
+    ),
     NotificationEvent.CASE_COVERAGE_REVIEW: NotificationEventDefinition(
         event=NotificationEvent.CASE_COVERAGE_REVIEW,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,

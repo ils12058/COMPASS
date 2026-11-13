@@ -788,6 +788,93 @@ def list_bookable_slots(
     )
 
 
+def list_offerable_slots(
+    *,
+    student: User,
+    provider: User,
+    service: Service,
+    delivery_mode: str,
+    target_date: date,
+    now: datetime | None = None,
+) -> BookableSlotList:
+    """Times a Counselor may offer a Student (NS-1). Read-only: nothing is reserved.
+
+    The same Availability, duration and overlap rules as Student booking. The Inventory
+    prerequisite is the Student's to meet and is checked again when they accept.
+    """
+
+    if not is_current_student(student):
+        raise AppointmentCurrentStudentRequired("The Student isn't a current Student.")
+    current = now or timezone.now()
+    normalized_mode = _normalized_delivery_mode(delivery_mode)
+    _validate_booking_users(student, provider)
+    _validate_booking_service(service, provider, normalized_mode)
+    assert service.default_appointment_duration_minutes is not None
+    base = _base_slot_windows(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode=normalized_mode,
+        target_date=target_date,
+    )
+    return BookableSlotList(
+        date=target_date,
+        timezone_name=base.timezone_name,
+        duration_minutes=service.default_appointment_duration_minutes,
+        items=_candidate_slots(
+            windows=base.windows,
+            duration=timedelta(minutes=service.default_appointment_duration_minutes),
+            provider_id=provider.pk,
+            student_id=student.pk,
+            now=current,
+        ),
+    )
+
+
+def check_offerable_interval(
+    *,
+    student: User,
+    provider: User,
+    service: Service,
+    delivery_mode: str,
+    starts_at: datetime,
+    now: datetime | None = None,
+) -> datetime:
+    """Whether a Counselor-offered time is bookable right now; returns its end. Reserves nothing.
+
+    Booking re-checks every rule under locks when the Student accepts (create_student_appointment).
+    """
+
+    normalized_mode = _normalized_delivery_mode(delivery_mode)
+    normalized_start = _aware_start(starts_at)
+    current = now or timezone.now()
+    if normalized_start <= current:
+        raise AppointmentNotSchedulable("Appointments must start in the future.")
+    _validate_booking_users(student, provider)
+    _validate_booking_service(service, provider, normalized_mode)
+    assert service.default_appointment_duration_minutes is not None
+    ends_at = normalized_start + timedelta(minutes=service.default_appointment_duration_minutes)
+    if not _interval_is_available(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode=normalized_mode,
+        starts_at=normalized_start,
+        ends_at=ends_at,
+    ):
+        raise AppointmentTimeUnavailable("The time is outside the Counselor's Availability.")
+    for field, user_id in (("provider_id", provider.pk), ("student_id", student.pk)):
+        if _has_overlap(field=field, user_id=user_id, starts_at=normalized_start, ends_at=ends_at):
+            raise AppointmentTimeConflict("An overlapping Appointment exists.")
+    if provider_schedule_conflict(
+        provider_id=provider.pk, starts_at=normalized_start, ends_at=ends_at
+    ):
+        raise AppointmentTimeConflict("The Counselor has an overlapping session.")
+    if student_schedule_conflict(
+        student_id=student.pk, starts_at=normalized_start, ends_at=ends_at
+    ):
+        raise AppointmentTimeConflict("The Student has an overlapping session.")
+    return ends_at
+
+
 def _clean_change_reason(value: str | None, *, required: bool) -> str:
     if value is None:
         if required:

@@ -4244,6 +4244,46 @@
         "title": "CSRFResponse",
         "type": "object"
       },
+      "CallSlipAppointmentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code"
+        ],
+        "title": "CallSlipAppointmentSummary",
+        "type": "object"
+      },
+      "CallSlipCaseSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code"
+        ],
+        "title": "CallSlipCaseSummary",
+        "type": "object"
+      },
       "CallSlipCreateFromReferralRequest": {
         "additionalProperties": false,
         "properties": {
@@ -4291,6 +4331,30 @@
       "CallSlipCreateRequest": {
         "additionalProperties": false,
         "properties": {
+          "appointment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment Id"
+          },
+          "counseling_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counseling Case Id"
+          },
           "course_year": {
             "title": "Course Year",
             "type": "string"
@@ -4467,6 +4531,26 @@
       "CallSlipOperationalResponse": {
         "additionalProperties": false,
         "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipAppointmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "counseling_case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipCaseSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "course_year_snapshot": {
             "title": "Course Year Snapshot",
             "type": "string"
@@ -5326,6 +5410,43 @@
         ],
         "title": "CaseAuthorizationRoute",
         "type": "string"
+      },
+      "CaseCallSlipResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProposalCaseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "report_at",
+          "appointment"
+        ],
+        "title": "CaseCallSlipResponse",
+        "type": "object"
       },
       "CaseCloseRequest": {
         "additionalProperties": false,
@@ -10968,6 +11089,13 @@
             "title": "Appointments",
             "type": "array"
           },
+          "call_slips": {
+            "items": {
+              "$ref": "#/components/schemas/CaseCallSlipResponse"
+            },
+            "title": "Call Slips",
+            "type": "array"
+          },
           "can_add_next_action": {
             "title": "Can Add Next Action",
             "type": "boolean"
@@ -10977,12 +11105,22 @@
             "title": "Can Close",
             "type": "boolean"
           },
+          "can_issue_call_slip": {
+            "default": false,
+            "title": "Can Issue Call Slip",
+            "type": "boolean"
+          },
           "can_link_appointments": {
             "title": "Can Link Appointments",
             "type": "boolean"
           },
           "can_manage": {
             "title": "Can Manage",
+            "type": "boolean"
+          },
+          "can_propose_session": {
+            "default": false,
+            "title": "Can Propose Session",
             "type": "boolean"
           },
           "can_reopen": {
@@ -11063,6 +11201,18 @@
             ],
             "title": "Latest Session At"
           },
+          "message_thread_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Thread Id"
+          },
           "next_action": {
             "anyOf": [
               {
@@ -11116,6 +11266,13 @@
           "session_count": {
             "title": "Session Count",
             "type": "integer"
+          },
+          "session_proposals": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalStaffResponse"
+            },
+            "title": "Session Proposals",
+            "type": "array"
           },
           "sessions": {
             "items": {
@@ -18499,6 +18656,38 @@
         "title": "FollowUpComplete",
         "type": "object"
       },
+      "FollowUpCompletionPrompt": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "appointment_reference": {
+            "title": "Appointment Reference",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/FollowUpCompletionPromptReason"
+          }
+        },
+        "required": [
+          "reason",
+          "appointment_id",
+          "appointment_reference"
+        ],
+        "title": "FollowUpCompletionPrompt",
+        "type": "object"
+      },
+      "FollowUpCompletionPromptReason": {
+        "enum": [
+          "SESSION_ACCEPTED",
+          "SESSION_RECORDED"
+        ],
+        "title": "FollowUpCompletionPromptReason",
+        "type": "string"
+      },
       "FollowUpCreate": {
         "additionalProperties": false,
         "properties": {
@@ -18800,6 +18989,16 @@
               }
             ],
             "title": "Predecessor Id"
+          },
+          "shortcuts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpShortcuts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source": {
             "anyOf": [
@@ -19348,6 +19547,71 @@
           "categories"
         ],
         "title": "FollowUpReport",
+        "type": "object"
+      },
+      "FollowUpShortcuts": {
+        "additionalProperties": false,
+        "description": "NS-1: where the reader can reach the Student from this task. Nothing here acts by itself.",
+        "properties": {
+          "call_slip_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Slip Case Id"
+          },
+          "can_issue_call_slip": {
+            "title": "Can Issue Call Slip",
+            "type": "boolean"
+          },
+          "completion_prompt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpCompletionPrompt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message_thread_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Thread Id"
+          },
+          "propose_session_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Propose Session Case Id"
+          }
+        },
+        "required": [
+          "message_thread_id",
+          "can_issue_call_slip",
+          "call_slip_case_id",
+          "propose_session_case_id",
+          "completion_prompt"
+        ],
+        "title": "FollowUpShortcuts",
         "type": "object"
       },
       "FollowUpSummary": {
@@ -29477,6 +29741,8 @@
           "GUIDANCE_FOLLOW_UP",
           "CASE_TRANSFER",
           "CASE_COVERAGE",
+          "SESSION_PROPOSAL",
+          "COUNSELING_CASE",
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
@@ -35428,6 +35694,723 @@
         "title": "SessionListResponse",
         "type": "object"
       },
+      "SessionProposalAcceptRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "option_id": {
+            "format": "uuid",
+            "title": "Option Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "option_id",
+          "expected_version"
+        ],
+        "title": "SessionProposalAcceptRequest",
+        "type": "object"
+      },
+      "SessionProposalAppointment": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status",
+          "delivery_mode",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "SessionProposalAppointment",
+        "type": "object"
+      },
+      "SessionProposalCallSlip": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "report_at": {
+            "format": "date-time",
+            "title": "Report At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "report_at"
+        ],
+        "title": "SessionProposalCallSlip",
+        "type": "object"
+      },
+      "SessionProposalCaseReference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code"
+        ],
+        "title": "SessionProposalCaseReference",
+        "type": "object"
+      },
+      "SessionProposalContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "title": "Authority",
+            "type": "string"
+          },
+          "case": {
+            "$ref": "#/components/schemas/SessionProposalCaseReference"
+          },
+          "case_version": {
+            "title": "Case Version",
+            "type": "integer"
+          },
+          "delivery_modes": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryMode"
+            },
+            "title": "Delivery Modes",
+            "type": "array"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "open_proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProposalStaffResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student": {
+            "$ref": "#/components/schemas/SessionProposalStudentPerson"
+          }
+        },
+        "required": [
+          "case",
+          "case_version",
+          "student",
+          "authority",
+          "open_proposal",
+          "duration_minutes",
+          "delivery_modes"
+        ],
+        "title": "SessionProposalContextResponse",
+        "type": "object"
+      },
+      "SessionProposalCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "call_slip_requested": {
+            "default": false,
+            "title": "Call Slip Requested",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "expected_case_version": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Case Version"
+          },
+          "follow_up_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Id"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalOptionInput"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Options",
+            "type": "array"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/SessionProposalPurposeValue"
+          }
+        },
+        "required": [
+          "case_id",
+          "purpose",
+          "options"
+        ],
+        "title": "SessionProposalCreateRequest",
+        "type": "object"
+      },
+      "SessionProposalOption": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "delivery_mode",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "SessionProposalOption",
+        "type": "object"
+      },
+      "SessionProposalOptionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_mode",
+          "starts_at"
+        ],
+        "title": "SessionProposalOptionInput",
+        "type": "object"
+      },
+      "SessionProposalPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "SessionProposalPerson",
+        "type": "object"
+      },
+      "SessionProposalPurposeValue": {
+        "enum": [
+          "FOLLOW_UP_SESSION",
+          "CHECK_IN",
+          "CONTINUING_SESSION"
+        ],
+        "title": "SessionProposalPurposeValue",
+        "type": "string"
+      },
+      "SessionProposalSlot": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "SessionProposalSlot",
+        "type": "object"
+      },
+      "SessionProposalSlotList": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalSlot"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "timezone",
+          "duration_minutes",
+          "items"
+        ],
+        "title": "SessionProposalSlotList",
+        "type": "object"
+      },
+      "SessionProposalStaffResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_option_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Option Id"
+          },
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProposalAppointment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "call_slip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProposalCallSlip"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "call_slip_requested": {
+            "title": "Call Slip Requested",
+            "type": "boolean"
+          },
+          "can_issue_call_slip": {
+            "title": "Can Issue Call Slip",
+            "type": "boolean"
+          },
+          "can_withdraw": {
+            "title": "Can Withdraw",
+            "type": "boolean"
+          },
+          "case": {
+            "$ref": "#/components/schemas/SessionProposalCaseReference"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "follow_up_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "proposed_by": {
+            "$ref": "#/components/schemas/SessionProposalPerson"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/SessionProposalPurposeValue"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SessionProposalStateValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/SessionProposalStudentPerson"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "case",
+          "student",
+          "proposed_by",
+          "purpose",
+          "state",
+          "options",
+          "accepted_option_id",
+          "appointment",
+          "call_slip_requested",
+          "call_slip",
+          "can_issue_call_slip",
+          "can_withdraw",
+          "follow_up_id",
+          "expires_at",
+          "created_at",
+          "decided_at",
+          "version"
+        ],
+        "title": "SessionProposalStaffResponse",
+        "type": "object"
+      },
+      "SessionProposalStateValue": {
+        "enum": [
+          "PENDING",
+          "ACCEPTED",
+          "DECLINED",
+          "WITHDRAWN",
+          "EXPIRED"
+        ],
+        "title": "SessionProposalStateValue",
+        "type": "string"
+      },
+      "SessionProposalStudentPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalStudentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SessionProposalStudentPage",
+        "type": "object"
+      },
+      "SessionProposalStudentPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
+          "institutional_id"
+        ],
+        "title": "SessionProposalStudentPerson",
+        "type": "object"
+      },
+      "SessionProposalStudentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_option_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Option Id"
+          },
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProposalAppointment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_respond": {
+            "title": "Can Respond",
+            "type": "boolean"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/SessionProposalPerson"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SessionProposalOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/SessionProposalPurposeValue"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SessionProposalStateValue"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "counselor",
+          "purpose",
+          "state",
+          "options",
+          "accepted_option_id",
+          "appointment",
+          "can_respond",
+          "expires_at",
+          "created_at",
+          "decided_at",
+          "version"
+        ],
+        "title": "SessionProposalStudentResponse",
+        "type": "object"
+      },
+      "SessionProposalVersionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "SessionProposalVersionRequest",
+        "type": "object"
+      },
       "SessionSummary": {
         "properties": {
           "created_at": {
@@ -35971,6 +36954,7 @@
           "EXIT_INTERVIEW_CORRECTION",
           "GRADUATE_TRACER_CONTINUE",
           "CALL_SLIP_ACTIVE",
+          "SESSION_PROPOSAL_RESPONSE",
           "ECOUNSELING_CONSENT",
           "ECOUNSELING_JOIN",
           "GUIDANCE_MESSAGE_UNREAD"
@@ -56225,6 +57209,769 @@
           }
         ],
         "summary": "Counseling Get My Student Session Summary",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals": {
+      "post": {
+        "operationId": "counselingProposeSession",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionProposalCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStaffResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Propose Session",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/context": {
+      "get": {
+        "operationId": "counselingGetSessionProposalContext",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get Session Proposal Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/me": {
+      "get": {
+        "operationId": "counselingListMySessionProposals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStudentPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List My Session Proposals",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/me/{proposal_id}": {
+      "get": {
+        "operationId": "counselingGetMySessionProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStudentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get My Session Proposal",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/me/{proposal_id}/accept": {
+      "post": {
+        "operationId": "counselingAcceptSessionProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionProposalAcceptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStudentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Accept Session Proposal",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/me/{proposal_id}/decline": {
+      "post": {
+        "operationId": "counselingDeclineSessionProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionProposalVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStudentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Decline Session Proposal",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/slots": {
+      "get": {
+        "operationId": "counselingListSessionProposalSlots",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delivery_mode",
+            "required": true,
+            "schema": {
+              "enum": [
+                "IN_PERSON",
+                "ONLINE"
+              ],
+              "title": "DeliveryMode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalSlotList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Session Proposal Slots",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/{proposal_id}": {
+      "get": {
+        "operationId": "counselingGetSessionProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStaffResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Get Session Proposal",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/session-proposals/{proposal_id}/withdraw": {
+      "post": {
+        "operationId": "counselingWithdrawSessionProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionProposalVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionProposalStaffResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Withdraw Session Proposal",
         "tags": [
           "counseling"
         ]

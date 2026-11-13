@@ -45,6 +45,7 @@
     "counseling/migrations/0007_case_handoffs.py",
     "counseling/migrations/0008_case_coverage.py",
     "counseling/migrations/0009_case_closure.py",
+    "counseling/migrations/0010_session_proposals.py",
     "guidance_followups/migrations/0002_next_actions.py",
     "guidance_followups/migrations/0003_case_transfers.py",
     "guidance_followups/migrations/0004_case_coverage.py",

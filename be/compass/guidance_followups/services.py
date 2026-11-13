@@ -611,4 +611,11 @@ def _followup_detail(*, actor, item, history_page=1):
         "can_reassign": not item.coverage_plans.filter(
             coverage__state="ACCEPTED", coverage__expires_at__gt=timezone.now()
         ).exists(),
+        "shortcuts": _shortcuts(actor, item),
     }
+
+
+def _shortcuts(actor, item):
+    from compass.counseling.next_session_shortcuts import followup_shortcuts
+
+    return followup_shortcuts(actor, item)

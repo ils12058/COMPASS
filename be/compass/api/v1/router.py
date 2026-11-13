@@ -24,6 +24,7 @@ from compass.counseling.case_handoff_api import router as counseling_case_handof
 from compass.counseling.case_transfer_api import router as counseling_case_transfer_router
 from compass.counseling.context_api import router as counseling_context_router
 from compass.counseling.continuity_api import router as counseling_continuity_router
+from compass.counseling.session_proposal_api import router as counseling_session_proposal_router
 from compass.ecounseling.api import daily_router
 from compass.ecounseling.api import router as ecounseling_router
 from compass.exit_interviews.api import router as exit_interviews_router
@@ -266,6 +267,7 @@ api.add_router("/availability", availability_router)
 api.add_router("/appointments", appointments_router)
 api.add_router("/counseling", counseling_router)
 api.add_router("/counseling/cases", counseling_case_router)
+api.add_router("/counseling/session-proposals", counseling_session_proposal_router)
 api.add_router("/counseling/continuity", counseling_case_transfer_router)
 api.add_router("/counseling/continuity", counseling_case_coverage_router)
 api.add_router("/counseling/continuity", counseling_case_handoff_router)
