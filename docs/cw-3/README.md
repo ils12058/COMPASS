@@ -7,7 +7,7 @@
 | Part | Branch | Status |
 |---|---|---|
 | CW-3a Transfer | `codex/counseling-cw3a-transfer` | Implemented and verified locally; stacked on CW-2. |
-| CW-3b Handoff | `codex/counseling-cw3b-handoff` | Not started. |
+| CW-3b Handoff | `codex/counseling-cw3b-handoff` | Implemented and verified locally; stacked on CW-3a. |
 | CW-3c Coverage | `codex/counseling-cw3c-coverage` | Not started. |
 
 ## CW-3a: What staff can do
@@ -112,3 +112,66 @@ Not run: full backend suite, full browser matrix, hosted CI, institutional UAT, 
 ## Handoff to CW-4
 
 Closure must check pending transfers and active or accepted-pending coverage before changing case state. It must resolve continuing clinical tasks through explicit actions and preserve task/Appointment provenance. Handoff readership after closure must remain available to the authorized case owner. Coverage expiry must return unfinished delegated work or flag confidential recovery; it must not complete/cancel a task. Closing a case cannot delete transfer or responsibility history, cancel Appointments silently, or alter old message audiences.
+
+## CW-3b: Structured handoff
+
+The primary Counselor prepares four narrative sections: current concern and purpose, support and progress, considerations for continuing support, and what the receiver should review or do next. Their aggregate limit is 12,000 characters. Pending actions and Appointments form a read-only snapshot of the reviewed plan, including their named responsibility and dates; task titles and descriptions are excluded. Saving a transfer may create a Draft. The author opens it and submits it deliberately before submitting the transfer for authorization.
+
+A submitted handoff is immutable. The author can add dated, attributed information. After acceptance, the current case owner can add an addendum and retain handoff readership, including after closure and later ownership changes. A former owner retains only their historical authorship rights. The prospective receiver can read the submitted package only during authorized review. An authorized non-author read records the first receipt; acceptance neither endorses the narrative nor completes any action.
+
+The office cannot write narrative. An eligible Head records **Handoff unavailable** with a closed reason before the office submits its prepared plan. My work routes that exception review to the Head, then submission to the preparer. The receiver sees a missing-information warning and accepts explicitly. An incoming personal request to the sole Head cannot use this exception; its outgoing author can prepare the handoff. The Head's own outgoing case retains the existing direct route.
+
+Editing a recipient, reason or work plan clears the selected handoff and exception pointers, retaining the old immutable rows. Saving/submitting handoff content or adding information to a pending offer clears its authorization and advances the optimistic version. An accepted-owner addendum also advances the version while retaining accepted ownership; an unconfirmed retry with the old version cannot add twice. Only genuinely pre-CW-3b submitted offers without the nullable prerequisite marker retain their earlier behavior. No historical handoff, exception or acceptance is fabricated.
+
+Protected content uses the existing `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS`. Distinct versioned envelope bindings identify the handoff, transfer, case, Student, author, receiver and plan digest; addenda have their own bound identity and attribution. The existing rotation command verifies and rewraps both new resource types while preserving business timestamps, versions, receipts and history. It is not a legacy codec converter. No keyring, setting or secret was added.
+
+Case/source/User/authority and live AuthSession locks fence each protected operation. Permission and session time are rechecked after decryption and synchronous content-free Audit, before the durable transaction commits and returns the body. Every continuity response, including errors, uses private no-store/no-cache headers. The frontend clears transient protected content on hidden/offline/session revalidation and requires an explicit recheck; late responses cannot refill a cleared view. Draft conflicts preserve typed text for deliberate review of the latest saved version. Addenda page at 20, with page input bounded to 1–1,000. Already delivered information cannot be recalled.
+
+## CW-3b API and migration
+
+New owning files are `case_handoff_models.py`, `case_handoff_content.py`, `case_handoff_services.py`, `case_handoff_schemas.py` and `case_handoff_api.py`. Legacy grant-linked `CounselorHandoffSummary` and its routes remain independently usable.
+
+| Operation | Method and path below `/api/v1/counseling/continuity` |
+|---|---|
+| `counselingSaveCaseHandoff` | `PUT /transfers/{transfer_id}/handoff` |
+| `counselingSubmitCaseHandoff` | `POST /transfers/{transfer_id}/handoff/submit` |
+| `counselingGetCaseHandoff` | `GET /handoffs/{handoff_id}` |
+| `counselingAddCaseHandoffAddendum` | `POST /handoffs/{handoff_id}/addenda` |
+| `counselingRecordCaseHandoffUnavailable` | `POST /transfers/{transfer_id}/handoff-unavailable` |
+
+`counseling/0007_case_handoffs` contains four `CreateModel` operations and three nullable transfer fields without defaults (`case_handoff`, `handoff_exception`, `handoff_required_at`). New-table constraints and indexes are inside `CreateModel`. The registered and pinned SHA-256 is `7a0a60dee3cd35e2d96402c10df93e11c8b6ad22f8133551eeeeca7b71a0f22a`. No existing migration, case event constraint or legacy grant choice was changed.
+
+The fresh upgrade rehearsal applied only that migration. Routine preflight accepted it, all legacy original-column checksums matched, the four new tables remained empty, and all three new transfer fields remained null. The fixture included prepared and authorized pre-CW-3b transfers as well as legacy cases, tasks, grants and handoffs. Evidence: `Claude outputs/cw-3/evidence/cw3b/migration-rehearsal/compass_cw3_rehearsal_b_20261113_01/rehearsal-evidence.json`.
+
+The canonical comparison found 478 → 483 operations and 864 → 878 schemas, with no operation, route, schema or property removed. Backend export precedes ordinary Orval generation; generated files are not committed. One initial API signature incorrectly treated an unannotated response argument as a required query parameter; it was removed from the owning endpoints and the contract regenerated.
+
+## CW-3b local verification
+
+| Command/check | Final outcome |
+|---|---|
+| `uv run pytest tests/test_cw3_case_handoffs.py tests/test_continuity_contract.py tests/test_cw3_transfers.py tests/test_cw3_transfer_concurrency.py tests/test_openapi_contract.py tests/test_canonical_baseline.py tests/test_staging_deployment.py -q --tb=short` | 203 passed. |
+| Adjacent 27-file Counseling/case/continuity/handoff/Follow-up/work/Appointment/audit/baseline/deployment run (exact command in external ledger) | 779 passed and one stale legacy-path assertion failed initially. Its legacy-only filter was corrected, retaining all five assertions; its final file passed in the 203-test run. All 780 distinct cases have final passing evidence. |
+| `ruff format` / `ruff check`, `makemigrations --check --dry-run`, `export_openapi --check` | Passed. |
+| `python3 -m unittest discover -s .github/scripts` | 81 passed. |
+| `pnpm validate`, then `pnpm test` after the final focus fixes | Passed; 1,261 frontend tests passed. |
+| Nine affected browser suites | 253 distinct checks per engine have passing final evidence. WebKit passed the complete matrix. Chromium's three navigation failures were rerun successfully; transfer and handoff were rerun in both engines after the focus fixes. |
+| Real Django + Next, Chromium and WebKit | 7/7 journeys in each engine on fresh `compass_cw3_browser_b_20261113_05`; database oracle passed. |
+| Upgrade rehearsal | Only `0007_case_handoffs` applied; preflight, checksums, empty new tables and null new fields passed. |
+
+Backend commands use the same isolated PostgreSQL/Redis environment as CW-3a. The final browser rerun was:
+
+```sh
+python3 '/Users/reynantlntno/Projects/COMPASS/Claude outputs/cw-3/browser_matrix.py' cw3b --suites counseling-continuity counseling-handoffs
+```
+
+Real scripts `real_backend_b.py` and `real_backend_b.browser.mjs` were executed, not merely written. Both engines exercised genuine API submission of the structured Draft, immutable handoff, receipt, unavailable exception, accepted-owner addendum, ordinary and sole-Head transfer routes, office boundaries, decline and stale acceptance. Ephemeral sessions/keyrings remained in a mode-0600 `/tmp` file. The database oracle verified ciphertext, receipt/addendum attribution, unchanged source descriptions and content-free Audit/Notifications. Evidence: `Claude outputs/cw-3/evidence/cw3b/real-backend/` and `real-backend-oracle.json`.
+
+Initial failures exposed a missing default AuditContext, a typed UUID expectation, an overbroad legacy contract path filter, and an expired-session fixture that violated expiry-after-creation. All were corrected. Body tests also encountered transient authority-table contention during fixture setup; their test transaction now holds a setup fence with bounded waiting, leaving application NOWAIT fences and separate real concurrency tests unchanged. The final complete 203-test run passed.
+
+The initial real browser attempts were interrupted by API regeneration, cold page compilation, and then automatic Next memory-threshold restarts. The latter were confirmed in `next-webpack.log`, and explain the repeated navigations and lost transient dialog/focus state. No application assertion was relaxed. The final build completed before a new server was started, required routes were prewarmed, and browser/real journeys ran serially. The final server log contains no memory-threshold restart. The two new focus assertions first failed: immutable submission removed the draft editor's opener, and the unavailable exception removed its button. They now focus stable page/panel headings and pass in both engines.
+
+Existing transfer fixtures now satisfy the real handoff prerequisite instead of fabricating readiness. The preparation journey checks six sections and a separate handoff submission. The legacy contract test is explicitly scoped to grant-linked handoff paths; a separate case-handoff contract test asserts the new operations. The active-call journey opens the handoff and preserves all create/join/leave/destroy counts. Red attempts, screenshots, their fixes and every command remain in the external ledger/report.
+
+Not run: full backend suite, full browser matrix, hosted CI, institutional UAT, physical-device/screen-reader checks, deployment or real-key custody/restore verification. Stacked PRs target feature branches, while hosted CI runs only against `staging`. No merge, shared database change, reset or external messaging was performed.
+
+CW-4 must preserve authorized current-owner handoff reads after closure, resolve pending arrangements explicitly and retain immutable narrative/addenda, receipt, exception and responsibility attribution. Clinical closure, automatic source disclosure and Student messaging remain outside CW-3b.
