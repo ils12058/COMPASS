@@ -299,6 +299,11 @@ if (!baseline) {
       const count = await links.count();
       await main.focus();
       await page.keyboard.press("Tab");
+      // Page-level actions in the header (the optional Guide) come before the content links.
+      // This check is about link order, so it starts at the first link the Tab sequence reaches.
+      if (process.env.COMPASS_UI_BROWSER !== "webkit") {
+        for (let step = 0; step < 5 && await page.evaluate(() => document.activeElement?.tagName !== "A"); step++) await page.keyboard.press("Tab");
+      }
       for (let i = 0; i < count; i++) {
         const link = links.nth(i);
         // WebKit's macOS default skips links with Tab. Check authored order and keyboard-focus

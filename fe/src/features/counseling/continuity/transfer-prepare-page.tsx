@@ -127,7 +127,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
       {!reopening ? <TransferWorkFields context={context} tasks={tasks} appointments={appointments} changeTask={(id, choice) => { setTasks(current => ({ ...current, [id]: choice })); setDirty(true); }} changeAppointment={(id, choice) => { setAppointments(current => ({ ...current, [id]: choice })); setDirty(true); }} returnTo={returnTo} /> : null}
       {!reopening ? <PanelSection title="4. Handoff" titleId="transfer-form-handoff-heading">
         {context.office_prepared ? <p className="text-sm">The Head must record why a clinical handoff is unavailable before this transfer can be submitted.</p> : <>
-          <p className="mb-4 text-sm text-muted">Save a structured draft here or write it from the review page. Submit the handoff before submitting the transfer. The selected action and Appointment plans are saved as read-only work.</p>
+          <p className="mb-4 text-sm text-muted">Submit the handoff before submitting the transfer. The selected action and Appointment plans are saved as read-only work.</p>
           {existing?.handoff?.state === "SUBMITTED" ? <p className="mb-4 text-sm text-warning">Changing the plan requires a new handoff. The previous submitted snapshot remains immutable.</p> : null}
           <HandoffFields value={handoff} onChange={setHandoff} disabled={pending} />
         </>}

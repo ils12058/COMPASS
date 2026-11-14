@@ -60,7 +60,8 @@ async function expectAssignments(dialog) {
   await shown(dialog.getByText("College of Computing and Multimedia Studies", { exact: true }));
   await shown(dialog.getByText("College of Business and Accountancy", { exact: true }));
   await shown(dialog.getByText("Covered while no Counselor is assigned", { exact: true }));
-  await shown(dialog.getByText("This shows office assignments, not who handles a particular case.", { exact: true }));
+  // Copy diet: the heading names office assignments; no separate scope footnote.
+  assert.equal(await dialog.getByText("This shows office assignments", { exact: false }).count(), 0);
 }
 
 // ── Booking ─────────────────────────────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ async function chooseService(page) {
     await page.getByRole("button", { name: `About ${counselors[0].display_name}`, exact: true }).click();
     const dialog = aboutDialog(page, counselors[0].display_name);
     await shown(dialog.getByText("No current College assignment is recorded for this Counselor.", { exact: true }));
-    assert.equal(await dialog.getByText("This shows office assignments", { exact: false }).count(), 1);
+    assert.equal(await dialog.getByText("This shows office assignments", { exact: false }).count(), 0);
   });
 }
 

@@ -166,7 +166,9 @@ test("GM-UX-2: Shared constants and type guards match approved undergraduate dom
 test("GM-UX-2: Student F4 shows Inventory-derived Year Level and Semester selection", () => {
   const html = renderComponent(h(GoodMoralRequestPage));
   assert.match(html, /Good Moral Certificate for current Students/);
-  assert.match(html, /Good Moral Certificate for UCN Bachelor(?:&#x27;|')s graduates/);
+  // The eligible Student sees their form directly; the graduate certificate is a switch, not a step.
+  assert.match(html, /I need it for a completed UCN Bachelor(?:&#x27;|')s degree/);
+  assert.doesNotMatch(html, /Certificate type/);
   assert.doesNotMatch(html, /\bF[46]\b/);
 
   assert.match(html, /<input[^>]*id="good-moral-year-level"[^>]*readOnly=""[^>]*value="3rd Year"/);

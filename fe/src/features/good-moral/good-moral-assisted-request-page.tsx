@@ -104,7 +104,7 @@ function AssistedRequestForm() {
 
   return (
     <section className="space-y-5">
-      <GoodMoralHeading title="Start request for Student" description="Choose the current Student certificate for a Bachelor's program or the UCN Bachelor's graduate certificate for a completed degree." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+      <GoodMoralHeading title="Start request for Student" description="Choose the certificate the Student needs." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       <Panel as="div">
         <PanelSection title="Student" titleId="assisted-student-heading">
           <fieldset disabled={locked} className="min-w-0">

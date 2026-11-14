@@ -130,6 +130,8 @@ export function inspectHeaderContracts(program, root) {
           return literal(n)?.trim() === "";
         }
         if (emptyLabel(label)) fail(node, "page action requires a visible label");
+        // Icon-only (tooltip) presentation is reserved for the optional task Guide.
+        if (attr(node, "compact") && !node.getSourceFile().fileName.endsWith("/features/portal/orientation/task-guide-action.tsx")) fail(node, "compact page action is reserved for the task Guide");
         if (!attr(node, "icon")) fail(node, "page action requires its icon surface");
         const renderer = value(attr(node, "as"));
         if (renderer) {

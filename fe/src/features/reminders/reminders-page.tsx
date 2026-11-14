@@ -482,7 +482,6 @@ function RemindersWorkspace() {
       <PageHeader
         title="Reminders"
         headingId="reminders-heading"
-        description="See the reminders for Appointments you manage, and send a manual reminder when one is needed."
         help={<RemindersHelp />}
       />
 

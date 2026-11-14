@@ -1,6 +1,6 @@
 "use client";
 
-import { Compass } from "lucide-react";
+import { Signpost } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { PageAction } from "@/components/ui/page-action";
@@ -16,10 +16,10 @@ export function TaskGuideAction() {
   if (!context) return null;
   const guides = context.guides.filter(guide => guideOnPage(guide, pathname));
   if (!guides.length) return null;
-  if (guides.length === 1) return <PageAction variant="secondary" icon={Compass} label="Guide" labelDetail={`: ${guides[0].title}`}
+  if (guides.length === 1) return <PageAction compact variant="secondary" icon={Signpost} label="Guide" labelDetail={`: ${guides[0].title}`}
     data-guide-launch={guides[0].id} onClick={event => context.launchTask(guides[0].id, event.currentTarget)} />;
   return <DropdownMenu>
-    <DropdownMenuTrigger asChild><PageAction ref={trigger} variant="secondary" icon={Compass} label="Guide" labelDetail=": choose a task guide" data-guide-launch={guides.map(guide => guide.id).join(" ")} /></DropdownMenuTrigger>
+    <DropdownMenuTrigger asChild><PageAction compact ref={trigger} variant="secondary" icon={Signpost} label="Guide" labelDetail=": choose a task guide" data-guide-launch={guides.map(guide => guide.id).join(" ")} /></DropdownMenuTrigger>
     <DropdownMenuContent className="max-h-[70dvh] max-w-[calc(100vw-2rem)] overflow-y-auto" onCloseAutoFocus={event => {
       if (!selection.current) return;
       event.preventDefault();

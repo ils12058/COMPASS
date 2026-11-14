@@ -6,7 +6,6 @@ import type { AssignmentBasis, CounselorAboutResponse } from "@/lib/api/generate
 
 export const ABOUT_ASSIGNMENTS_HEADING = "Assigned Colleges";
 export const ABOUT_EMPTY_COPY = "No current College assignment is recorded for this Counselor.";
-export const ABOUT_SCOPE_NOTE = "This shows office assignments, not who handles a particular case.";
 
 const BASIS_NOTES: Record<AssignmentBasis, string | null> = {
   ASSIGNED: null,

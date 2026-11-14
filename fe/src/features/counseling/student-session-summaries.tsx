@@ -48,7 +48,7 @@ export function StudentSessionSummaries({ access }: { access: CounselingAccess }
 
   return (
     <div>
-      <CounselingPageHeading title="Student Session Summaries" description="View summaries that your Counselor has published for you." />
+      <CounselingPageHeading title="Student Session Summaries" />
       <Panel aria-label="Published Student Session Summaries">
       {summaries.isPending ? <RowsSkeleton label="Loading shared Student Session Summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Couldn't load published Student Session Summaries.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No Student Session Summaries have been published for you yet.</PanelMessage> : (
         <>

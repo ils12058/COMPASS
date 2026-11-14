@@ -17,8 +17,12 @@ for(const [name,path,text,asset] of featureCases) for(const width of [320,390,10
       assert.equal(await image.evaluate(el=>el.tabIndex),-1);
       if(await image.isVisible()) {
         await page.waitForFunction(el=>el.complete&&el.naturalWidth>0,await image.elementHandle());
-        const a=await image.boundingBox();
-        assert.ok(Math.abs(a.width/a.height-1)<.01);
+        const box=await image.boundingBox();
+        assert.ok(Math.abs(box.width/box.height-1)<.01);
+        // Edge-fade artwork is clipped by an overflow-hidden frame; only the visible part can collide.
+        const a=await image.evaluate(el=>{let r=el.getBoundingClientRect(),{left,top,right,bottom}=r;
+          for(let p=el.parentElement;p;p=p.parentElement){const s=getComputedStyle(p);if(s.overflow!=='visible'){const c=p.getBoundingClientRect();left=Math.max(left,c.left);top=Math.max(top,c.top);right=Math.min(right,c.right);bottom=Math.min(bottom,c.bottom);}}
+          return {x:left,y:top,width:Math.max(0,right-left),height:Math.max(0,bottom-top)};});
         for(const control of await page.locator('main h1,main h2,main input,main button,main a').all()) {
           if(!await control.isVisible()) continue;
           const b=await control.boundingBox();

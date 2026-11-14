@@ -60,7 +60,6 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         <PanelHeader
           title="Recorded interaction details"
           titleId="encounter-details-heading"
-          description="This is a factual record of a completed Counseling interaction."
           actions={access.canManageAssigned ? <Button variant="secondary" onClick={() => setCorrectionOpen((open) => !open)}>{correctionOpen ? "Close correction" : "Correct encounter details"}</Button> : undefined}
         />
         <dl className="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">

@@ -250,27 +250,30 @@ function f4EligibilityMessage(status: GoodMoralF4EligibilityStatus): string {
 
 function CurrentStudentRequestChoices() {
   const context = useGoodMoralGetMyF4AcademicContext({ query: { retry: false, refetchOnWindowFocus: true, staleTime: 0 } });
-  const [variant, setVariant] = useState<"CURRENT_STUDENT" | "GRADUATE">("CURRENT_STUDENT");
+  const [graduateChosen, setGraduateChosen] = useState(false);
   const academicContext = context.data?.data;
   const f4Eligible = academicContext?.status === "ELIGIBLE" && f4YearLevelLabel(academicContext.year_level) !== null;
+  // A postgraduate Program rules out the current Student certificate, so only the graduate one remains.
+  const graduateOnly = academicContext?.status === "POSTGRADUATE_PROGRAM";
+  const variant = graduateOnly || graduateChosen ? "GRADUATE" : f4Eligible ? "CURRENT_STUDENT" : null;
 
   return (
     <section className="max-w-3xl space-y-5">
       <IllustratedIntroduction edgeFade src={!context.isPending && !context.isError && f4Eligible ? "/illustrations/good-moral-3d.webp" : undefined}>
-        <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+        <GoodMoralHeading title="Request Good Moral Certificate" back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       </IllustratedIntroduction>
-      <Panel as="div">
-        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" data-guide-target="good-moral-type" description="Choose the current Student certificate for a Bachelor's program. Choose the UCN Bachelor's graduate certificate for a completed degree, even after postgraduate study.">
-          {context.isPending ? <LoadingRegion label="Checking the current Student certificate requirements…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
-          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check the current Student certificate requirements. You can still request a Good Moral Certificate for UCN Bachelor&apos;s graduates.</Notice> : null}
-          {academicContext && !f4Eligible ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
-          <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Good Moral Certificate type">
-            <Button type="button" variant={variant === "CURRENT_STUDENT" ? "primary" : "secondary"} aria-pressed={variant === "CURRENT_STUDENT"} disabled={!f4Eligible} onClick={() => setVariant("CURRENT_STUDENT")}>Good Moral Certificate for current Students</Button>
-            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>Good Moral Certificate for UCN Bachelor&apos;s graduates</Button>
-          </div>
-        </PanelSection>
-      </Panel>
-      {variant === "CURRENT_STUDENT" && f4Eligible && academicContext ? <CurrentStudentRequestForm academicContext={academicContext} /> : null}
+      <div data-guide-target="good-moral-type" className="space-y-3">
+        {context.isPending ? <LoadingRegion label="Checking your certificate options…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
+        {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check the current Student certificate.</Notice> : null}
+        {graduateOnly ? <Notice>You&apos;re in a postgraduate Program, so you can request the certificate for your completed UCN Bachelor&apos;s degree.</Notice> : null}
+        {academicContext && !f4Eligible && !graduateOnly && !graduateChosen ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
+        {!context.isPending && !graduateOnly ? (
+          graduateChosen
+            ? f4Eligible ? <Button variant="quiet" className="-ml-3" onClick={() => setGraduateChosen(false)}>Request the current Student certificate instead</Button> : null
+            : <Button variant="quiet" className="-ml-3" onClick={() => setGraduateChosen(true)}>I need it for a completed UCN Bachelor&apos;s degree</Button>
+        ) : null}
+      </div>
+      {variant === "CURRENT_STUDENT" && academicContext ? <CurrentStudentRequestForm academicContext={academicContext} /> : null}
       {variant === "GRADUATE" ? <GraduateRequestForm embedded /> : null}
     </section>
   );
@@ -306,7 +309,6 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
         <PanelSection
           title="Request details"
           titleId="good-moral-current-request-details" data-guide-target="good-moral-inputs"
-          description="We'll fill in your details from your COMPASS records."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <div>
@@ -367,7 +369,7 @@ function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) 
         <PanelSection
           title="Graduation details"
           titleId="good-moral-graduate-request-details" data-guide-target="good-moral-inputs"
-          description="Enter the UCN Bachelor's degree you completed. You can type an older program name."
+          description="You can type an older program name."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <GoodMoralDegreeInput id="good-moral-degree" value={degree} onChange={setDegree} disabled={fieldsLocked} />

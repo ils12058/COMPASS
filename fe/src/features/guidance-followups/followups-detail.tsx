@@ -231,7 +231,7 @@ function FollowupHistory({ item }: { item: FollowUpDetail }) {
   const events = page === 1 ? item.events : query.data?.data.items ?? [];
   const hasNext = page === 1 ? item.events_has_next : query.data?.data.has_next ?? false;
   if (page > 1 && query.isError) return <FollowupFailure error={query.error} retry={() => void query.refetch()} />;
-  return <Panel className="mt-5"><PanelHeader title="Activity history" description="Events are listed in the order they happened." />{events.length ? <ol className="divide-y divide-border px-5">{events.map(event => {
+  return <Panel className="mt-5"><PanelHeader title="Activity history" />{events.length ? <ol className="divide-y divide-border px-5">{events.map(event => {
     const dueChanged = event.kind === "UPDATED" && event.old_due_at && event.new_due_at && event.old_due_at !== event.new_due_at;
     const title = dueChanged ? "Due date changed" : ({ CREATED: "Created", UPDATED: "Updated", REASSIGNED: "Reassigned", ACTIVITY_RECORDED: "Activity recorded", COMPLETED: "Completed", CANCELLED: "Cancelled" }[event.kind] ?? "Updated");
     return <li key={event.id} className="py-3"><p className="font-semibold">{title} · {event.actor_name}</p><p className="text-sm text-muted">{formatInstitutionalDateTime(event.created_at)}</p>{event.new_due_at && event.new_due_at !== event.old_due_at ? <p className="text-sm">Due {formatInstitutionalDateTime(event.new_due_at)}</p> : null}{event.remarks ? <p className="mt-2 whitespace-pre-wrap break-words">{event.remarks}</p> : null}</li>;
