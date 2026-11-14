@@ -88,3 +88,11 @@ test("Student action and notifications lead to the respond page and the case", (
 test("the mocked session-proposal browser suite runs in both engines in CI", () => {
   assertBrowserSuiteInCI("next-session-proposals.browser.mjs");
 });
+
+test("RA-1 session reassignment notifications open the review page", () => {
+  const id = "e1000000-0000-4000-8000-000000000001";
+  assert.deepEqual(
+    notificationDestination({ target_type: "APPOINTMENT_REASSIGNMENT", target_id: id }, "user"),
+    { href: `/portal/counseling/reassignments/${id}`, label: "Review session reassignment" },
+  );
+});

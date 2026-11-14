@@ -7,6 +7,7 @@ from django.utils import timezone
 from compass.accounts.models import User
 from compass.call_slips.work import due_call_slips
 from compass.counseling.case_coverage_work import pending_coverage_work
+from compass.counseling.case_reassignment_services import pending_reassignment_work
 from compass.counseling.case_transfer_work import pending_transfer_work
 from compass.good_moral.work import issuance_requests, preparation_requests
 from compass.guidance_followups.integration import followup_is_time_sensitive, pending_followups
@@ -82,6 +83,7 @@ def list_work(*, actor, page=1, page_size=20):
     # Unexpected source failures propagate: an incomplete projection cannot claim 'caught up'.
     items = [
         *pending_transfer_work(actor=actor, limit=limit, now=now),
+        *pending_reassignment_work(actor=actor, limit=limit, now=now),
         *pending_coverage_work(actor=actor, limit=limit, now=now),
         *(_followup_item(row, now) for row in pending_followups(actor=actor, limit=limit)),
         *(

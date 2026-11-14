@@ -1479,6 +1479,157 @@ def _require_reassignment_relationships_clear(item: Appointment) -> None:
         )
 
 
+def _validate_reassignment(*, item: Appointment, provider_id: UUID, current: datetime) -> User:
+    """Every rule a new Counselor must meet for this Appointment, with the rows locked."""
+
+    _require_scheduled_before_start(item, now=current)
+    _require_reassignment_relationships_clear(item)
+    participants = _lock_users(item.student_id, item.provider_id, provider_id)
+    new_provider = participants.get(provider_id)
+    if new_provider is None:
+        raise AppointmentNotSchedulable("The selected Counselor was not found.")
+    _validate_booking_users(participants[item.student_id], new_provider)
+    service = Service.objects.select_for_update().get(pk=item.service_id)
+    _validate_existing_service(
+        service=service,
+        provider=new_provider,
+        delivery_mode=item.delivery_mode,
+    )
+    if not _interval_is_available(
+        provider_id=new_provider.pk,
+        service_id=item.service_id,
+        delivery_mode=item.delivery_mode,
+        starts_at=item.starts_at,
+        ends_at=item.ends_at,
+    ):
+        raise AppointmentTimeUnavailable(
+            "The selected Counselor is not available for the Appointment interval."
+        )
+    if _has_overlap(
+        field="provider_id",
+        user_id=new_provider.pk,
+        starts_at=item.starts_at,
+        ends_at=item.ends_at,
+        exclude_appointment_id=item.pk,
+    ):
+        raise AppointmentTimeConflict(
+            "The selected Counselor already has an overlapping Appointment."
+        )
+    provider_conflict = provider_schedule_conflict(
+        provider_id=new_provider.pk,
+        starts_at=item.starts_at,
+        ends_at=item.ends_at,
+        exclude_appointment_id=item.pk,
+    )
+    if provider_conflict == "fixed_slot":
+        raise AppointmentTimeConflict(
+            "The selected Counselor has an overlapping published Fixed Slot."
+        )
+    if provider_conflict == "group_session":
+        raise AppointmentTimeConflict(
+            "The selected Counselor is assigned to an overlapping published Group Session."
+        )
+    return new_provider
+
+
+def _apply_reassignment(
+    *,
+    item: Appointment,
+    new_provider: User,
+    changed_by: User,
+    reason: str,
+    context: AuditContext,
+    current: datetime,
+    audit_extra: dict[str, object] | None = None,
+) -> Appointment:
+    previous_provider = item.provider
+    event = AppointmentChangeEvent.objects.create(
+        appointment=item,
+        event_type=AppointmentChangeEventType.REASSIGNED,
+        changed_by=changed_by,
+        occurred_at=current,
+        reason=reason,
+        previous_provider=previous_provider,
+        new_provider=new_provider,
+    )
+    item.provider = new_provider
+    item.reminder_revision += 1
+    item.reminder_revision_started_at = current
+    item.save(
+        update_fields=[
+            "provider",
+            "reminder_revision",
+            "reminder_revision_started_at",
+            "updated_at",
+        ]
+    )
+    record_event(
+        context=context,
+        action=APPOINTMENT_REASSIGNED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="appointments.appointment",
+        target_id=item.pk,
+        metadata={
+            "reference_code": item.reference_code,
+            "previous_provider_id": str(previous_provider.pk),
+            "new_provider_id": str(new_provider.pk),
+            **(audit_extra or {}),
+        },
+    )
+    for recipient in (item.student, previous_provider, new_provider):
+        create_notification_for_event(
+            recipient=recipient,
+            event=NotificationEvent.APPOINTMENT_REASSIGNED,
+            source_type="appointment_change_event",
+            source_id=event.pk,
+            target_type="APPOINTMENT",
+            target_id=item.pk,
+        )
+    return _appointment_queryset().get(pk=item.pk)
+
+
+def lock_appointment_for_reassignment(appointment_id: UUID) -> Appointment:
+    item = (
+        Appointment.objects.select_for_update(of=("self",))
+        .select_related("student__role", "provider__role", "service")
+        .filter(pk=appointment_id)
+        .first()
+    )
+    if item is None:
+        raise AppointmentNotFound("The requested Appointment was not found.")
+    return item
+
+
+def validate_case_reassignment(*, item: Appointment, provider_id: UUID, now: datetime) -> User:
+    """For the case-linked request flow: the same rules as a direct reassignment."""
+
+    return _validate_reassignment(item=item, provider_id=provider_id, current=now)
+
+
+def apply_case_reassignment(
+    *,
+    item: Appointment,
+    provider_id: UUID,
+    changed_by: User,
+    reason: str,
+    context: AuditContext,
+    now: datetime,
+    audit_extra: dict[str, object],
+) -> Appointment:
+    """Apply an approved or directly authorized case-linked reassignment, re-checking its rules."""
+
+    new_provider = _validate_reassignment(item=item, provider_id=provider_id, current=now)
+    return _apply_reassignment(
+        item=item,
+        new_provider=new_provider,
+        changed_by=changed_by,
+        reason=reason,
+        context=context,
+        current=now,
+        audit_extra=audit_extra,
+    )
+
+
 def reassign_appointment(
     *,
     appointment_id: UUID,
@@ -1488,117 +1639,33 @@ def reassign_appointment(
     context: AuditContext,
     now: datetime | None = None,
 ) -> Appointment:
+    from compass.counseling.case_reassignment_services import require_plain_reassignment
+
     current = now or timezone.now()
     if timezone.is_naive(current):
         raise InvalidAppointmentInput("Couldn't process the Appointment time. Try again.")
     cleaned_reason = _clean_change_reason(reason, required=True)
 
     with transaction.atomic():
-        item = (
-            Appointment.objects.select_for_update(of=("self",))
-            .select_related("student__role", "provider__role", "service")
-            .filter(pk=appointment_id)
-            .first()
-        )
-        if item is None:
-            raise AppointmentNotFound("The requested Appointment was not found.")
+        item = lock_appointment_for_reassignment(appointment_id)
         _require_management_access(actor=actor, item=item)
         _require_scheduled_before_start(item, now=current)
 
         if provider_id == item.provider_id:
             return _appointment_queryset().get(pk=item.pk)
 
-        _require_reassignment_relationships_clear(item)
-
-        participants = _lock_users(item.student_id, item.provider_id, provider_id)
-        new_provider = participants.get(provider_id)
-        if new_provider is None:
-            raise AppointmentNotSchedulable("The selected Counselor was not found.")
-        _validate_booking_users(participants[item.student_id], new_provider)
-        service = Service.objects.select_for_update().get(pk=item.service_id)
-        _validate_existing_service(
-            service=service,
-            provider=new_provider,
-            delivery_mode=item.delivery_mode,
-        )
-        if not _interval_is_available(
-            provider_id=new_provider.pk,
-            service_id=item.service_id,
-            delivery_mode=item.delivery_mode,
-            starts_at=item.starts_at,
-            ends_at=item.ends_at,
-        ):
-            raise AppointmentTimeUnavailable(
-                "The selected Counselor is not available for the Appointment interval."
-            )
-        if _has_overlap(
-            field="provider_id",
-            user_id=new_provider.pk,
-            starts_at=item.starts_at,
-            ends_at=item.ends_at,
-            exclude_appointment_id=item.pk,
-        ):
-            raise AppointmentTimeConflict(
-                "The selected Counselor already has an overlapping Appointment."
-            )
-        provider_conflict = provider_schedule_conflict(
-            provider_id=new_provider.pk,
-            starts_at=item.starts_at,
-            ends_at=item.ends_at,
-            exclude_appointment_id=item.pk,
-        )
-        if provider_conflict == "fixed_slot":
-            raise AppointmentTimeConflict(
-                "The selected Counselor has an overlapping published Fixed Slot."
-            )
-        if provider_conflict == "group_session":
-            raise AppointmentTimeConflict(
-                "The selected Counselor is assigned to an overlapping published Group Session."
-            )
-
-        previous_provider = item.provider
-        event = AppointmentChangeEvent.objects.create(
-            appointment=item,
-            event_type=AppointmentChangeEventType.REASSIGNED,
-            changed_by=actor,
-            occurred_at=current,
-            reason=cleaned_reason,
-            previous_provider=previous_provider,
+        # A session of an Active case moves only through the case-continuity request (RA-1),
+        # except back to the case's own Counselor.
+        require_plain_reassignment(appointment=item, provider_id=provider_id)
+        new_provider = _validate_reassignment(item=item, provider_id=provider_id, current=current)
+        return _apply_reassignment(
+            item=item,
             new_provider=new_provider,
-        )
-        item.provider = new_provider
-        item.reminder_revision += 1
-        item.reminder_revision_started_at = current
-        item.save(
-            update_fields=[
-                "provider",
-                "reminder_revision",
-                "reminder_revision_started_at",
-                "updated_at",
-            ]
-        )
-        record_event(
+            changed_by=actor,
+            reason=cleaned_reason,
             context=context,
-            action=APPOINTMENT_REASSIGNED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="appointments.appointment",
-            target_id=item.pk,
-            metadata={
-                "reference_code": item.reference_code,
-                "previous_provider_id": str(previous_provider.pk),
-                "new_provider_id": str(new_provider.pk),
-            },
+            current=current,
         )
-        for recipient in (item.student, previous_provider, new_provider):
-            create_notification_for_event(
-                recipient=recipient,
-                event=NotificationEvent.APPOINTMENT_REASSIGNED,
-                source_type="appointment_change_event",
-                source_id=event.pk,
-                target_type="APPOINTMENT",
-                target_id=item.pk,
-            )
-        return _appointment_queryset().get(pk=item.pk)
 
 
 def list_reassignment_candidates(

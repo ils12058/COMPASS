@@ -5,7 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { portalReturnHref, workflowBackLabel } from "@/features/portal/workflow-navigation";
-import { getCounselingGetCaseQueryKey } from "@/lib/api/generated/counseling/counseling";
+import {
+  getCounselingGetAppointmentReassignmentContextQueryKey,
+  getCounselingGetCaseQueryKey,
+  useCounselingGetAppointmentReassignmentContext,
+  useCounselingRequestAppointmentReassignment,
+} from "@/lib/api/generated/counseling/counseling";
+import {
+  caseSessionNotice,
+  pendingReassignmentNotice,
+  reassignmentError,
+  reassignmentHref,
+} from "@/features/counseling/reassignment/reassignment-presentation";
 import { DisclosureSection } from "@/components/ui/disclosure";
 import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { ReminderSender } from "@/features/appointments/appointment-reminders";
@@ -296,6 +307,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const cancel = useAppointmentsCancel();
   const reschedule = useAppointmentsReschedule();
   const reassign = useAppointmentsReassign();
+  const requestCaseReassignment = useCounselingRequestAppointmentReassignment({ mutation: { retry: false } });
   const complete = useAppointmentsComplete();
   const noShow = useAppointmentsMarkNoShow();
 
@@ -308,6 +320,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [reassignmentReason, setReassignmentReason] = useState("");
   const [reassigning, setReassigning] = useState(false);
+  const [caseAcknowledged, setCaseAcknowledged] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignmentOpen, setReassignmentOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -327,6 +340,13 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const canCancel = actions?.cancel.allowed === true;
   const canReschedule = actions?.reschedule.allowed === true;
   const canReassign = actions?.reassign.allowed === true;
+  // RA-1: a session of an Active case moves only with case-continuity approval; the page also
+  // tells staff whose case it is, without any case content.
+  const reassignmentContext = useCounselingGetAppointmentReassignmentContext(appointmentId, {
+    query: { enabled: Boolean(appointment && access.canManage && user.role !== "STUDENT"), retry: false },
+  });
+  const caseOwner = reassignmentContext.data?.data.case_owner ?? null;
+  const pendingReassignment = reassignmentContext.data?.data.pending ?? null;
   const canComplete = actions?.complete.allowed === true;
   const canMarkNoShow = actions?.mark_no_show.allowed === true;
   const unavailable = actions ? unavailableActions(actions) : [];
@@ -550,21 +570,40 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     setNotice(null);
     setUpdatedNotice(null);
     setReassigning(true);
+    const needsCaseApproval = Boolean(caseOwner && selectedProviderId !== caseOwner.id);
     try {
-      await reassign.mutateAsync({
-        appointmentId,
-        data: {
-          provider_id: selectedProviderId,
-          reason: reassignmentReason.trim(),
-        },
-      });
-      await refreshAppointmentQueries(true);
+      if (needsCaseApproval) {
+        const response = await requestCaseReassignment.mutateAsync({
+          appointmentId,
+          data: { provider_id: selectedProviderId, reason: reassignmentReason.trim(), acknowledged: caseAcknowledged },
+        });
+        await Promise.all([
+          refreshAppointmentQueries(true),
+          queryClient.invalidateQueries({ queryKey: getCounselingGetAppointmentReassignmentContextQueryKey(appointmentId) }),
+        ]);
+        setNotice(response.data.state === "PENDING" ? pendingReassignmentNotice(response.data) : "Counselor reassigned.");
+      } else {
+        await reassign.mutateAsync({
+          appointmentId,
+          data: {
+            provider_id: selectedProviderId,
+            reason: reassignmentReason.trim(),
+          },
+        });
+        await refreshAppointmentQueries(true);
+        setNotice("Counselor reassigned.");
+      }
       setReassignmentOpen(false);
       setSelectedProviderId("");
       setReassignmentReason("");
-      setNotice("Counselor reassigned.");
+      setCaseAcknowledged(false);
     } catch (caught) {
-      await handleMutationError(caught, "Couldn't reassign the Counselor. Try again.", "reassign");
+      if (needsCaseApproval) {
+        setError({ scope: "reassign", message: reassignmentError(caught, "Couldn't send the reassignment request. Try again.") });
+        void reassignmentContext.refetch();
+      } else {
+        await handleMutationError(caught, "Couldn't reassign the Counselor. Try again.", "reassign");
+      }
     } finally {
       setReassigning(false);
     }
@@ -811,7 +850,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   Reschedule
                 </Button>
               ) : null}
-              {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setRescheduleOpen(false); setReassignmentOpen(true); }}>Reassign</Button> : null}
+              {canReassign && !pendingReassignment ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setRescheduleOpen(false); setCaseAcknowledged(false); setReassignmentOpen(true); }}>Reassign</Button> : null}
               {canMarkNoShow ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="secondary" disabled={pending}><MoreHorizontal aria-hidden="true" size={18} />More actions</Button></DropdownMenuTrigger>
@@ -822,6 +861,15 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 </DropdownMenu>
               ) : canCancel ? <Button variant="danger" disabled={pending} onClick={() => { setError(null); setConfirmAction("cancel"); }}>Cancel Appointment</Button> : null}
             </div>
+          ) : null}
+          {caseOwner && caseOwner.id !== appointment.provider.id ? (
+            <p className="mt-4 text-sm text-muted">{caseSessionNotice(caseOwner.display_name)}</p>
+          ) : null}
+          {pendingReassignment ? (
+            <p role="status" className="mt-4 text-sm text-ink">
+              {pendingReassignmentNotice(pendingReassignment)}{" "}
+              <GuardedPortalLink href={reassignmentHref(pendingReassignment.id)} className="font-semibold text-brand underline-offset-4 hover:underline">View request</GuardedPortalLink>
+            </p>
           ) : null}
           {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
             <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p>
@@ -892,6 +940,11 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             <DialogDescription>Choose a Counselor and review the change before saving.</DialogDescription>
             <form onSubmit={submitReassignment} className="mt-5">
               <p className="text-sm text-muted"><span className="font-semibold text-ink">Current Counselor:</span> {appointment.provider.display_name}</p>
+              {caseOwner ? (
+                <Notice className="mt-4">
+                  This session is part of {caseOwner.display_name}&apos;s counseling case. Only this session moves; the case and its records stay with {caseOwner.display_name}. Moving it to another Counselor needs Head approval, as a case transfer does.
+                </Notice>
+              ) : null}
               {candidates.isPending ? (
                 <LoadingRegion label="Loading Counselors…" className="mt-4">
                   <Skeleton className="h-10 w-full max-w-xl" />
@@ -920,9 +973,17 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                   <p className="mt-2 whitespace-pre-wrap text-sm text-muted">Reason: {reassignmentReason.trim()}</p>
                 </div>
               ) : null}
+              {caseOwner && selectedProviderId && selectedProviderId !== caseOwner.id ? (
+                <label className="mt-4 flex min-h-11 items-start gap-3 text-sm text-ink">
+                  <input type="checkbox" className="mt-0.5 size-4 accent-brand" checked={caseAcknowledged} disabled={reassigning} onChange={(event) => setCaseAcknowledged(event.target.checked)} />
+                  <span>I understand the case stays with {caseOwner.display_name} and {selectedCandidate?.display_name ?? "the new Counselor"} won&apos;t see its records.</span>
+                </label>
+              ) : null}
               {error?.scope === "reassign" ? <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p> : null}
-              <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassigning || candidates.isPending} aria-busy={reassigning}>
-                {reassigning ? "Reassigning…" : "Reassign Counselor"}
+              <Button className="mt-4" type="submit" disabled={!selectedProviderId || !reassignmentReason.trim() || reassigning || candidates.isPending || reassignmentContext.isPending || (Boolean(caseOwner) && selectedProviderId !== caseOwner?.id && !caseAcknowledged)} aria-busy={reassigning}>
+                {caseOwner && selectedProviderId !== caseOwner.id
+                  ? reassigning ? "Sending request…" : "Request reassignment"
+                  : reassigning ? "Reassigning…" : "Reassign Counselor"}
               </Button>
               <Button className="ml-2" variant="secondary" disabled={pending} onClick={() => setReassignmentOpen(false)}>Cancel</Button>
             </form>

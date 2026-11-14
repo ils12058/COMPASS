@@ -11,6 +11,8 @@ export function presentWork(item: WorkItem, generatedAt?: string) {
       return { title: `Review unavailable handoff${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: "A Head exception is needed before transfer submission", href: `/portal/counseling/transfers/${item.source_id}`, actionLabel: "Review handoff exception" };
     case WorkKind.CASE_TRANSFER_AUTHORIZATION:
       return { title: `Authorize case transfer${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: "Waiting for Head approval", href: `/portal/counseling/transfers/${item.source_id}`, actionLabel: "Review transfer" };
+    case WorkKind.CASE_REASSIGNMENT_APPROVAL:
+      return { title: `Approve session reassignment${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: item.due_at ? `Session starts ${formatInstitutionalDateTime(item.due_at)}` : "Waiting for Head approval", href: `/portal/counseling/reassignments/${item.source_id}`, actionLabel: "Review reassignment" };
     case WorkKind.CASE_TRANSFER_ACCEPTANCE:
       return { title: `Review incoming case${item.case_reference_code ? ` · ${item.case_reference_code}` : ""}`, detail: item.due_at ? `Accept or decline by ${formatInstitutionalDateTime(item.due_at)}` : "Waiting for your acceptance", href: `/portal/counseling/transfers/${item.source_id}`, actionLabel: "Review transfer" };
     case WorkKind.CASE_COVERAGE_AUTHORIZATION:

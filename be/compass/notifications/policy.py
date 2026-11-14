@@ -26,6 +26,7 @@ class NotificationTargetType(StrEnum):
 
     GUIDANCE_FOLLOW_UP = "GUIDANCE_FOLLOW_UP"
     CASE_TRANSFER = "CASE_TRANSFER"
+    APPOINTMENT_REASSIGNMENT = "APPOINTMENT_REASSIGNMENT"
     CASE_COVERAGE = "CASE_COVERAGE"
     SESSION_PROPOSAL = "SESSION_PROPOSAL"
     COUNSELING_CASE = "COUNSELING_CASE"
@@ -46,6 +47,8 @@ class NotificationTargetType(StrEnum):
 
 class NotificationEvent(StrEnum):
     CASE_TRANSFER_REVIEW = "counseling.case_transfer.review"
+    CASE_REASSIGNMENT_REVIEW = "counseling.case_reassignment.review"
+    CASE_REASSIGNMENT_DECIDED = "counseling.case_reassignment.decided"
     CASE_COVERAGE_REVIEW = "counseling.case_coverage.review"
     SESSION_PROPOSAL_RECEIVED = "counseling.session_proposal.received"
     SESSION_PROPOSAL_DECIDED = "counseling.session_proposal.decided"
@@ -135,6 +138,24 @@ _EVENT_CATALOG = {
         message=(
             "A temporary case coverage arrangement needs your review. Open COMPASS to review it."
         ),
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.CASE_REASSIGNMENT_REVIEW: NotificationEventDefinition(
+        event=NotificationEvent.CASE_REASSIGNMENT_REVIEW,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Session reassignment review",
+        message="A case session reassignment needs your approval. Open COMPASS to review it.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.CASE_REASSIGNMENT_DECIDED: NotificationEventDefinition(
+        event=NotificationEvent.CASE_REASSIGNMENT_DECIDED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Session reassignment decided",
+        message="A case session reassignment was decided. Open COMPASS to see the result.",
         email_subject="",
         email_template="",
     ),

@@ -1270,6 +1270,8 @@ def appointments_reassign(
     appointment_id: UUID,
     payload: AppointmentReassignRequest,
 ):
+    from compass.counseling.case_continuity_rules import CaseContinuityError
+
     _require(request, "appointments.manage")
     try:
         item = reassign_appointment(
@@ -1281,6 +1283,9 @@ def appointments_reassign(
         )
     except AppointmentError as exc:
         _raise(exc)
+    except CaseContinuityError as exc:
+        # A case-linked session needs the case-continuity request (RA-1).
+        raise APIError(exc.status, exc.code, exc.message) from None
     return _appointment(item)
 
 

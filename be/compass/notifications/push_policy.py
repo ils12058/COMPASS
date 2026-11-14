@@ -15,6 +15,8 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.GRADUATE_TRACER_REMINDER: (PushDecision.IN_APP_ONLY, ""),
     # Case continuity reviews stay in-app; push would reveal case activity on a lock screen.
     NotificationEvent.CASE_TRANSFER_REVIEW: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.CASE_REASSIGNMENT_REVIEW: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.CASE_REASSIGNMENT_DECIDED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.CASE_COVERAGE_REVIEW: (PushDecision.IN_APP_ONLY, ""),
     # Session proposals stay in-app: a lock-screen push would reveal counseling activity.
     NotificationEvent.SESSION_PROPOSAL_RECEIVED: (PushDecision.IN_APP_ONLY, ""),

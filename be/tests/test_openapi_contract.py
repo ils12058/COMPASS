@@ -360,6 +360,10 @@ EXPECTED_OPERATION_IDS = {
     "counselingUnlinkCaseAppointment",
     # NS-1 Counselor-proposed sessions with Student consent.
     "counselingProposeSession",
+    "counselingGetAppointmentReassignmentContext",
+    "counselingRequestAppointmentReassignment",
+    "counselingGetAppointmentReassignment",
+    "counselingDecideAppointmentReassignment",
     "counselingGetSessionProposalContext",
     "counselingListSessionProposalSlots",
     "counselingGetSessionProposal",
@@ -3545,6 +3549,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "CASE_HANDOFF_EXCEPTION",
         "CASE_TRANSFER_AUTHORIZATION",
         "CASE_TRANSFER_ACCEPTANCE",
+        "CASE_REASSIGNMENT_APPROVAL",
         "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",

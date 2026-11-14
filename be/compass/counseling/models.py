@@ -156,6 +156,7 @@ from .case_coverage_models import (  # noqa: E402, F401
     CounselingCaseCoverageEvent,
     CounselingCaseCoverageTask,
 )
+from .case_reassignment_models import CaseAppointmentReassignment  # noqa: E402, F401
 from .session_proposal_models import (  # noqa: E402, F401
     CounselingCaseCallSlip,
     CounselingSessionProposal,

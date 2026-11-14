@@ -7,6 +7,7 @@
   "compass/counseling/migrations/0008_case_coverage.py": "b8a76dd34c65d08fc5ad9a0c0fbb16f98be7e0b4cf749d05ed868d96fbec1ed5",
   "compass/counseling/migrations/0009_case_closure.py": "588f0ab8af93daf4fe7e8fd3f3e6adcb000b814dd62ffb725e46543083b92ebf",
   "compass/counseling/migrations/0010_session_proposals.py": "f538b4fb063029ea203f30c881048d8488a67396546336ddf93cf52c6cd21562",
+  "compass/counseling/migrations/0011_case_appointment_reassignment.py": "ce73d6d102760ef62d4adaa902f8f6a46d463f3cceea639cd209c765cbfa907b",
   "compass/guidance_followups/migrations/0002_next_actions.py": "23b1106adf2ec4130c0a61c9bde15c870d6db32115d66204b0b6b515d367c9dc",
   "compass/guidance_followups/migrations/0003_case_transfers.py": "cf3a1f720c65f4429e3a36e7a9fcd69f773d31738a1a3b20a80a41e16a206d38",
   "compass/guidance_followups/migrations/0004_case_coverage.py": "ee765dd3a08b3b2bfbd2198bdb6502423d558f81a5aa4160c520922d02bf0d44",

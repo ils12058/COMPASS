@@ -21,6 +21,7 @@ from compass.counseling.api import router as counseling_router
 from compass.counseling.case_api import router as counseling_case_router
 from compass.counseling.case_coverage_api import router as counseling_case_coverage_router
 from compass.counseling.case_handoff_api import router as counseling_case_handoff_router
+from compass.counseling.case_reassignment_api import router as counseling_case_reassignment_router
 from compass.counseling.case_transfer_api import router as counseling_case_transfer_router
 from compass.counseling.context_api import router as counseling_context_router
 from compass.counseling.continuity_api import router as counseling_continuity_router
@@ -269,6 +270,7 @@ api.add_router("/counseling", counseling_router)
 api.add_router("/counseling/cases", counseling_case_router)
 api.add_router("/counseling/session-proposals", counseling_session_proposal_router)
 api.add_router("/counseling/continuity", counseling_case_transfer_router)
+api.add_router("/counseling", counseling_case_reassignment_router)
 api.add_router("/counseling/continuity", counseling_case_coverage_router)
 api.add_router("/counseling/continuity", counseling_case_handoff_router)
 api.add_router("/counseling/context", counseling_context_router)

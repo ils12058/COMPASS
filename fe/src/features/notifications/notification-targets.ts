@@ -11,6 +11,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.CASE_TRANSFER && notification.target_id) {
     return { href: `/portal/counseling/transfers/${notification.target_id}`, label: "Review case transfer" };
   }
+  if (notification.target_type === NotificationTargetType.APPOINTMENT_REASSIGNMENT && notification.target_id) {
+    return { href: `/portal/counseling/reassignments/${notification.target_id}`, label: "Review session reassignment" };
+  }
   if (notification.target_type === NotificationTargetType.CASE_COVERAGE && notification.target_id) {
     return { href: `/portal/counseling/coverages/${notification.target_id}`, label: "Review case coverage" };
   }

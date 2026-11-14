@@ -7522,6 +7522,322 @@
         "title": "CasePostClosureTaskRequest",
         "type": "object"
       },
+      "CaseReassignmentAction": {
+        "enum": [
+          "approve",
+          "decline",
+          "withdraw"
+        ],
+        "title": "CaseReassignmentAction",
+        "type": "string"
+      },
+      "CaseReassignmentAppointment": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_mode": {
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "service_name": {
+            "title": "Service Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "status",
+          "service_name",
+          "delivery_mode",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "CaseReassignmentAppointment",
+        "type": "object"
+      },
+      "CaseReassignmentContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "case_owner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseReassignmentPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseReassignmentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "case_owner",
+          "pending"
+        ],
+        "title": "CaseReassignmentContextResponse",
+        "type": "object"
+      },
+      "CaseReassignmentDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/CaseReassignmentAction"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "action",
+          "expected_version"
+        ],
+        "title": "CaseReassignmentDecisionRequest",
+        "type": "object"
+      },
+      "CaseReassignmentPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "CaseReassignmentPerson",
+        "type": "object"
+      },
+      "CaseReassignmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "title": "Acknowledged",
+            "type": "boolean"
+          },
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "reason",
+          "acknowledged"
+        ],
+        "title": "CaseReassignmentRequest",
+        "type": "object"
+      },
+      "CaseReassignmentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment": {
+            "$ref": "#/components/schemas/CaseReassignmentAppointment"
+          },
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_withdraw": {
+            "title": "Can Withdraw",
+            "type": "boolean"
+          },
+          "case_owner": {
+            "$ref": "#/components/schemas/CaseReassignmentPerson"
+          },
+          "case_reference_code": {
+            "title": "Case Reference Code",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseReassignmentPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_reason": {
+            "title": "Decision Reason",
+            "type": "string"
+          },
+          "from_provider": {
+            "$ref": "#/components/schemas/CaseReassignmentPerson"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "requested_by": {
+            "$ref": "#/components/schemas/CaseReassignmentPerson"
+          },
+          "route": {
+            "$ref": "#/components/schemas/CaseReassignmentRouteValue"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseReassignmentStateValue"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CaseReassignmentPerson"
+          },
+          "to_provider": {
+            "$ref": "#/components/schemas/CaseReassignmentPerson"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "route",
+          "appointment",
+          "student",
+          "case_reference_code",
+          "case_owner",
+          "requested_by",
+          "from_provider",
+          "to_provider",
+          "reason",
+          "requested_at",
+          "decided_by",
+          "decided_at",
+          "decision_reason",
+          "version",
+          "can_approve",
+          "can_withdraw"
+        ],
+        "title": "CaseReassignmentResponse",
+        "type": "object"
+      },
+      "CaseReassignmentRouteValue": {
+        "enum": [
+          "INDEPENDENT_HEAD",
+          "DIRECT_OUTGOING_HEAD",
+          "OWNER_TO_HEAD"
+        ],
+        "title": "CaseReassignmentRouteValue",
+        "type": "string"
+      },
+      "CaseReassignmentStateValue": {
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "DECLINED",
+          "WITHDRAWN",
+          "EXPIRED"
+        ],
+        "title": "CaseReassignmentStateValue",
+        "type": "string"
+      },
       "CaseReopenReason": {
         "enum": [
           "SAME_CONCERN_RETURNED",
@@ -29922,6 +30238,7 @@
         "enum": [
           "GUIDANCE_FOLLOW_UP",
           "CASE_TRANSFER",
+          "APPOINTMENT_REASSIGNMENT",
           "CASE_COVERAGE",
           "SESSION_PROPOSAL",
           "COUNSELING_CASE",
@@ -39186,6 +39503,7 @@
           "CASE_HANDOFF_EXCEPTION",
           "CASE_TRANSFER_AUTHORIZATION",
           "CASE_TRANSFER_ACCEPTANCE",
+          "CASE_REASSIGNMENT_APPROVAL",
           "GUIDANCE_FOLLOW_UP",
           "GUIDANCE_MESSAGE_REPLY",
           "ROUTINE_EVALUATION",
@@ -50097,6 +50415,172 @@
         ]
       }
     },
+    "/api/v1/counseling/appointment-reassignments/{reassignment_id}": {
+      "get": {
+        "operationId": "counselingGetAppointmentReassignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reassignment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reassignment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseReassignmentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointment Reassignment Detail",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/appointment-reassignments/{reassignment_id}/decision": {
+      "post": {
+        "operationId": "counselingDecideAppointmentReassignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reassignment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reassignment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseReassignmentDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseReassignmentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointment Reassignment Decision",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/appointments/{appointment_id}/finish": {
       "post": {
         "operationId": "counselingFinishAppointment",
@@ -50190,6 +50674,172 @@
           }
         ],
         "summary": "Counseling Finish Appointment",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/appointments/{appointment_id}/reassignment": {
+      "get": {
+        "operationId": "counselingGetAppointmentReassignmentContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseReassignmentContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointment Reassignment Context",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/appointments/{appointment_id}/reassignment-requests": {
+      "post": {
+        "operationId": "counselingRequestAppointmentReassignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseReassignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseReassignmentResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointment Reassignment Request",
         "tags": [
           "counseling"
         ]
