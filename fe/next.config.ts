@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_COMPASS_UI_TEST_MODE: process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE === "1" ? "1" : "0",
   },
+  // Raster sources are WebP; next/image offers AVIF first and WebP otherwise, at each size.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   async headers() {
     return [{
       source: "/sw.js",

@@ -54,7 +54,9 @@ The following user-approved COMPASS assets may be reused from the archived front
 Brand assets:
 
 ```text
-public/brand/campus-bg.jpg
+public/brand/hero-gym-seminar.webp
+public/brand/hero-classroom.webp
+public/brand/sign-in-backdrop.webp
 public/brand/compass-mark.svg
 public/brand/compass-open-graph.jpg
 public/brand/ucn-logo.png
@@ -63,11 +65,13 @@ public/brand/ucn-logo.png
 Illustrations:
 
 ```text
-public/illustrations/gco-character-point-right.png
-public/illustrations/gco-character-point-up.png
-public/illustrations/gco-character-wave.png
-public/illustrations/gco-characters.png
+public/illustrations/gco-character-point-right.webp
+public/illustrations/gco-character-point-up.webp
+public/illustrations/gco-character-wave.webp
+public/illustrations/gco-characters.webp
 ```
+
+The illustrations and hero photographs are WebP sources (14 November 2026); keep raster artwork in WebP and serve it through `next/image`. The Open Graph image, PWA icons and the small UCN logo stay in their current formats. The hero photographs are UCN Guidance and Counseling Office activity photos chosen with the office: wide shots without identifiable one-to-one counseling.
 
 These files are explicit exceptions to the archived-frontend restriction. Their approval does not authorize copying old layouts or other visual architecture.
 
@@ -78,16 +82,16 @@ Legitimate red clothing and sashes remain; decorative outer strokes and scribble
 The matching object collection is limited to:
 
 ```text
-public/illustrations/appointment-calendar-3d.png
-public/illustrations/service-catalog-3d.png
-public/illustrations/guidance-messages-3d.png
-public/illustrations/individual-inventory-3d.png
-public/illustrations/counseling-3d.png
-public/illustrations/guidance-followups-3d.png
-public/illustrations/good-moral-3d.png
-public/illustrations/exit-interview-3d.png
-public/illustrations/graduate-tracer-3d.png
-public/illustrations/announcements-3d.png
+public/illustrations/appointment-calendar-3d.webp
+public/illustrations/service-catalog-3d.webp
+public/illustrations/guidance-messages-3d.webp
+public/illustrations/individual-inventory-3d.webp
+public/illustrations/counseling-3d.webp
+public/illustrations/guidance-followups-3d.webp
+public/illustrations/good-moral-3d.webp
+public/illustrations/exit-interview-3d.webp
+public/illustrations/graduate-tracer-3d.webp
+public/illustrations/announcements-3d.webp
 ```
 
 Warm minimalism permits a small, purposeful object illustration in a selected non-sensitive

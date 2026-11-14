@@ -226,7 +226,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             {appointmentErrorMessage(list.error, "Couldn't load your Appointments. Try again.")}
           </PanelMessage>
         ) : items.length === 0 && !filtering && status === undefined && !upcoming ? (
-          <IllustratedEmptyState src="/illustrations/appointment-calendar-3d.png">
+          <IllustratedEmptyState src="/illustrations/appointment-calendar-3d.webp">
             No Appointments are available.
           </IllustratedEmptyState>
         ) : items.length === 0 ? (

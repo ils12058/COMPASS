@@ -91,11 +91,8 @@ h6 {
   background: var(--compass-entry-gradient);
 }
 
+/* The faded office photographs behind the hero copy (next/image layers, see hero-backdrop.tsx). */
 .public-hero-campus {
-  background-image: url("/brand/campus-bg.jpg");
-  background-position: 70% 68%;
-  background-repeat: no-repeat;
-  background-size: cover;
   opacity: var(--compass-hero-image-opacity);
   -webkit-mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
   mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
@@ -198,7 +195,6 @@ h6 {
 
 @media (max-width: 639px) {
   .public-hero-campus {
-    background-position: 62% 100%;
     opacity: 0.28;
     -webkit-mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);
     mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);

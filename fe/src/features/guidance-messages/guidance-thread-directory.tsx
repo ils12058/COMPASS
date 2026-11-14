@@ -80,7 +80,7 @@ export function GuidanceThreadDirectory({
     );
   } else if (rows.length === 0) {
     body = (
-      <IllustratedEmptyState src={viewer === "student" && !activeThreadId && !directory.isError ? "/illustrations/guidance-messages-3d.png" : undefined}
+      <IllustratedEmptyState src={viewer === "student" && !activeThreadId && !directory.isError ? "/illustrations/guidance-messages-3d.webp" : undefined}
         action={
           canStart ? (
             <GuardedPortalLink href="/portal/messages/new" className={buttonVariants({ variant: "secondary" })}>
