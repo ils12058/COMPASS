@@ -23,7 +23,6 @@ export function StudentBookingPathways({ illustration }: { illustration?: string
             { heading: "After booking", content: <p>Find individual Appointments in My Appointments and group activities in My registrations. If a result cannot be confirmed, check your records before trying again.</p> },
           ]} />
         </div>
-        <p className="mt-1 text-sm text-muted">Choose how you would like to meet. Times and registration depend on the schedules and events open to you.</p>
         <nav aria-label="Booking and registrations" className="mt-1 flex flex-wrap items-center gap-x-5">
           <a href="#booking-service-heading" className={pathwayLink}>Find an Appointment</a>
           {fixed ? <Link href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" className={pathwayLink}>View scheduled slots</Link> : <p className="py-2 text-sm text-muted">You don&apos;t have access to scheduled slots.</p>}

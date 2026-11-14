@@ -59,10 +59,10 @@ function fixture({ lifecycle, f4Status }) {
 {
   const f = fixture({ lifecycle: 'CURRENT', f4Status: 'POSTGRADUATE_PROGRAM' });
   await check('current Student re-enrolled in local postgraduate Program retains F6 request access', requestPath, f.options, async page => {
-    const f4 = page.getByRole('button', { name: 'Good Moral Certificate for current Students', exact: true });
-    assert.equal(await f4.isDisabled(), true);
-    await page.getByRole('button', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).click();
+    // Postgraduate study rules out the current Student certificate: the graduate form opens directly.
     await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Good Moral Certificate for current Students', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: /current Student certificate|completed UCN Bachelor/ }).count(), 0);
     assert.equal(await page.locator("main h1").count(), 1);
     assert.equal(await page.getByRole("link", { name: "Back to Good Moral", exact: true }).count(), 1);
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems');
@@ -83,6 +83,31 @@ function fixture({ lifecycle, f4Status }) {
     await page.getByLabel('Graduation date').fill('2020-06-30');
     await screenshot(page, 'student-former-external-postgraduate-f6-request');
     assert.equal(f.state.posts.length, 0);
+  });
+}
+
+{
+  const f = fixture({ lifecycle: 'CURRENT', f4Status: 'ELIGIBLE' });
+  await check('eligible current Student sees the current form directly and can switch to the graduate form', requestPath, f.options, async page => {
+    await page.getByRole('heading', { name: 'Good Moral Certificate for current Students', exact: true }).waitFor();
+    assert.equal(await page.getByText('Certificate type', { exact: true }).count(), 0, 'No certificate-type step');
+    await page.getByRole('button', { name: "I need it for a completed UCN Bachelor's degree", exact: true }).click();
+    await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Good Moral Certificate for current Students', exact: true }).count(), 0);
+    await page.getByRole('button', { name: 'Request the current Student certificate instead', exact: true }).click();
+    await page.getByRole('heading', { name: 'Good Moral Certificate for current Students', exact: true }).waitFor();
+    await screenshot(page, 'student-current-eligible-direct-form');
+  });
+}
+
+{
+  const f = fixture({ lifecycle: 'CURRENT', f4Status: 'INVENTORY_REQUIRED' });
+  await check('current Student without Inventory sees the reason and no form until they choose the graduate certificate', requestPath, f.options, async page => {
+    await page.getByText(/Submit this year's Individual Inventory/).waitFor();
+    assert.equal(await page.locator('main form').count(), 0);
+    await page.getByRole('button', { name: "I need it for a completed UCN Bachelor's degree", exact: true }).click();
+    await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Request the current Student certificate instead', exact: true }).count(), 0, 'No switch back to an unavailable certificate');
   });
 }
 

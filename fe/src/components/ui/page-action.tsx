@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ComponentType, type HTMLAttributes } from "react";
 
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
 
 // A page's major commands use a compact icon and visible label in one touch-friendly control. Reserve it
@@ -21,6 +22,10 @@ type PageActionContent = {
   labelDetail?: string;
   variant?: PageActionVariant;
 };
+
+// `compact` is reserved for the optional task Guide (the page-header contract enforces it): the label
+// becomes a tooltip on fine pointers and stays visible for touch, where hover does not exist.
+type CompactOption = { compact?: boolean };
 
 const root =
   "group inline-flex min-h-11 min-w-11 max-w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body motion-reduce:transition-none";
@@ -43,7 +48,8 @@ function PageActionFace({
   label,
   labelDetail,
   variant = "primary",
-}: PageActionContent) {
+  compact = false,
+}: PageActionContent & CompactOption) {
   return (
     <>
       <span
@@ -55,7 +61,7 @@ function PageActionFace({
       >
         <Icon size={18} />
       </span>
-      <span data-page-action-label="" className="[overflow-wrap:anywhere] text-sm font-semibold leading-5">
+      <span data-page-action-label="" className={cn("[overflow-wrap:anywhere] text-sm font-semibold leading-5", compact && "sr-only [@media(pointer:coarse)]:not-sr-only")}>
         {label}
         {labelDetail ? <span className="sr-only"> {labelDetail}</span> : null}
       </span>
@@ -79,9 +85,9 @@ export function PageActionLink({
 
 export const PageAction = forwardRef<
   HTMLButtonElement,
-  PageActionContent & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">
->(({ icon, label, labelDetail, variant, className, type = "button", disabled, ...props }, ref) => (
-  <button
+  PageActionContent & CompactOption & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">
+>(({ icon, label, labelDetail, variant, compact = false, className, type = "button", disabled, ...props }, ref) => {
+  const button = <button
     ref={ref}
     type={type}
     disabled={disabled}
@@ -93,9 +99,11 @@ export const PageAction = forwardRef<
       label={label}
       labelDetail={labelDetail}
       variant={variant}
+      compact={compact}
     />
-  </button>
-));
+  </button>;
+  return compact ? <Tooltip label={`${label}${labelDetail ?? ""}`}>{button}</Tooltip> : button;
+});
 PageAction.displayName = "PageAction";
 
 // Holds a page's one to three commands; they wrap rather than scroll on narrow screens. A detail

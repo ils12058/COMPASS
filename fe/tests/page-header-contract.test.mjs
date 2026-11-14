@@ -51,6 +51,7 @@ for (const [name, source, expected] of [
   ["icon-only primitive", "import {IconAction} from '../components/ui/icon-action'; function Page(){return <Header title='Records' actions={<IconAction label='Download'/>}/>;}", /noncanonical button/],
   ["disguised dialog", "function Dialog(){return <button>Download</button>;} function Page(){return <Header title='Records' actions={<Dialog/>}/>;}", /noncanonical button/],
   ["hidden label", "function Page(){return <Header title='Records' actions={<Command icon={Icon} label='Edit' className='sm:sr-only'/>}/>;}", /cannot be hidden/],
+  ["compact command outside the task Guide", "function Page(){return <Header title='Records' actions={<Command compact icon={Icon} label='Edit'/>}/>;}", /reserved for the task Guide/],
   ["arbitrary forwarding wrapper", "function Frame({commands}){return <Header title='Records' actions={commands}/>;} function Page(){return <Frame commands={<button>Edit</button>}/>;}", /noncanonical button/],
   ["conditional action component", "function Download(){return busy ? null : <button aria-label='Download'>↓</button>;} function Page(){return <Header title='Records' actions={<Download/>}/>;}", /noncanonical button/],
   ["back in actions", "function Page(){return <Header title='Records' actions={<a href='/records'>Back to Records</a>}/>;}", /noncanonical a/],

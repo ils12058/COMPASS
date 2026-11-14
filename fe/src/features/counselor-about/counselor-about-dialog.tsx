@@ -3,12 +3,12 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { IconAction } from "@/components/ui/icon-action";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import {
   ABOUT_ASSIGNMENTS_HEADING,
   ABOUT_EMPTY_COPY,
-  ABOUT_SCOPE_NOTE,
   aboutCampusRows,
   aboutError,
 } from "@/features/counselor-about/counselor-about-presentation";
@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils/cn";
 
 /**
  * Opens the shared Counselor About summary. It only shows information: it never selects the
- * Counselor, books, or changes the form it sits in (ABOUT-02), so it is always a plain button.
+ * Counselor, books, or changes the form it sits in (ABOUT-02), so it is always a plain button: an
+ * Info icon named "About <Counselor>", with the short label shown for touch.
  */
 export function CounselorAboutButton({
   counselorId,
@@ -34,9 +35,7 @@ export function CounselorAboutButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant={variant} className={cn("shrink-0 px-3", className)} data-counselor-about={counselorId}>
-          About<span className="sr-only"> {counselorName}</span>
-        </Button>
+        <IconAction type="button" action="info" label={`About ${counselorName}`} touchLabel="About" variant={variant} className={cn("shrink-0", className)} data-counselor-about={counselorId} />
       </DialogTrigger>
       {open ? <CounselorAboutContent counselorId={counselorId} counselorName={counselorName} /> : null}
     </Dialog>
@@ -99,7 +98,6 @@ function CounselorAboutContent({ counselorId, counselorName }: { counselorId: st
             ))}
           </div>
         )}
-        {about ? <p className="mt-4 text-xs text-muted">{ABOUT_SCOPE_NOTE}</p> : null}
       </section>
     </DialogContent>
   );

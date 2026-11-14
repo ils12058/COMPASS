@@ -47,7 +47,7 @@ function OperationsSummary({ user }: { user: UserSummary }) {
   const metrics = data ? presentOperations(data, user) : null;
   const empty = metrics && metrics.backlog.length > 0 && metrics.backlog.every((metric) => metric.count === 0);
   return <section aria-labelledby="guidance-operations-heading" className={`${pageSheetWidth} min-w-0`}>
-    <PageHeader title="Guidance operations" headingId="guidance-operations-heading" description="View the work you can act on and the current schedule." />
+    <PageHeader title="Guidance operations" headingId="guidance-operations-heading" />
     {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
     {query.isPending || !data ? <Panel>
       {query.isPending ? <PanelMessage role="status">Loading Guidance operations…</PanelMessage> : null}

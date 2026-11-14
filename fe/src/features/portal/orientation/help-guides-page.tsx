@@ -31,6 +31,6 @@ export function HelpGuidesPage() {
         </ul>
       </PanelSection>)}
     </Panel>
-    <p className="mt-4 text-sm leading-6 text-muted">Guides are optional and explain the controls available on each page. Completion is saved only in this browser. It does not sync across accounts or devices.</p>
+    <p className="mt-4 text-sm leading-6 text-muted">Completion is saved only in this browser.</p>
   </section>;
 }

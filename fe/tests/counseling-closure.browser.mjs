@@ -257,8 +257,13 @@ await check("keyboard-close-review-input-confirmation-and-focus", closePath, { h
   // Type-ahead changes a closed native select in every engine; arrow keys open the macOS popup instead.
   await page.keyboard.type("Contact");
   assert.equal(await page.getByLabel("Closure reason", { exact: true }).inputValue(), "CONTACT_NOT_REESTABLISHED");
-  await tabTo(page.getByLabel("Confidential closure note (required)", { exact: true }));
-  await page.keyboard.type(closureNote);
+  const note = page.getByLabel("Confidential closure note (required)", { exact: true });
+  await tabTo(note);
+  // Linux WebKit in CI dropped every key after the first word of a per-key type() (the field held
+  // only "Synthetic", so Review stayed blocked). This check is about reaching, confirming and
+  // returning focus by keyboard; insertText still enters the note through the focused field.
+  await page.keyboard.insertText(closureNote);
+  assert.equal(await note.inputValue(), closureNote, "The keyboard-entered note is complete");
   await tabTo(page.getByRole("button", { name: "Review closure", exact: true }));
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("alertdialog", { name: "3. Close this case?", exact: true });
