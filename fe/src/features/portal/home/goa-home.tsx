@@ -242,7 +242,7 @@ function OfficeDestinations({ user }: { user: UserSummary }) {
   const destinations = getGoaHomeDestinations(user);
   if (destinations.length === 0) return null;
   return <HomeShortcuts title="Continue in your workspaces" titleId="goa-destinations-heading" destinations={destinations}
-    illustration={destinations.some(item => item.href === "/portal/appointments") ? "/illustrations/appointment-calendar-3d.png" : undefined} />;
+    illustration={destinations.some(item => item.href === "/portal/appointments") ? "/illustrations/appointment-calendar-3d.webp" : undefined} />;
 }
 
 export function GoaHome({ user, attention, now }: { user: UserSummary; attention: OverviewAttentionData; now: Date }) {

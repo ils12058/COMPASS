@@ -352,7 +352,7 @@ function BookingWorkspace() {
         title="Book Appointment"
       />
 
-      <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.png" : undefined} />
+      <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.webp" : undefined} />
 
 
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with

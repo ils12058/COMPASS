@@ -23,7 +23,7 @@ const hiddenLayer = "opacity-0 duration-300";
 
 type Playback = "auto" | "playing" | "paused";
 
-export function HeroCopy() {
+export function HeroCopy({ onPhaseChange }: { onPhaseChange?: (showQuote: boolean) => void } = {}) {
   // Covers both the operating-system setting and the COMPASS "Reduce motion" setting.
   const prefersReducedMotion = useReducedMotion();
   const pageVisible = useSyncExternalStore(
@@ -44,6 +44,11 @@ export function HeroCopy() {
     playback === "playing" || (playback === "auto" && !prefersReducedMotion);
   // Reading (hover) or working inside the hero (keyboard focus) holds the current headline.
   const rotating = pageVisible && wantsRotation && !hoverHold && !focusHold;
+
+  // The hero backdrop follows the same phase, so this one rotation (and its controls) drives both.
+  useEffect(() => {
+    onPhaseChange?.(showQuote);
+  }, [onPhaseChange, showQuote]);
 
   useEffect(() => {
     if (!rotating) return;

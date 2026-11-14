@@ -111,7 +111,7 @@ for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
   }
 }
 
-await check("all-fourteen-production-PNGs-decode", "/", { overrides }, async (page, { context }) => {
+await check("all-fourteen-production-WebP-illustrations-decode", "/", { overrides }, async (page, { context }) => {
   const assets = [
     "gco-character-point-right", "gco-character-point-up", "gco-character-wave", "gco-characters",
     "appointment-calendar-3d", "guidance-messages-3d", "individual-inventory-3d",
@@ -119,12 +119,12 @@ await check("all-fourteen-production-PNGs-decode", "/", { overrides }, async (pa
     "exit-interview-3d", "graduate-tracer-3d", "announcements-3d",
   ];
   for (const name of assets) {
-    const response = await context.request.get(new URL(`/illustrations/${name}.png`, page.url()).href);
+    const response = await context.request.get(new URL(`/illustrations/${name}.webp`, page.url()).href);
     assert.equal(response.status(), 200, `${name} has a working production path`);
   }
   const decoded = await page.evaluate(async (names) => Promise.all(names.map(async (name) => {
     const image = new Image();
-    image.src = `/illustrations/${name}.png`;
+    image.src = `/illustrations/${name}.webp`;
     await image.decode();
     return { name, width: image.naturalWidth, height: image.naturalHeight };
   })), assets);

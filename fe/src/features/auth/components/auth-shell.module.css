@@ -5,7 +5,7 @@
   width: min(72vw, 72rem);
   height: min(85vh, 52rem);
   pointer-events: none;
-  background-image: url("/brand/campus-bg.jpg");
+  background-image: url("/brand/sign-in-backdrop.webp");
   background-position: center 68%;
   background-repeat: no-repeat;
   background-size: cover;

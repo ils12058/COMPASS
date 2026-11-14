@@ -14,7 +14,7 @@ export function StudentHome({ user, attention, summary }: {
     <StudentHomeAttention data={attention} />
     <div className="grid min-w-0 items-start gap-5 @min-[52rem]:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <HomeShortcuts title="Guidance Services" titleId="student-home-services-heading" destinations={destinations}
-        illustration={destinations.some(item => item.href === "/portal/appointments/my") ? "/illustrations/appointment-calendar-3d.png" : undefined} />
+        illustration={destinations.some(item => item.href === "/portal/appointments/my") ? "/illustrations/appointment-calendar-3d.webp" : undefined} />
       {summary}
     </div>
     <OverviewAnnouncements />

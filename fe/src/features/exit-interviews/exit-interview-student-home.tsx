@@ -89,7 +89,7 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
             </Link>
           </div>
         ) : state?.opportunity?.status === "OPEN" && access.canManageSelf ? (
-          <IllustratedEmptyState src={canStart && !startError && !start.isPending ? "/illustrations/exit-interview-3d.png" : undefined} action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
+          <IllustratedEmptyState src={canStart && !startError && !start.isPending ? "/illustrations/exit-interview-3d.webp" : undefined} action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
             The Guidance Office has opened an Exit Interview for you.
             {state.opportunity.source === "GRADUATION" ? " Submit it before requesting your Good Moral Certificate for UCN Bachelor's graduates." : null}
             {!state.inventory_submitted ? " Submit your current Individual Inventory before starting." : null}
