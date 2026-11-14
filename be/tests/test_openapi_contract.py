@@ -268,6 +268,8 @@ EXPECTED_OPERATION_IDS = {
     "studentAcademicsRecordPeriod",
     "studentAcademicsRecordGraduation",
     "studentAcademicsImportRosterCsv",
+    "studentAcademicsImportPeriodsCsv",
+    "studentAcademicsImportGraduationsCsv",
     "organizationListEligiblePeople",
     "servicesList",
     "servicesCreate",

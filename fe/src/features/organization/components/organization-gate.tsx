@@ -59,7 +59,7 @@ export function StudentAcademicRosterImportGate({ children }: { children: ReactN
   const { user } = usePortalSession();
   return canImportStudentAcademics(user) ? children : (
     <WorkspaceUnavailable title="Access restricted">
-      You don’t have access to import academic rosters.
+      You don’t have access to import Student academic records.
     </WorkspaceUnavailable>
   );
 }

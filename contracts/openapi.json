@@ -23999,6 +23999,188 @@
         "title": "GraduateTracerTrainingPayload",
         "type": "object"
       },
+      "GraduationImportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "conflict_count": {
+            "title": "Conflict Count",
+            "type": "integer"
+          },
+          "graduate_count": {
+            "title": "Graduate Count",
+            "type": "integer"
+          },
+          "invalid_count": {
+            "title": "Invalid Count",
+            "type": "integer"
+          },
+          "noop_count": {
+            "title": "Noop Count",
+            "type": "integer"
+          },
+          "placement_cleared_count": {
+            "title": "Placement Cleared Count",
+            "type": "integer"
+          },
+          "preview_fingerprint": {
+            "title": "Preview Fingerprint",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GraduationImportRowResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "update_count": {
+            "title": "Update Count",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "write_count": {
+            "title": "Write Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "valid",
+          "committed",
+          "total_rows",
+          "graduate_count",
+          "update_count",
+          "noop_count",
+          "conflict_count",
+          "invalid_count",
+          "write_count",
+          "placement_cleared_count",
+          "preview_fingerprint",
+          "rows"
+        ],
+        "title": "GraduationImportResponse",
+        "type": "object"
+      },
+      "GraduationImportRowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "campus_code": {
+            "title": "Campus Code",
+            "type": "string"
+          },
+          "college_code": {
+            "title": "College Code",
+            "type": "string"
+          },
+          "current_placement_college_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Placement College Code"
+          },
+          "graduation_date": {
+            "title": "Graduation Date",
+            "type": "string"
+          },
+          "institutional_id": {
+            "title": "Institutional Id",
+            "type": "string"
+          },
+          "lifecycle_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifecycle Status"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "previous_college_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous College Code"
+          },
+          "previous_graduation_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Graduation Date"
+          },
+          "row_number": {
+            "title": "Row Number",
+            "type": "integer"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_number",
+          "institutional_id",
+          "student_id",
+          "student_name",
+          "campus_code",
+          "college_code",
+          "graduation_date",
+          "lifecycle_status",
+          "current_placement_college_code",
+          "previous_college_code",
+          "previous_graduation_date",
+          "action",
+          "message"
+        ],
+        "title": "GraduationImportRowResponse",
+        "type": "object"
+      },
       "GraduationRecordRequest": {
         "additionalProperties": false,
         "properties": {
@@ -30440,6 +30622,178 @@
           "changed"
         ],
         "title": "PasswordChangeResponse",
+        "type": "object"
+      },
+      "PeriodImportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "conflict_count": {
+            "title": "Conflict Count",
+            "type": "integer"
+          },
+          "create_count": {
+            "title": "Create Count",
+            "type": "integer"
+          },
+          "invalid_count": {
+            "title": "Invalid Count",
+            "type": "integer"
+          },
+          "noop_count": {
+            "title": "Noop Count",
+            "type": "integer"
+          },
+          "preview_fingerprint": {
+            "title": "Preview Fingerprint",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodImportRowResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "update_count": {
+            "title": "Update Count",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "committed",
+          "total_rows",
+          "create_count",
+          "update_count",
+          "noop_count",
+          "conflict_count",
+          "invalid_count",
+          "preview_fingerprint",
+          "rows"
+        ],
+        "title": "PeriodImportResponse",
+        "type": "object"
+      },
+      "PeriodImportRowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "campus_code": {
+            "title": "Campus Code",
+            "type": "string"
+          },
+          "college_code": {
+            "title": "College Code",
+            "type": "string"
+          },
+          "current_college_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current College Code"
+          },
+          "current_enrollment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Enrollment Status"
+          },
+          "current_year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Year Level"
+          },
+          "enrollment_status": {
+            "title": "Enrollment Status",
+            "type": "string"
+          },
+          "institutional_id": {
+            "title": "Institutional Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "row_number": {
+            "title": "Row Number",
+            "type": "integer"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "row_number",
+          "institutional_id",
+          "student_id",
+          "student_name",
+          "campus_code",
+          "college_code",
+          "year_level",
+          "enrollment_status",
+          "current_college_code",
+          "current_year_level",
+          "current_enrollment_status",
+          "action",
+          "message"
+        ],
+        "title": "PeriodImportRowResponse",
         "type": "object"
       },
       "PersonListResponse": {
@@ -85219,6 +85573,267 @@
           }
         ],
         "summary": "Validate or commit an approved Student academic roster CSV",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
+    "/api/v1/student-academics/imports/graduations/csv": {
+      "post": {
+        "operationId": "studentAcademicsImportGraduationsCsv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "confirmed_count": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Confirmed Count"
+                  },
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  },
+                  "preview_fingerprint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Preview Fingerprint"
+                  },
+                  "verification_source": {
+                    "title": "Verification Source",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "verification_source"
+                ],
+                "title": "MultiPartBodyParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduationImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Validate or commit a CSV of graduation records",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
+    "/api/v1/student-academics/imports/periods/csv": {
+      "post": {
+        "operationId": "studentAcademicsImportPeriodsCsv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "academic_year_id": {
+                    "format": "uuid",
+                    "title": "Academic Year Id",
+                    "type": "string"
+                  },
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  },
+                  "preview_fingerprint": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Preview Fingerprint"
+                  },
+                  "term": {
+                    "enum": [
+                      "FIRST_SEMESTER",
+                      "SECOND_SEMESTER"
+                    ],
+                    "title": "AcademicTerm",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "academic_year_id",
+                  "term"
+                ],
+                "title": "MultiPartBodyParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Validate or commit a CSV of term records for one academic year and term",
         "tags": [
           "student-academics"
         ]

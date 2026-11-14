@@ -92,6 +92,8 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
   deep("/portal/organization", "/responsibilities", "Responsibilities", canManageOrganization(user), ["responsibility", "supervision", "staff assignment"]);
   deep("/portal/organization", "/student-academics", "Student Academic Records", canViewStudentAcademics(user), ["student placement", "student academic records", "college"]);
   deep("/portal/organization", "/student-academics/import", "Import academic roster", canImportStudentAcademics(user), ["student roster", "import placement", "csv"]);
+  deep("/portal/organization", "/student-academics/import/terms", "Import term records", canImportStudentAcademics(user), ["year level", "enrollment", "semester", "csv"]);
+  deep("/portal/organization", "/student-academics/import/graduations", "Import graduations", canImportStudentAcademics(user), ["graduates", "graduation", "registrar", "csv"]);
   deep("/portal/accounts", "/new", "Create account"); // Accounts layout requires accounts.manage.
   deep("/portal/accounts", "/import", "Import accounts");
   const privacyView = canViewPrivacyNotices(user);

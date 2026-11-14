@@ -14,6 +14,7 @@ import {
   RosterImportFeedback,
   useRosterImportAction,
 } from "@/features/student-academics/roster-import/roster-import-action";
+import { AcademicImportTabs } from "@/features/student-academics/roster-import/batch-import-parts";
 import { RosterCollegeReferences } from "@/features/student-academics/roster-import/roster-college-references";
 import {
   rosterCommitReady,
@@ -107,6 +108,7 @@ export function RosterImportPage() {
 
   return (
     <section aria-labelledby="roster-import-heading">
+      <AcademicImportTabs />
       <PageHeader
         title="Import academic roster"
         headingId="roster-import-heading"

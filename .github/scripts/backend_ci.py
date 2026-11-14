@@ -130,6 +130,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         (
             "test_student_academic_records.py",
             "test_student_academic_reads.py",
+            "test_student_academic_batch_import.py",
             "test_student_academic_roster_import.py",
         ),
     ),

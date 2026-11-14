@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import File, Router
+from ninja import File, Form, Router
 from ninja.files import UploadedFile
 
 from compass.accounts.models import StudentLifecycleStatus
@@ -23,6 +23,13 @@ from compass.organization.api import (
     _context,
     _person,
     _require,
+)
+from compass.student_academics.batch_import import (
+    BatchImportConfirmationMismatch,
+    BatchImportPreviewRequired,
+    BatchImportStale,
+    import_student_academic_periods,
+    import_student_graduations,
 )
 from compass.student_academics.models import AcademicTerm, EnrollmentStatus
 from compass.student_academics.roster_import import (
@@ -133,6 +140,66 @@ class RosterImportResponse(StrictSchema):
     conflict_count: int
     invalid_count: int
     rows: list[RosterImportRowResponse]
+
+
+class PeriodImportRowResponse(StrictSchema):
+    row_number: int
+    institutional_id: str
+    student_id: UUID | None
+    student_name: str
+    campus_code: str
+    college_code: str
+    year_level: int | None
+    enrollment_status: str
+    current_college_code: str | None
+    current_year_level: int | None
+    current_enrollment_status: str | None
+    action: str
+    message: str
+
+
+class PeriodImportResponse(StrictSchema):
+    valid: bool
+    committed: bool
+    total_rows: int
+    create_count: int
+    update_count: int
+    noop_count: int
+    conflict_count: int
+    invalid_count: int
+    preview_fingerprint: str
+    rows: list[PeriodImportRowResponse]
+
+
+class GraduationImportRowResponse(StrictSchema):
+    row_number: int
+    institutional_id: str
+    student_id: UUID | None
+    student_name: str
+    campus_code: str
+    college_code: str
+    graduation_date: str
+    lifecycle_status: str | None
+    current_placement_college_code: str | None
+    previous_college_code: str | None
+    previous_graduation_date: str | None
+    action: str
+    message: str
+
+
+class GraduationImportResponse(StrictSchema):
+    valid: bool
+    committed: bool
+    total_rows: int
+    graduate_count: int
+    update_count: int
+    noop_count: int
+    conflict_count: int
+    invalid_count: int
+    write_count: int
+    placement_cleared_count: int
+    preview_fingerprint: str
+    rows: list[GraduationImportRowResponse]
 
 
 def _raise(exc: StudentAcademicError) -> NoReturn:
@@ -439,3 +506,117 @@ def roster_csv_import(
             ],
         ) from exc
     return _roster_report_payload(report)
+
+
+def _batch_report(report) -> dict[str, object]:
+    payload = {
+        name: getattr(report, name) for name in report.__dataclass_fields__ if name != "rows"
+    }
+    payload["rows"] = [
+        {name: getattr(row, name) for name in row.__dataclass_fields__} for row in report.rows
+    ]
+    return payload
+
+
+def _run_batch_import(run):
+    """Map the shared CSV import failures onto the roster import's stable error codes."""
+
+    try:
+        return _batch_report(run())
+    except StudentAcademicError as exc:
+        _raise(exc)
+    except RosterImportTooLarge as exc:
+        raise APIError(422, "csv_import_too_large", str(exc)) from exc
+    except RosterImportUnsupportedHeaders as exc:
+        raise APIError(422, "csv_import_unsupported_headers", str(exc)) from exc
+    except RosterImportMalformed as exc:
+        raise APIError(422, "csv_import_malformed", str(exc)) from exc
+    except RosterImportDuplicateIdentity as exc:
+        raise APIError(
+            422,
+            "csv_import_duplicate_identity",
+            str(exc),
+            details=_roster_issue_details(exc.issues),
+        ) from exc
+    except RosterImportInvalidRows as exc:
+        raise APIError(
+            422, "csv_import_invalid_rows", str(exc), details=_roster_issue_details(exc.issues)
+        ) from exc
+    except BatchImportPreviewRequired as exc:
+        raise APIError(422, "csv_import_preview_required", str(exc)) from exc
+    except BatchImportConfirmationMismatch as exc:
+        raise APIError(422, "csv_import_confirmation_mismatch", str(exc)) from exc
+    except BatchImportStale as exc:
+        raise APIError(409, "csv_import_stale", str(exc)) from exc
+    except RosterImportConflict as exc:
+        raise APIError(
+            409,
+            "csv_import_conflict",
+            str(exc),
+            details=[
+                {
+                    "row_number": row.row_number,
+                    "institutional_id": row.institutional_id,
+                    "message": row.message,
+                }
+                for row in exc.rows
+            ],
+        ) from exc
+
+
+@router.post(
+    "/imports/periods/csv",
+    response=response_with_errors(PeriodImportResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="studentAcademicsImportPeriodsCsv",
+    summary="Validate or commit a CSV of term records for one academic year and term",
+)
+def periods_csv_import(
+    request,
+    file: File[UploadedFile],
+    academic_year_id: Form[UUID],
+    term: Form[AcademicTerm],
+    preview_fingerprint: Form[str | None] = None,
+    dry_run: bool = True,
+):
+    _require(request, "student_academics.import", recent_mfa=True)
+    data = file.read(MAX_CSV_BYTES + 1)
+    return _run_batch_import(
+        lambda: import_student_academic_periods(
+            context=_context(request),
+            data=data,
+            academic_year_id=academic_year_id,
+            term=term,
+            dry_run=dry_run,
+            preview_fingerprint=preview_fingerprint,
+        )
+    )
+
+
+@router.post(
+    "/imports/graduations/csv",
+    response=response_with_errors(GraduationImportResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="studentAcademicsImportGraduationsCsv",
+    summary="Validate or commit a CSV of graduation records",
+)
+def graduations_csv_import(
+    request,
+    file: File[UploadedFile],
+    verification_source: Form[str],
+    preview_fingerprint: Form[str | None] = None,
+    confirmed_count: Form[int | None] = None,
+    dry_run: bool = True,
+):
+    _require(request, "student_academics.import", recent_mfa=True)
+    data = file.read(MAX_CSV_BYTES + 1)
+    return _run_batch_import(
+        lambda: import_student_graduations(
+            context=_context(request),
+            data=data,
+            verification_source=verification_source,
+            dry_run=dry_run,
+            preview_fingerprint=preview_fingerprint,
+            confirmed_count=confirmed_count,
+        )
+    )
