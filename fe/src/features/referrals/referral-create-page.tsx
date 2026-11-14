@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
@@ -10,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { Textarea } from "@/components/ui/textarea";
+import { TimingEditor } from "@/features/referral-timing/timing-editor";
+import { emptyTimingDraft, focusTimingError, timingBackendErrors, timingDraftDirty, timingStatementRequest, validateTimingDraft, type TimingFieldErrors } from "@/features/referral-timing/timing-draft";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
   ReferralAccessUnavailable,
@@ -30,7 +33,7 @@ import {
   isFutureInstitutionalDateTimeInput,
 } from "@/lib/institutional-time";
 
-type CreationIntent = { fingerprint: string; key: string };
+type CreationIntent = { fingerprint: string; key: string; payload: ReferralCreateRequest };
 
 export function ReferralCreatePage() {
   const router = useRouter();
@@ -46,9 +49,13 @@ export function ReferralCreatePage() {
   const [referrerName, setReferrerName] = useState("");
   const [referredOn, setReferredOn] = useState("");
   const [receivedAt, setReceivedAt] = useState("");
+  const [timing, setTiming] = useState(emptyTimingDraft);
+  const [timingErrors, setTimingErrors] = useState<TimingFieldErrors>({});
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const intent = useRef<CreationIntent | null>(null);
+  useUnsavedChangesGuard({ dirty: !saved && (timingDraftDirty(timing) || !!(student || courseYearBlock || reason || referrerName || referredOn || receivedAt)), message: "Discard your unsaved Referral? Its scheduling information is kept only on this page." });
 
   const eligibleStudents = useReferralsListEligibleStudents(
     {
@@ -59,9 +66,12 @@ export function ReferralCreatePage() {
     { query: { enabled: access.canManage, retry: false } },
   );
   const create = useMutation({
-    mutationFn: ({ payload, key }: { payload: ReferralCreateRequest; key: string }) =>
-      referralsCreate(payload, { headers: { "Idempotency-Key": key } }),
+    mutationFn: () => {
+      if (!intent.current) throw new Error("Missing intended Referral");
+      return referralsCreate(intent.current.payload, { headers: { "Idempotency-Key": intent.current.key } });
+    },
     retry: false,
+    gcTime: 0,
   });
 
   if (!access.canManage) {
@@ -79,6 +89,11 @@ export function ReferralCreatePage() {
     if (!referrerName.trim()) return setError("Referrer name is required.");
     if (!referredOn) return setError("Date referred is required.");
     if (isFutureInstitutionalDateInput(referredOn)) return setError("Date referred cannot be in the future.");
+    const invalidTiming = validateTimingDraft(timing);
+    setTimingErrors(invalidTiming);
+    if (Object.keys(invalidTiming).length) { focusTimingError("gco-timing", timing, invalidTiming); return; }
+    const statement = timingStatementRequest(timing);
+    if (!statement) return;
 
     let receivedAtIso: string | null = null;
     if (receivedAt) {
@@ -101,20 +116,24 @@ export function ReferralCreatePage() {
       referrer_name: referrerName.trim(),
       referred_on: referredOn,
       received_at: receivedAtIso,
+      scheduling_statement: statement,
     };
     const fingerprint = JSON.stringify(payload);
     const key = intent.current?.fingerprint === fingerprint
       ? intent.current.key
       : globalThis.crypto.randomUUID();
-    intent.current = { fingerprint, key };
+    intent.current = { fingerprint, key, payload };
 
     try {
-      const response = await create.mutateAsync({ payload, key });
+      const response = await create.mutateAsync();
       const referral = response.data;
       intent.current = null;
+      setSaved(true);
       await queryClient.invalidateQueries({ queryKey: getReferralsListQueryKey() });
       router.push(`/portal/referrals/${referral.id}`);
     } catch (caught) {
+      const invalidFields = timingBackendErrors(caught);
+      setTimingErrors(invalidFields); focusTimingError("gco-timing", timing, invalidFields);
       if (referralErrorCode(caught) === "idempotency_key_conflict") {
         intent.current = null;
         setError(referralErrorMessage(caught, "Couldn't create the Referral. Try again."));
@@ -123,7 +142,7 @@ export function ReferralCreatePage() {
       } else {
         setError(referralErrorMessage(caught, "Couldn't create the Referral. Try again."));
       }
-    }
+    } finally { create.reset(); }
   }
 
   const studentPageData = eligibleStudents.data?.data;
@@ -194,13 +213,16 @@ export function ReferralCreatePage() {
             </div>
           </PanelSection>
 
+          <PanelSection title="When can Guidance reach or meet the student?" titleId="gco-timing-heading">
+            <TimingEditor prefix="gco-timing" draft={timing} onChange={setTiming} errors={timingErrors} disabled={create.isPending} />
+          </PanelSection>
           <PanelFooter>
             {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
             {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
             <Button type="submit" disabled={create.isPending || eligibleStudents.isPending}>
               {create.isPending ? "Recording…" : "Record Referral"}
             </Button>
-            <Link href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
+            <GuardedPortalLink href="/portal/referrals" className={buttonVariants({ variant: "secondary" })}>Cancel</GuardedPortalLink>
           </PanelFooter>
         </Panel>
       </form>

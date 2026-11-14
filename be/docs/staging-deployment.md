@@ -194,6 +194,13 @@ files (Counseling, Good Moral, Group Sessions, Organization, Referrals and Servi
 `baseline-sha256.json` and `canonical_migrations.json` pin every file. `additive_migrations` is
 empty at release; later features explicitly register ordinary additions.
 
+A registered addition is listed in `canonical_migrations.json` (`additive_migrations`) and pinned by
+SHA-256 in `deploy/staging/additive-migrations.json`, which travels with the host tooling. Reset
+preflight classifies a database as `release` when it records the complete baseline plus any of the
+registered additions; any other extra migration is still unknown history. The first addition is
+`counseling/0003_counseling_cases` (CW-1): new tables only, declared entirely with `CreateModel`,
+so it follows the routine path below. Update the pinned hash whenever a registered file changes.
+
 The guard files reproduce the final catalog definitions, including unconditional Good Moral
 Official Receipt guards, Group Session and facilitator deletion protections, Fixed Slot booking
 history and deletion protections, immutable Referral provenance/administration, and Organization's

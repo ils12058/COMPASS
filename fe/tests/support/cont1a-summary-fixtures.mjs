@@ -26,6 +26,7 @@ export const encounter = (changes = {}) => ({
   service: { id: "cont1a-service", code: "COUNSELING", name: "Counseling" },
   appointment: { id: appointmentId, reference_code: "CONT-1A-APT" },
   entry_mode: "APPOINTMENT", delivery_mode: "IN_PERSON",
+  in_case: false, case: null,
   started_at: "2026-01-06T01:00:00Z", ended_at: "2026-01-06T01:45:00Z",
   created_at: "2026-01-06T02:00:00Z", updated_at: "2026-01-06T02:00:00Z", ...changes,
 });

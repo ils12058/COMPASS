@@ -19,6 +19,7 @@ from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 
 from . import policy, workspace
+from .content import decrypt_text
 from .errors import (
     FollowUpConflict,
     FollowUpContentUnavailable,
@@ -80,6 +81,9 @@ class FollowUpCreate(StrictSchema):
     source_id: UUID | None = None
     description: str | None = Field(default=None, max_length=4000)
     visibility: Visibility | None = None
+    title: str | None = Field(default=None, max_length=120)
+    case_id: UUID | None = None
+    predecessor_id: UUID | None = None
 
 
 class FollowUpUpdate(StrictSchema):
@@ -87,6 +91,7 @@ class FollowUpUpdate(StrictSchema):
     due_at: datetime | None = None
     category: Category | None = None
     description: str | None = Field(default=None, max_length=4000)
+    title: str | None = Field(default=None, max_length=120)
 
 
 class FollowUpReassign(StrictSchema):
@@ -125,10 +130,17 @@ class FollowUpQuery(StrictSchema):
     assigned_to_id: UUID | None = None
     source_kind: SourceKind | None = None
     source_id: UUID | None = None
+    case_id: UUID | None = None
     due_window: DueWindow | None = None
     ordering: FollowUpOrdering | None = None
     page: int = Field(default=1, ge=1, le=100)
     page_size: int = Field(default=20, ge=1, le=50)
+
+
+class FollowUpCaseReference(StrictSchema):
+    id: UUID
+    reference_code: str
+    status: str
 
 
 class FollowUpSummary(StrictSchema):
@@ -150,6 +162,10 @@ class FollowUpSummary(StrictSchema):
     version: int
     created_at: datetime
     updated_at: datetime
+    title: str | None
+    case: FollowUpCaseReference | None
+    post_closure_designated_at: datetime | None = None
+    post_closure_closure_id: UUID | None = None
 
 
 class SourceReference(StrictSchema):
@@ -169,6 +185,11 @@ class FollowUpHistoryEvent(StrictSchema):
     old_due_at: datetime | None
     new_due_at: datetime | None
     remarks: str | None
+    case_transfer_id: UUID | None = None
+    case_transfer_reference: str | None = None
+    case_coverage_id: UUID | None = None
+    case_coverage_reference: str | None = None
+    coverage_effective_at: datetime | None = None
 
 
 class FollowUpDetail(FollowUpSummary):
@@ -182,6 +203,9 @@ class FollowUpDetail(FollowUpSummary):
     source_unavailable: bool
     events: list[FollowUpHistoryEvent]
     events_has_next: bool
+    predecessor_id: UUID | None
+    can_create_next_action: bool
+    can_reassign: bool = True
 
 
 class FollowUpPage(StrictSchema):
@@ -225,19 +249,29 @@ def _raise(exc: FollowUpError) -> NoReturn:
     ) from exc
 
 
-def _summary(item, source_unavailable):
+def _summary(item, source_unavailable, *, actor=None):
+    from compass.counseling.case_coverage_tasks import task_read_guard
+
+    with task_read_guard(actor, item) as (actor, item):
+        return _summary_fields(item, source_unavailable, actor=actor)
+
+
+def _summary_fields(item, source_unavailable, *, actor=None):
     from django.utils import timezone
 
     student_photo = profile_photo_projection(item.student)
-    assignee_photo = profile_photo_projection(item.assigned_to)
+    from compass.counseling.case_coverage_tasks import effective_assignee
+
+    assignee = effective_assignee(item)
+    assignee_photo = profile_photo_projection(assignee)
     return {
         "id": item.pk,
         "student_id": item.student_id,
         "student_name": item.student.get_full_name(),
         "student_profile_photo_url": student_photo["profile_photo_url"],
         "student_profile_photo_updated_at": student_photo["profile_photo_updated_at"],
-        "assigned_to_id": item.assigned_to_id,
-        "assigned_to_name": item.assigned_to.get_full_name(),
+        "assigned_to_id": assignee.pk,
+        "assigned_to_name": assignee.get_full_name(),
         "assigned_to_profile_photo_url": assignee_photo["profile_photo_url"],
         "assigned_to_profile_photo_updated_at": assignee_photo["profile_photo_updated_at"],
         "category": item.category,
@@ -249,10 +283,18 @@ def _summary(item, source_unavailable):
         "version": item.version,
         "created_at": item.created_at,
         "updated_at": item.updated_at,
+        "title": (
+            decrypt_text(item.pk, "title", item.title_ciphertext)
+            if actor is not None and item.title_ciphertext
+            else None
+        ),
+        "case": policy.visible_case(actor, item) if actor is not None else None,
+        "post_closure_designated_at": item.post_closure_designated_at,
+        "post_closure_closure_id": item.post_closure_closure_id,
     }
 
 
-def _summaries(actor, items):
+def _summaries(actor, items, *, protected=True):
     visibility = {}
 
     def source_unavailable(item):
@@ -268,14 +310,28 @@ def _summaries(actor, items):
             )
         return not visibility[key]
 
-    return [_summary(item, source_unavailable(item)) for item in items]
+    return [
+        _summary(
+            item,
+            source_unavailable(item),
+            actor=actor if protected and policy.authorized(actor, item) else None,
+        )
+        for item in items
+    ]
 
 
 def _detail(actor, item):
+    from compass.counseling.case_coverage_tasks import task_read_guard
+
+    with task_read_guard(actor, item) as (actor, item):
+        return _detail_fields(actor, item)
+
+
+def _detail_fields(actor, item):
     extra = followup_detail(actor=actor, item=item)
     source_unavailable = bool(item.source_id is not None and extra["source"] is None)
     return {
-        **_summary(item, source_unavailable),
+        **_summary(item, source_unavailable, actor=actor),
         **extra,
         "completed_at": item.completed_at,
         "completed_by_name": item.completed_by.get_full_name() if item.completed_by else None,
@@ -308,6 +364,8 @@ def _detail_or_receipt(actor, item):
         "completed_by_name": None,
         "cancelled_at": None,
         "cancelled_by_name": None,
+        "predecessor_id": None,
+        "can_create_next_action": False,
     }
 
 
@@ -344,6 +402,7 @@ class SourceContext(StrictSchema):
     category: Category
     visibility: Visibility
     can_create: bool
+    case: FollowUpCaseReference | None
 
 
 class CategoryCount(StrictSchema):
@@ -378,7 +437,7 @@ def recoverable(request, page: int = 1, page_size: int = 20):
         result = list_recoverable(actor=request.auth_user, page=page, page_size=page_size)
         return {
             **result,
-            "items": _summaries(request.auth_user, result["items"]),
+            "items": _summaries(request.auth_user, result["items"], protected=False),
             "ordering": "EARLIEST_DUE",
         }
     except FollowUpError as exc:
@@ -430,11 +489,13 @@ def eligible_assignees(
     category: Category,
     source_kind: SourceKind | None = None,
     source_id: UUID | None = None,
+    case_id: UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ):
     _strict_query(
-        request, ["student_id", "category", "source_kind", "source_id", "page", "page_size"]
+        request,
+        ["student_id", "category", "source_kind", "source_id", "case_id", "page", "page_size"],
     )
     try:
         result = workspace.eligible_assignees(
@@ -443,6 +504,7 @@ def eligible_assignees(
             category=category,
             source_kind=source_kind,
             source_id=source_id,
+            case_id=case_id,
             page=page,
             page_size=page_size,
         )
@@ -549,6 +611,9 @@ def guidance_followups_create(
             source_kind=payload.source_kind.value if payload.source_kind else None,
             source_id=payload.source_id,
             description=payload.description,
+            title=payload.title,
+            case_id=payload.case_id,
+            predecessor_id=payload.predecessor_id,
             visibility=payload.visibility.value if payload.visibility else None,
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
@@ -595,6 +660,7 @@ def guidance_followups_update(
             due_at=payload.due_at,
             category=payload.category.value if payload.category else None,
             description=payload.description,
+            title=payload.title,
             context=_context(request),
             mutation_key=idempotency_key,
             mutation_fingerprint=request_fingerprint(

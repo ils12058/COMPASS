@@ -2,6 +2,7 @@
 
 import importlib
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -69,23 +70,46 @@ def test_backward_and_non_atomic_plans_are_refused():
             guard.validate_operations(plan(operation, **options))
 
 
-@pytest.mark.parametrize(
-    "path",
-    sorted((Path(__file__).parents[1] / "compass").glob("*/migrations/0*.py")),
-    ids=lambda path: f"{path.parent.parent.name}.{path.stem}",
-)
-def test_release_graph_is_refused_for_routine_deployment_even_with_a_digest_pin(path, monkeypatch):
+BACKEND = Path(__file__).parents[1]
+DEPLOY = BACKEND / "deploy/staging"
+RELEASE_FILES = sorted(json.loads((DEPLOY / "baseline-sha256.json").read_text()))
+ADDITIVE_FILES = sorted(json.loads((DEPLOY / "additive-migrations.json").read_text()))
+
+
+def load_migration(relative):
+    path = BACKEND / relative
     app_label = path.parent.parent.name
-    migration = importlib.import_module(f"compass.{app_label}.migrations.{path.stem}").Migration(
-        path.stem, app_label
+    module = importlib.import_module(f"compass.{app_label}.migrations.{path.stem}")
+    return path, module.Migration(path.stem, app_label)
+
+
+def test_every_migration_file_is_either_release_baseline_or_registered_addition():
+    on_disk = sorted(
+        str(path.relative_to(BACKEND)) for path in (BACKEND / "compass").glob("*/migrations/0*.py")
     )
+    assert not set(RELEASE_FILES) & set(ADDITIVE_FILES)
+    assert on_disk == sorted(RELEASE_FILES + ADDITIVE_FILES)
+
+
+@pytest.mark.parametrize("relative", RELEASE_FILES, ids=lambda name: Path(name).stem)
+def test_release_graph_is_refused_for_routine_deployment_even_with_a_digest_pin(
+    relative, monkeypatch
+):
+    path, migration = load_migration(relative)
     monkeypatch.setitem(
         guard.REVIEWED_MIGRATIONS,
-        f"{app_label}/{path.stem}",
+        f"{migration.app_label}/{path.stem}",
         guard.hashlib.sha256(path.read_bytes()).hexdigest(),
     )
     with pytest.raises(guard.Refused, match="Phase E staging reset"):
         guard.validate_operations([(migration, False)])
+
+
+@pytest.mark.parametrize("relative", ADDITIVE_FILES, ids=lambda name: Path(name).stem)
+def test_registered_additive_migrations_pass_routine_deployment_without_a_review_pin(relative):
+    _path, migration = load_migration(relative)
+    assert f"{migration.app_label}/{migration.name}" not in guard.REVIEWED_MIGRATIONS
+    guard.validate_operations([(migration, False)])
 
 
 def test_future_reviewed_migration_source_digest_must_match(monkeypatch):

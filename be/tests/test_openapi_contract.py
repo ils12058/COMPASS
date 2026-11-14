@@ -32,7 +32,12 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "valid_until",
         },
         "FacultyConfirmedStudent": {"display_name"},
-        "FacultyReferralSubmitRequest": {"confirmation", "course_year_block", "reason"},
+        "FacultyReferralSubmitRequest": {
+            "confirmation",
+            "course_year_block",
+            "reason",
+            "scheduling_statement",
+        },
         "FacultyReferralSubmissionResponse": {
             "id",
             "reference_code",
@@ -41,12 +46,25 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "student",
             "received_at",
             "closed_at",
+            "timing_status",
         },
+    }
+    optional = {
+        "FacultyReferralSubmitRequest": {"scheduling_statement"},
+        "FacultyReferralSubmissionResponse": {"timing_status"},
     }
     for name, fields in expected.items():
         assert schemas[name]["additionalProperties"] is False
         assert set(schemas[name]["properties"]) == fields
-        assert set(schemas[name]["required"]) == fields
+        assert set(schemas[name]["required"]) == fields - optional.get(name, set())
+    detail = schemas["FacultyReferralSubmissionDetailResponse"]
+    assert detail["additionalProperties"] is False
+    assert set(detail["properties"]) == expected["FacultyReferralSubmissionResponse"] | {
+        "scheduling_statement"
+    }
+    assert set(detail["required"]) == expected["FacultyReferralSubmissionResponse"] - {
+        "timing_status"
+    }
     assert schemas["FacultyReferralSubmissionState"]["enum"] == [
         "SUBMITTED",
         "RECEIVED_BY_GCO",
@@ -55,6 +73,8 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
 
 
 EXPECTED_OPERATION_IDS = {
+    "referralsGetTiming",
+    "referralsRecordTimingVerification",
     "referralsGetAdministration",
     "referralsAcknowledge",
     "referralsCloseAdministratively",
@@ -81,6 +101,7 @@ EXPECTED_OPERATION_IDS = {
     "organizationSetProgramActive",
     "organizationGetProgramImpact",
     "organizationGetProgramHistory",
+    "organizationGetCounselorAbout",
     "guidanceFollowupsList",
     "guidanceFollowupsCreate",
     "guidanceFollowupsGet",
@@ -321,6 +342,45 @@ EXPECTED_OPERATION_IDS = {
     "counselingListEncounterAppointmentCandidates",
     "counselingListMyEncounters",
     "counselingGetEncounter",
+    "counselingListMyCases",
+    "counselingGetCaseClosureContext",
+    "counselingCloseCase",
+    "counselingReopenCase",
+    "counselingDesignateCaseTaskAfterClosure",
+    "counselingOpenCase",
+    "counselingGetCaseOpeningContext",
+    "counselingGetCase",
+    "counselingListCaseSessionCandidates",
+    "counselingLinkCaseSession",
+    "counselingUnlinkCaseSession",
+    "counselingListCaseAppointmentCandidates",
+    "counselingLinkCaseAppointment",
+    "counselingUnlinkCaseAppointment",
+    "counselingListContinuityOfficeCases",
+    "counselingGetCaseTransferContext",
+    "counselingPrepareCaseTransfer",
+    "counselingGetCaseTransfer",
+    "counselingUpdateCaseTransfer",
+    "counselingSubmitCaseTransfer",
+    "counselingAuthorizeCaseTransfer",
+    "counselingAcceptCaseTransfer",
+    "counselingDeclineCaseTransfer",
+    "counselingCancelCaseTransfer",
+    "counselingSaveCaseHandoff",
+    "counselingSubmitCaseHandoff",
+    "counselingGetCaseHandoff",
+    "counselingAddCaseHandoffAddendum",
+    "counselingRecordCaseHandoffUnavailable",
+    "counselingGetCaseCoverageContext",
+    "counselingPrepareCaseCoverage",
+    "counselingGetCaseCoverage",
+    "counselingUpdateCaseCoverage",
+    "counselingSubmitCaseCoverage",
+    "counselingAuthorizeCaseCoverage",
+    "counselingAcceptCaseCoverage",
+    "counselingDeclineCaseCoverage",
+    "counselingCancelCaseCoverage",
+    "counselingRevokeCaseCoverage",
     "counselingUpdateEncounter",
     "counselingListStudents",
     "counselingGetAssignedStudentSessionSummary",
@@ -535,6 +595,41 @@ def _response_schema(schema: dict, operation: dict) -> str:
     return content["$ref"].rsplit("/", 1)[-1]
 
 
+def test_cw2_contract_preserves_optional_legacy_fields_and_exposes_authorized_case_facts():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for name in ("FollowUpCreate", "FollowUpUpdate"):
+        title = schemas[name]["properties"]["title"]
+        assert "title" not in schemas[name]["required"]
+        assert {"maxLength": 120, "type": "string"} in title["anyOf"]
+    for field in ("case_id", "predecessor_id"):
+        assert field in schemas["FollowUpCreate"]["properties"]
+        assert field not in schemas["FollowUpCreate"]["required"]
+    assert "title" in schemas["FollowUpSummary"]["properties"]
+    assert "case" in schemas["FollowUpSummary"]["properties"]
+    assert "predecessor_id" in schemas["FollowUpDetail"]["properties"]
+    detail = schemas["CounselingCaseDetailResponse"]["properties"]
+    assert {
+        "next_appointment",
+        "next_action",
+        "next_actions",
+        "appointments",
+        "unlinked_appointment_sessions",
+        "can_add_next_action",
+        "can_link_appointments",
+    } <= detail.keys()
+    assert schemas["CounselingCaseEventKind"]["enum"] == [
+        "OPENED",
+        "SESSION_LINKED",
+        "SESSION_UNLINKED",
+    ]
+    for name in ("FollowUpReport", "WorkItem"):
+        if name in schemas:
+            assert "title_ciphertext" not in schemas[name]["properties"]
+            assert "action_title" not in schemas[name]["properties"]
+    assert "title" not in schemas["FollowUpReport"]["properties"]
+
+
 # Every user-sortable collection and its closed ordering enum (ADR-090).
 SORTABLE_COLLECTIONS = {
     "assessmentRecordsList": "AssessmentRecordOrdering",
@@ -546,6 +641,7 @@ SORTABLE_COLLECTIONS = {
     "appointmentsListMy": "AppointmentListOrdering",
     "appointmentsListUpcomingReminders": "AppointmentListOrdering",
     "callSlipsList": "CallSlipOrdering",
+    "counselingListMyCases": "CounselingCaseOrdering",
     "counselingListMyEncounters": "CounselingEncounterOrdering",
     "exitInterviewsList": "ExitInterviewOrdering",
     "feedbackListCsmResponses": "FeedbackResponseOrdering",
@@ -3430,6 +3526,13 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
     assert set(schema["paths"]["/api/v1/work"]) == {"get"}
     schemas = schema["components"]["schemas"]
     assert schemas["WorkKind"]["enum"] == [
+        "CASE_COVERAGE_AUTHORIZATION",
+        "CASE_COVERAGE_ACCEPTANCE",
+        "CASE_COVERAGE_WORK",
+        "CASE_COVERAGE_RECOVERY",
+        "CASE_HANDOFF_EXCEPTION",
+        "CASE_TRANSFER_AUTHORIZATION",
+        "CASE_TRANSFER_ACCEPTANCE",
         "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
@@ -3448,6 +3551,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "conversation_kind",
         "due_at",
         "waiting_since",
+        "case_reference_code",
     }
     assert schemas["WorkStudent"]["additionalProperties"] is False
     assert set(schemas["WorkStudent"]["properties"]) == {"id", "display_name"}

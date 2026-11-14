@@ -393,6 +393,7 @@ def create_referral(
     request_fingerprint: str,
     context: AuditContext,
     now: datetime | None = None,
+    scheduling_statement: dict | None = None,
 ) -> Referral:
     _validate_operational_actor(actor)
     key = _validate_idempotency_key(idempotency_key)
@@ -461,6 +462,8 @@ def create_referral(
             fingerprint=fingerprint,
             context=context,
             channel=ReferralSubmissionChannel.GCO_RECORDED,
+            scheduling_statement=scheduling_statement,
+            timing_at=current,
         )
         return _detail_queryset().get(pk=item.pk)
 
@@ -482,6 +485,8 @@ def persist_referral(
     context,
     channel,
     faculty_origin=None,
+    scheduling_statement=None,
+    timing_at=None,
 ):
     """Canonical encrypted insert and synchronous Audit; caller owns authorization/transaction.
 
@@ -515,6 +520,15 @@ def persist_referral(
         target_type="referrals.referral",
         target_id=item.pk,
         metadata=_safe_form_metadata(item),
+    )
+    from .timing_services import create_statement
+
+    create_statement(
+        referral=item,
+        actor=actor,
+        statement=scheduling_statement,
+        context=context,
+        now=timing_at or timezone.now(),
     )
     return item
 

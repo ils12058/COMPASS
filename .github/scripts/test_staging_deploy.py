@@ -628,6 +628,32 @@ class ResetPreflightTests(unittest.TestCase):
             with self.subTest(rows=rows), self.assertRaises(reset_guard.host.Refused):
                 reset_guard.classify_database(baseline, self.database(rows))
 
+    def test_registered_additive_migrations_keep_a_database_in_the_release_class(self):
+        baseline = self.baseline()
+        release = reset_guard.expected_history(baseline)
+        additions = reset_guard.registered_additions()
+        self.assertTrue(additions)
+        self.assertFalse(additions & release)
+        for applied in (release | additions, release | set(list(additions)[:1])):
+            self.assertEqual(
+                reset_guard.classify_database(
+                    baseline, self.database(applied), additions
+                ),
+                "release",
+            )
+        for rows in (
+            # An unregistered migration is unknown history, with or without registered ones.
+            release | additions | {("accounts", "0002_unknown")},
+            # Registered additions never stand in for a missing baseline.
+            additions,
+            (release - {("accounts", "0001_release_baseline")}) | additions,
+        ):
+            with self.subTest(rows=rows), self.assertRaises(reset_guard.host.Refused):
+                reset_guard.classify_database(baseline, self.database(rows), additions)
+        # Without the registry the same history stays refused.
+        with self.assertRaises(reset_guard.host.Refused):
+            reset_guard.classify_database(baseline, self.database(release | additions))
+
     def test_resources_allow_removed_apps_but_never_wrong_storage(self):
         v, n, c, config = fixture()
         storage = [

@@ -134,6 +134,8 @@ test("a direct origin has no scheduled Appointment to compare against", () => {
 
 const savedEncounter = {
   id: "encounter-1",
+  in_case: false,
+  case: null,
   student: { id: "student-a", display_name: "Synthetic Student A" },
   counselor: { id: "counselor-1", display_name: "Synthetic Counselor" },
   service: { id: "service-1", code: "COUNSELING", name: "Counseling" },

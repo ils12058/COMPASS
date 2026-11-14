@@ -123,6 +123,8 @@ REFERRAL_STATUS_UPDATED = "referral.status_updated"
 REFERRAL_VOIDED = "referral.voided"
 REFERRAL_ACKNOWLEDGED = "referral.acknowledged"
 REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
+REFERRAL_TIMING_RECORDED = "referral.timing_recorded"
+REFERRAL_TIMING_VERIFIED = "referral.timing_verified"
 CALL_SLIP_CREATED = "call_slip.created"
 CALL_SLIP_VOIDED = "call_slip.voided"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
@@ -328,6 +330,8 @@ __all__ = [
     "REFERRAL_VOIDED",
     "REFERRAL_ACKNOWLEDGED",
     "REFERRAL_ADMINISTRATIVELY_CLOSED",
+    "REFERRAL_TIMING_RECORDED",
+    "REFERRAL_TIMING_VERIFIED",
     "CALL_SLIP_CREATED",
     "CALL_SLIP_VOIDED",
     "DOCUMENT_BRANDING_UPDATED",
@@ -403,5 +407,36 @@ HANDOFF_DRAFT_UPDATED = "counseling.handoff.draft_updated"
 HANDOFF_SUBMITTED = "counseling.handoff.submitted"
 HANDOFF_READ = "counseling.handoff.read"
 CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"
+
+# CW-1 counseling cases. Identifiers and closed codes only; never case or session content.
+COUNSELING_CASE_OPENED = "counseling.case.opened"
+COUNSELING_CASE_SESSION_LINKED = "counseling.case.session_linked"
+COUNSELING_CASE_SESSION_UNLINKED = "counseling.case.session_unlinked"
+COUNSELING_CASE_APPOINTMENT_LINKED = "counseling.case.appointment_linked"
+COUNSELING_CASE_APPOINTMENT_UNLINKED = "counseling.case.appointment_unlinked"
+COUNSELING_CASE_CLOSED = "counseling.case.closed"
+COUNSELING_CASE_REOPENED = "counseling.case.reopened"
+CASE_TRANSFER_PREPARED = "counseling.case_transfer.prepared"
+CASE_TRANSFER_UPDATED = "counseling.case_transfer.updated"
+CASE_TRANSFER_SUBMITTED = "counseling.case_transfer.submitted"
+CASE_TRANSFER_AUTHORIZED = "counseling.case_transfer.authorized"
+CASE_TRANSFER_ACCEPTED = "counseling.case_transfer.accepted"
+CASE_TRANSFER_DECLINED = "counseling.case_transfer.declined"
+CASE_TRANSFER_CANCELLED = "counseling.case_transfer.cancelled"
+CASE_COVERAGE_PREPARED = "counseling.case_coverage.prepared"
+CASE_COVERAGE_UPDATED = "counseling.case_coverage.updated"
+CASE_COVERAGE_SUBMITTED = "counseling.case_coverage.submitted"
+CASE_COVERAGE_AUTHORIZED = "counseling.case_coverage.authorized"
+CASE_COVERAGE_ACCEPTED = "counseling.case_coverage.accepted"
+CASE_COVERAGE_DECLINED = "counseling.case_coverage.declined"
+CASE_COVERAGE_CANCELLED = "counseling.case_coverage.cancelled"
+CASE_COVERAGE_REVOKED = "counseling.case_coverage.revoked"
+CASE_COVERAGE_TASKS_RETURNED = "counseling.case_coverage.tasks_returned"
+CASE_COVERAGE_TASKS_RECOVERED = "counseling.case_coverage.tasks_recovered"
+CASE_HANDOFF_DRAFT_SAVED = "counseling.case_handoff.draft_saved"
+CASE_HANDOFF_SUBMITTED = "counseling.case_handoff.submitted"
+CASE_HANDOFF_READ = "counseling.case_handoff.read"
+CASE_HANDOFF_ADDENDUM_ADDED = "counseling.case_handoff.addendum_added"
+CASE_HANDOFF_UNAVAILABLE_RECORDED = "counseling.case_handoff.unavailable_recorded"
 
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"

@@ -43,6 +43,7 @@ from compass.referrals.services import (
     _validate_idempotency_key,
     persist_referral,
 )
+from compass.referrals.timing_services import reported_statement, timing_status
 from compass.referrals.tracking_disclosure import (
     require_tracking_for_item,
     require_tracking_for_queryset,
@@ -227,9 +228,9 @@ def _validate_confirmation(payload, *, actor, home, student, placement, now):
         raise FacultyReferralError("student_unavailable", 409)
 
 
-def _projection(item):
-    # Never read/decrypt confidential content or serialize a GCO detail DTO here.
-    return {
+def _projection(item, *, detail=False):
+    # Never read the reason envelope or staff verification; detail adds only the own statement.
+    result = {
         "id": item.pk,
         "reference_code": item.reference_code,
         "submitted_at": item.submitted_at,
@@ -237,7 +238,11 @@ def _projection(item):
         "student": {"display_name": item.student_name_snapshot},
         "received_at": item.received_at,
         "closed_at": item.administratively_closed_at,
+        "timing_status": timing_status(item),
     }
+    if detail:
+        result["scheduling_statement"] = reported_statement(item)
+    return result
 
 
 def _own_queryset(actor):
@@ -251,24 +256,37 @@ def _own_queryset(actor):
 
 @catalog_dependent_write
 def submit_referral(
-    *, actor, actor_session, confirmation, course_year_block, reason, idempotency_key, context
+    *,
+    actor,
+    actor_session,
+    confirmation,
+    course_year_block,
+    reason,
+    idempotency_key,
+    context,
+    scheduling_statement=None,
 ):
     actor = _current_actor(actor, "referrals.submit_self")
     key = _validate_idempotency_key(idempotency_key)
     course = _clean_required(course_year_block, "course_year_block", 255)
     cleaned_reason = _clean_required(reason, "reason", MAX_REASON_LENGTH)
     payload = _decode_confirmation(confirmation)
+    fingerprint_body = {
+        "confirmation": confirmation,
+        "course_year_block": course_year_block,
+        "reason": reason,
+    }
+    # Keep absent legacy fingerprints byte-identical; timing becomes part of a new intention.
+    if scheduling_statement is not None:
+        fingerprint_body["scheduling_statement"] = scheduling_statement
     fingerprint = request_fingerprint(
         method="POST",
         route=SUBMIT_ROUTE,
         query_string="",
         body=json.dumps(
-            {
-                "confirmation": confirmation,
-                "course_year_block": course_year_block,
-                "reason": reason,
-            },
+            fingerprint_body,
             sort_keys=True,
+            default=str,
         ).encode(),
     )
     # Namespace one canonical idempotency field; old GCO digests remain byte-for-byte.
@@ -289,7 +307,7 @@ def submit_referral(
         # Replays do not resubmit, allocate a reference, require an unexpired ticket,
         # rewrite provenance, or announce a new receipt.
         require_tracking_for_item(actor, existing, now)
-        return _projection(existing), False
+        return _projection(existing, detail=True), False
     student = users.get(payload["student_id"])
     placement = resolve_student_placement(student) if student else None
     _validate_confirmation(
@@ -339,6 +357,8 @@ def submit_referral(
         fingerprint=fingerprint,
         context=context,
         channel=ReferralSubmissionChannel.FACULTY_PORTAL,
+        scheduling_statement=scheduling_statement,
+        timing_at=latest,
         faculty_origin={
             "submitted_by": actor,
             "submitted_at": now,
@@ -354,7 +374,7 @@ def submit_referral(
         target_id=item.pk,
         metadata={},
     )
-    return _projection(item), True
+    return _projection(item, detail=True), True
 
 
 @catalog_dependent_write
@@ -388,4 +408,4 @@ def get_own_submission(*, actor, actor_session, referral_id):
     if item is None:
         raise ReferralNotFound("The submitted Referral was not found.")
     require_tracking_for_item(actor, item, now)
-    return _projection(item)
+    return _projection(item, detail=True)

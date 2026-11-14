@@ -21,7 +21,18 @@ def expected_history(baseline):
     return {(p.split("/")[1], Path(p).stem) for p in baseline}
 
 
-def classify_database(baseline, database):
+def registered_additions():
+    """Additive migrations registered after the release baseline (additive-migrations.json).
+
+    A release database may record any of them, in addition to the complete baseline. Anything
+    else beyond the baseline is still unknown history.
+    """
+
+    registry = json.loads(Path(__file__).with_name("additive-migrations.json").read_text())
+    return expected_history(registry)
+
+
+def classify_database(baseline, database, additions=frozenset()):
     if not database["migrations_table"]:
         return "empty"
     applied = {tuple(row) for row in database["migrations"]}
@@ -32,7 +43,7 @@ def classify_database(baseline, database):
     )
     owned = {(a, n) for a, n in applied if a in labels}
     expected = expected_history(baseline)
-    if owned == expected:
+    if expected <= owned <= expected | set(additions):
         host.validate_release_history(baseline, applied, catalog_table=database["catalog_table"])
         return "release"
     if (
@@ -260,8 +271,9 @@ def inspect(candidate, *, locked=False, recovery=False):
         host.require(recovery, "PostgreSQL unavailable")
         database_class = "interrupted-unavailable"
     else:
+        additions = registered_additions()
         try:
-            database_class = classify_database(baseline, database)
+            database_class = classify_database(baseline, database, additions)
         except host.Refused:
             owned = {
                 (a, n)
@@ -270,7 +282,7 @@ def inspect(candidate, *, locked=False, recovery=False):
             }
             host.require(
                 recovery
-                and owned <= expected_history(baseline)
+                and owned <= expected_history(baseline) | additions
                 and all(
                     a
                     in {p.split("/")[1] for p in baseline}

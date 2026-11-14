@@ -17,6 +17,8 @@ import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { caseHref, CASES_PATH } from "@/features/counseling/cases/case-presentation";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
@@ -33,6 +35,7 @@ import {
 } from "@/features/counseling/counseling-shared";
 import { RecordEncounterForm } from "@/features/counseling/record-encounter-form";
 import {
+  CounselingEncounterCaseLink,
   CounselingEncounterOrdering,
   CounselingEntryMode,
   DeliveryMode,
@@ -66,19 +69,21 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
   const [recordUncertain, setRecordUncertain] = useState(false);
   const entryMode = enumParam(searchParams.get("entry_mode"), CounselingEntryMode);
   const deliveryMode = enumParam(searchParams.get("delivery_mode"), DeliveryMode);
+  const caseLink = enumParam(searchParams.get("case_link"), CounselingEncounterCaseLink);
   const fromDate = searchParams.get("from_date") ?? "";
   const toDate = searchParams.get("to_date") ?? "";
   const page = positivePage(searchParams.get("page"));
   // The worklist pages independently, so filtering the encounters must not reset it.
   const reviewPage = reviewPageFromParam(searchParams.get("review_page"));
   const search = searchParams.get("search") ?? "";
-  const hasFilters = Boolean(search || entryMode || deliveryMode || fromDate || toDate);
+  const hasFilters = Boolean(search || entryMode || deliveryMode || caseLink || fromDate || toDate);
   const { requested: requestedOrdering, setOrdering } = useListOrdering(CounselingEncounterOrdering);
   const encounters = useCounselingListMyEncounters(
     {
       ...(search ? { search } : {}),
       ...(entryMode ? { entry_mode: entryMode } : {}),
       ...(deliveryMode ? { delivery_mode: deliveryMode } : {}),
+      ...(caseLink ? { case_link: caseLink } : {}),
       ...(fromDate ? { from_date: fromDate } : {}),
       ...(toDate ? { to_date: toDate } : {}),
       ...(requestedOrdering ? { ordering: requestedOrdering } : {}),
@@ -96,8 +101,9 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
   return (
     <div>
       <CounselingPageHeading
-        title="Counseling"
-        description="Record Counseling interactions after they take place."
+        title="Session records"
+        description="Every Counseling session you recorded, in a case or not."
+        back={<Link href={CASES_PATH} className={pageBackLinkClass}>Back to Counseling</Link>}
         action={access.canManageAssigned ? (
           recordUncertain ? (
             <PageAction icon={CircleAlert} label="Unconfirmed" labelDetail="recording result" disabled />
@@ -128,11 +134,12 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
           <FloatingListTools
             submits
             label="Counseling Encounter filters"
-            filterCount={[entryMode, deliveryMode, fromDate, toDate].filter(Boolean).length}
+            filterCount={[entryMode, deliveryMode, caseLink, fromDate, toDate].filter(Boolean).length}
             clear={hasFilters ? <Button variant="quiet" onClick={() => router.replace(clearedHref, { scroll: false })}>Clear filters</Button> : undefined}
             filters={<>
             <FilterField label="Origin" htmlFor="counseling-entry-filter"><Select id="counseling-entry-filter" name="entry_mode" defaultValue={entryMode ?? ""}><option value="">All origins</option><option value="APPOINTMENT">Appointment</option><option value="WALK_IN">Walk-in</option><option value="CALLED_IN">Called-in</option><option value="REFERRED">Referred</option></Select></FilterField>
             <FilterField label="Delivery mode" htmlFor="counseling-delivery-filter"><Select id="counseling-delivery-filter" name="delivery_mode" defaultValue={deliveryMode ?? ""}><option value="">All delivery modes</option><option value="IN_PERSON">In person</option><option value="ONLINE">Online</option></Select></FilterField>
+            <FilterField label="Case" htmlFor="counseling-case-filter"><Select id="counseling-case-filter" name="case_link" defaultValue={caseLink ?? ""}><option value="">All sessions</option><option value="LINKED">In a case</option><option value="UNLINKED">Not in a case</option></Select></FilterField>
             <FilterField label="From date" htmlFor="counseling-from-date"><Input id="counseling-from-date" type="date" name="from_date" defaultValue={fromDate} /></FilterField>
             <FilterField label="To date" htmlFor="counseling-to-date"><Input id="counseling-to-date" type="date" name="to_date" defaultValue={toDate} /></FilterField>
             </>}
@@ -172,9 +179,9 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
             <PanelMessage>{hasFilters ? "No Counseling Encounters match the current filters. Clear or adjust them to broaden the results." : "No Counseling Encounters are assigned to you yet."}</PanelMessage>
           ) : (
               <div className={dataTable.scroll}>
-                <table className={`${dataTable.table} min-w-[850px]`}>
+                <table className={`${dataTable.table} min-w-[960px]`}>
                   <caption className="sr-only">Counseling Encounters assigned to you</caption>
-                  <thead className={dataTable.head}><tr><SortableColumnHeader label="Student" ascending={CounselingEncounterOrdering.STUDENT_ASC} descending={CounselingEncounterOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`} /><th scope="col" className={dataTable.headerCell}>Origin</th><th scope="col" className={dataTable.headerCell}>Delivery</th><SortableColumnHeader label="Actual start" ascending={CounselingEncounterOrdering.OLDEST_ENCOUNTER} descending={CounselingEncounterOrdering.LATEST_ENCOUNTER} ascendingLabel="Oldest encounter first" descendingLabel="Latest encounter first" firstDirection="descending" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /><th scope="col" className={dataTable.headerCell}>Actual end</th><th scope="col" className={dataTable.headerCell}>Appointment</th></tr></thead>
+                  <thead className={dataTable.head}><tr><SortableColumnHeader label="Student" ascending={CounselingEncounterOrdering.STUDENT_ASC} descending={CounselingEncounterOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`} /><th scope="col" className={dataTable.headerCell}>Origin</th><th scope="col" className={dataTable.headerCell}>Delivery</th><SortableColumnHeader label="Actual start" ascending={CounselingEncounterOrdering.OLDEST_ENCOUNTER} descending={CounselingEncounterOrdering.LATEST_ENCOUNTER} ascendingLabel="Oldest encounter first" descendingLabel="Latest encounter first" firstDirection="descending" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /><th scope="col" className={dataTable.headerCell}>Actual end</th><th scope="col" className={dataTable.headerCell}>Appointment</th><th scope="col" className={dataTable.headerCell}>Case</th></tr></thead>
                   <tbody className={dataTable.body}>
                     {items.map((encounter) => (
                       <tr key={encounter.id} className={dataTable.row}>
@@ -184,6 +191,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
                         <td className={dataTable.cell}>{formatCounselingDateTime(encounter.started_at)}</td>
                         <td className={dataTable.cell}>{formatCounselingDateTime(encounter.ended_at)}</td>
                         <td className={dataTable.cell}>{encounter.appointment?.reference_code ?? "—"}</td>
+                        <td className={`${dataTable.cell} whitespace-nowrap`}>{encounter.case ? <Link href={caseHref(encounter.case.id)} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.case.reference_code}</Link> : encounter.in_case ? "In another case" : <span className="text-muted">Not in a case</span>}</td>
                       </tr>
                     ))}
                   </tbody>

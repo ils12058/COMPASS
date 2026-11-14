@@ -178,7 +178,7 @@ test("a recorded Encounter ends the Appointment context's authoring actions", ()
   const html = workspacePage(detail({ counseling_encounter_recorded: true }));
   assert.match(html, /A Counseling Encounter is recorded for this Appointment\. Review it in My Counseling Encounters\./);
   assert.doesNotMatch(html, /Finish counseling|Record encounter/);
-  assert.match(html, /href="\/portal\/counseling#encounters"/);
+  assert.match(html, /href="\/portal\/counseling\/encounters"/);
 });
 
 test("an Appointment read that is not confirmed keeps the ordinary Record action", () => {

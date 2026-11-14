@@ -38,6 +38,27 @@ def registered_migrations():
     return baselines | additions
 
 
+def test_the_deployment_registry_pins_exactly_the_registered_additive_migrations():
+    """Reset tooling runs on the host without the application, so it carries its own copy."""
+
+    manifest = json.loads((COMPASS / "common/canonical_migrations.json").read_text())
+    deployed = json.loads((COMPASS.parent / "deploy/staging/additive-migrations.json").read_text())
+    assert {name.removeprefix("compass/") for name in deployed} == set(
+        manifest["additive_migrations"]
+    )
+    loader = MigrationLoader(None, ignore_no_migrations=True)
+    for name, digest in deployed.items():
+        path = COMPASS.parent / name
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
+        # Only operations the routine deployment preflight accepts without a reviewed exception.
+        migration = loader.disk_migrations[(path.parent.parent.name, path.stem)]
+        for operation in migration.operations:
+            kind = type(operation).__name__
+            assert kind in {"CreateModel", "AddField", "AddIndex"}, (name, kind)
+            if kind == "AddField":
+                assert operation.field.null and not operation.field.has_default(), name
+
+
 def test_registered_migrations_preserve_immutable_schema_only_baselines():
     with_models = {config.label for config in compass_apps() if list(config.get_models())}
     migration_files = {

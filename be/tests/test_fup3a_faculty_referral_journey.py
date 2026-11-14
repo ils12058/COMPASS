@@ -192,13 +192,18 @@ def assert_faculty_projection(client, referral_id, state):
     assert set(page) == {"items", "page", "page_size", "has_next"}
     assert [item["id"] for item in page["items"]] == [str(referral_id)]
     for item in page["items"]:
-        assert set(item) == FACULTY_ITEM_KEYS
+        assert set(item) == FACULTY_ITEM_KEYS | {"timing_status"}
+        assert item["timing_status"] == "NOT_PROVIDED"
+        assert not {"scheduling_statement", "verifications", "note", "reason"}.intersection(item)
         assert set(item["student"]) == {"display_name"}
         assert not nested_keys(item) & FOLLOWUP_FIELD_NAMES
         assert item["state"] == state
     detail = client.get(f"/api/v1/faculty/referrals/{referral_id}")
     assert detail.status_code == 200
-    assert set(detail.json()) == FACULTY_ITEM_KEYS
+    assert set(detail.json()) == FACULTY_ITEM_KEYS | {"timing_status", "scheduling_statement"}
+    assert detail.json()["timing_status"] == "NOT_PROVIDED"
+    assert detail.json()["scheduling_statement"] is None
+    assert not {"verifications", "note", "reason"}.intersection(detail.json())
     assert set(detail.json()["student"]) == {"display_name"}
     assert not nested_keys(detail.json()) & FOLLOWUP_FIELD_NAMES
     assert detail.json()["state"] == state

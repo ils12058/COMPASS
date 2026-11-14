@@ -122,9 +122,37 @@ class StudentSessionSummary(models.Model):
         ]
 
 
-# Register the focused continuity models in the existing Counseling app.
+# Register the focused case and continuity models in the existing Counseling app.
+from compass.counseling.case_closure_models import CounselingCaseClosure  # noqa: E402, F401
+from compass.counseling.case_handoff_models import (  # noqa: E402, F401
+    CounselingCaseHandoff,
+    CounselingCaseHandoffAddendum,
+    CounselingCaseHandoffException,
+    CounselingCaseHandoffReceipt,
+)
+from compass.counseling.case_models import (  # noqa: E402, F401
+    CounselingCase,
+    CounselingCaseAppointment,
+    CounselingCaseAppointmentRemovalReason,
+    CounselingCaseEvent,
+    CounselingCaseReferenceCounter,
+    CounselingCaseSession,
+)
+from compass.counseling.case_transfer_models import (  # noqa: E402, F401
+    CounselingCaseResponsibility,
+    CounselingCaseTransfer,
+    CounselingCaseTransferAppointment,
+    CounselingCaseTransferEvent,
+    CounselingCaseTransferTask,
+)
 from compass.counseling.continuity_models import (  # noqa: E402, F401
     CounselorCaseContinuityGrant,
     CounselorCaseContinuityScope,
 )
 from compass.counseling.handoff_models import CounselorHandoffSummary  # noqa: E402, F401
+
+from .case_coverage_models import (  # noqa: E402, F401
+    CounselingCaseCoverage,
+    CounselingCaseCoverageEvent,
+    CounselingCaseCoverageTask,
+)

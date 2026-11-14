@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import {
-  COUNSELOR, LONG_STAFF, STUDENT, appointmentId, messagesAccount, sessionFor,
+  COUNSELOR, LONG_STAFF, STUDENT, messagesAccount, relationshipOption, sessionFor,
   studentWorld, staffWorld, threadIds,
 } from "./support/guidance-messages-fixtures.mjs";
 
@@ -45,15 +45,16 @@ async function layout(page) {
 {
   const backend = studentWorld();
   backend.state.threads.get(threadIds.counseling).counselor = LONG_STAFF;
-  backend.addThread({ id: threadIds.long, kind: "COUNSELING", counselor: LONG_STAFF, created: 1200 });
+  // CW-6: two conversations with one Counselor are told apart by their own Appointments.
+  backend.addThread({ id: threadIds.long, kind: "COUNSELING", counselor: LONG_STAFF, created: 1200, appointment: "b0000000-0000-4000-8000-000000000002", summary: { reference_code: "APT-2026-0002", starts_at: "2026-10-12T03:00:00Z", ends_at: "2026-10-12T04:00:00Z" } });
   backend.addMessage(threadIds.long, LONG_STAFF, "Synthetic second conversation.");
-  await check("desktop identity and distinct conversation starts", path(threadIds.counseling), options(backend), async (page, fixture) => {
+  await check("desktop identity and distinct conversation Appointments", path(threadIds.counseling), options(backend), async (page, fixture) => {
     await shown(page.getByRole("heading", { name: LONG_STAFF.display_name, exact: true }));
     for (const id of [threadIds.counseling, threadIds.long]) {
-      assert.match(await row(page, id).innerText(), /MC[\s\S]*Started/);
+      assert.match(await row(page, id).innerText(), /MC[\s\S]*Appointment /);
       assert.ok((await row(page, id).innerText()).includes(LONG_STAFF.display_name));
     }
-    assert.notEqual((await row(page, threadIds.counseling).innerText()).split("Started")[1], (await row(page, threadIds.long).innerText()).split("Started")[1]);
+    assert.notEqual((await row(page, threadIds.counseling).innerText()).split("Appointment ")[1], (await row(page, threadIds.long).innerText()).split("Appointment ")[1]);
     assert.equal(await row(page, threadIds.office).locator("svg.lucide-building2").count(), 1);
     assert.ok(!(await row(page, threadIds.office).innerText()).includes(COUNSELOR.display_name));
     assert.equal(await page.locator("header").filter({ has: page.getByRole("heading", { name: LONG_STAFF.display_name }) }).getByText("MC", { exact: true }).count(), 1);
@@ -93,8 +94,8 @@ for (const [name, viewport, enlarged] of [
 {
   const backend = studentWorld();
   backend.state.relationships = [
-    { appointment_id: appointmentId, counselor: LONG_STAFF, starts_at: "2026-11-12T02:00:00Z" },
-    { appointment_id: "b0000000-0000-4000-8000-000000000002", counselor: LONG_STAFF, starts_at: "2026-11-13T03:00:00Z" },
+    relationshipOption({ counselor: LONG_STAFF, starts_at: "2026-11-12T02:00:00Z" }),
+    relationshipOption({ counselor: LONG_STAFF, id: "b0000000-0000-4000-8000-000000000002", reference_code: "APT-2026-0002", starts_at: "2026-11-13T03:00:00Z" }),
   ];
   await check("recipient identity, supplied dates, keyboard focus and existing draft behavior", "/portal/messages/new", options(backend, "STUDENT", { viewport: { width: 390, height: 640 } }), async (page) => {
     const choices = page.getByRole("radio");

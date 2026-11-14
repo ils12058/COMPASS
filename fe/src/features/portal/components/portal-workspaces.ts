@@ -274,8 +274,8 @@ const navigationOrder = {
     more: ["follow-ups", "reminders", "group-sessions", "availability", "services", "assessment-records", "routine-interviews", "referrals", "call-slips", "inventory", "good-moral", "exit-interviews", "graduate-tracer", "feedback", "announcements", "resources", "organization", "academic-years", "institutional-forms"],
   },
   "Counselor": {
-    daily: ["work", "appointments", "messages", "counseling", "routine-interviews", "follow-ups"],
-    more: ["operations", "reminders", "group-sessions", "availability", "referrals", "call-slips", "inventory", "good-moral", "announcements", "resources", "reports", "organization", "academic-years", "institutional-forms"],
+    daily: ["work", "appointments", "messages", "counseling", "routine-interviews"],
+    more: ["follow-ups", "operations", "reminders", "group-sessions", "availability", "referrals", "call-slips", "inventory", "good-moral", "announcements", "resources", "reports", "organization", "academic-years", "institutional-forms"],
   },
   "GOA": {
     daily: ["work", "appointments", "messages", "good-moral", "call-slips", "referrals"],

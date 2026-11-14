@@ -9,6 +9,7 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ReferralHelp } from "@/features/referrals/referral-help";
+import { StaffReferralTiming } from "@/features/referral-timing/staff-timing";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -228,7 +229,13 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
           titleId="linked-call-slip-details-heading"
           description="Student and Referral are fixed. Course / Year is prefilled from the Referral and can be changed to match the Call Slip."
         >
-          <CallSlipFormFields draft={draft} onChange={setDraft} />
+          <div className="space-y-4">
+            <CallSlipFormFields draft={draft} onChange={setDraft} />
+            <section aria-label="Referral timing beside Call Slip date and time" className="border-t border-border pt-4">
+              <h3 className="mb-3 text-sm font-semibold text-brand">Referral timing guidance</h3>
+              <StaffReferralTiming referralId={referral.id} embedded />
+            </section>
+          </div>
         </PanelSection>
 
         <PanelSection title="Referral action" titleId="linked-call-slip-action-heading">

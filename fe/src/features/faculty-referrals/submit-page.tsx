@@ -18,6 +18,9 @@ import { useFacultyAvailability } from "./availability";
 import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./shared";
 import { SubmissionFacts } from "./records";
 import { useFacultySubmission } from "./use-submission";
+import { TimingEditor } from "@/features/referral-timing/timing-editor";
+import { TimingWindows } from "@/features/referral-timing/timing-readout";
+import { timingWindowsRequest } from "@/features/referral-timing/timing-draft";
 
 function ReviewHeading() {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -55,6 +58,9 @@ function FacultySubmitContent() {
           <div><dt className="font-semibold text-muted">Course/Year/Block</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.course}</dd></div>
           <div><dt className="font-semibold text-muted">Referral reason</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.reason}</dd></div>
         </dl></PanelSection>
+        <PanelSection title="When can Guidance reach or meet the student?" titleId="faculty-review-timing">
+          {flow.timing.answer === "UNKNOWN" ? <p className="text-sm">Unknown / needs confirmation</p> : <><TimingWindows windows={timingWindowsRequest(flow.timing).map(window => ({ ...window, expired: false }))} />{flow.timing.note ? <p className="mt-3 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]"><span className="font-semibold">Scheduling constraints: </span>{flow.timing.note}</p> : null}</>}
+        </PanelSection>
         {flow.uncertain ? <PanelBody><p className="text-sm text-warning">Retry the same submission or check My Referrals before discarding this draft. You can edit after the result is confirmed.</p></PanelBody> : null}
         <PanelFooter>
           <Button type="button" onClick={() => void flow.submit()} disabled={flow.pending || !available || (flow.expired && !flow.uncertain)}>{flow.submitting ? "Submitting…" : flow.uncertain ? "Retry same submission" : "Submit Referral"}</Button>
@@ -84,6 +90,9 @@ function FacultySubmitContent() {
                 <p id="faculty-reason-help" className="mt-1 text-sm text-muted">Keep observations relevant to the Referral, up to 10,000 characters. Unsaved information stays only on this page.</p>
                 {flow.errors.reason ? <p id="faculty-reason-error" role="alert" className="mt-1 text-sm text-danger">{flow.errors.reason}</p> : null}</div>
             </fieldset>
+          </PanelSection>
+          <PanelSection title="When can Guidance reach or meet the student?" titleId="faculty-timing-heading">
+            <TimingEditor prefix="faculty-timing" draft={flow.timing} onChange={flow.changeTiming} errors={flow.timingErrors} disabled={flow.pending} />
           </PanelSection>
           <PanelFooter data-guide-target="faculty-review"><Button type="submit" disabled={flow.pending || !available}>Review Referral</Button></PanelFooter>
         </Panel>

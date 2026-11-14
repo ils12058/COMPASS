@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -73,9 +73,9 @@ export function ReferralHeading({
       description={description}
       actions={action} help={help}
       back={backHref ? (
-        <Link href={backHref} className={pageBackLinkClass}>
+        <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
           {backLabel ?? "Back to Referrals"}
-        </Link>
+        </GuardedPortalLink>
       ) : undefined}
     />
   );

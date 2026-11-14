@@ -94,8 +94,11 @@ def scope_current_followup_notifications(queryset, *, actor):
 
 
 def event_committed_intent(item, event):
+    from compass.counseling.case_coverage_tasks import effective_assignee
+
+    actor = effective_assignee(item)
     # Hints carry no record/source identity. Old owners only receive a cache eviction hint.
-    recipients = {item.assigned_to_id, event.old_assignee_id} - {None}
+    recipients = {item.assigned_to_id, actor.pk, event.old_assignee_id} - {None}
     for recipient_id in recipients:
         publish_to_user_on_commit(recipient_id, "followups.changed")
     if not material_events().filter(pk=event.pk).exists():
@@ -103,7 +106,6 @@ def event_committed_intent(item, event):
     from compass.notifications.policy import NotificationEvent
     from compass.notifications.services import create_notification_for_event
 
-    actor = item.assigned_to
     if not current_events(actor=actor).filter(pk=event.pk).exists():
         return
     code = (

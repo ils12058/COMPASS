@@ -58,6 +58,20 @@ from .services import (
     update_status_note,
     void_referral,
 )
+from .timing_rules import InvalidReferralTiming
+from .timing_schemas import (
+    ReferralSchedulingStatementRequest,
+    ReferralTimingResponse,
+    ReferralTimingStatus,
+    ReferralTimingVerificationRequest,
+)
+from .timing_services import (
+    ReferralTimingChanged,
+    ReferralTimingSessionUnavailable,
+    get_timing,
+    record_verification,
+    timing_status,
+)
 
 router = Router(tags=["referrals"])
 CREATE_ROUTE = "/api/v1/referrals"
@@ -91,6 +105,7 @@ class ReferralCreateRequest(StrictSchema):
     referrer_name: str
     referred_on: date
     received_at: datetime | None = None
+    scheduling_statement: ReferralSchedulingStatementRequest | None = None
 
 
 class ReferralStatusUpdateRequest(StrictSchema):
@@ -174,6 +189,7 @@ class ReferralSummaryResponse(StrictSchema):
     submission_channel: ReferralSubmissionChannel
     submitted_at: datetime | None = None
     administrative_state: FacultyReferralSubmissionState | None = None
+    timing_status: ReferralTimingStatus = ReferralTimingStatus.NOT_PROVIDED
 
 
 class ReferralDetailResponse(ReferralSummaryResponse):
@@ -212,7 +228,17 @@ def _require(request, capability: str) -> None:
         raise APIError(403, "permission_denied", f"You don't have permission to {action}.")
 
 
-def _raise(exc: ReferralError) -> NoReturn:
+def _raise(exc: ReferralError, *, timing_prefix=()) -> NoReturn:
+    if isinstance(exc, ReferralTimingSessionUnavailable):
+        raise APIError(401, "session_unavailable", str(exc)) from None
+    if isinstance(exc, InvalidReferralTiming):
+        details = [
+            {**issue, "loc": [issue["loc"][0], *timing_prefix, *issue["loc"][1:]]}
+            for issue in exc.details
+        ]
+        raise APIError(422, "referral_timing_invalid", str(exc), details=details) from None
+    if isinstance(exc, ReferralTimingChanged):
+        raise APIError(409, "referral_timing_changed", str(exc)) from None
     if isinstance(exc, ReferralConfidentialContentUnavailable):
         raise APIError(
             500,
@@ -314,6 +340,7 @@ def _summary(item, *, content=None) -> dict[str, object]:
         "submission_channel": item.submission_channel,
         "submitted_at": item.submitted_at,
         "administrative_state": administrative_state(item),
+        "timing_status": timing_status(item),
     }
 
 
@@ -415,9 +442,12 @@ def referrals_create(
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
             context=_context(request),
+            scheduling_statement=payload.scheduling_statement.model_dump()
+            if payload.scheduling_statement
+            else None,
         )
     except ReferralError as exc:
-        _raise(exc)
+        _raise(exc, timing_prefix=("scheduling_statement",))
     return Status(201, _detail(item))
 
 
@@ -526,6 +556,47 @@ def referrals_get(request, referral_id: UUID):
     except ReferralError as exc:
         _raise(exc)
     return _detail(item)
+
+
+@router.get(
+    "/{referral_id}/timing",
+    response=response_with_errors(ReferralTimingResponse, 401, 403, 404, 422, 500),
+    auth=session_auth,
+    operation_id="referralsGetTiming",
+    summary="Read the COMPASS timing supplement within existing Referral scope",
+)
+def referrals_get_timing(request, referral_id: UUID):
+    _require(request, "referrals.view")
+    try:
+        return get_timing(actor=request.auth_user, referral_id=referral_id)
+    except ReferralError as exc:
+        _raise(exc)
+
+
+@router.post(
+    "/{referral_id}/timing/verifications",
+    response=response_with_errors(
+        ReferralTimingResponse, 401, 403, 404, 409, 422, 500, success_status=201
+    ),
+    auth=session_auth,
+    operation_id="referralsRecordTimingVerification",
+    summary="Append staff verification without changing the referrer's statement",
+)
+def referrals_record_timing_verification(
+    request, referral_id: UUID, payload: ReferralTimingVerificationRequest
+):
+    _require(request, "referrals.manage")
+    try:
+        result = record_verification(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            referral_id=referral_id,
+            context=_context(request),
+            **payload.model_dump(),
+        )
+    except ReferralError as exc:
+        _raise(exc)
+    return Status(201, result)
 
 
 @router.patch(

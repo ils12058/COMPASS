@@ -390,6 +390,11 @@ function referralWorld() {
   const counselor = withCapabilities("COUNSELOR", ["referrals.view", "referrals.manage"]);
   const overrides = {
     "GET /api/v1/auth/session": sessionFor(counselor),
+    [`GET /api/v1/referrals/${referralId}/timing`]: ({ reply }) => reply({
+      referral_id: referralId, timing_status: "NOT_PROVIDED", reported: null,
+      verifications: [], latest_verification_id: null, referral_updated_at: state.updatedAt,
+      referral_closed: false, can_verify: false,
+    }),
     [`GET /api/v1/referrals/${referralId}`]: ({ reply }) => {
       state.reads += 1;
       return state.read === 200 ? reply(detail()) : reply(...failure(state.read));

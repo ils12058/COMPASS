@@ -7,6 +7,7 @@ import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { ReferralAdministration } from "./referral-administration";
+import { StaffReferralTiming } from "@/features/referral-timing/staff-timing";
 import { ReferralHelp } from "@/features/referrals/referral-help";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -204,6 +205,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       </Panel>
 
       {canViewSupportContext ? <StudentSupportContextSection studentId={item.student.id} /> : null}
+      <StaffReferralTiming referralId={item.id} canManage={referralAccess.canManage} parentStale={refreshFailed} />
 
       <ReferralActionsSection
         referral={item}

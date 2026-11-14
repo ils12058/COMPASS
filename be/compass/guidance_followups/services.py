@@ -14,6 +14,7 @@ from compass.accounts.models import User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.counseling.case_coverage_tasks import coverage_task_write, task_read_guard
 from compass.organization.integrity import catalog_dependent_write
 
 from . import policy
@@ -138,6 +139,9 @@ def create_followup(
     idempotency_key: str,
     request_fingerprint: str,
     context: AuditContext,
+    title: str | None = None,
+    case_id: UUID | None = None,
+    predecessor_id: UUID | None = None,
     now=None,
 ) -> GuidanceFollowUp:
     at = now or timezone.now()
@@ -146,10 +150,18 @@ def create_followup(
     fingerprint = _fingerprint(request_fingerprint)
     if (source_kind is None) != (source_id is None):
         raise FollowUpInvalid("Choose a complete related-record reference or none.")
-    classification = policy.classify(source_kind=source_kind, category=category)
+    classification = policy.classify(source_kind=source_kind, category=category, case_id=case_id)
     if visibility is not None and visibility != classification:
         raise FollowUpInvalid("The confidentiality of this follow-up cannot be changed.")
     with transaction.atomic():
+        # Case locks precede participant locks, as in the Counseling workflows.
+        case = (
+            policy.require_case(
+                actor, case_id=case_id, student_id=student_id, manage=True, lock=True
+            )
+            if case_id is not None
+            else None
+        )
         # Serializing the actor row also makes same-key retry safe under concurrent requests.
         actor = policy.current_actor(actor, manage=True, lock=True)
         existing = GuidanceFollowUp.objects.filter(creation_key_digest=key).first()
@@ -165,6 +177,8 @@ def create_followup(
                 raise FollowUpNotFound("Follow-Up not found.")
             policy.valid_student(existing.student_id)
             return existing
+        if case is not None and case.status != "ACTIVE":
+            raise FollowUpConflict("Next actions can only be added to an Active case.")
         _due(due_at, now=at)
         student = policy.valid_student(student_id, lock=True)
         if source_kind:
@@ -175,14 +189,20 @@ def create_followup(
                 student_id=student.pk,
                 manage=True,
             )
-        elif not policy.in_operational_scope(actor, student.pk):
+        elif case is None and not policy.in_operational_scope(actor, student.pk):
             raise FollowUpNotFound("The Student is not available for Follow-Ups.")
+        predecessor = None
+        if predecessor_id is not None:
+            predecessor = policy.require_followup(actor, _load(predecessor_id))
+            if predecessor.student_id != student.pk or predecessor.case_id != case_id:
+                raise FollowUpInvalid("The Student and case must match the preceding action.")
         assignee = policy.require_assignee(
             assigned_to_id,
             student_id=student.pk,
             visibility=classification,
             source_kind=source_kind,
             source_id=source_id,
+            case_id=case_id,
         )
         if classification == FollowUpVisibility.COUNSELOR_CONFIDENTIAL and assignee.pk != actor.pk:
             raise FollowUpInvalid("Only the linked Counselor may own this follow-up.")
@@ -194,12 +214,16 @@ def create_followup(
             due_at=due_at,
             source_kind=source_kind,
             source_id=source_id,
+            case=case,
+            predecessor=predecessor,
             created_by=actor,
             creation_key_digest=key,
             creation_request_fingerprint=fingerprint,
         )
         if description is not None:
             item.description_ciphertext = encrypt_text(item.pk, "description", description)
+        if title is not None:
+            item.title_ciphertext = encrypt_text(item.pk, "title", title)
         item.save(force_insert=True)
         _event(
             item, actor=actor, kind=FollowUpEventType.CREATED, new_assignee=assignee, new_due=due_at
@@ -210,6 +234,7 @@ def create_followup(
 
 def get_followup(*, actor, followup_id):
     actor = policy.current_actor(actor)
+    policy.reconcile_coverage(actor=actor, task_id=followup_id)
     return policy.require_followup(actor, _load(followup_id))
 
 
@@ -221,6 +246,7 @@ def list_followups(
     assigned_to_id=None,
     source_kind=None,
     source_id=None,
+    case_id=None,
     due_window=None,
     ordering="EARLIEST_DUE",
     page=1,
@@ -241,6 +267,15 @@ def list_followups(
         qs = qs.filter(student_id=student_id)
     if assigned_to_id is not None:
         qs = qs.filter(assigned_to_id=assigned_to_id)
+    if case_id is not None:
+        # A filter never expands the reader's task or case authority.
+        from compass.counseling.case_models import CounselingCase
+
+        case = CounselingCase.objects.filter(pk=case_id).first()
+        if case is None:
+            raise FollowUpNotFound("The related case is not available.")
+        policy.require_case(actor, case_id=case_id, student_id=case.student_id)
+        qs = qs.filter(case_id=case_id)
     if source_kind is not None or source_id is not None:
         from .workspace import source_context
 
@@ -284,6 +319,7 @@ def _lock_for_mutation(*, actor, followup_id, expected_version, allow_recovery=F
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def update_followup(
     *,
@@ -294,6 +330,7 @@ def update_followup(
     due_at=None,
     category=None,
     description=None,
+    title=None,
     now=None,
 ):
     at = now or timezone.now()
@@ -312,7 +349,12 @@ def update_followup(
                 item.due_at = due_at
                 changed.append("due_at")
         if category is not None:
-            if policy.classify(source_kind=item.source_kind, category=category) != item.visibility:
+            if (
+                policy.classify(
+                    source_kind=item.source_kind, category=category, case_id=item.case_id
+                )
+                != item.visibility
+            ):
                 raise FollowUpInvalid("This category cannot change confidentiality.")
             if category != item.category:
                 item.category = category
@@ -321,11 +363,21 @@ def update_followup(
             encrypted = encrypt_text(item.pk, "description", description)
             item.description_ciphertext = encrypted
             changed.append("description")
+        if title is not None:
+            item.title_ciphertext = encrypt_text(item.pk, "title", title)
+            changed.append("title")
         if not changed:
             return item
         item.version += 1
         item.save(
-            update_fields=["due_at", "category", "description_ciphertext", "version", "updated_at"]
+            update_fields=[
+                "due_at",
+                "category",
+                "description_ciphertext",
+                "title_ciphertext",
+                "version",
+                "updated_at",
+            ]
         )
         _event(
             item, actor=actor, kind=FollowUpEventType.UPDATED, old_due=old_due, new_due=item.due_at
@@ -335,6 +387,7 @@ def update_followup(
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, context):
     with transaction.atomic():
@@ -351,6 +404,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
             visibility=item.visibility,
             source_kind=item.source_kind,
             source_id=item.source_id,
+            case_id=item.case_id,
         )
         if new.pk == item.assigned_to_id:
             return item
@@ -370,6 +424,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def record_activity(*, actor, followup_id, expected_version, remarks, context):
     with transaction.atomic():
@@ -387,6 +442,7 @@ def record_activity(*, actor, followup_id, expected_version, remarks, context):
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def complete_followup(*, actor, followup_id, expected_version, outcome, context, now=None):
     at = now or timezone.now()
@@ -418,6 +474,7 @@ def complete_followup(*, actor, followup_id, expected_version, outcome, context,
 
 
 @catalog_dependent_write
+@coverage_task_write
 @durable_mutation
 def cancel_followup(*, actor, followup_id, expected_version, reason, context, now=None):
     at = now or timezone.now()
@@ -464,12 +521,42 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
 
 
 def followup_detail(*, actor, item, history_page=1):
+    with task_read_guard(actor, item) as (actor, item):
+        return _followup_detail(actor=actor, item=item, history_page=history_page)
+
+
+def _followup_detail(*, actor, item, history_page=1):
     actor = policy.current_actor(actor)
     policy.require_followup(actor, item)
+    can_create_next = actor.has_capability("guidance_followups.manage") and policy.authorized(
+        actor, item, manage=True
+    )
+    if can_create_next and item.source_kind:
+        try:
+            policy.require_source(
+                actor,
+                kind=item.source_kind,
+                source_id=item.source_id,
+                student_id=item.student_id,
+                manage=True,
+            )
+        except FollowUpNotFound:
+            can_create_next = False
+    if can_create_next and item.case_id is not None:
+        try:
+            policy.require_case(
+                actor, case_id=item.case_id, student_id=item.student_id, manage=True, active=True
+            )
+        except (FollowUpNotFound, FollowUpInvalid):
+            can_create_next = False
     if type(history_page) is not int or not 1 <= history_page <= MAX_PAGE:
         raise FollowUpInvalid("Choose a valid History page.")
     offset = (history_page - 1) * 20
-    rows = list(item.events.select_related("actor").order_by("revision")[offset : offset + 21])
+    rows = list(
+        item.events.select_related("actor", "case_transfer", "case_coverage").order_by("revision")[
+            offset : offset + 21
+        ]
+    )
     events = []
     for event in rows[:20]:
         events.append(
@@ -484,6 +571,15 @@ def followup_detail(*, actor, item, history_page=1):
                 "new_assignee_id": event.new_assignee_id,
                 "old_due_at": event.old_due_at,
                 "new_due_at": event.new_due_at,
+                "case_transfer_id": event.case_transfer_id,
+                "case_coverage_id": event.case_coverage_id,
+                "case_coverage_reference": event.case_coverage.reference_code
+                if event.case_coverage
+                else None,
+                "coverage_effective_at": event.coverage_effective_at,
+                "case_transfer_reference": event.case_transfer.reference_code
+                if event.case_transfer
+                else None,
                 "remarks": (
                     decrypt_text(item.pk, "remarks", event.remarks_ciphertext, event_id=event.pk)
                     if event.remarks_ciphertext
@@ -503,6 +599,16 @@ def followup_detail(*, actor, item, history_page=1):
             else None
         ),
         "source": policy.visible_source(actor, item),
+        "case": policy.visible_case(actor, item),
+        "can_create_next_action": can_create_next,
+        "predecessor_id": (
+            item.predecessor_id
+            if item.predecessor_id and policy.authorized(actor, item.predecessor)
+            else None
+        ),
         "events": events,
         "events_has_next": len(rows) > 20,
+        "can_reassign": not item.coverage_plans.filter(
+            coverage__state="ACCEPTED", coverage__expires_at__gt=timezone.now()
+        ).exists(),
     }
