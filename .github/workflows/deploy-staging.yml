@@ -179,6 +179,9 @@ jobs:
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          # Pinned: when the action cannot resolve "latest" it silently installs its old default
+          # (1.98.1), which lacks `registry repository list-tags --registry` used below.
+          version: 2.5.0
 
       - name: Prepare short-lived registry push credentials
         shell: bash
