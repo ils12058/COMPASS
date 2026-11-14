@@ -5,6 +5,8 @@ capability engine or every writer. All acquisition after sorted User locks is NO
 These intentionally conservative short transactions may conflict with unrelated changes.
 """
 
+import time
+
 from django.db import OperationalError, connection, transaction
 
 from compass.counseling.continuity_rules import ContinuityError
@@ -36,14 +38,25 @@ def _postgres_transaction():
             raise ContinuityError("release_coordination_unavailable")
 
 
+# A SHARE lock also conflicts with autovacuum/autoanalyze (SHARE UPDATE EXCLUSIVE), which
+# yields only to a *waiting* request. NOWAIT never waits, so a brief maintenance pass on one
+# of these small tables would refuse a valid operation. Retry a few NOWAIT attempts instead of
+# waiting, which keeps the no-inversion property; a real authority writer still ends in busy.
+LOCK_RETRY_DELAYS_SECONDS = (0.05, 0.1, 0.2, 0.4, 0.8, 1.5)
+
+
 def lock_authority_relations():
     _postgres_transaction()
     # NOWAIT avoids inversions with existing User -> organization/capability writers.
     tables = ", ".join(connection.ops.quote_name(name) for name in AUTHORITY_TABLES)
-    try:
-        with transaction.atomic(), connection.cursor() as cursor:
-            cursor.execute(f"LOCK TABLE {tables} IN SHARE MODE NOWAIT")
-    except OperationalError as exc:
-        if getattr(exc.__cause__, "sqlstate", None) == "55P03":
-            raise ContinuityError("authority_busy", 409) from exc
-        raise
+    for delay in (*LOCK_RETRY_DELAYS_SECONDS, None):
+        try:
+            with transaction.atomic(), connection.cursor() as cursor:
+                cursor.execute(f"LOCK TABLE {tables} IN SHARE MODE NOWAIT")
+            return
+        except OperationalError as exc:
+            if getattr(exc.__cause__, "sqlstate", None) != "55P03":
+                raise
+            if delay is None:
+                raise ContinuityError("authority_busy", 409) from exc
+            time.sleep(delay)

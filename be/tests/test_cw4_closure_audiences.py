@@ -77,6 +77,9 @@ def test_faculty_and_student_http_payloads_are_identical_through_closure_and_reo
         "student",
         "received_at",
         "closed_at",
+        # CW-5: the Faculty member's own immutable scheduling statement and its timing status.
+        "scheduling_statement",
+        "timing_status",
     }
     assert not any(
         text in json.dumps(faculty_after, default=str)
