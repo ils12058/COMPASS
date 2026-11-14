@@ -226,7 +226,7 @@ for (const mode of ["network", "server"]) {
 await check("case-overview-facts-session-access-and-history", casePath, { handler: casesFixture().handler }, async (page) => {
   await shown(page.getByRole("heading", { name: student.display_name, exact: true }));
   assert.equal(await page.locator("main h1").count(), 1);
-  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Continuity", "Next actions", "Appointments", "Sessions", "Case history"]);
+  assert.deepEqual(await page.locator("main h2").allTextContents(), ["Case", "Continuity", "Next actions", "Session proposals", "Appointments", "Sessions", "Case history"]);
   assert.equal(await completedCount(page).innerText(), "2");
   assert.match(await page.locator('[aria-labelledby="case-details-heading"]').innerText(), /Synthetic CW-1 Counselor/);
   assert.match(await page.locator("main").innerText(), /CASE-2026-000001/);
