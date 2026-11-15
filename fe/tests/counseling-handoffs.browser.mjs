@@ -43,7 +43,7 @@ await check("receiver-opens-with-receipt-and-no-case-management-or-source-conten
   assert.ok(receiving.item.handoff.received_at);
   assert.equal(receiving.item.case.primary_counselor.id,counselor.id);
   assert.equal(await page.getByRole("button",{name:"Save handoff draft",exact:true}).count(),0);
-  assert.equal(await page.getByRole("button",{name:"Add addendum",exact:true}).count(),0);
+  assert.equal(await page.getByRole("button",{name:"Add note",exact:true}).count(),0);
   assert.doesNotMatch(await page.locator("main").innerText(),/Protected synthetic action/);
 });
 const headOnly = fixture(head, {state:"PREPARED",waiting_for:"Head approval"});
@@ -103,12 +103,12 @@ await check("draft-conflict-keeps-input-and-requires-current-version-review",han
 const accepted=fixture(receiver,{state:"ACCEPTED"});
 accepted.item.case.primary_counselor=receiver;
 await check("accepted-owner-adds-attributed-information-without-editing-snapshot",handoffPath,{handler:accepted.handler},async page=>{
-  await shown(page.getByLabel("Attributed addendum",{exact:true}));
-  await page.getByLabel("Attributed addendum",{exact:true}).fill("Synthetic accepted-owner update");
-  await page.getByRole("button",{name:"Add addendum",exact:true}).click();
-  const dialog=page.getByRole("alertdialog",{name:"Add handoff addendum?",exact:true});
-  await dialog.getByRole("button",{name:"Add addendum",exact:true}).click();
-  await shown(page.getByRole("alertdialog",{name:"Handoff addendum recorded",exact:true}));
+  await shown(page.getByLabel("Your note",{exact:true}));
+  await page.getByLabel("Your note",{exact:true}).fill("Synthetic accepted-owner update");
+  await page.getByRole("button",{name:"Add note",exact:true}).click();
+  const dialog=page.getByRole("alertdialog",{name:"Add handoff note?",exact:true});
+  await dialog.getByRole("button",{name:"Add note",exact:true}).click();
+  await shown(page.getByRole("alertdialog",{name:"Handoff note recorded",exact:true}));
   await page.getByRole("button",{name:"Done",exact:true}).click();
   await shown(page.getByText("Synthetic accepted-owner update",{exact:true}));
   assert.equal(accepted.handoffBody.sections.context_and_purpose,handoffSections.context_and_purpose);

@@ -117,7 +117,7 @@ test("each review reason says what is missing without assuming attendance", () =
   );
   assert.equal(
     counselingReconciliationNotice,
-    "This Counseling Encounter is already recorded. Complete the Appointment to reconcile it; this won’t create another Encounter.",
+    "This Counseling Encounter is already recorded. Completing the Appointment will connect it to this Encounter instead of creating another one.",
   );
   assert.equal(
     completeConfirmationDescription({ reconciliation: false }),

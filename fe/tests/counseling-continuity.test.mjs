@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { arrangementLabel, authorizationLabel, continuityError, continuityStale, continuityReasonLabels, enumChoice, transferHref, transferPrepareHref } from "../src/features/counseling/continuity/continuity-presentation.ts";
+import { arrangementLabel, authorizationLabel, continuityError, continuityEventLabel, continuityStale, continuityReasonLabels, enumChoice, taskDispositionLabels, appointmentDispositionLabels, transferHref, transferPrepareHref } from "../src/features/counseling/continuity/continuity-presentation.ts";
 import { CaseContinuityReason } from "../src/lib/api/generated/model/index.ts";
 import { CompassApiError } from "../src/lib/api/errors.ts";
 import { presentWork } from "../src/features/work-queue/work-queue-presentation.ts";
@@ -34,7 +34,7 @@ test("continuity destinations encode identifiers and queue items use the case re
 });
 function error(code) { return new CompassApiError({ status: 409, body: { error: { code, message: "Private diagnostic" } }, headers: {}, method: "POST", url: "/api/v1/counseling/continuity" }); }
 test("stale and denied errors use closed safe copy instead of backend diagnostics", () => {
-  assert.equal(continuityError(error("case_continuity_no_independent_approver")), "No independent approver is available.");
+  assert.equal(continuityError(error("case_continuity_no_independent_approver")), "There is no independent Head available to approve this arrangement.");
   for (const code of ["case_continuity_changed", "case_continuity_owner_changed", "case_continuity_review_expired", "case_continuity_terminal_arrangement", "case_continuity_authorization_changed", "case_continuity_case_not_active"]) assert.equal(continuityStale(error(code)), true);
   for (const value of [error("constructor"), error("future_error"), new Error("Private diagnostic"), null]) {
     assert.equal(continuityError(value, "Safe fallback"), "Safe fallback");
@@ -47,4 +47,15 @@ test("unavailable-handoff queue names the review without claiming authorization"
  assert.equal(item.title,"Review unavailable handoff · CASE-2026-000001");
  assert.equal(item.href,"/portal/counseling/transfers/arrangement");
  assert.match(item.detail,/before transfer submission/);
+});
+
+test("history events use bounded plain labels instead of raw audit verbs", () => {
+  const verbs = { prepared: "Prepared", updated: "Updated", submitted: "Submitted", authorized: "Authorized", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", revoked: "Revoked" };
+  for (const [kind, label] of Object.entries(verbs)) assert.equal(continuityEventLabel(kind), label);
+  for (const kind of ["constructor", "future_kind", "__proto__"]) assert.equal(continuityEventLabel(kind), "Changed");
+});
+
+test("work plan options say keep instead of retain", () => {
+  assert.equal(taskDispositionLabels.RETAIN, "Keep with the current assignee");
+  assert.equal(appointmentDispositionLabels.RETAIN_WITH_PROVIDER, "Keep with the provider");
 });

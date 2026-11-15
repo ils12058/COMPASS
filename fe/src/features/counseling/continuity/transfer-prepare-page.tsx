@@ -74,7 +74,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
     const taskInputs: CaseTransferPrepareRequest["tasks"] = [];
     for (const task of context.tasks) {
       const choice = tasks[task.task_id];
-      if (!choice?.disposition || !task.allowed_dispositions.includes(choice.disposition)) { setError("Choose an available disposition for every pending action."); return; }
+      if (!choice?.disposition || !task.allowed_dispositions.includes(choice.disposition)) { setError("Choose an available plan for every pending action."); return; }
       const due = choice.disposition === "HAND_OVER_AS_NEW" ? institutionalDateTimeInputToISO(choice.due) : null;
       if (choice.disposition === "HAND_OVER_AS_NEW" && (!choice.title.trim() || !due)) { setError("Every successor needs a new title and deadline."); return; }
       taskInputs.push({ task_id: task.task_id, expected_version: task.version, disposition: choice.disposition, ...(choice.disposition === "HAND_OVER_AS_NEW" ? { successor_title: choice.title, successor_due_at: due } : {}) });
@@ -82,7 +82,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
     const appointmentInputs: CaseTransferPrepareRequest["appointments"] = [];
     for (const appointment of context.appointments) {
       const choice = appointments[appointment.link_id];
-      if (!choice?.disposition || (choice.disposition === "RETAIN_WITH_PROVIDER" && !choice.retention)) { setError("Choose a plan for every upcoming Appointment, including a reason for retaining its provider."); return; }
+      if (!choice?.disposition || (choice.disposition === "RETAIN_WITH_PROVIDER" && !choice.retention)) { setError("Choose a plan for every upcoming Appointment, including a reason for keeping its provider."); return; }
       appointmentInputs.push({ link_id: appointment.link_id, disposition: choice.disposition, ...(choice.disposition === "RETAIN_WITH_PROVIDER" && choice.retention ? { retention_reason: choice.retention } : {}) });
     }
     if (!receiver || blocked || (context.office_prepared && !officeReason)) { setError(blocked ?? "Choose the receiver and explain office preparation when required."); return; }
@@ -110,7 +110,7 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
     }
   }
 
-  if (result) return <Notice role="status" action={<Link className="font-semibold text-brand underline" href={withWorkflowReturn(transferHref(result.id), returnTo)}>Review transfer</Link>}>Transfer plan saved. Review and submit it to the next actor.</Notice>;
+  if (result) return <Notice role="status" action={<Link className="font-semibold text-brand underline" href={withWorkflowReturn(transferHref(result.id), returnTo)}>Review transfer</Link>}>Transfer plan saved. Review and submit it to send it for review.</Notice>;
   return <form onSubmit={event => void save(event)} onChange={() => setDirty(true)}>
     {stale ? <Notice role="alert" className="mb-5" tone="warning" action={<Button type="button" variant="secondary" onClick={() => { setCaseVersion(context.case.version); setOfferVersion(existing?.version); setError(null); }}>I have reviewed the latest work</Button>}>The case or arrangement changed. Your input is kept; review the current actions and appointments before saving.</Notice> : null}
     <Panel aria-labelledby="transfer-form-heading">
@@ -127,8 +127,8 @@ function TransferForm({ context, existing, reason, setReason, confirmed, returnT
       {!reopening ? <TransferWorkFields context={context} tasks={tasks} appointments={appointments} changeTask={(id, choice) => { setTasks(current => ({ ...current, [id]: choice })); setDirty(true); }} changeAppointment={(id, choice) => { setAppointments(current => ({ ...current, [id]: choice })); setDirty(true); }} returnTo={returnTo} /> : null}
       {!reopening ? <PanelSection title="4. Handoff" titleId="transfer-form-handoff-heading">
         {context.office_prepared ? <p className="text-sm">The Head must record why a clinical handoff is unavailable before this transfer can be submitted.</p> : <>
-          <p className="mb-4 text-sm text-muted">Submit the handoff before submitting the transfer. The selected action and Appointment plans are saved as read-only work.</p>
-          {existing?.handoff?.state === "SUBMITTED" ? <p className="mb-4 text-sm text-warning">Changing the plan requires a new handoff. The previous submitted snapshot remains immutable.</p> : null}
+          <p className="mb-4 text-sm text-muted">Submit the handoff before submitting the transfer. The selected action and Appointment plans are saved with the handoff.</p>
+          {existing?.handoff?.state === "SUBMITTED" ? <p className="mb-4 text-sm text-warning">Changing the plan requires a new handoff. The previously submitted handoff stays on record and can&apos;t be changed.</p> : null}
           <HandoffFields value={handoff} onChange={setHandoff} disabled={pending} />
         </>}
       </PanelSection> : null}

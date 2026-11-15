@@ -6,7 +6,7 @@ export const closureReasonLabels: Record<CaseClosureReason, string> = {
   STUDENT_DISCONTINUED: "Student chose to discontinue",
   CONTACT_NOT_REESTABLISHED: "Unable to re-establish contact after documented attempts",
   EXTERNAL_HANDOVER_CONFIRMED: "External service handover confirmed",
-  ELIGIBILITY_ENDED: "Institutional service eligibility ended",
+  ELIGIBILITY_ENDED: "The student is no longer eligible for institutional services",
 };
 
 // Native option labels stay short; the full meaning appears below the field.
@@ -15,7 +15,7 @@ export const closureReasonOptions: Record<CaseClosureReason, string> = {
   STUDENT_DISCONTINUED: "Student discontinued",
   CONTACT_NOT_REESTABLISHED: "Contact not restored",
   EXTERNAL_HANDOVER_CONFIRMED: "External handover",
-  ELIGIBILITY_ENDED: "Eligibility ended",
+  ELIGIBILITY_ENDED: "No longer eligible",
 };
 
 export const closureOutcomeLabels: Record<CaseClosureOutcome, string> = {
@@ -53,7 +53,7 @@ export function closureNoteError(reason: CaseClosureReason, note: string): strin
 
 export function closureError(error: unknown, fallback = "This case action couldn't be completed. Review the case and try again."): string {
   switch (caseErrorCode(error)) {
-    case "counseling_case_close_blocked": return "Outstanding work prevents closure. Review the current blockers and resolve each through its own workflow.";
+    case "counseling_case_close_blocked": return "Open work prevents closure. Review each item and handle it through its own workflow.";
     case "counseling_case_close_invalid":
     case "counseling_case_closure_invalid": return "Check the closure reason, outcome and note, then try again.";
     case "counseling_case_reopen_invalid": return "Choose an available reopening reason.";

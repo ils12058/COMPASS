@@ -6,7 +6,7 @@ export const counselingMismatchNotice =
 
 /** Shown when the record exists but the Appointment is still SCHEDULED (D-CENC-05). */
 export const counselingReconciliationNotice =
-  "This Counseling Encounter is already recorded. Complete the Appointment to reconcile it; this won’t create another Encounter.";
+  "This Counseling Encounter is already recorded. Completing the Appointment will connect it to this Encounter instead of creating another one.";
 
 export const documentationReviewReasonCopy: Record<
   CounselingDocumentationReviewReason,

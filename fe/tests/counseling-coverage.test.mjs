@@ -65,6 +65,6 @@ test("coverage work items and notifications open the coverage review, with only 
 test("coverage-specific refusals have plain messages", () => {
   const error = code => new CompassApiError({ status: 409, body: { error: { code, message: "Private diagnostic" } }, headers: {}, method: "POST", url: "/api/v1/counseling/coverages/x/submit" });
   assert.equal(continuityError(error("case_continuity_return_plan_required")), "Choose a return plan for every delegated action.");
-  assert.match(continuityError(error("case_continuity_coverage_conflict")), /Conflicting coverage/);
+  assert.match(continuityError(error("case_continuity_coverage_conflict")), /existing coverage must be ended or expire/);
   assert.equal(continuityError(error("case_continuity_unknown_code"), "fallback"), "fallback");
 });

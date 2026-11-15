@@ -46,7 +46,7 @@ export function TransferHandoffSection({ item, here, confirmed, onChanged, onSta
   return <Panel className="mt-5" aria-labelledby="transfer-handoff-heading">
     <PanelHeader title="Handoff" titleId="transfer-handoff-heading" />
     <PanelBody>
-      {item.handoff ? <p className="text-sm">{item.handoff.state === "SUBMITTED" ? "Submitted · Immutable" : "Draft · Author only"} · {item.handoff.author.display_name}</p>
+      {item.handoff ? <p className="text-sm">{item.handoff.state === "SUBMITTED" ? "Submitted · Can't be changed" : "Draft · Author only"} · {item.handoff.author.display_name}</p>
         : <Notice tone="warning">No handoff is available. {item.handoff_exception
           ? `${handoffExceptionLabels[item.handoff_exception.reason]} · Recorded by ${item.handoff_exception.recorded_by.display_name}`
           : item.handoff_required ? "A submitted handoff or Head exception is required before submission." : "This offer was submitted before the handoff requirement."}</Notice>}

@@ -38,7 +38,7 @@ function error(code) { return new CompassApiError({ status: 409, body: { error: 
 
 test("blocked closure presents each work kind and tells the owner to resolve its owning workflow", () => {
   assert.deepEqual(Object.values(closureBlockerLabels), ["Pending transfer", "Pending or current coverage", "Delegated action awaiting return", "Upcoming linked Appointment", "Pending action without an after-closure plan"]);
-  assert.match(closureError(error("counseling_case_close_blocked")), /resolve each through its own workflow/);
+  assert.match(closureError(error("counseling_case_close_blocked")), /handle it through its own workflow/);
   assert.doesNotMatch(closureError(error("counseling_case_close_blocked")), /Confidential diagnostic/);
 });
 

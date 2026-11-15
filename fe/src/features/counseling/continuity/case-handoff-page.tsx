@@ -85,8 +85,8 @@ function HandoffEditor({ item, body, onChanged, onSaved }: {
       </Panel>
     </form>
     <ConsequentialActionDialog open={open} onOpenChange={value => { setOpen(value); if (!value && completed) void onChanged(); }} onCloseAutoFocus={event => { event.preventDefault(); focusHeading("case-handoff-page-heading"); }} title="Submit handoff?" confirmLabel="Submit handoff" pendingLabel="Submitting…" pending={submit.isPending} confirmDisabled={dirty || stale} error={error} onConfirm={() => void lock()}
-      completed={completed ? { title: "Handoff submitted", children: "The snapshot is immutable. Review the transfer and submit it separately; later information belongs in an attributed addendum." } : null}>
-      Submission locks this narrative and the reviewed work snapshot for {item.receiving_counselor.display_name}. It remains confidential and does not accept the case or complete any task.
+      completed={completed ? { title: "Handoff submitted", children: "The submitted handoff can no longer be changed. Review the transfer and submit it separately; add any new information as a note under your name." } : null}>
+      Submitting locks this handoff text and the reviewed work plan for {item.receiving_counselor.display_name}. It stays confidential and does not accept the case or complete any task.
     </ConsequentialActionDialog>
   </>;
 }
@@ -105,7 +105,7 @@ function AddendumForm({ item, body, onChanged }: { item: CaseTransferDetailRespo
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(item.version);
   const [completed, setCompleted] = useState(false);
-  useUnsavedChangesGuard({ dirty: Boolean(text) && !completed, message: "Leave this handoff and discard the unsaved addendum?" });
+  useUnsavedChangesGuard({ dirty: Boolean(text) && !completed, message: "Leave this handoff and discard the unsaved note?" });
   async function add() {
     if (mutation.isPending || version !== item.version) return;
     try {
@@ -114,9 +114,9 @@ function AddendumForm({ item, body, onChanged }: { item: CaseTransferDetailRespo
       setCompleted(true); setText("");
     } catch (caught) { setError(continuityError(caught)); if (continuityStale(caught)) { setOpen(false); await onChanged(); } }
   }
-  return <Panel className="mt-5"><PanelHeader title="Add new information" /><PanelBody><Label htmlFor="case-handoff-addendum">Attributed addendum</Label><Textarea id="case-handoff-addendum" rows={5} value={text} onChange={event => setText(event.target.value)} disabled={mutation.isPending} aria-invalid={text.length > 12000} />
-    {error && !open ? <p className="mt-3 text-sm text-danger" role="alert">{error}</p> : null}</PanelBody><PanelFooter><Button disabled={!text.trim() || text.length > 12000} onClick={() => { setVersion(item.version); setCompleted(false); setOpen(true); }}>Add addendum</Button></PanelFooter>
-    <ConsequentialActionDialog open={open} onOpenChange={value => { setOpen(value); if (!value && completed) void onChanged(); }} title="Add handoff addendum?" confirmLabel="Add addendum" pendingLabel="Adding…" pending={mutation.isPending} confirmDisabled={version !== item.version} error={error} onConfirm={() => void add()} completed={completed ? { title: "Handoff addendum recorded", children: "The new information is attributed and dated. The submitted snapshot is unchanged." } : null}>This adds immutable information under your name. A pending transfer needs fresh submission and authorization after this change.</ConsequentialActionDialog>
+  return <Panel className="mt-5"><PanelHeader title="Add new information" /><PanelBody><Label htmlFor="case-handoff-addendum">Your note</Label><Textarea id="case-handoff-addendum" rows={5} value={text} onChange={event => setText(event.target.value)} disabled={mutation.isPending} aria-invalid={text.length > 12000} />
+    {error && !open ? <p className="mt-3 text-sm text-danger" role="alert">{error}</p> : null}</PanelBody><PanelFooter><Button disabled={!text.trim() || text.length > 12000} onClick={() => { setVersion(item.version); setCompleted(false); setOpen(true); }}>Add note</Button></PanelFooter>
+    <ConsequentialActionDialog open={open} onOpenChange={value => { setOpen(value); if (!value && completed) void onChanged(); }} title="Add handoff note?" confirmLabel="Add note" pendingLabel="Adding…" pending={mutation.isPending} confirmDisabled={version !== item.version} error={error} onConfirm={() => void add()} completed={completed ? { title: "Handoff note recorded", children: "The note is recorded under your name with the date and time. The submitted handoff is unchanged." } : null}>This adds a note under your name that can&apos;t be changed later. If the transfer is still under review, it must be submitted and approved again after this note.</ConsequentialActionDialog>
   </Panel>;
 }
 
@@ -149,10 +149,10 @@ function HandoffWorkspace({ item, privacy, onChanged }: { item: CaseTransferDeta
   if (query.isError) return <CounselingQueryError message={continuityError(query.error)} onRetry={() => void refresh()} />;
   return <>
     {body?.state === "SUBMITTED" ? <Panel aria-labelledby="submitted-handoff-heading"><PanelHeader title="Submitted handoff" titleId="submitted-handoff-heading" description={`${body.author.display_name} · ${body.submitted_at ? formatCounselingDateTime(body.submitted_at) : ""}`} />
-      <PanelBody><p className="mb-4 text-sm text-muted">Opening records receipt. Acceptance remains a separate decision.</p>{Object.entries(handoffSectionLabels).map(([key, label]) => <section key={key} className="mt-5 first:mt-0"><h3 className="text-sm font-semibold text-brand">{label}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm">{body.sections[key as keyof CaseHandoffSections] || "Not supplied"}</p></section>)}</PanelBody>
+      <PanelBody><p className="mb-4 text-sm text-muted">Opening this handoff records that you received it. Accepting the case is a separate decision.</p>{Object.entries(handoffSectionLabels).map(([key, label]) => <section key={key} className="mt-5 first:mt-0"><h3 className="text-sm font-semibold text-brand">{label}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm">{body.sections[key as keyof CaseHandoffSections] || "Not supplied"}</p></section>)}</PanelBody>
     </Panel> : <HandoffEditor item={item} body={body} onChanged={refresh} onSaved={status.show} />}
     {body ? <HandoffWork body={body} /> : null}
-    {body?.state === "SUBMITTED" ? <Panel className="mt-5"><PanelHeader title="Addenda" /><PanelBody>{body.addenda.length ? <ol className="divide-y divide-border">{body.addenda.map(addition => <li className="py-4 first:pt-0" key={addition.id}><p className="text-sm font-semibold">{addition.author.display_name} · {formatCounselingDateTime(addition.created_at)}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{addition.content}</p></li>)}</ol> : <p className="text-sm text-muted">No addenda recorded.</p>}<div className="mt-3 flex flex-wrap gap-3">{page > 1 ? <Button variant="secondary" onClick={() => setPage(page - 1)}>Previous addenda</Button> : null}{body.addenda_has_next ? <Button variant="secondary" onClick={() => setPage(page + 1)}>Older addenda</Button> : null}</div></PanelBody></Panel> : null}
+    {body?.state === "SUBMITTED" ? <Panel className="mt-5"><PanelHeader title="Notes" /><PanelBody>{body.addenda.length ? <ol className="divide-y divide-border">{body.addenda.map(addition => <li className="py-4 first:pt-0" key={addition.id}><p className="text-sm font-semibold">{addition.author.display_name} · {formatCounselingDateTime(addition.created_at)}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{addition.content}</p></li>)}</ol> : <p className="text-sm text-muted">No notes recorded.</p>}<div className="mt-3 flex flex-wrap gap-3">{page > 1 ? <Button variant="secondary" onClick={() => setPage(page - 1)}>Previous notes</Button> : null}{body.addenda_has_next ? <Button variant="secondary" onClick={() => setPage(page + 1)}>Older notes</Button> : null}</div></PanelBody></Panel> : null}
     {body?.can_addendum ? <AddendumForm item={item} body={body} onChanged={refresh} /> : null}
     <ActionStatus status={status.status} onDismiss={status.dismiss} />
   </>;

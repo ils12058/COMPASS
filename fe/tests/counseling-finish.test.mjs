@@ -242,7 +242,7 @@ test("a still-scheduled Appointment with its Encounter recorded points at Comple
   );
   assert.match(
     html,
-    /This Counseling Encounter is already recorded\. Complete the Appointment to reconcile it; this won’t create another Encounter\./,
+    /This Counseling Encounter is already recorded\. Completing the Appointment will connect it to this Encounter instead of creating another one\./,
   );
   assert.match(html, /Complete Appointment/);
   assert.doesNotMatch(html, />Finish counseling</);

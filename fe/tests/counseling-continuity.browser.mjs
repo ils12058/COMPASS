@@ -44,7 +44,7 @@ async function fillPreparation(page, chosen = receiver) {
   await page.getByLabel("Receiving counselor", { exact: true }).selectOption(chosen.id);
   await page.getByLabel("Plan for action 1", { exact: true }).selectOption("TRANSFER");
   await page.getByLabel("Plan for APT-CW3-0001", { exact: true }).selectOption("RETAIN_WITH_PROVIDER");
-  await page.getByLabel(`Why retain ${counselor.display_name}?`, { exact: true }).selectOption("CONTINUING_SUPPORT");
+  await page.getByLabel(`Why keep ${counselor.display_name}?`, { exact: true }).selectOption("CONTINUING_SUPPORT");
   if (await page.getByLabel("Current concern and handoff purpose", {exact:true}).count()) {
     await page.getByLabel("Current concern and handoff purpose", {exact:true}).fill("Synthetic continuation context");
     await page.getByLabel("What the receiver should review or do next", {exact:true}).fill("Review the specified work");
@@ -120,7 +120,7 @@ await check("changing-reason-preserves-input-and-refreshes-dispositions", prepar
   assert.equal(await page.getByLabel("Plan for action 1", { exact: true }).inputValue(), "TRANSFER");
   await page.getByLabel("Plan for action 1", { exact: true }).selectOption("RETAIN");
   await page.getByLabel("Neutral reason", { exact: true }).selectOption("IMPARTIALITY_CONCERN");
-  await shown(page.getByText("This disposition is no longer available for the selected reason.", { exact: true }));
+  await shown(page.getByText("This plan is no longer available for the selected reason.", { exact: true }));
   assert.equal(await page.getByLabel("Receiving counselor", { exact: true }).inputValue(), receiver.id);
 });
 
@@ -183,7 +183,7 @@ await check("office-lookup-hides-content-and-incoming-head-route-is-blocked", "/
   assert.doesNotMatch(await page.locator("main").innerText(), /Protected synthetic action/);
   await page.getByRole("link", { name: "Transfer case CASE-2026-000001", exact: true }).click();
   await page.getByLabel("Receiving counselor", { exact: true }).selectOption(head.id);
-  await shown(page.getByText(/No independent approver is available\./));
+  await shown(page.getByText(/There is no independent Head available to approve this arrangement\./));
   assert.equal(await page.getByRole("button", { name: "Save transfer plan", exact: true }).isDisabled(), true);
   assert.doesNotMatch(await page.locator("main").innerText(), /Protected synthetic action/);
   assert.equal(await page.getByLabel("Plan for action 1", { exact: true }).locator("option").count(), 3);

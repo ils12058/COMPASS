@@ -7,7 +7,7 @@ import { continuityAccount, continuityAPI, continuityFixture, head, office, rece
 const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await createBrowserHarness("counseling-closure");
 const closePath = `${casePath}/close`;
 const reopenPath = `${casePath}/reopen`;
-const reasonLabels = { PLANNED_SUPPORT_CONCLUDED: "Planned support concluded", STUDENT_DISCONTINUED: "Student chose to discontinue", CONTACT_NOT_REESTABLISHED: "Unable to re-establish contact after documented attempts", EXTERNAL_HANDOVER_CONFIRMED: "External service handover confirmed", ELIGIBILITY_ENDED: "Institutional service eligibility ended" };
+const reasonLabels = { PLANNED_SUPPORT_CONCLUDED: "Planned support concluded", STUDENT_DISCONTINUED: "Student chose to discontinue", CONTACT_NOT_REESTABLISHED: "Unable to re-establish contact after documented attempts", EXTERNAL_HANDOVER_CONFIRMED: "External service handover confirmed", ELIGIBILITY_ENDED: "The student is no longer eligible for institutional services" };
 
 async function closeDetails(page, reason = "PLANNED_SUPPORT_CONCLUDED") {
   await page.getByRole("button", { name: "Next: closure details", exact: true }).click();
@@ -113,7 +113,7 @@ for (const mode of ["stale", "blocked-race", "failure"]) {
       assert.equal(await page.getByLabel("Confidential closure note (required)", { exact: true }).inputValue(), closureNote);
     } else {
       await hidden(dialog);
-      await shown(page.getByRole("status").filter({ hasText: mode === "stale" ? "case changed" : "Outstanding work" }));
+      await shown(page.getByRole("status").filter({ hasText: mode === "stale" ? "case changed" : "Open work" }));
       if (mode === "blocked-race") await shown(page.getByText("Pending transfer", { exact: true }));
     }
     assert.equal(fixture.operations.length, 1);
@@ -158,7 +158,7 @@ for (const width of [320, 390]) {
 
 function reopeningTransfer(account, changes = {}, stale = false) {
   const identity = Object.fromEntries(["id", "reference_code", "student", "primary_counselor", "status", "version"].map(key => [key, detail({ status: "CLOSED" })[key]]));
-  return continuityFixture({ account, item: { purpose: "REOPEN", case: identity, office_prepared: true, prepared_by: office, office_preparation_reason: "OWNER_UNAVAILABLE", handoff: null, handoff_required: false, ...changes }, state: { stale, context: { purpose: "REOPEN", case: identity, office_prepared: true, tasks: [], appointments: [], receiver_options: [{ person: receiver, authorization_route: "INDEPENDENT_HEAD", blocked_reason: null }, { person: head, authorization_route: null, blocked_reason: "No independent approver is available." }] } } });
+  return continuityFixture({ account, item: { purpose: "REOPEN", case: identity, office_prepared: true, prepared_by: office, office_preparation_reason: "OWNER_UNAVAILABLE", handoff: null, handoff_required: false, ...changes }, state: { stale, context: { purpose: "REOPEN", case: identity, office_prepared: true, tasks: [], appointments: [], receiver_options: [{ person: receiver, authorization_route: "INDEPENDENT_HEAD", blocked_reason: null }, { person: head, authorization_route: null, blocked_reason: "There is no independent Head available to approve this arrangement." }] } } });
 }
 async function transferDecision(page, action) {
   await page.getByRole("button", { name: action, exact: true }).click();
@@ -174,7 +174,7 @@ await check("office-prepares-closed-case-reopening-with-independent-head-rule", 
   await page.getByRole("link", { name: /Transfer to reopen/ }).click();
   await shown(page.getByRole("heading", { name: "Transfer to reopen case", exact: true }));
   await page.getByLabel("Receiving counselor", { exact: true }).selectOption(head.id);
-  await shown(page.getByRole("alert").filter({ hasText: "No independent approver" }));
+  await shown(page.getByRole("alert").filter({ hasText: "no independent Head" }));
   await page.getByLabel("Receiving counselor", { exact: true }).selectOption(receiver.id);
   await page.getByLabel("Why is the office preparing this?", { exact: true }).selectOption("OWNER_UNAVAILABLE");
   assert.equal(await page.getByRole("heading", { name: "4. Handoff", exact: true }).count(), 0);

@@ -21,13 +21,13 @@ import {
 } from "@/lib/api/generated/counseling/counseling";
 import { CaseArrangementDecisionReason, type CaseCoverageDetailResponse } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
-import { authorizationLabel, continuityError, continuityReasonLabels, continuityStale, coverageHref, coveragePrepareHref, coverageStateLabel, decisionReasonLabels, enumChoice, returnPlanLabels } from "./continuity-presentation";
+import { authorizationLabel, continuityError, continuityEventLabel, continuityReasonLabels, continuityStale, coverageHref, coveragePrepareHref, coverageStateLabel, decisionReasonLabels, enumChoice, returnPlanLabels } from "./continuity-presentation";
 
 type Decision = "submit" | "authorize" | "accept" | "decline" | "cancel" | "revoke";
 const actionLabels: Record<Decision, string> = { submit: "Submit coverage", authorize: "Authorize coverage", accept: "Accept coverage", decline: "Decline coverage", cancel: "Cancel coverage", revoke: "End coverage now" };
 const pendingLabels: Record<Decision, string> = { submit: "Submitting…", authorize: "Authorizing…", accept: "Accepting…", decline: "Declining…", cancel: "Cancelling…", revoke: "Ending coverage…" };
 const explanations: Record<Decision, string> = {
-  submit: "The next actor receives this coverage plan for review. Changing it later needs a fresh review.",
+  submit: "This sends the coverage plan for review. Changing it later means it must be reviewed again.",
   authorize: "This starts a review of up to seven days by the covering Counselor. Nothing changes until they accept.",
   accept: "You will cover the selected actions during the approved period. The primary Counselor stays responsible for the case.",
   decline: "The primary Counselor keeps all work. Another arrangement will be needed.",
@@ -104,7 +104,7 @@ function CoverageReview({ item, onChanged, onStale, here }: { item: CaseCoverage
         {item.can_open_case ? <Link className="font-semibold text-brand underline" href={withWorkflowReturn(`/portal/counseling/cases/${item.case.id}`, here)}>Open case {item.case.reference_code}</Link> : null}
       </div>
     </PanelBody></Panel> : null}
-    <Panel className="mt-5" aria-labelledby="coverage-history-heading"><PanelHeader title="Coverage history" titleId="coverage-history-heading" /><ol className="divide-y divide-border">{item.history.map(event => <li key={event.id} className="px-4 py-3 text-sm sm:px-5"><p className="capitalize">{event.kind} · {event.actor.display_name}</p><p className="mt-1 text-xs text-muted">{formatCounselingDateTime(event.occurred_at)}{event.authorization_route ? ` · ${authorizationLabel(event.authorization_route)}` : ""}</p></li>)}</ol></Panel>
+    <Panel className="mt-5" aria-labelledby="coverage-history-heading"><PanelHeader title="Coverage history" titleId="coverage-history-heading" /><ol className="divide-y divide-border">{item.history.map(event => <li key={event.id} className="px-4 py-3 text-sm sm:px-5"><p>{continuityEventLabel(event.kind)} · {event.actor.display_name}</p><p className="mt-1 text-xs text-muted">{formatCounselingDateTime(event.occurred_at)}{event.authorization_route ? ` · ${authorizationLabel(event.authorization_route)}` : ""}</p></li>)}</ol></Panel>
     <ConsequentialActionDialog open={Boolean(decision)} title={`${decision ? actionLabels[decision] : "Review coverage"}?`} confirmLabel={decision ? actionLabels[decision] : "Confirm"} pendingLabel={decision ? pendingLabels[decision] : "Saving…"} pending={pending} confirmDisabled={needsReason(decision) && !reason} error={error} variant={needsReason(decision) ? "danger" : "primary"} onOpenChange={open => { if (!open) { setDecision(null); setCompleted(null); } }} onConfirm={() => void confirm()} onCloseAutoFocus={event => { event.preventDefault(); focusHeading("coverage-review-heading"); }} completed={completed ? { title: `${decision ? actionLabels[decision] : "Coverage"} completed`, children: <p>{coverageStateLabel(completed, formatCounselingDateTime)}.</p> } : null} choices={needsReason(decision) ? <div className="grid gap-1"><Label htmlFor="coverage-decision-reason">Reason for this decision</Label><Select id="coverage-decision-reason" value={reason} onChange={event => setReason(enumChoice(Object.values(CaseArrangementDecisionReason), event.target.value) ?? "")}><option value="">Choose a reason</option>{Object.values(CaseArrangementDecisionReason).filter(value => value !== "REVIEW_WINDOW_ENDED").map(value => <option key={value} value={value}>{decisionReasonLabels[value]}</option>)}</Select></div> : undefined}>
       <p>{item.reference_code} · {item.case.reference_code} · {item.receiving_counselor.display_name}</p>
       <p>{decision ? explanations[decision] : ""}</p>
