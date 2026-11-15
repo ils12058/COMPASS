@@ -19,7 +19,7 @@ const protectedRead = (request) => /\/api\/v1\/(?:referrals|counseling|assessmen
 
 for (const [width, scale] of [[1440, 100], [390, 100], [320, 200]]) {
   await check(`faculty-home-${width}-${scale}`, "/portal", { handler: facultyHandler, viewport: { width, height: 950 } }, async (page, fixture) => {
-    await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
+    await shown(page.getByRole("heading", { name: /Good (?:morning|afternoon|evening), Example/ }));
     await page.evaluate((value) => { document.documentElement.style.fontSize = `${value}%`; }, scale);
     await shown(page.getByText("Digital Student Referrals are not available yet."));
     await shown(page.getByText("Not assigned", { exact: true }));
@@ -40,7 +40,7 @@ for (const path of ["/portal/referrals/new", "/portal/appointments/book", "/port
     await shown(page.getByRole("heading", { name: "Workspace access" }));
     assert.equal(fixture.requests.some(protectedRead), false, "Blocked workspace must never mount protected queries");
     await page.getByRole("link", { name: "Return to Home" }).click();
-    await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
+    await shown(page.getByRole("heading", { name: /Good (?:morning|afternoon|evening), Example/ }));
   });
 }
 const managed = {

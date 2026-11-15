@@ -1,10 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Bell, Forward, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageActionLink } from "@/components/ui/page-action";
-import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -14,6 +13,8 @@ import { FacultySubmissionList } from "@/features/faculty-referrals/records";
 import { FacultyLoading } from "@/features/faculty-referrals/shared";
 import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
 import { HomeGuideAction } from "@/features/portal/orientation/portal-orientation";
+import { HomeHeader } from "@/features/portal/home/home-header";
+import { formatOverviewDate, getOverviewGreeting, getOverviewRoleContext } from "@/features/portal/home/overview-presentation";
 
 export function FacultyHome({ user }: { user: UserSummary }) {
   const query = useFacultyAvailability(user);
@@ -24,8 +25,15 @@ export function FacultyHome({ user }: { user: UserSummary }) {
 
 export function FacultyHomeView({ user, availability, children }: { user: UserSummary; availability?: FacultyReferralAvailability; children: ReactNode }) {
   const home = user.faculty_affiliation;
+  const [now] = useState(() => new Date());
   return <section className={`${pageSheetWidth} @container/faculty-home`} aria-labelledby="faculty-home-heading">
-    <div data-orientation="home"><PageHeader title="Faculty Home" headingId="faculty-home-heading" description={`Welcome, ${user.first_name || "Faculty"}.`} actions={<><HomeGuideAction />{facultyReferralAccess(user).submit && facultySubmissionAvailable(availability) ? <PageActionLink href={facultySubmitPath} label="Submit Referral" icon={Forward} /> : null}</>} /></div>
+    <HomeHeader
+      greeting={getOverviewGreeting(user, now)}
+      date={formatOverviewDate(now)}
+      roleContext={getOverviewRoleContext(user)}
+      headingId="faculty-home-heading"
+      actions={<><HomeGuideAction />{facultyReferralAccess(user).submit && facultySubmissionAvailable(availability) ? <PageActionLink href={facultySubmitPath} label="Submit Referral" icon={Forward} /> : null}</>}
+    />
     <div className="grid items-start gap-5 @[54rem]/faculty-home:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="min-w-0">{children}</div>
       <Panel><PanelHeader title="Your Faculty account" /><PanelBody className="space-y-4 text-sm">

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { HomeGuideAction } from "@/features/portal/orientation/portal-orientation";
-import { PageHeader } from "@/components/ui/page-header";
+import { HomeHeader } from "@/features/portal/home/home-header";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
@@ -24,7 +24,6 @@ import {
 } from "@/features/portal/home/overview-presentation";
 import { useOverviewAttention } from "@/features/portal/home/overview-work";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { scriptFontVariable } from "@/styles/script-font";
 import { CompassApiError } from "@/lib/api/errors";
 import { useOverviewGetSummary } from "@/lib/api/generated/overview/overview";
 
@@ -85,15 +84,12 @@ function OperationalPortalHome() {
   );
 
   return (
-    <section aria-labelledby="portal-overview-heading" className={`${pageSheetWidth} ${user.role === "STUDENT" ? scriptFontVariable : ""}`}>
-      <div data-orientation="home">
-      <PageHeader
-        title={user.role === "STUDENT"
-          ? <span className="inline-block max-w-full font-script text-3xl font-semibold leading-[1.1] [overflow-wrap:anywhere] sm:text-4xl">{getOverviewGreeting(user, now)}</span>
-          : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? "Guidance Office Home" : getOverviewGreeting(user, now)}
+    <section aria-labelledby="portal-overview-heading" className={pageSheetWidth}>
+      <HomeHeader
+        greeting={getOverviewGreeting(user, now)}
+        date={formatOverviewDate(now)}
+        roleContext={roleContext}
         headingId="portal-overview-heading"
-        context={user.role === "STUDENT" ? "Home" : undefined}
-        description={[formatOverviewDate(now), user.role === "GUIDANCE_OFFICE_ASSISTANT" ? null : roleContext].filter(Boolean).join(" · ")}
         actions={<>
           <HomeGuideAction />
           {primaryAction ? (
@@ -105,7 +101,6 @@ function OperationalPortalHome() {
           />
         ) : null}</>}
       />
-      </div>
 
       {user.role === "STUDENT" ? (
         <StudentHome user={user} attention={attention} summary={summaryPanel} />

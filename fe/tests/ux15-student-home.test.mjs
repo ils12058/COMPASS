@@ -10,6 +10,8 @@ import { getStudentHomeDestinations } from "../src/features/portal/home/student-
 import { useOverviewAttention } from "../src/features/portal/home/overview-work.ts";
 import { getOverviewMetrics, getOverviewPrimaryAction, getOverviewGreeting, formatOverviewDate, getOverviewRoleContext } from "../src/features/portal/home/overview-presentation.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
+import { scriptFontVariable } from "../src/styles/script-font.ts";
 import { getStudentActionsListQueryKey } from "../src/lib/api/generated/student-actions/student-actions.ts";
 import { getOverviewGetSummaryQueryKey } from "../src/lib/api/generated/overview/overview.ts";
 import { getAnnouncementsListVisibleQueryKey } from "../src/lib/api/generated/announcements/announcements.ts";
@@ -111,13 +113,42 @@ test("professional roles and designations retain their composition without Stude
     assert.deepEqual(getStudentHomeDestinations(state.account), []);
     assert.equal(html.includes("counselor-work-heading"), role === "COUNSELOR", "Only Counselors receive the dedicated Counselor Home composition");
     if (role === "GUIDANCE_OFFICE_ASSISTANT") {
-      assert.match(html, /Guidance Office Home|goa-work-heading/);
+      assert.match(html, /goa-work-heading/);
       assert.doesNotMatch(html, /overview-attention-heading|overview-summary-heading/);
     }
     if (role === "IT_ADMIN") assert.match(html, /overview-attention-heading/);
     if (role === "IT_ADMIN") assert.match(html, /Email delivery|email delivery/);
     if (role === "INSTITUTIONAL_OFFICER") assert.doesNotMatch(html, /overview-summary-heading/);
     assert.equal(getOverviewRoleContext(state.account)?.includes("Head Guidance Counselor") ?? false, role === "COUNSELOR");
+  }
+});
+
+test("every role shares one Home header: Caveat greeting h1, Home context and the office date", () => {
+  const variants = [
+    { role: "STUDENT" },
+    { role: "COUNSELOR" },
+    { role: "COUNSELOR", designations: ["HEAD_GUIDANCE_COUNSELOR"] },
+    { role: "GUIDANCE_OFFICE_ASSISTANT" },
+    { role: "IT_ADMIN" },
+    { role: "FACULTY" },
+    { role: "INSTITUTIONAL_OFFICER" },
+  ];
+  function GuardedHome() { return h(UnsavedChangesProvider, null, h(PortalHome)); }
+  for (const { role, designations = [] } of variants) {
+    const state = homeWorld({ role, designations });
+    const html = renderWorld(state, GuardedHome);
+    const headingId = role === "FACULTY" ? "faculty-home-heading" : "portal-overview-heading";
+    assert.equal((html.match(/<h1\b/g) ?? []).length, 1, role);
+    const h1 = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/)?.[0] ?? "";
+    assert.ok(h1.includes(`id="${headingId}"`), `${role} keeps its heading id`);
+    assert.match(h1, /Good (?:morning|afternoon|evening), Alex/, role);
+    assert.ok(h1.includes("font-script"), `${role} greeting uses the script face`);
+    assert.ok(html.includes(scriptFontVariable), `${role} applies the script font variable`);
+    assert.match(html, />Home<\/p>/, `${role} shows the Home context`);
+    assert.match(html, /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}/, `${role} shows the office date`);
+    if (designations.includes("HEAD_GUIDANCE_COUNSELOR")) {
+      assert.match(html, /Counselor · Head Guidance Counselor/, role);
+    }
   }
 });
 

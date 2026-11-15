@@ -1,6 +1,6 @@
 import { Caveat } from "next/font/google";
 
-// The existing public-hero script face is also used for the selected Student Overview greeting.
+// The public-hero script face is also used for the Home greeting of every role.
 export const caveat = Caveat({
   variable: "--font-caveat",
   subsets: ["latin"],

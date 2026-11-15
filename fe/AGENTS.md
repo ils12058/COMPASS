@@ -592,10 +592,14 @@ Caveat (variable)
 --font-caveat
 ```
 
-Caveat (`font-script`) is used for the public landing hero accent and the Student Overview
-greeting only. Those expressive display treatments remain readable and wrap at narrow widths and
+Caveat (`font-script`) is used for the public landing hero accent and the Home greeting for every
+role. Those expressive display treatments remain readable and wrap at narrow widths and
 enlarged text; ordinary functional headings continue to use Outfit. Do not use Caveat for body
 copy, forms, small labels, buttons, navigation, tables, records, or safety-critical instructions.
+
+2026-11-16 (owner decision, FINAL-UI-1): the Home greeting replaced the Student-only scope above;
+every role's Home now shares the same script greeting header through `HomeHeader`
+(`src/features/portal/home/home-header.tsx`).
 
 Do not add additional display fonts merely to make a screen look distinctive.
 

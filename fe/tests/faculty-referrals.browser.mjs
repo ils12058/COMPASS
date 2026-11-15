@@ -110,7 +110,7 @@ for (const width of [320, 390, 768, 1024, 1440]) for (const scale of [100, 200])
 }
 
 await check("default-unavailable-home-and-direct-submission", "/portal", { handler: fixture({ available: false }).handler }, async (page, observed) => {
-  await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
+  await shown(page.getByRole("heading", { name: /Good (?:morning|afternoon|evening), Example/ }));
   await shown(page.getByText("Digital Student Referrals are not available yet.", { exact: true }));
   assert.equal(await page.locator(`a[href="${root}/new"]`).count(), 0);
   await page.screenshot({ path: join(artifacts, "home-unavailable.png"), fullPage: true });
@@ -413,7 +413,7 @@ await check("partial-timing-draft-navigation-warns-and-cancel-keeps-input", root
   assert.equal(await page.getByLabel("Start time · Philippine Time", { exact: true }).inputValue(), "09:30");
   page.once("dialog", dialog => dialog.accept());
   await page.locator('a[href="/portal"]').first().click();
-  await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
+  await shown(page.getByRole("heading", { name: /Good (?:morning|afternoon|evening), Example/ }));
 });
 
 await check("own-historical-statement-is-read-only-and-keeps-expired-windows", `${root}/${recordId}`, { handler: fixture({ statement: reportedTimingFixture() }).handler }, async (page, observed) => {

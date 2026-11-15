@@ -274,7 +274,7 @@ if (!baseline) {
           await shown(page.locator('section[aria-labelledby="counselor-work-heading"]').getByText("Review Routine Interview", { exact: true }));
           assert.equal(await page.locator("#overview-attention-heading").count(), 0);
         } else if (role === "GUIDANCE_OFFICE_ASSISTANT") {
-          await shown(page.getByRole("heading", { name: "Guidance Office Home", exact: true }));
+          await shown(page.getByRole("heading", { name: "Good morning, Alex", exact: true }));
           await shown(page.locator("#goa-work-heading"));
           await shown(page.locator("#goa-operations-heading"));
           assert.equal(await page.getByText("Review Routine Interview", { exact: true }).count(), 0, "Counselor evaluation work stays out of GOA Home");

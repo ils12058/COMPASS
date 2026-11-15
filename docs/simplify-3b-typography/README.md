@@ -4,6 +4,8 @@ Baseline: `4bfc1b4185c46cff2a40598f071bad1f2e40168e`, fetched 29 October 2026. T
 
 The user clarified that the desired handwritten face is Caveat, already used on the public hero. The same existing font definition is scoped to the Student Overview greeting, an expressive display heading; the title text and semantic heading remain the same. Outfit remains the functional heading face, including the staff and administrative Home headings. Script is not applied to controls, small labels, records, forms or critical instructions. The font remains `next/font` self-hosted in the browser; the public layout and Student Home share the existing font configuration.
 
+2026-11-16 (FINAL-UI-1, owner decision): staff Home headings now also use the greeting. Every role's Home — Student, Counselor, Head Guidance Counselor, Guidance Office Assistant, IT Admin, Faculty and Institutional Officer — shares one `HomeHeader` with the Caveat greeting, the "Home" context and the office date, so the earlier "unchanged non-Student heading fonts" note below describes the pre-FINAL-UI-1 state.
+
 The prior hero sentence is replaced by “A place to talk and find support.” The underlying title, rotation, pause behavior, links and meaning of available services are unchanged. The hero's grid child can now shrink and its text can wrap at enlarged text instead of clipping; its action controls can wrap.
 
 ## Synthetic previews

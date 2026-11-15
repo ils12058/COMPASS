@@ -24,7 +24,7 @@ const operationsPanel = (page) => page.locator('section[aria-labelledby="goa-ope
 const responsiveMeasurements = [];
 
 await check("GOA desktop canonical work, managed schedule and scoped operations", "/portal", goaWorld().options(), async (page, { requests }) => {
-  await shown(page.getByRole("heading", { name: "Guidance Office Home", exact: true }));
+  await shown(page.getByRole("heading", { name: "Good morning, Alex", exact: true }));
   await shown(workPanel(page).getByRole("heading", { name: "My work", exact: true }));
   await shown(schedulePanel(page).getByRole("heading", { name: "Today's managed Appointments", exact: true }));
   await shown(operationsPanel(page).getByRole("heading", { name: "Office workload", exact: true }));
@@ -110,7 +110,7 @@ await check("GOA empty work stays separate from available schedule and zero metr
 });
 
 await check("GOA restricted account omits the managed schedule and its request", "/portal", goaWorld({ capabilities: [], work: [] }).options(), async (page, { requests }) => {
-  await shown(page.getByRole("heading", { name: "Guidance Office Home", exact: true }));
+  await shown(page.getByRole("heading", { name: "Good morning, Alex", exact: true }));
   await hidden(schedulePanel(page));
   assert.equal(requests.some((request) => request.pathname === "/api/v1/appointments"), false, "No managed Appointment request is sent without appointments.manage");
   assert.equal(await page.getByRole("link", { name: "Manage Appointments", exact: true }).count(), 0);
@@ -198,7 +198,8 @@ await check("switching from GOA to Student removes GOA work and destinations", "
   // as page errors even though the account switch itself succeeds.
   await settleFetches(page);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await hidden(page.getByRole("heading", { name: "Guidance Office Home", exact: true }));
+  // Both accounts share the greeting header now; the GOA work composition is what must disappear.
+  await hidden(page.locator("#goa-work-heading"));
   await hidden(page.getByText("Synthetic Work Student 1", { exact: true }));
   assert.equal(await page.getByRole("link", { name: "Manage Appointments", exact: true }).count(), 0);
   assert.equal(requests.slice(requestCount).some((request) => request.pathname === "/api/v1/appointments"), false);
