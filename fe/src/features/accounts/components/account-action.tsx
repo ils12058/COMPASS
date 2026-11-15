@@ -22,7 +22,7 @@ const knownErrors: Record<string, string> = {
   institutional_designation_permission_denied:
     "You don't have access to manage institutional designations.",
   last_account_manager:
-    "COMPASS must retain an active account manager. Assign another manager before making this change.",
+    "COMPASS must always have an active account manager. Assign another manager before making this change.",
   identity_policy_unavailable:
     "Couldn't check account requirements. Try again later.",
   self_target_forbidden:

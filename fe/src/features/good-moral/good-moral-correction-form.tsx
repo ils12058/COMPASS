@@ -189,7 +189,7 @@ export function GoodMoralCorrectionForm({
         const retained = before?.status === "VERIFIED" && refreshed.receipt_inspection?.status === "VERIFIED" && before.verification_id === refreshed.receipt_inspection.verification_id;
         onSaved?.(changedReceipt && before?.status === "VERIFIED"
           ? "Certificate details saved. The updated receipt needs a new physical inspection before preparation."
-          : retained ? `Certificate details saved. Receipt inspection retained.${reviewedItem.status === "READY_FOR_ISSUANCE" && refreshed.status === "REQUESTED" ? " Prepare this request again." : ""}`
+          : retained ? `Certificate details saved. The receipt inspection is still valid.${reviewedItem.status === "READY_FOR_ISSUANCE" && refreshed.status === "REQUESTED" ? " Prepare this request again." : ""}`
           : "Certificate details saved.");
         onClose();
       }

@@ -59,7 +59,7 @@ export function GoodMoralStudentDetail({
     return result.isError ? undefined : result.data?.data;
   };
   const keyFacts: RecordFact[] = [
-    { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
+    { label: "How it started", value: goodMoralInitiationLabel(item.initiation_origin) },
     { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },
     ...(item.issued_at ? [{ label: "Issued", value: formatGoodMoralDateTime(item.issued_at) }] : []),
     ...(item.cancelled_at ? [{ label: "Cancelled", value: formatGoodMoralDateTime(item.cancelled_at) }] : []),

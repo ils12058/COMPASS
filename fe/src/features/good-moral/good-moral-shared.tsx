@@ -291,5 +291,5 @@ export function formatGoodMoralAmount(value: string | null | undefined): string 
 export function goodMoralInitiationLabel(origin: string | undefined): string {
   if (origin === "GCO_ASSISTED") return "Started by the Guidance Office";
   if (origin === "STUDENT_SELF") return "Requested by Student";
-  return "Initiator not recorded";
+  return "Not recorded";
 }

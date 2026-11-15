@@ -198,7 +198,7 @@ export function ReferralCreatePage() {
             </div>
           </PanelSection>
 
-          <PanelSection title="Chronology" titleId="referral-chronology-heading">
+          <PanelSection title="History" titleId="referral-chronology-heading">
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="grid content-start gap-2">
                 <Label htmlFor="referral-referred-on">Date referred</Label>

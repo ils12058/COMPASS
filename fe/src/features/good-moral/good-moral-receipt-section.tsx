@@ -86,7 +86,7 @@ export function GoodMoralReceiptSection({ item, confirmed, editorOpen, onRefresh
       onOpenChange={(open) => { if (!open) inspection.close(); }}
       onConfirm={() => void inspection.confirm()}
       onCloseAutoFocus={(event) => { event.preventDefault(); const trigger = document.getElementById("good-moral-verify-trigger"); if (trigger) trigger.focus(); else focusHeading("good-moral-receipt-heading"); }}
-      completed={inspection.completed ? { title: "Receipt inspection recorded", children: "The saved physical receipt inspection is current. Preparation and issuance Availability have been refreshed." } : null}
+      completed={inspection.completed ? { title: "Receipt inspection recorded", children: "The physical receipt inspection is recorded. Preparation and issuance options have been refreshed." } : null}
       choices={<div><Label className="flex min-h-11 items-start gap-3 font-normal leading-6" htmlFor="good-moral-inspection-attestation">
         <Input id="good-moral-inspection-attestation" type="checkbox" className="mt-1 size-5 min-h-5 w-5 shrink-0 accent-brand" checked={inspection.affirmed} disabled={inspection.working} onChange={(event) => inspection.setAffirmed(event.target.checked)} />
         <span>I personally inspected the physical Official Receipt and confirmed that these details match this Good Moral request.</span>

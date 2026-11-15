@@ -1058,7 +1058,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                       <p className="mt-1 text-sm text-muted">Automatic system reminder</p>
                     )}
                     {!entry.is_current ? (
-                      <p className="mt-1 text-xs text-warning">Superseded by Appointment reschedule</p>
+                      <p className="mt-1 text-xs text-warning">Replaced when the appointment was rescheduled</p>
                     ) : null}
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
                       <div>

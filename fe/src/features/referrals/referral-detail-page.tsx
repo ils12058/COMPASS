@@ -164,7 +164,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
       </RecordSection>
 
-      <RecordSection title="Chronology">
+      <RecordSection title="History">
         <div>
           <dt className="text-xs font-semibold text-muted">Date referred</dt>
           <dd className="mt-1 text-sm text-ink">{formatDateOnly(item.referred_on)}</dd>

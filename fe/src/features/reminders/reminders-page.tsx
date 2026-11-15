@@ -827,7 +827,7 @@ function RemindersWorkspace() {
                           <th scope="row" className={`${dataTable.cell} font-normal`}>
                             <span className="font-medium text-ink">{reminderKindLabel(entry.kind)}</span>
                             {entry.is_current ? null : (
-                              <span className="mt-1 block text-xs text-warning">Superseded by reschedule</span>
+                              <span className="mt-1 block text-xs text-warning">Replaced when the appointment was rescheduled</span>
                             )}
                           </th>
                           <td className={`${dataTable.cell} text-ink`}>
@@ -872,7 +872,7 @@ function RemindersWorkspace() {
                           <p className="text-sm text-ink">{reminderIssuerLabel(entry.issued_by)}</p>
                         </div>
                         {entry.is_current ? null : (
-                          <p className="mt-1 text-xs text-warning">Superseded by reschedule</p>
+                          <p className="mt-1 text-xs text-warning">Replaced when the appointment was rescheduled</p>
                         )}
                         <div className="mt-2 min-w-0">
                           <Link

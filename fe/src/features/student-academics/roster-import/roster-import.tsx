@@ -120,7 +120,7 @@ export function RosterImportPage() {
             Back to Student Academic Records
           </Link>
         }
-        description="This CSV reconciles current College placement only for existing Student accounts. It does not create or update accounts, identity, roles, status, Program, enrollment, periods, or graduation."
+        description="This CSV updates current College placement only for existing Student accounts. It does not create or update accounts, identity, roles, status, Program, enrollment, periods, or graduation."
       />
       <Panel as="div">
         <PanelBody className="py-5">
@@ -135,7 +135,7 @@ export function RosterImportPage() {
               <span className="font-semibold text-ink">
                 institutional_id,campus_code,college_code
               </span>
-              . Both codes are required and must resolve to an active Campus and an
+              . Both codes are required and must match an active Campus and an
               active College beneath it.{" "}
               <span className="font-semibold">program_code</span> and{" "}
               <span className="font-semibold">email</span> are not supported. Limit:

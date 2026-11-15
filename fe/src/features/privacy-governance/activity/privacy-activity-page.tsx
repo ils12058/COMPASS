@@ -75,7 +75,7 @@ function ActivityItem({ item }: { item: PrivacyActivityItemResponse }) {
         ) : null}
         {item.artifact_type ? (
           <div>
-            <dt className="inline">Artifact: </dt>
+            <dt className="inline">File: </dt>
             <dd className="inline">
               {artifactLabel(item.artifact_type)}
               {item.artifact_format ? ` (${item.artifact_format})` : null}
@@ -196,7 +196,7 @@ export function PrivacyActivityPage() {
       <ActivityFilterTools key={JSON.stringify(criteria)} applied={criteria} onApply={update} fields={[
         { name: "category", label: "Category", options: Object.values(PrivacyActivityCategory).map((type) => ({ value: type, label: activityCategoryLabels[type] })) },
         { name: "event_type", label: "Event type", options: Object.values(PrivacyActivityType).map((type) => ({ value: type, label: activityTypeLabel(type) })) },
-        { name: "actor", label: "Actor" },
+        { name: "actor", label: "Performed by" },
         { name: "date_from", label: "Date from", type: "date" }, { name: "date_to", label: "Date to", type: "date" },
       ]} />
     </section>

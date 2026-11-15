@@ -42,7 +42,7 @@ test("a Routine Interview with submitted Inventory context shows course and majo
 test("a Routine Interview that began without an Inventory still shows its own Academic Year", () => {
   const html = summary({ inventoryContext: null });
   assert.match(html, /2026-2027/);
-  assert.match(html, /Not available at initiation/);
+  assert.match(html, /Not submitted when the interview started/);
   assert.doesNotMatch(html, /Course and major/);
 });
 
@@ -55,7 +55,7 @@ test("an Inventory reopened for correction shows no draft values", () => {
 
 test("presentation helpers never invent missing context", () => {
   assert.equal(routineAcademicYearLabel(null), "Not recorded");
-  assert.equal(routineInventoryNote(null), "Not available at initiation");
+  assert.equal(routineInventoryNote(null), "Not submitted when the interview started");
   assert.equal(routineInventoryNote(submitted), null);
   assert.equal(routineProgramLabel({ ...submitted, major: " " }), "BS Information Systems");
   assert.match(summary({ academicYear: null, inventoryContext: null }), /Not recorded/);

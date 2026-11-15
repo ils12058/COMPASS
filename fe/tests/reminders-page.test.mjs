@@ -194,7 +194,7 @@ test("the Sent view names the reminder, its sender and each channel without tran
   assert.match(html, /Manual reminder/);
   assert.match(html, /3-hour reminder/);
   assert.match(html, /Sent by Casey Counselor/);
-  assert.match(html, /Superseded by reschedule/);
+  assert.match(html, /Replaced when the appointment was rescheduled/);
   assert.match(html, /Created/);
   assert.match(html, /Not requested/);
   assert.match(html, /Student One/);

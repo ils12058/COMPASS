@@ -8,7 +8,7 @@ import { formatDateOnly } from "@/lib/institutional-time";
 export const revisionStatusLabels: Record<RevisionStatusValue, string> = {
   DRAFT: "Draft",
   PUBLISHED: "Published",
-  SUPERSEDED: "Superseded",
+  SUPERSEDED: "Replaced",
 };
 
 export const audienceLabels: Record<AudienceValue, string> = {

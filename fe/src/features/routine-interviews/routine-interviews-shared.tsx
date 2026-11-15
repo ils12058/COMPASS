@@ -75,7 +75,7 @@ export function routineProgramLabel(context: RoutineInventoryContext | null): st
 
 // Shown only when the Routine Interview has no submitted Inventory context to display.
 export function routineInventoryNote(context: RoutineInventoryContext | null): string | null {
-  if (!context) return "Not available at initiation";
+  if (!context) return "Not submitted when the interview started";
   if (!context.available) return "Being corrected";
   return null;
 }

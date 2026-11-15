@@ -80,8 +80,8 @@ export function GoodMoralCounselorDetail({
   const available = confirmedNow && !inspecting;
   // The facts a counselor checks first; the remaining request details follow in the same sheet.
   const keyFacts: RecordFact[] = [
-    { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
-    ...(item.initiated_by ? [{ label: "Initiated by", value: item.initiated_by.display_name }] : []),
+    { label: "How it started", value: goodMoralInitiationLabel(item.initiation_origin) },
+    ...(item.initiated_by ? [{ label: "Requested by", value: item.initiated_by.display_name }] : []),
     { label: "Institutional ID", value: shown(item.student_institutional_id) },
     { label: "Current Student account", value: shown(item.student.display_name) },
     { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },
