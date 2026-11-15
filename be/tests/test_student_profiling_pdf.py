@@ -835,9 +835,9 @@ def test_current_and_historical_coverage_never_fabricate_historical_counts():
         cell_texts(row)[0]: cell_texts(row)[1] for row in historical["coverage"]["status"]["rows"]
     }
     assert rows["Submitted"] == "5"
-    assert rows["Eligible Students"] == "Not available — no historical eligibility roster"
+    assert rows["Eligible Students"] == "Not available — no historical list of eligible Students"
     assert rows["Without Individual Inventory"] == (
-        "Not available — no historical eligibility roster"
+        "Not available — no historical list of eligible Students"
     )
     assert historical["coverage"]["note"] == "HISTORICAL NOTE."
     html = rendered_html(historical_report)
@@ -1258,7 +1258,7 @@ def test_real_chromium_pdf_pagination_footer_and_structure(scenario, monkeypatch
         assert page_count <= 3
         assert "Table 1." not in joined
     if scenario == "historical":
-        assert "Not available — no historical eligibility roster" in joined
+        assert "Not available — no historical list of eligible Students" in " ".join(joined.split())
     if scenario == "narrow_scope":
         assert "Limited to assigned Colleges" in joined
     if scenario == "small_population_warning":

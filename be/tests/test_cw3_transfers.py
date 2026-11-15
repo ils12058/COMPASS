@@ -264,7 +264,7 @@ def test_office_to_only_head_and_head_as_requester_receiver_are_blocked_before_w
     w = cw3
     for actor in (w.goa, w.head):
         with pytest.raises(
-            CaseContinuityError, match="No independent approver|another active Counselor"
+            CaseContinuityError, match="no independent Head|another active Counselor"
         ):
             prepare(
                 w,

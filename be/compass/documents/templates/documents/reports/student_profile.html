@@ -256,7 +256,7 @@
   <ul class="sp-definitions">
     <li><strong>Submitted Inventory Profile Population</strong> — the submitted Individual Inventories described by every distribution in Sections 4 to 6{% if student_profile.appendix %} and Appendix A{% endif %}.</li>
     {% if student_profile.coverage.mode == "CURRENT" %}
-      <li><strong>Individual Inventory coverage</strong> — active Student accounts with a Current lifecycle status, and whether each Student has a submitted, draft, or no Individual Inventory for the Academic Year.</li>
+      <li><strong>Individual Inventory coverage</strong> — active Student accounts marked Current, and whether each Student has a submitted, draft, or no Individual Inventory for the Academic Year.</li>
     {% else %}
       <li><strong>Historical Inventory Coverage</strong> — the submitted and draft Inventories that exist for this historical Academic Year within the reporting scope.</li>
     {% endif %}
@@ -317,7 +317,7 @@
   {% if student_profile.appendix %}
     <section class="sp-appendix">
       <h2 class="sp-section">Appendix A. Program Breakdown</h2>
-      <p>Each College is printed as its own group of tables, and each later College starts on a new page. College tables use the College's own submitted Inventories as their denominator. Programs are matched by their recorded identity, and every Program and College total reconciles to Table A.</p>
+      <p>Each College is printed as its own group of tables, and each later College starts on a new page. College tables use the College's own submitted Inventories as their denominator. Programs are matched by their recorded identity, and every Program and College total matches Table A.</p>
       {% include "documents/reports/_student_profile_table.html" with table=student_profile.program_population show_heading=True %}
       {% for group in student_profile.appendix %}
         <section class="sp-appendix-group">

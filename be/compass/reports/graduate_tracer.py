@@ -39,13 +39,13 @@ NOT_RECORDED = "NOT_RECORDED"
 NOT_RECORDED_LABEL = "Not recorded"
 
 METHODOLOGY = {
-    "population": "Submitted schema-v1 Graduate Tracer Survey responses in COMPASS.",
+    "population": "Submitted Graduate Tracer Survey responses in COMPASS.",
     "drafts": "Draft responses are excluded.",
     "submission_period": (
-        "submitted_from and submitted_to filter response submission dates, not graduation cohorts."
+        "The date filters apply to response submission dates, not graduation cohorts."
     ),
     "response_rate": (
-        "No response rate is calculated because COMPASS has no authoritative Graduate Tracer "
+        "No response rate is calculated because COMPASS has no official Graduate Tracer "
         "campaign or graduate-roster denominator."
     ),
     "academic_grouping": (

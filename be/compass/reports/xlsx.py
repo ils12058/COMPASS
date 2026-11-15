@@ -665,7 +665,7 @@ def _build_summary_sheet(
         _write_note(worksheet, row, EMPTY_REPORT_MESSAGE, bold=True)
 
     row += 2
-    _summary_heading(worksheet, row, "Reconciliation of Coverage and Profile Population")
+    _summary_heading(worksheet, row, "Coverage and Profile Population Totals")
     row += 1
     for label, value in _reconciliation_rows(coverage):
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)

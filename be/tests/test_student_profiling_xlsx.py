@@ -376,7 +376,7 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
         "Submitted",
         "Draft",
         "Without Individual Inventory",
-        "Reconciliation of Coverage and Profile Population",
+        "Coverage and Profile Population Totals",
         "Submitted in coverage but outside the profile population",
         "Academic Placement and Inventory Alignment",
         "Current Students in the reporting area",

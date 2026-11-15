@@ -52,7 +52,7 @@ PROFILE_METHODOLOGY = (
     "denominator. Draft Inventories are not included. Students without a submitted Individual "
     "Inventory have no Inventory-based Program or Year Level, so Without Individual Inventory is "
     "presented separately in Inventory Coverage and must not be interpreted as Program- or "
-    "Year-Level-specific unless an authoritative source for that classification exists."
+    "Year-Level-specific unless an official source for that classification exists."
 )
 CURRENT_COVERAGE_NOTE = (
     "Current Student Inventory Coverage compares active Student accounts marked Current "
@@ -64,7 +64,7 @@ CURRENT_COVERAGE_NOTE = (
 )
 HISTORICAL_COVERAGE_NOTE = (
     "Historical Academic Years can report existing submitted and draft Inventories available "
-    "to you, but COMPASS can't determine authoritative Without Individual Inventory coverage "
+    "to you, but COMPASS can't confirm Without Individual Inventory coverage "
     "because it has no historical enrollment roster for that Academic Year. Today's Current "
     "Students are never used as a historical denominator."
 )
@@ -72,7 +72,7 @@ PLACEMENT_PRECEDENCE_NOTE = (
     "Student College affiliation is taken from the Student's current academic placement. The "
     "Program recorded on an Individual Inventory describes what the Student reported on that "
     "form and is never used to infer current College affiliation. Differences are reported here "
-    "and are not reconciled automatically."
+    "and are not matched automatically."
 )
 HISTORICAL_ALIGNMENT_NOTE = (
     "Historical coverage counts Inventory records; today's placement is not used to classify a "

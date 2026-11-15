@@ -84,7 +84,10 @@ def authorization_route(*, requester, receiver, case, now):
         return CaseAuthorizationRoute.INDEPENDENT_HEAD
     if requester.pk == case.primary_counselor_id and is_head(receiver):
         return CaseAuthorizationRoute.OWNER_TO_HEAD
-    fail("no_independent_approver", "No independent approver is available.")
+    fail(
+        "no_independent_approver",
+        "There is no independent Head available to approve this arrangement.",
+    )
 
 
 def may_prepare(actor, case, purpose=None):

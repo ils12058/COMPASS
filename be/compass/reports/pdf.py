@@ -93,7 +93,7 @@ FILTER_LABELS = {
     "year_level": "Year Level",
 }
 
-NOT_AVAILABLE_HISTORICAL = "Not available — no historical eligibility roster"
+NOT_AVAILABLE_HISTORICAL = "Not available — no historical list of eligible Students"
 
 
 class StudentProfilingDocumentUnavailable(ReportError):
@@ -726,7 +726,7 @@ def _coverage_tables(
             notes=[status_note],
         ),
         "reconciliation": _table(
-            title="Reconciliation of Coverage and Profile Population",
+            title="Coverage and Profile Population Totals",
             columns=[_column("Population", "80%"), _column("Count", "20%", numeric=True)],
             rows=reconciliation_rows,
         ),
@@ -1334,7 +1334,7 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
             appendix_note = (
                 "Appendix A repeats each distribution for every College and its Programs. "
                 "College tables use that College's submitted Inventories as their denominator, so "
-                "their totals reconcile to the College population, not to the institution-wide "
+                "their totals match the College population, not to the institution-wide "
                 "total."
             )
         else:
