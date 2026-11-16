@@ -114,13 +114,25 @@ Final static validation passed for all 25 changed backend Python files, and Open
 
 PR: [#376](https://github.com/ils12058/COMPASS/pull/376), targeting `staging`. Rebase immediately before PR creation completed without conflicts against `origin/staging` at `8ff40ef8`; FINAL-UI-1 had not merged at that fetch.
 
-Hosted validation on `95e43e83ffc2277199fde85b42ae584b82137704`:
+Completed hosted validation on `b5fe7c07c5e48dd465ac005949f19f363b89a332`:
 
-- Frontend lint, typecheck, builds, and all 1,330 unit tests passed. An earlier unit fixture lacked graduation context; the fixture was updated and its 17 tests passed locally before this rerun.
-- Six of eight browser shards passed. Chromium and WebKit shard 1 failed only `ux15-consolidation.browser.mjs`: Inventory, customer, and CSM Form reflows at 320/390 px. These are the known prior failures identified in the task and were left unchanged. The previously noted WebKit GOA Home failure did not recur.
-- Full backend regression completed with five passing shards and one failed Inventory correction round-trip assertion, caused by the newly read-only College summary being echoed into the request. The frontend serializer and round-trip test now exclude that field; all 28 correction-target tests pass locally, and browser save assertions prove the field is omitted. Targeted backend validation reported the same failure in its duplicate full-suite shard.
+| Workflow | Result |
+| --- | --- |
+| [Full backend regression](https://github.com/ils12058/COMPASS/actions/runs/43785186114) | Passed: all six shards and static/contract checks; 6,783 tests passed, four skipped |
+| [Targeted backend validation](https://github.com/ils12058/COMPASS/actions/runs/43785186104) | Passed: preparation/static/contract checks, all six selected full-suite shards, and the final gate |
+| [Frontend validation](https://github.com/ils12058/COMPASS/actions/runs/43785186168) | Lint, typecheck, normal production build, synthetic browser build, and all 1,331 unit tests passed. Six of eight browser shards passed; the two shard-1 failures are detailed below. |
 
-Runs: [full backend](https://github.com/ils12058/COMPASS/actions/runs/43782463741), [targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43782463748), [frontend](https://github.com/ils12058/COMPASS/actions/runs/43782463772). Final follow-up validation is tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks).
+The Inventory correction round-trip regression now passes in hosted CI: full-backend shard 4 passed all 1,169 tests. The serializer excludes read-only `current_college`; local actual-save browser checks cover that boundary too.
+
+Remaining browser failures were left unchanged as requested:
+
+- Chromium and WebKit shard 1: `ux15-consolidation.browser.mjs` reports the known Inventory, customer, and CSM Form reflows at 320/390 px (six checks per engine).
+- Chromium shard 1 additionally reports `counseling-closure.browser.mjs`, `keyboard-close-review-input-confirmation-and-focus` (20 of 21 checks passed). The Counseling implementation and this spec are unchanged by GM-INV-1; its request paths are unaffected by the added Good Moral fixture route. WebKit passed that suite. The artifact records an equality assertion but does not retain its full expected/actual values, so no cause is claimed.
+- The previously known WebKit `ux15-goa-home` failure did not recur.
+
+Earlier hosted runs on `95e43e83ffc2277199fde85b42ae584b82137704` caught the Inventory round-trip failure, now fixed, and passed all 1,330 frontend unit tests. An earlier Exit Interview unit fixture also lacked graduation context and was fixed. Prior runs: [full backend](https://github.com/ils12058/COMPASS/actions/runs/43782463741), [targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43782463748), [frontend](https://github.com/ils12058/COMPASS/actions/runs/43782463772).
+
+The report-only follow-up retains the implementation above. Its exact-head status is available in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks). No merge or deployment was performed.
 
 ## Screenshots
 
