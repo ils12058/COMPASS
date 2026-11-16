@@ -132,7 +132,7 @@ Remaining browser failures were left unchanged as requested:
 
 Earlier hosted runs on `95e43e83ffc2277199fde85b42ae584b82137704` caught the Inventory round-trip failure, now fixed, and passed all 1,330 frontend unit tests. An earlier Exit Interview unit fixture also lacked graduation context and was fixed. Prior runs: [full backend](https://github.com/ils12058/COMPASS/actions/runs/43782463741), [targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43782463748), [frontend](https://github.com/ils12058/COMPASS/actions/runs/43782463772).
 
-The final report-only follow-up changes Markdown alone and triggers no automatic checks under the workflow path filters. Implementation and test files are unchanged from the completed CI head above; no independently validated final Git SHA is claimed. No merge or deployment was performed.
+The final report-only follow-up changes Markdown alone; implementation and test files are unchanged from the completed CI head above. GitHub scheduled its automatic checks after a delay. The final-head runs are tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks). No merge or deployment was performed.
 
 ## Screenshots
 
