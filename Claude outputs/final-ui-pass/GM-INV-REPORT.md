@@ -146,6 +146,8 @@ Additional unrelated failures on that report-only head were left unchanged:
 - WebKit shard 1: `referral-timing.browser.mjs`, `failed-verification-422`, reported an equality assertion in its end-time field focus check (31 of 32 checks passed).
 - The Faculty and Referral implementations and specs are unchanged by this package. The earlier Chromium Counseling closure keyboard failure did not recur on this head.
 
+On later report-only head `cc28c31124cee39cceb942d43ac6f228a32e4709`, [targeted backend shard 3](https://github.com/ils12058/COMPASS/actions/runs/43790244767/job/133047798808) reported an unrelated false positive in `test_confirm_password_policy_failure_does_not_burn_valid_otp`: its assertion searches the entire JSON response for the synthetic password `abc`, and a random request UUID contained `-abca-`. That shard had 1,128 passing tests, one failure, and one skip. The same full-regression shard passed. Authentication implementation and the password spec are unchanged, and the assertion was left unchanged as requested. The two WebKit focus failures above also recurred on this head.
+
 Subsequent report-only heads retain the implementation above. Their runs are tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks), and the PR body records the latest completed validation. GitHub may take time to schedule automatic checks. No merge or deployment was performed.
 
 ## Screenshots
