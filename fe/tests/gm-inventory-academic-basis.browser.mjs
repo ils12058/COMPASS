@@ -29,6 +29,11 @@ for (const savedMismatch of [false, true]) {
     await select.selectOption('HOME');
     await h.noHorizontalOverflow(page);
     if (!savedMismatch) await h.screenshot(page, 'inventory-college-options-desktop', page.getByRole('group', { name: 'Current Program and course choices', exact: true }));
+    const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/inventory/me/current' && response.request().method() === 'PUT');
+    await page.getByRole('button', { name: 'Save progress', exact: true }).click();
+    assert.equal((await saved).status(), 200);
+    assert.equal(f.writes[0].program_id, 'HOME');
+    assert.equal('current_college' in f.writes[0], false);
   });
 }
 for (const registrar of [false, true]) {

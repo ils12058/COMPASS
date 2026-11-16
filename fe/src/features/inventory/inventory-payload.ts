@@ -30,6 +30,7 @@ export function toInventoryPayload(inventory: InventoryResponse): InventoryPaylo
   const {
     id,
     academic_year,
+    current_college,
     status,
     program,
     form_revision,
@@ -41,7 +42,7 @@ export function toInventoryPayload(inventory: InventoryResponse): InventoryPaylo
     ...payload
   } = inventory;
   // These fields belong to the response envelope, not the writable payload.
-  void [id, academic_year, status, program, form_revision, submitted_at, first_submitted_at, last_submitted_at, correction_pending, latest_correction];
+  void [id, academic_year, current_college, status, program, form_revision, submitted_at, first_submitted_at, last_submitted_at, correction_pending, latest_correction];
   return payload;
 }
 

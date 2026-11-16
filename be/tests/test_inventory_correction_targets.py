@@ -291,6 +291,7 @@ def test_counselor_reopens_with_targets_and_student_reads_them_inside_latest_cor
     envelope = {
         "id",
         "academic_year",
+        "current_college",
         "status",
         "program",
         "form_revision",

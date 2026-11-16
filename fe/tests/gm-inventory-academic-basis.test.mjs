@@ -4,8 +4,13 @@ import { graduateBasisMessage, inventoryCollegeMismatchStaffMessage } from '../s
 import { goodMoralErrorMessage } from '../src/features/good-moral/good-moral-shared.tsx';
 import { assistedCreationError } from '../src/features/good-moral/good-moral-assisted-request.ts';
 import { inventoryErrorMessage } from '../src/features/inventory/inventory-shared.tsx';
+import { toInventoryPayload } from '../src/features/inventory/inventory-payload.ts';
 import { CompassApiError } from '../src/lib/api/errors.ts';
 const error = code => new CompassApiError({ status: 409, body: { error: { code, message: 'PRIVATE-DIAGNOSTIC-SENTINEL' } }, headers: {}, method: 'POST', url: '/api/v1/synthetic' });
+test('Inventory College context never becomes writable Student data', () => {
+  const payload = toInventoryPayload({ current_college: { id: 'college', code: 'TEST', name: 'Synthetic College' }, program_id: 'program', year_level: 2 });
+  assert.deepEqual(payload, { program_id: 'program', year_level: 2 });
+});
 test('Registrar and document basis tell each reader their next action', () => {
   assert.equal(graduateBasisMessage('REGISTRAR_RECORD'), "Confirmed from the Registrar's record");
   assert.equal(graduateBasisMessage('DOCUMENT_CHECK'), 'Bring your diploma or TOR when you present your Official Receipt.');

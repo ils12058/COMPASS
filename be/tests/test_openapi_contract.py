@@ -748,6 +748,7 @@ def test_graduation_basis_contract_keeps_verification_evidence_staff_only():
     assert "graduated_program_id" in graduation["properties"]
     assert "graduated_program_id" not in graduation["required"]
     assert "current_college" in schemas["InventoryResponse"]["properties"]
+    assert "current_college" not in schemas["InventoryPayload"]["properties"]
     preview = schemas["GraduationImportRowResponse"]["properties"]
     assert {"program_code", "previous_program_code"} <= set(preview)
 
