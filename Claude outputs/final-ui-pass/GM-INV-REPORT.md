@@ -148,6 +148,18 @@ Additional unrelated failures on that report-only head were left unchanged:
 
 On later report-only head `cc28c31124cee39cceb942d43ac6f228a32e4709`, [targeted backend shard 3](https://github.com/ils12058/COMPASS/actions/runs/43790244767/job/133047798808) reported an unrelated false positive in `test_confirm_password_policy_failure_does_not_burn_valid_otp`: its assertion searches the entire JSON response for the synthetic password `abc`, and a random request UUID contained `-abca-`. That shard had 1,128 passing tests, one failure, and one skip. The same full-regression shard passed. Authentication implementation and the password spec are unchanged, and the assertion was left unchanged as requested. The two WebKit focus failures above also recurred on this head.
 
+Completed test execution on `f448ca9b82c2435158fa17bfe647ebac471b45f8`:
+
+| Workflow | Result |
+| --- | --- |
+| [Full backend](https://github.com/ils12058/COMPASS/actions/runs/43792350810) | Static/contract checks and all six test shards passed: 6,783 passed, four skipped. The final `full-regression` gate was refused before startup by GitHub billing. The workflow is therefore failed. |
+| [Targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43792350787) | Preparation/static/contract checks and all six test shards passed. The final `targeted-backend` gate was refused before startup by the same GitHub billing error. The workflow is therefore failed. |
+| [Frontend](https://github.com/ils12058/COMPASS/actions/runs/43792350786) | Lint, typecheck, both builds, and all 1,331 units passed. Six of eight browser shards passed. The known Form reflows remain in both engines, plus the unrelated WebKit Referral Timing `failed-verification-422` focus check. All GM-INV browser suites passed. |
+
+Both backend gate annotations state: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings.” Neither gate executed any steps. The account owner must resolve this GitHub billing condition before the required gates can run; no billing or credential settings were changed.
+
+The earlier password UUID assertion, Faculty Referral focus timeout, Counseling keyboard failure, and known WebKit GOA Home failure did not recur on this head. The final report-only commit records these outcomes; independent validation of that later Git SHA is not implied by the completed test execution above.
+
 Subsequent report-only heads retain the implementation above. Their runs are tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks), and the PR body records the latest completed validation. GitHub may take time to schedule automatic checks. No merge or deployment was performed.
 
 ## Screenshots
