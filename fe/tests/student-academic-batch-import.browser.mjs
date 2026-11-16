@@ -23,7 +23,7 @@ const importer = sessionFor({
   capabilities: ["organization.structure.view", "academic_years.view", "student_academics.view", "student_academics.import"],
 });
 const termCsv = "institutional_id,campus_code,college_code,year_level,enrollment_status\n2026-0101,MAIN,ENG,2,ENROLLED\n2026-0102,MAIN,ENG,3,\n";
-const gradCsv = "institutional_id,campus_code,college_code,graduation_date\n2026-0101,MAIN,ENG,2026-06-30\n2026-0102,MAIN,ENG,2026-06-30\n";
+const gradCsv = "institutional_id,campus_code,college_code,graduation_date,program_code\n2026-0101,MAIN,ENG,2026-06-30,BSCE\n2026-0102,MAIN,ENG,2026-06-30,\n";
 
 function handler({ periods = null, graduations = null } = {}) {
   return async ({ pathname, method, reply, request, url }) => {
@@ -61,7 +61,7 @@ const cleanTerms = periodReport({
 function gradRow(number, id, action, fields = {}) {
   return {
     row_number: number, institutional_id: id, student_id: `student-${id}`, student_name: `Student ${id}`,
-    campus_code: "MAIN", college_code: "ENG", graduation_date: "2026-06-30", lifecycle_status: "CURRENT",
+    campus_code: "MAIN", college_code: "ENG", graduation_date: "2026-06-30", program_code: id === "2026-0101" ? "BSCE" : "", previous_program_code: null, lifecycle_status: "CURRENT",
     current_placement_college_code: "ENG", previous_college_code: null, previous_graduation_date: null, action, message: "", ...fields,
   };
 }
@@ -160,6 +160,7 @@ await h.check("graduations: source is required, consequences are stated, and the
 }, async (page) => {
   await h.shown(page.getByRole("heading", { name: "Import graduations", exact: true }));
   await h.shown(page.getByText(/There is no batch undo\./).first());
+  await h.shown(page.getByText(/Optional column: program_code/));
   await chooseFile(page, "grads.csv", gradCsv);
   const validate = page.getByRole("button", { name: "Validate CSV", exact: true });
   assert.equal(await validate.isDisabled(), true, "the verification source comes first");

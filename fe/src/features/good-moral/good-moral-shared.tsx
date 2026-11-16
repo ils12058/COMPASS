@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import { inventoryCollegeMismatchStaffMessage } from "./good-moral-graduation-presentation";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { GoodMoralOrdering, GoodMoralStatusValue, type GoodMoralVariantValue } from "@/lib/api/generated/model";
@@ -92,7 +93,7 @@ export function goodMoralErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
 }
 
-export function goodMoralErrorMessage(error: unknown, fallback: string): string {
+export function goodMoralErrorMessage(error: unknown, fallback: string, staff = false): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   switch (code) {
@@ -120,6 +121,10 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
       return readApiErrorMessage(error.body) ?? "A certificate date is in the future. Correct the certificate details before issuance.";
     case "good_moral_not_found":
       return "Good Moral request not found.";
+    case "good_moral_inventory_college_mismatch":
+      return staff ? inventoryCollegeMismatchStaffMessage : "Your Inventory's College doesn't match your current College. Ask the Guidance Office to correct it.";
+    case "good_moral_graduate_document_check_required":
+      return "Check the diploma or TOR and confirm it before preparing.";
     case "good_moral_inventory_required":
       return "Submit your Individual Inventory for the current Academic Year before requesting a certificate.";
     case "good_moral_exit_interview_required":

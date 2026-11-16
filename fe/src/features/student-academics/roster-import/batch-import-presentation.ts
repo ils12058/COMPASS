@@ -1,7 +1,7 @@
 import type { GraduationImportResponse, PeriodImportResponse } from "@/lib/api/generated/model";
 
 export const termRecordsTemplate = "institutional_id,campus_code,college_code,year_level,enrollment_status\n";
-export const graduationsTemplate = "institutional_id,campus_code,college_code,graduation_date\n";
+export const graduationsTemplate = "institutional_id,campus_code,college_code,graduation_date,program_code\n";
 
 const actionLabels: Record<string, string> = {
   CREATE: "New record",

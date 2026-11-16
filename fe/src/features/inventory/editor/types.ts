@@ -4,6 +4,7 @@ import type { InventoryPayload, InventoryProgramSummary, ProgramSummary } from "
 export type InventorySectionProps = {
   draft: InventoryPayload;
   onChange: (patch: Partial<InventoryPayload>) => void;
+  currentCollegeId?: string | null;
   programSnapshot?: InventoryProgramSummary | null;
   activePrograms?: ProgramSummary[];
   programLookupPending?: boolean;

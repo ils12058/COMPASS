@@ -161,6 +161,7 @@ export async function createBrowserHarness(suite) {
       });
       if (pathname === "/api/v1/institutional-forms") return reply({ items: [{ id: "family", key: "CALL_SLIP", title: "Call Slip", revision_required: true, configuration_state: "MISSING_REQUIRED_REVISION" }] });
       if (/\/institutional-forms\/[^/]+\/revisions$/.test(pathname)) return reply({ items: [{ id: "revision", family_key: "CALL_SLIP", internal_schema_version: 1, official_code: "TEST-CS", official_revision: "1", status: "ACTIVE", supported: false }] });
+      if (pathname === "/api/v1/good-moral/me/graduation-context") return reply({ graduation_basis: "DOCUMENT_CHECK", graduated_college: null, degree: null, graduation_date: null });
       if (pathname.startsWith("/api/v1/organization/")) return reply(emptyPage);
       if (pathname === `/api/v1/call-slips/${slip.id}` || pathname === `/api/v1/call-slips/me/${slip.id}`) return reply({ ...slip, updated_at: slip.created_at });
       if (pathname === "/api/v1/platform/health") return reply({ status: "ok", summary: "Dependencies checked", timestamp: new Date().toISOString(), checks: [{ code: "database", label: "Database", status: "ok", summary: "Database is reachable" }] });

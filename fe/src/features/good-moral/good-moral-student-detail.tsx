@@ -1,5 +1,7 @@
 "use client";
 
+import { graduateBasisMessage } from "./good-moral-graduation-presentation";
+
 import Link from "next/link";
 import { GoodMoralStudentNextSteps } from "./good-moral-student-next-steps";
 import { goodMoralInitiationLabel } from "./good-moral-shared";
@@ -95,6 +97,7 @@ export function GoodMoralStudentDetail({
               </>
             ) : (
               <>
+                {item.graduated_college ? <GoodMoralField label="College" value={item.graduated_college.name} /> : null}
                 <GoodMoralField label="Degree" value={item.degree} />
                 <GoodMoralField label="Major" value={item.major} />
                 <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
@@ -102,7 +105,7 @@ export function GoodMoralStudentDetail({
             )}
           </dl>
         </PanelSection>
-        {item.variant === "GRADUATE" ? <Notice>COMPASS can&apos;t verify the degree.</Notice> : null}
+        {item.variant === "GRADUATE" ? <p className="px-4 py-3 text-sm text-muted sm:px-5">{graduateBasisMessage(item.graduation_basis)}</p> : null}
         {hasReceipt ? (
           <PanelSection title="Official Receipt" titleId="good-moral-student-receipt">
             <dl className={factGrid}>

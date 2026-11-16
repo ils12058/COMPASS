@@ -62,7 +62,9 @@ function academicFixture({years=true}={}){
   await h.shown(form.getByRole("heading",{name:"Record graduation",exact:true}));
   await form.getByLabel("Graduation date",{exact:true}).fill("2027-06-30");
   await form.getByLabel("College",{exact:true}).selectOption(ids.college);
+  await form.getByLabel("Program (optional)",{exact:true}).selectOption(ids.program);
   await form.getByLabel("Verification source",{exact:true}).fill("Registrar confirmation 2027");
+  await h.screenshot(page,"manual-graduation-program");
   await form.getByRole("button",{name:"Review graduation",exact:true}).click();
   const confirmation=page.getByRole("alertdialog");
   await h.shown(confirmation.getByRole("heading",{name:"Record graduation?",exact:true}));
@@ -73,7 +75,7 @@ function academicFixture({years=true}={}){
   await h.shown(confirmation.getByRole("heading",{name:"Graduation recorded.",exact:true}));
   await h.shown(confirmation.getByText(/Maria Santos is recorded as graduated from College of Computing on Jun 30, 2027\./));
   await h.shown(confirmation.getByText("The current placement is cleared and the Student's status is Graduated. Exit Interview and Good Moral Certificate requirements were not checked or changed.",{exact:true}));
-  assert.deepEqual(f.state.writes[0].data,{graduated_college_id:ids.college,graduation_date:"2027-06-30",verification_source:"Registrar confirmation 2027"});
+  assert.deepEqual(f.state.writes[0].data,{graduated_college_id:ids.college,graduated_program_id:ids.program,graduation_date:"2027-06-30",verification_source:"Registrar confirmation 2027"});
   await confirmation.getByRole("button",{name:"Done",exact:true}).click();
   await h.hidden(confirmation);
   await h.shown(page.getByText("No current College placement.",{exact:true}));
@@ -84,6 +86,11 @@ function academicFixture({years=true}={}){
   assert.equal(f.studentRecord.placement,null);
   assert.equal(f.studentRecord.lifecycle_status,"GRADUATED");
   assert.ok(f.state.recordReads>=2);
+  await graduationPanel.getByRole("button",{name:"Update graduation",exact:true}).click();
+  await page.getByRole("dialog").getByLabel("Program (optional)",{exact:true}).selectOption("");
+  await page.getByRole("dialog").getByRole("button",{name:"Review graduation",exact:true}).click();
+  await h.shown(page.getByRole("alertdialog").getByText("Not recorded",{exact:true}));
+  assert.equal(f.state.writes.length,1,"clearing a Program is reviewed before a second write");
  });
 }
 

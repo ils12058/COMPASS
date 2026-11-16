@@ -13,6 +13,7 @@ import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
+import { graduateBasisMessage, inventoryCollegeMismatchStaffMessage } from "./good-moral-graduation-presentation";
 import { GoodMoralDegreeInput } from "@/features/good-moral/good-moral-degree-input";
 import { GOOD_MORAL_SEMESTERS, GoodMoralHeading, GoodMoralUnavailable, formatGoodMoralDate, goodMoralVariantLabel, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { EligibleStudentPicker } from "@/features/portal/components/eligible-student-picker";
@@ -61,6 +62,10 @@ function AssistedRequestForm() {
       : goodMoralCreateAssistedGraduateRequest(value.payload, { headers: { "Idempotency-Key": value.key } }),
     retry: false,
   });
+  const graduation = student?.graduation;
+  const recorded = graduation?.graduation_basis === "REGISTRAR_RECORD";
+  const effectiveDegree = graduation?.degree ?? degree;
+  const effectiveDate = graduation?.graduation_date ?? graduationDate;
   const locked = creation.isPending || uncertain || Boolean(createdId);
 
   function review(event: FormEvent<HTMLFormElement>) {
@@ -68,7 +73,7 @@ function AssistedRequestForm() {
     if (!student || locked) return;
     const payload = variant === "CURRENT_STUDENT"
       ? { variant, payload: { student_id: student.id, semester } }
-      : { variant, payload: { student_id: student.id, degree, major, graduation_date: graduationDate } };
+      : { variant, payload: { student_id: student.id, degree: effectiveDegree, major, graduation_date: effectiveDate } };
     // Reopening an unchanged review preserves its creation identity, including known failures.
     if (!intent || JSON.stringify({ variant: intent.variant, payload: intent.payload }) !== JSON.stringify(payload)) {
       setIntent({ ...payload, key: crypto.randomUUID() });
@@ -115,6 +120,7 @@ function AssistedRequestForm() {
               label="Student for Good Moral request"
               optionDescription={(option) => {
                 const goodMoralOption = option as GoodMoralStudentOptionResponse;
+                if (goodMoralOption.f4_eligibility?.status === "COLLEGE_MISMATCH") return inventoryCollegeMismatchStaffMessage;
                 if (goodMoralOption.id !== student?.id || goodMoralOption.variant !== "CURRENT_STUDENT") return goodMoralOption.variant === "GRADUATE" ? "Good Moral Certificate for UCN Bachelor's graduates (F6)" : "Select a Student to choose a certificate type.";
                 const context = goodMoralOption.f4_eligibility;
                 if (context?.status === "ELIGIBLE") return `Good Moral Certificate for current Students (F4) available · ${context.year_level ? `${context.year_level}${context.year_level === 1 ? "st" : context.year_level === 2 ? "nd" : context.year_level === 3 ? "rd" : "th"} Year` : "Bachelor's Student"}`;
@@ -141,7 +147,7 @@ function AssistedRequestForm() {
               <option value="CURRENT_STUDENT" disabled={student.variant !== "CURRENT_STUDENT" || student.f4_eligibility?.status !== "ELIGIBLE"}>Good Moral Certificate for current Students (F4)</option>
               <option value="GRADUATE">Good Moral Certificate for UCN Bachelor&apos;s graduates (F6)</option>
             </Select>
-            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the Student&apos;s current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn&apos;t verified the degree or graduation date.</p>}
+            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the Student&apos;s current program and year level.</p> : <p className="mt-2 text-sm text-muted">{graduateBasisMessage(graduation?.graduation_basis, true)}</p>}
           </PanelSection>
         ) : null}
         {student ? (
@@ -157,9 +163,10 @@ function AssistedRequestForm() {
                       <option value="">Select semester</option>{GOOD_MORAL_SEMESTERS.map((value) => <option key={value}>{value}</option>)}
                     </Select></div>
                 </> : <>
-                  <GoodMoralDegreeInput id="assisted-degree" value={degree} onChange={setDegree} disabled={locked} />
+                  {graduation?.graduated_college ? <div><Label htmlFor="assisted-graduated-college">College</Label><Input id="assisted-graduated-college" className="mt-2" value={graduation.graduated_college.name} readOnly /></div> : null}
+                  <GoodMoralDegreeInput id="assisted-degree" value={effectiveDegree} onChange={setDegree} disabled={locked} readOnly={Boolean(graduation?.degree)} />
                   <div><Label htmlFor="assisted-major">Major (optional)</Label><Input id="assisted-major" className="mt-2" maxLength={180} value={major} onChange={(event) => setMajor(event.target.value)} /></div>
-                  <div><Label htmlFor="assisted-graduation">Graduation date <span aria-hidden="true">*</span></Label><Input id="assisted-graduation" className="mt-2" type="date" required max={institutionalDateInputValue()} value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} /></div>
+                  <div><Label htmlFor="assisted-graduation">Graduation date <span aria-hidden="true">*</span></Label><Input id="assisted-graduation" className="mt-2" type="date" required max={institutionalDateInputValue()} readOnly={recorded} value={effectiveDate} onChange={(event) => setGraduationDate(event.target.value)} /></div>
                 </>}
               </fieldset>
             </PanelSection>

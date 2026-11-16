@@ -41,7 +41,7 @@ import {
   useStudentAcademicsRecordPeriod,
 } from "@/lib/api/generated/student-academics/student-academics";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
-import { useOrganizationListColleges } from "@/lib/api/generated/organization/organization";
+import { useOrganizationListColleges, useOrganizationListPrograms } from "@/lib/api/generated/organization/organization";
 import {
   AcademicTerm,
   EnrollmentStatus,
@@ -71,6 +71,7 @@ type PeriodForm = {
 };
 
 type GraduationForm = {
+  programId: string;
   graduationDate: string;
   collegeId: string;
   verificationSource: string;
@@ -120,6 +121,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
   const academicYears = useAcademicYearsList({
     query: { enabled: canViewAcademicYears, retry: false },
   });
+  const programs = useOrganizationListPrograms({ is_active: true }, { query: { enabled: canViewStructure, retry: false } });
   const recordPeriod = useStudentAcademicsRecordPeriod();
   const recordGraduation = useStudentAcademicsRecordGraduation();
 
@@ -188,11 +190,12 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
     setGraduationForm(
       graduation
         ? {
+            programId: graduation.graduated_program?.id ?? "",
             graduationDate: graduation.graduation_date,
             collegeId: graduation.graduated_college.id,
             verificationSource: graduation.verification_source,
           }
-        : { graduationDate: "", collegeId: "", verificationSource: "" },
+        : { programId: "", graduationDate: "", collegeId: "", verificationSource: "" },
     );
   }
 
@@ -247,6 +250,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
           studentId,
           data: {
             graduated_college_id: review.form.collegeId,
+            graduated_program_id: review.form.programId || null,
             graduation_date: review.form.graduationDate,
             verification_source: review.form.verificationSource.trim(),
           },
@@ -501,6 +505,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
               <RecordFact label="College">
                 {data.graduation.graduated_college.name}
               </RecordFact>
+              <RecordFact label="Program">{data.graduation.graduated_program?.name ?? "Not recorded"}</RecordFact>
               <RecordFact label="Graduation date">
                 {formatDateOnly(data.graduation.graduation_date)}
               </RecordFact>
@@ -741,6 +746,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     setGraduationForm({
                       ...graduationForm,
                       collegeId: event.target.value,
+                      programId: "",
                     })
                   }
                 >
@@ -751,6 +757,17 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     </option>
                   ))}
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="record-graduation-program">Program (optional)</Label>
+                <Select id="record-graduation-program" className="mt-2" value={graduationForm.programId}
+                  disabled={!graduationForm.collegeId || !programs.data || programs.isError}
+                  onChange={(event) => setGraduationForm({ ...graduationForm, programId: event.target.value })}>
+                  <option value="">No Program recorded</option>
+                  {data.graduation?.graduated_program && data.graduation.graduated_college.id === graduationForm.collegeId && !programs.data?.data.items.some((program) => program.id === data.graduation?.graduated_program?.id) ? <option value={data.graduation.graduated_program.id}>{data.graduation.graduated_program.name} (saved value; Program inactive)</option> : null}
+                  {programs.data?.data.items.filter((program) => program.college.id === graduationForm.collegeId).map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
+                </Select>
+                {programs.isError ? <p role="status" className="mt-1 text-sm text-muted">Couldn&apos;t load Programs. <Button variant="quiet" onClick={() => void programs.refetch()}>Retry</Button></p> : null}
               </div>
               <div>
                 <Label htmlFor="record-graduation-source">
@@ -838,6 +855,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                   {graduationReview.college.name}
                 </dd>
               </div>
+              <div><dt className="text-muted">Program</dt><dd className="font-semibold text-ink">{graduationReview.form.programId ? programs.data?.data.items.find((program) => program.id === graduationReview.form.programId)?.name ?? data.graduation?.graduated_program?.name ?? "Not recorded" : "Not recorded"}</dd></div>
               <div>
                 <dt className="text-muted">Graduation date</dt>
                 <dd className="font-semibold text-ink">

@@ -98,7 +98,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) {
     assert.match(await page.locator('main').textContent(), /requires a Bachelor's program/);
     await hidden(page.getByLabel('Year level'));
     await shown(page.locator('#assisted-degree'));
-    await shown(page.getByText(/COMPASS hasn't verified the degree or graduation date/i));
+    await shown(page.getByText(/Not in the Registrar's record. Check the diploma or TOR before preparing./));
     await screenshot(page, 'goa-local-postgraduate-f6-claim');
   });
 }
@@ -163,6 +163,26 @@ for (const device of ['phone', 'tablet']) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.activeElement?.textContent === 'Review request');
     await noHorizontalOverflow(page); await screenshot(page, `${device}-assisted-request`);
+  });
+}
+{
+  const f = fixture();
+  f.state.currentStudent = { ...graduate, display_name: 'Registrar Graduate', graduation: {
+    graduation_basis: 'REGISTRAR_RECORD', graduated_college: current.college,
+    degree: 'Bachelor from Registrar', graduation_date: '2026-06-30', verification_source: 'Synthetic Registrar', verified_at: '2026-07-01T00:00:00Z',
+  } };
+  await check('Assisted Registrar graduate fields stay locked', start, f.options, async page => {
+    await page.getByRole('radio', { name: /Registrar Graduate/ }).check();
+    await shown(page.getByText("Confirmed from the Registrar's record", { exact: true }));
+    assert.equal(await page.locator('#assisted-degree').inputValue(), 'Bachelor from Registrar');
+    assert.equal(await page.locator('#assisted-degree').isEditable(), false);
+    assert.equal(await page.locator('#assisted-graduation').isEditable(), false);
+    await page.getByRole('button', { name: 'Review request', exact: true }).click();
+    await screenshot(page, 'assisted-registrar-graduate-review');
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Start Good Moral request', exact: true }).click();
+    await shown(page.getByRole('heading', { name: 'Good Moral request started' }));
+    assert.equal(f.state.bodies[0].degree, 'Bachelor from Registrar');
+    assert.equal(f.state.bodies[0].graduation_date, '2026-06-30');
   });
 }
 await finish();

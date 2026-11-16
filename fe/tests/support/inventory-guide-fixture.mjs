@@ -3,9 +3,9 @@ import { user } from "./ui-hierarchy-fixtures.mjs";
 import { sessionFor } from "./guidance-messages-fixtures.mjs";
 const student = { ...user("STUDENT"), capabilities: ["inventory.view_self", "inventory.manage_self"] };
 const revision = { id: "revision", family_key: "individual_inventory", internal_schema_version: 1, official_code: "UCN-OP-GCO-01F5", official_revision: "1" };
-export function inventoryFixture({ incomplete = false, submitted = false } = {}) {
+export function inventoryFixture({ incomplete = false, submitted = false, currentCollege = null, programs = [], savedProgram = null } = {}) {
   let current = {
-    id: "synthetic-inventory", academic_year: { id: "year", label: "2026–2027" }, status: submitted ? "SUBMITTED" : "DRAFT", program: null, form_revision: revision,
+    id: "synthetic-inventory", academic_year: { id: "year", label: "2026–2027" }, status: submitted ? "SUBMITTED" : "DRAFT", program: savedProgram, program_id: savedProgram?.id ?? null, current_college: currentCollege, form_revision: revision,
     correction_pending: false, latest_correction: null, submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, first_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, last_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null,
     full_name: "Synthetic Student", nickname: "Syn", student_number: "SYNTHETIC-01", sex: incomplete ? null : "FEMALE", date_of_birth: "2005-01-15",
     place_of_birth: "Synthetic City", nationality: "Filipino", birth_order_among_siblings: "First",
@@ -36,7 +36,8 @@ export function inventoryFixture({ incomplete = false, submitted = false } = {})
   };
   const state = { writes: [], submissions: 0, failSave: false, holdSave: null, holdSubmit: null };
   state.handler = async ({ pathname, method, request, reply }) => {
-    if (pathname === "/api/v1/auth/session") { await reply(sessionFor(student)); return true; }
+    if (pathname === "/api/v1/auth/session") { await reply(sessionFor({ ...student, capabilities: currentCollege ? [...student.capabilities, "organization.structure.view"] : student.capabilities })); return true; }
+    if (pathname === "/api/v1/organization/programs") { await reply({ items: programs }); return true; }
     if (pathname === "/api/v1/inventory/me/status") { await reply(current); return true; }
     if (pathname === "/api/v1/inventory/me/history") { await reply({ items: [], page: 1, page_size: 20, has_next: false }); return true; }
     if (pathname === "/api/v1/inventory/me/current") {

@@ -15,6 +15,7 @@ export function EducationSection({
   draft,
   onChange,
   programSnapshot,
+  currentCollegeId,
   activePrograms = [],
   programLookupPending = false,
   programLookupError = false,
@@ -27,6 +28,7 @@ export function EducationSection({
   const yearLevelError = errorFor("inventory-year-level");
   const programReview = useInventoryReview("inventory-program");
   const yearLevelReview = useInventoryReview("inventory-year-level");
+  const collegeMismatch = Boolean(currentCollegeId && programSnapshot && draft.program_id === programSnapshot.id && programSnapshot.college_id !== currentCollegeId);
   const activeSelection = activePrograms.find((program) => program.id === draft.program_id);
   const configuredYearLevels = activeSelection?.applicable_year_levels ?? null;
   const selectableYearLevels: readonly number[] = activeSelection
@@ -117,7 +119,7 @@ export function EducationSection({
               {preserveSnapshot && draft.program_id ? (
                 <option value={draft.program_id}>
                   {programSnapshot
-                    ? `${programSnapshot.code} · ${programSnapshot.name} (no longer offered)`
+                    ? `${programSnapshot.code} · ${programSnapshot.name} ${collegeMismatch ? "(saved value; another College)" : "(no longer offered)"}`
                     : "Previously selected Program (no longer offered)"}
                 </option>
               ) : null}
@@ -127,6 +129,7 @@ export function EducationSection({
                 </option>
               ))}
             </Select>
+            {collegeMismatch ? <p role="status" className="mt-1.5 text-sm text-muted">Choose a Program from your College. If your College has changed, ask the Guidance Office.</p> : null}
             <InventoryReviewHintText hint={programReview.hint} />
             {programError ? <p id="inventory-program-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{programError}</p> : null}
             {programLookupPending ? <p role="status" className="mt-1.5 text-xs text-muted">Loading active programs…</p> : null}

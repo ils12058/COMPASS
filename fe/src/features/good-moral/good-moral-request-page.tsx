@@ -11,6 +11,7 @@ import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExitInterviewsGetMyStatus } from "@/lib/api/generated/exit-interviews/exit-interviews";
 import { GraduationGoodMoralPrerequisite } from "@/features/good-moral/graduation-good-moral-prerequisite";
+import { graduateBasisMessage } from "./good-moral-graduation-presentation";
 import { GoodMoralDegreeInput } from "@/features/good-moral/good-moral-degree-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,7 @@ import {
   goodMoralErrorMessage,
   uncertainGoodMoralMutation,
 } from "@/features/good-moral/good-moral-shared";
-import { useGoodMoralGetMyF4AcademicContext } from "@/lib/api/generated/good-moral/good-moral";
+import { useGoodMoralGetMyF4AcademicContext, useGoodMoralGetMyGraduationContext } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralF4AcademicContextResponse, GoodMoralF4EligibilityStatus } from "@/lib/api/generated/model";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -239,6 +240,7 @@ function f4YearLevelLabel(value: number | null | undefined): string | null {
 
 function f4EligibilityMessage(status: GoodMoralF4EligibilityStatus): string {
   switch (status) {
+    case "COLLEGE_MISMATCH": return "Your Inventory's College doesn't match your current College. Ask the Guidance Office to correct it.";
     case "NOT_CURRENT": return "You must be a current Student to request this certificate.";
     case "INVENTORY_REQUIRED": return "Submit this year's Individual Inventory to request a Good Moral Certificate for current Students.";
     case "UNCLASSIFIED_PROGRAM": return "We can't confirm your program. Contact the Guidance Office.";
@@ -351,41 +353,46 @@ function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) 
   const [degree, setDegree] = useState("");
   const [major, setMajor] = useState("");
   const [graduationDate, setGraduationDate] = useState("");
-  const fieldsLocked = create.isPending || Boolean(create.uncertainIntent);
+  const context = useGoodMoralGetMyGraduationContext({ query: { retry: false } });
+  const graduation = context.data?.data;
+  const recorded = graduation?.graduation_basis === "REGISTRAR_RECORD";
+  const effectiveDegree = graduation?.degree ?? degree;
+  const effectiveDate = graduation?.graduation_date ?? graduationDate;
+  const fieldsLocked = context.isPending || context.isError || create.isPending || Boolean(create.uncertainIntent);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    create.start({ variant: "GRADUATE", payload: { degree, major, graduation_date: graduationDate } });
+    create.start({ variant: "GRADUATE", payload: { degree: effectiveDegree, major, graduation_date: effectiveDate } });
   }
 
   return (
     <RequestFormFrame embedded={embedded} title="Good Moral Certificate for UCN Bachelor's graduates">
       <CreateFeedback state={create} busy={create.isPending} />
-      <Notice>
-        This certificate is for a completed UCN Bachelor&apos;s degree. COMPASS doesn&apos;t verify your degree or graduation date.
-      </Notice>
+      <p className="text-sm text-muted" role={context.isError ? "alert" : "status"}>
+        {context.isPending ? "Checking the graduation record…" : context.isError ? <>Couldn’t check the graduation record. <Button variant="quiet" onClick={() => void context.refetch()}>Retry</Button></> : graduateBasisMessage(graduation?.graduation_basis)}
+      </p>
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">
         <PanelSection
           title="Graduation details"
           titleId="good-moral-graduate-request-details" data-guide-target="good-moral-inputs"
-          description="You can type an older program name."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
-          <GoodMoralDegreeInput id="good-moral-degree" value={degree} onChange={setDegree} disabled={fieldsLocked} />
+          <GoodMoralDegreeInput id="good-moral-degree" value={effectiveDegree} onChange={setDegree} disabled={fieldsLocked} readOnly={Boolean(graduation?.degree)} />
+          {graduation?.graduated_college ? <div><Label htmlFor="good-moral-graduated-college">College</Label><Input id="good-moral-graduated-college" className="mt-2" value={graduation.graduated_college.name} readOnly /></div> : null}
           <div>
             <Label htmlFor="good-moral-major">Major <span className="font-normal text-muted">(optional)</span></Label>
             <Input id="good-moral-major" className="mt-2" maxLength={180} value={major} onChange={(event) => setMajor(event.target.value)} />
           </div>
           <div>
             <Label htmlFor="good-moral-graduation-date">Graduation date <span aria-hidden="true">*</span></Label>
-            <Input id="good-moral-graduation-date" className="mt-2" type="date" required max={institutionalDateInputValue()} value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} />
+            <Input id="good-moral-graduation-date" className="mt-2" type="date" required max={institutionalDateInputValue()} readOnly={recorded} value={effectiveDate} onChange={(event) => setGraduationDate(event.target.value)} />
           </div>
         </fieldset>
         </PanelSection>
         {!create.uncertainIntent ? (
           <PanelFooter data-guide-target="good-moral-submit">
-            <Button type="submit" disabled={create.isPending}>
+            <Button type="submit" disabled={fieldsLocked}>
               {create.isPending ? "Submitting request…" : "Submit request"}
             </Button>
           </PanelFooter>

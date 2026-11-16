@@ -15,7 +15,7 @@ import {
 } from "../src/features/good-moral/good-moral-shared.tsx";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { getExitInterviewsGetMyStatusQueryKey } from "../src/lib/api/generated/exit-interviews/exit-interviews.ts";
-import { getGoodMoralGetMyF4AcademicContextQueryKey, getGoodMoralListDegreeOptionsQueryKey } from "../src/lib/api/generated/good-moral/good-moral.ts";
+import { getGoodMoralGetMyF4AcademicContextQueryKey, getGoodMoralListDegreeOptionsQueryKey, getGoodMoralGetMyGraduationContextQueryKey } from "../src/lib/api/generated/good-moral/good-moral.ts";
 
 const student = {
   id: "student-1",
@@ -123,6 +123,7 @@ function renderComponent(element, user = student, querySetup = () => {}) {
     status: 200,
     headers: {},
   });
+  client.setQueryData(getGoodMoralGetMyGraduationContextQueryKey(), { data: { graduation_basis: "DOCUMENT_CHECK", graduated_college: null, degree: null, graduation_date: null }, status: 200, headers: {} });
   querySetup(client);
   const html = renderToStaticMarkup(
     withNextRouter(
@@ -261,7 +262,7 @@ test("GM-UX-2: Operational correction form displays and preserves historical non
   }
 });
 
-test("GM-UX-2: F6 suggestions preserve historical fallback and disclose the verification limit", () => {
+test("GM-UX-2: F6 suggestions preserve historical fallback and explain the document check", () => {
   const html = renderComponent(h(GoodMoralRequestPage), graduateStudent);
 
   // Graduate fields are rendered
@@ -269,7 +270,7 @@ test("GM-UX-2: F6 suggestions preserve historical fallback and disclose the veri
   assert.match(html, /list="good-moral-degree-suggestions"/);
   assert.match(html, /Bachelor of Science in Information Systems/);
   assert.match(html, /Choose a current program or enter an older degree name/);
-  assert.match(html, /This certificate is for a completed UCN/);
+  assert.match(html, /Bring your diploma or TOR when you present your Official Receipt/);
   assert.match(html, /id="good-moral-major"/);
   assert.match(html, /id="good-moral-graduation-date"/);
 

@@ -11,6 +11,7 @@ export function GoodMoralDegreeInput({
   value,
   onChange,
   disabled = false,
+  readOnly = false,
   required = true,
   label = "Degree",
 }: {
@@ -18,10 +19,11 @@ export function GoodMoralDegreeInput({
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   required?: boolean;
   label?: ReactNode;
 }) {
-  const options = useGoodMoralListDegreeOptions({ query: { retry: false, staleTime: 5 * 60_000 } });
+  const options = useGoodMoralListDegreeOptions({ query: { enabled: !readOnly, retry: false, staleTime: 5 * 60_000 } });
   const items = options.data?.data.items ?? [];
   const helpId = `${id}-help`;
   const listId = `${id}-suggestions`;
@@ -38,14 +40,15 @@ export function GoodMoralDegreeInput({
         maxLength={255}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        list={listId}
-        aria-describedby={helpId}
+        list={readOnly ? undefined : listId}
+        aria-describedby={readOnly ? undefined : helpId}
         disabled={disabled}
+        readOnly={readOnly}
       />
       <datalist id={listId}>
         {items.map((degree) => <option key={degree} value={degree} />)}
       </datalist>
-      <p id={helpId} className="mt-1 text-xs text-muted">
+      {!readOnly ? <p id={helpId} className="mt-1 text-xs text-muted">
         {options.isPending
           ? "Loading degree suggestions…"
           : options.isError
@@ -53,7 +56,7 @@ export function GoodMoralDegreeInput({
             : items.length === 0
               ? "Enter the degree as recorded."
               : "Choose a current program or enter an older degree name."}
-      </p>
+      </p> : null}
     </div>
   );
 }

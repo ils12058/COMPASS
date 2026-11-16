@@ -130,7 +130,7 @@ export function GraduationImportPage() {
         <PanelBody className="space-y-4 py-5">
           <p className="text-sm leading-6 text-muted">
             Columns: <span className="font-semibold text-ink">institutional_id, campus_code, college_code, graduation_date</span>.
-            Graduation date is YYYY-MM-DD. Up to 1,000 rows. Correct a single mistake from the Student&apos;s academic record.
+            Optional column: program_code, for an active Program under the row’s College. Graduation date is YYYY-MM-DD. Up to 1,000 rows. Correct a single mistake from the Student&apos;s academic record.
           </p>
           <CsvTemplateLink fileName="compass-graduations-import.csv" template={graduationsTemplate} />
           <RosterCollegeReferences />
@@ -201,6 +201,7 @@ export function GraduationImportPage() {
               { header: "Institutional ID", cell: (row) => row.institutional_id || "—" },
               { header: "Student", cell: (row) => row.student_name || "—" },
               { header: "College", cell: (row) => (row.campus_code || row.college_code ? `${row.campus_code || "—"} · ${row.college_code || "—"}` : "—") },
+              { header: "Program", cell: (row) => row.previous_program_code && row.previous_program_code !== row.program_code ? `${row.previous_program_code} → ${row.program_code || "—"}` : row.program_code || "—" },
               { header: "Current placement", cell: (row) => row.current_placement_college_code ?? "—" },
               {
                 header: "Graduation date",

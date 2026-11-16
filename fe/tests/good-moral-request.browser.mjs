@@ -17,10 +17,10 @@ function student(lifecycle) {
   };
 }
 
-function fixture({ lifecycle, f4Status }) {
+function fixture({ lifecycle, f4Status, registrar = false }) {
   const account = student(lifecycle);
   const state = { posts: [] };
-  const item = certificate('REQUESTED', 'GRADUATE');
+  const item = { ...certificate('REQUESTED', 'GRADUATE'), graduation_basis: registrar ? 'REGISTRAR_RECORD' : 'DOCUMENT_CHECK', graduated_college: registrar ? { id: 'college', code: 'TEST', name: 'Synthetic College' } : null };
   return {
     state,
     options: {
@@ -29,6 +29,9 @@ function fixture({ lifecycle, f4Status }) {
         '/api/v1/good-moral/requests': empty,
       },
       handler: async ({ pathname, method, request, reply }) => {
+        if (pathname === '/api/v1/good-moral/me/graduation-context') {
+          await reply({ graduation_basis: registrar ? 'REGISTRAR_RECORD' : 'DOCUMENT_CHECK', graduated_college: registrar ? { id: 'college', code: 'TEST', name: 'Synthetic College' } : null, degree: registrar ? 'Bachelor of Science in Information Systems' : null, graduation_date: registrar ? '2026-06-30' : null }); return true;
+        }
         if (pathname === '/api/v1/good-moral/me/academic-context') {
           await reply({ status: f4Status, academic_classification: f4Status === 'ELIGIBLE' ? 'BACHELORS' : 'MASTERS', year_level: f4Status === 'ELIGIBLE' ? 4 : null });
           return true;
@@ -78,7 +81,7 @@ function fixture({ lifecycle, f4Status }) {
   const f = fixture({ lifecycle: 'FORMER', f4Status: 'NOT_CURRENT' });
   await check('former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service', requestPath, f.options, async page => {
     await page.getByRole('heading', { name: "Good Moral Certificate for UCN Bachelor's graduates", exact: true }).waitFor();
-    await page.getByText(/COMPASS doesn't verify your degree or graduation date/i).waitFor();
+    await page.getByText(/Bring your diploma or TOR when you present your Official Receipt/).waitFor();
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems (UCN)');
     await page.getByLabel('Graduation date').fill('2020-06-30');
     await screenshot(page, 'student-former-external-postgraduate-f6-request');
@@ -111,4 +114,20 @@ function fixture({ lifecycle, f4Status }) {
   });
 }
 
+{
+  const f = fixture({ lifecycle: 'GRADUATED', f4Status: 'NOT_CURRENT', registrar: true });
+  await check('Registrar graduate fields are filled and locked', requestPath, f.options, async page => {
+    await page.getByText("Confirmed from the Registrar's record", { exact: true }).waitFor();
+    for (const [label, value] of [['Degree', 'Bachelor of Science in Information Systems'], ['Graduation date', '2026-06-30'], ['College', 'Synthetic College']]) {
+      assert.equal(await page.getByLabel(label, { exact: false }).inputValue(), value);
+      assert.equal(await page.getByLabel(label, { exact: false }).isEditable(), false);
+    }
+    await page.getByLabel('Major').fill('Optional major');
+    await screenshot(page, 'registrar-graduate-locked-fields');
+    await page.getByRole('button', { name: 'Submit request', exact: true }).click();
+    await page.waitForURL(`**/portal/good-moral/${requestId}`);
+    assert.deepEqual(f.state.posts[0], { degree: 'Bachelor of Science in Information Systems', major: 'Optional major', graduation_date: '2026-06-30' });
+    await page.getByText("Confirmed from the Registrar's record", { exact: true }).waitFor();
+  });
+}
 await finish();

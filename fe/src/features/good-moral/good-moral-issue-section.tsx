@@ -79,7 +79,7 @@ export function GoodMoralIssueSection({
         setConfirmOpen(false);
         const latest = await onRefresh();
         setBlockedUntilRefresh(!latest);
-        setError(goodMoralErrorMessage(caught, "Review the latest certificate details."));
+        setError(goodMoralErrorMessage(caught, "Review the latest certificate details.", true));
         return;
       }
       if (code === "current_student_required") {
@@ -105,7 +105,7 @@ export function GoodMoralIssueSection({
         }
         return;
       }
-      setError(goodMoralErrorMessage(caught, "Couldn't issue the Good Moral Certificate. Try again."));
+      setError(goodMoralErrorMessage(caught, "Couldn't issue the Good Moral Certificate. Try again.", true));
     } finally {
       setIssuing(false);
     }

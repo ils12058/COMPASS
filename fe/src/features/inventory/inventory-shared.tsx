@@ -108,6 +108,8 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
       return "The current Individual Inventory form can't be used. Contact the Guidance Office.";
     case "current_student_required":
       return "Only current Students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
+    case "inventory_program_college_mismatch":
+      return "Choose a Program from your College. If your College has changed, ask the Guidance Office.";
     case "inventory_conflict":
       return "This action cannot be completed with the current inventory details. Review your answers and inventory status before trying again.";
     case "inventory_invalid":

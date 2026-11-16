@@ -1,5 +1,7 @@
 "use client";
 
+import { graduateBasisMessage } from "./good-moral-graduation-presentation";
+
 import Link from "next/link";
 import { goodMoralInitiationLabel } from "./good-moral-shared";
 import { useState } from "react";
@@ -120,6 +122,9 @@ export function GoodMoralCounselorDetail({
               </>
             ) : (
               <>
+                {item.graduated_college ? <GoodMoralField label="College" value={item.graduated_college.name} /> : null}
+                {item.graduation_basis === "REGISTRAR_RECORD" ? <><GoodMoralField label="Verification source" value={item.graduation_verification_source} /><GoodMoralField label="Verified at" value={formatGoodMoralDateTime(item.graduation_verified_at)} /></> : null}
+                {item.document_checked_at ? <GoodMoralField label="Diploma or TOR checked" value={formatGoodMoralDateTime(item.document_checked_at)} /> : null}
                 <GoodMoralField label="Degree" value={item.degree} />
                 <GoodMoralField label="Major" value={item.major} />
                 <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
@@ -128,7 +133,7 @@ export function GoodMoralCounselorDetail({
             {item.status === "ISSUED" ? <GoodMoralField label="Issuer name on certificate" value={item.issued_by_name_snapshot} /> : null}
           </dl>
         </PanelSection>
-        {item.variant === "GRADUATE" ? <Notice>COMPASS hasn&apos;t verified this degree.</Notice> : null}
+        {item.variant === "GRADUATE" ? <p className="px-4 py-3 text-sm text-muted sm:px-5">{graduateBasisMessage(item.graduation_basis, true)}</p> : null}
 
       </Panel>
 

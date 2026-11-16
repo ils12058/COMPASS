@@ -201,6 +201,7 @@ for (const receiptChange of [true, false]) {
     await submitInspection(page); await shown(page.getByRole('heading', { name: 'Receipt inspection recorded', exact: true }));
     assert.equal(f.state.issues, 0); await page.getByRole('button', { name: 'Done', exact: true }).click();
     await page.getByRole('button', { name: 'Mark ready for issuance', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('checkbox', { name: 'I checked the diploma or TOR', exact: true }).check();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Mark ready', exact: true }).click();
     await page.getByRole('button', { name: 'Done', exact: true }).click();
     await page.getByRole('button', { name: 'Issue certificate', exact: true }).click();

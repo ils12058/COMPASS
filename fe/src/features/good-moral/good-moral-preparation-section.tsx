@@ -6,6 +6,9 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { focusHeading } from "@/lib/focus-heading";
+import { Label } from "@/components/ui/label";
+import { inventoryCollegeMismatchStaffMessage } from "./good-moral-graduation-presentation";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { GoodMoralSection, goodMoralErrorMessage } from "@/features/good-moral/good-moral-shared";
@@ -22,18 +25,21 @@ export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true 
   onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
 }) {
   const client = useQueryClient();
+  const needsDocumentCheck = item.variant === "GRADUATE" && item.graduation_basis !== "REGISTRAR_RECORD";
+  const [documentChecked, setDocumentChecked] = useState(false);
   const [reviewedAt, setReviewedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const prepare = useMutation({
     mutationFn: (expectedUpdatedAt: string) => goodMoralPrepareRequest(item.id, {
       expected_resource_version: expectedUpdatedAt,
+      diploma_tor_checked: needsDocumentCheck && documentChecked,
     }),
     retry: false,
   });
 
   async function confirm() {
-    if (!reviewedAt || !confirmed || !item.actions.can_prepare || reviewedAt !== item.actions.request_version) return;
+    if ((needsDocumentCheck && !documentChecked) || !reviewedAt || !confirmed || !item.actions.can_prepare || reviewedAt !== item.actions.request_version) return;
     setError(null);
     try {
       await prepare.mutateAsync(reviewedAt);
@@ -47,7 +53,7 @@ export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true 
     } catch (caught) {
       setReviewedAt(null);
       await onRefresh();
-      setError(goodMoralErrorMessage(caught, "Couldn't confirm the preparation. Review the latest request before trying again."));
+      setError(caught instanceof CompassApiError && readApiErrorCode(caught.body) === "good_moral_inventory_college_mismatch" ? inventoryCollegeMismatchStaffMessage : goodMoralErrorMessage(caught, "Couldn't confirm the preparation. Review the latest request before trying again."));
     }
   }
 
@@ -60,6 +66,7 @@ export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true 
       {item.actions.can_prepare && confirmed ? <Button className="mt-4" onClick={() => {
         setError(null);
         setCompleted(false);
+        setDocumentChecked(false);
         setReviewedAt(item.actions.request_version);
       }}>Mark ready for issuance</Button> : null}
       {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
@@ -70,13 +77,14 @@ export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true 
       confirmLabel="Mark ready"
       pendingLabel="Marking ready…"
       pending={prepare.isPending}
-      confirmDisabled={!confirmed || reviewedAt !== item.actions.request_version || !item.actions.can_prepare}
+      confirmDisabled={(needsDocumentCheck && !documentChecked) || !confirmed || reviewedAt !== item.actions.request_version || !item.actions.can_prepare}
       error={reviewedAt && reviewedAt !== item.actions.request_version ? "This request changed. Close and review the latest details." : null}
       onConfirm={() => void confirm()}
       onOpenChange={(open) => { if (!open) setReviewedAt(null); }}
       onCloseAutoFocus={(event) => { if (completed) { event.preventDefault(); focusHeading("good-moral-counselor-detail-heading"); } }}
       completed={completed ? { title: "Ready for issuance", children: "A Counselor can now review and issue this certificate." } : null}
     >
+      {needsDocumentCheck ? <Label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={documentChecked} disabled={prepare.isPending} onChange={(event) => setDocumentChecked(event.target.checked)} className="h-4 w-4 accent-brand" />I checked the diploma or TOR</Label> : null}
       <p>{item.applicant_name} · {item.variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate"}</p>
       <p>Preparation records you as the preparer. A Counselor will perform the final review and issuance. Any later certificate correction will require preparation again.</p>
     </ConsequentialActionDialog>

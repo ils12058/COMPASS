@@ -17,7 +17,7 @@ const valid = { valid: true, committed: false };
 
 test("templates carry exactly the backend headers", () => {
   assert.equal(termRecordsTemplate, "institutional_id,campus_code,college_code,year_level,enrollment_status\n");
-  assert.equal(graduationsTemplate, "institutional_id,campus_code,college_code,graduation_date\n");
+  assert.equal(graduationsTemplate, "institutional_id,campus_code,college_code,graduation_date,program_code\n");
 });
 
 test("apply is offered only for the same file and choices the preview checked", () => {

@@ -1,4 +1,5 @@
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { inventoryCollegeMismatchStaffMessage } from "./good-moral-graduation-presentation";
 import { uncertainGoodMoralMutation } from "./good-moral-shared";
 
 export function assistedCreationError(error: unknown): string {
@@ -6,6 +7,7 @@ export function assistedCreationError(error: unknown): string {
   if (!(error instanceof CompassApiError)) return "Couldn't start the request. Try again.";
   switch (readApiErrorCode(error.body)) {
     case "good_moral_not_found": return "The Student was not found or is no longer eligible. Search for an eligible Student again.";
+    case "good_moral_inventory_college_mismatch": return inventoryCollegeMismatchStaffMessage;
     case "good_moral_inventory_required": return "The Student must submit their Individual Inventory for the current Academic Year before this request can proceed.";
     case "good_moral_exit_interview_required": return "The Student must submit their required graduation Exit Interview before this request can proceed.";
     case "good_moral_placement_required": return "The Student needs a current active College placement before this request can proceed.";

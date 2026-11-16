@@ -45,7 +45,7 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
         await reply(item);return true;
       }
       const now=new Date().toISOString();
-      record.graduation={id:record.graduation?.id??"graduation-1",graduated_college:state.colleges.find(college=>college.id===data.graduated_college_id),graduation_date:data.graduation_date,verification_source:data.verification_source,verified_by:{...student,id:"counselor",full_name:"Example User",institutional_id:null,email:"example@example.test",role:"COUNSELOR"},verified_at:now,created_at:record.graduation?.created_at??now,updated_at:now};
+      record.graduation={id:record.graduation?.id??"graduation-1",graduated_college:state.colleges.find(college=>college.id===data.graduated_college_id),graduated_program:state.programs.find(program=>program.id===data.graduated_program_id)??null,graduation_date:data.graduation_date,verification_source:data.verification_source,verified_by:{...student,id:"counselor",full_name:"Example User",institutional_id:null,email:"example@example.test",role:"COUNSELOR"},verified_at:now,created_at:record.graduation?.created_at??now,updated_at:now};
       record.placement=null;record.lifecycle_status="GRADUATED";
       await reply(record.graduation);return true;
     }

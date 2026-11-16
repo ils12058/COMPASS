@@ -65,7 +65,7 @@ export function InventoryEditor({
     { is_active: true },
     { query: { enabled: canDiscoverPrograms, retry: false } },
   );
-  const activePrograms = programQuery.data?.data.items ?? [];
+  const activePrograms = (programQuery.data?.data.items ?? []).filter((program) => !inventory.current_college || program.college.id === inventory.current_college.id);
   const activeProgramIds = programQuery.data
     ? new Set(activePrograms.map((program) => program.id))
     : undefined;
@@ -268,6 +268,7 @@ export function InventoryEditor({
     draft,
     onChange: updateDraft,
     programSnapshot: inventory.program,
+    currentCollegeId: inventory.current_college?.id,
     activePrograms,
     programLookupPending: programQuery.isPending && canDiscoverPrograms,
     programLookupError: programQuery.isError,
