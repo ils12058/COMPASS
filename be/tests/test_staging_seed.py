@@ -53,6 +53,7 @@ from compass.notifications.models import EmailDelivery, Notification, PushDelive
 from compass.staging_seed import DATASET_NAME, DATASET_VERSION
 from compass.staging_seed.academic_history import (
     ACADEMIC_TERM,
+    DOCUMENT_CHECK_STUDENT_KEY,
     GRADUATION_VERIFICATION_SOURCE,
 )
 from compass.staging_seed.config import StagingSeedConfigurationError, load_config
@@ -738,6 +739,24 @@ class SeededDatasetTests(TestCase):
         assert result.passed
         assert set(result.scenario_status.values()) == {"READY", Readiness.PENDING_IMPLEMENTATION}
 
+    def test_all_seeded_current_inventories_match_placement(self):
+        from compass.student_academics.models import StudentAcademicProfile
+
+        placements = dict(
+            StudentAcademicProfile.objects.values_list("student_id", "current_college_id")
+        )
+        for item in StudentInventory.objects.select_related("student", "program"):
+            if item.student.student_lifecycle_status == "CURRENT" and placements.get(
+                item.student_id
+            ):
+                assert item.program_id is not None
+                assert item.program.college_id == placements[item.student_id]
+        graduate = dataset_user(DOCUMENT_CHECK_STUDENT_KEY)
+        assert graduate.student_lifecycle_status == "GRADUATED"
+        from compass.student_academics.models import StudentGraduationRecord
+
+        assert not StudentGraduationRecord.objects.filter(student=graduate).exists()
+
     def test_graduating_bachelors_seed_uses_supported_year_levels(self):
         persona = STUDENTS_BY_KEY["graduating"]
         assert persona.program_code == "BSBA"
@@ -781,17 +800,25 @@ class SeededDatasetTests(TestCase):
             dataset_user(persona.key).pk
             for persona in STUDENTS
             if persona.lifecycle == Lifecycle.GRADUATED
+            and persona.key != DOCUMENT_CHECK_STUDENT_KEY
         }
         assert set(graduations) == graduated
         for persona in STUDENTS:
-            if persona.lifecycle != Lifecycle.GRADUATED:
+            if (
+                persona.lifecycle != Lifecycle.GRADUATED
+                or persona.key == DOCUMENT_CHECK_STUDENT_KEY
+            ):
                 continue
             student = dataset_user(persona.key)
             record = graduations[student.pk]
             final_label = persona.year_levels[-1][0]
             assert record.graduation_date == date(int(final_label.rsplit("-", 1)[1]), 6, 30)
             assert record.verification_source == GRADUATION_VERIFICATION_SOURCE
-            assert record.graduated_program_id is None
+            assert (
+                record.graduated_program_id is None
+                if persona.key == "recent_graduate"
+                else record.graduated_program.code == persona.program_code
+            )
             assert (record.graduated_college.campus.code, record.graduated_college.code) == (
                 persona.campus_code,
                 persona.college_code,

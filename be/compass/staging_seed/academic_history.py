@@ -18,12 +18,14 @@ from compass.student_academics.models import (
 from compass.student_academics.services import record_academic_period, record_graduation
 
 from .identities import Lifecycle
-from .organization import college_for
+from .organization import college_for, program_for
 from .students import STUDENTS
 from .support import SeedSession
 
 ACADEMIC_TERM = "FIRST_SEMESTER"
 GRADUATION_VERIFICATION_SOURCE = "Staging seed: Registrar confirmation"
+# A graduated UAT account intentionally has no Registrar record; no uploads are required.
+DOCUMENT_CHECK_STUDENT_KEY = "bg_44"
 
 
 def seed_academic_history(session: SeedSession) -> None:
@@ -55,7 +57,7 @@ def seed_academic_history(session: SeedSession) -> None:
                 )
             session.record("Student academic periods", created=not exists)
 
-        if persona.lifecycle != Lifecycle.GRADUATED:
+        if persona.lifecycle != Lifecycle.GRADUATED or persona.key == DOCUMENT_CHECK_STUDENT_KEY:
             continue
         final_label = persona.year_levels[-1][0]
         if final_label not in years:
@@ -65,6 +67,9 @@ def seed_academic_history(session: SeedSession) -> None:
             record_graduation(
                 student_id=student.pk,
                 graduated_college_id=college.pk,
+                graduated_program_id=program_for(persona).pk
+                if persona.key != "recent_graduate"
+                else None,
                 graduation_date=date(int(final_label.rsplit("-", 1)[1]), 6, 30),
                 verification_source=GRADUATION_VERIFICATION_SOURCE,
                 context=context,

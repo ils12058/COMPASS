@@ -600,6 +600,7 @@ def recent_graduate(session: SeedSession) -> None:
     )
     issued_at = timezone.now()
     request = prepare_request(
+        diploma_tor_checked=True,
         actor=session.user(COUNSELOR_A.key),
         request_id=request.pk,
         context=session.as_user(COUNSELOR_A.key),

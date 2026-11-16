@@ -562,6 +562,14 @@ def _accounts(section: Section, lookup: Lookup, domain, onboarding, allow) -> di
                 .order_by("-academic_year__label")
                 .first()
             )
+            for saved_inventory in StudentInventory.objects.select_related("program").filter(
+                student=user
+            ):
+                if profile and profile.current_college_id and saved_inventory.program_id:
+                    section.check(
+                        saved_inventory.program.college_id == profile.current_college_id,
+                        f"{account.key}: Inventory Program differs from the current College.",
+                    )
             if inventory is not None:
                 section.check(
                     inventory.program.code == account.program_code,
