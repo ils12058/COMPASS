@@ -43,15 +43,17 @@ export function EducationSection({
     : selectableYearLevels;
   const savedYearOptionSuffix = activeSelection
     ? " (saved value; choose a supported level)"
-    : !draft.program_id
-      ? " (saved value; Program not selected)"
-      : !programDiscoveryAllowed
-        ? " (saved value; no access to Program choices)"
-        : programLookupPending
-          ? " (saved value; Program options loading)"
-          : programLookupError
-            ? " (saved value; Year Level limits not confirmed)"
-            : " (saved value; Program inactive)";
+    : collegeMismatch
+      ? " (saved value)"
+      : !draft.program_id
+        ? " (saved value; Program not selected)"
+        : !programDiscoveryAllowed
+          ? " (saved value; no access to Program choices)"
+          : programLookupPending
+            ? " (saved value; Program options loading)"
+            : programLookupError
+              ? " (saved value; Year Level limits not confirmed)"
+              : " (saved value; Program inactive)";
   const preserveSnapshot =
     Boolean(draft.program_id) &&
     !activeSelection &&
@@ -181,6 +183,7 @@ export function EducationSection({
               </p>
             ) : null}
             {draft.program_id &&
+            !collegeMismatch &&
             !activeSelection &&
             programDiscoveryAllowed &&
             !programLookupPending &&
@@ -208,7 +211,7 @@ export function EducationSection({
           <InventoryNotice tone="warning" role="status">
             You don&apos;t have access to Program choices. You can keep editing with your saved Program.</InventoryNotice>
         ) : null}
-        {preserveSnapshot && programSnapshot ? (
+        {preserveSnapshot && programSnapshot && !collegeMismatch ? (
           <p className="mt-3 text-sm text-warning">
             The saved program {programSnapshot.code} · {programSnapshot.name} is no longer available for new selection. Choose an active program before submission.
           </p>

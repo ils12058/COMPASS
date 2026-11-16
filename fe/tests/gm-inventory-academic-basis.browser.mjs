@@ -18,10 +18,17 @@ for (const savedMismatch of [false, true]) {
     const options = await select.locator('option').allTextContents();
     assert.ok(options.some(text => text.includes('HOME')));
     assert.equal(options.filter(text => text.includes('OTHER')).length, savedMismatch ? 1 : 0);
-    if (savedMismatch) { assert.ok(options.some(text => text.includes('saved value; another College'))); await h.shown(page.getByText('Choose a Program from your College. If your College has changed, ask the Guidance Office.', { exact: true })); }
+    if (savedMismatch) {
+      assert.ok(options.some(text => text.includes('saved value; another College')));
+      await h.shown(page.getByText('Choose a Program from your College. If your College has changed, ask the Guidance Office.', { exact: true }));
+      const group = page.getByRole('group', { name: 'Current Program and course choices', exact: true });
+      assert.doesNotMatch(await group.textContent(), /Program inactive|no longer offered/);
+      await h.noHorizontalOverflow(page);
+      await h.screenshot(page, 'inventory-college-options-saved-mismatch-phone', group);
+    }
     await select.selectOption('HOME');
     await h.noHorizontalOverflow(page);
-    await h.screenshot(page, `inventory-college-options-${savedMismatch ? 'saved-mismatch-phone' : 'desktop'}`);
+    if (!savedMismatch) await h.screenshot(page, 'inventory-college-options-desktop', page.getByRole('group', { name: 'Current Program and course choices', exact: true }));
   });
 }
 for (const registrar of [false, true]) {
