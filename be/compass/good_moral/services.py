@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from uuid import UUID
@@ -1364,6 +1364,7 @@ def prepare_request(
     prepared_at = now or timezone.now()
     if timezone.is_naive(prepared_at):
         raise InvalidGoodMoralInput("The preparation time must be timezone-aware.")
+    prepared_at = prepared_at.astimezone(UTC)
     with transaction.atomic():
         item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
         if item is None:

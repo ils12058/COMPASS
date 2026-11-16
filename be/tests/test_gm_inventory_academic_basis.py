@@ -1,7 +1,7 @@
 """GM-INV-1: Registrar snapshots, document confirmation, and College consistency."""
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -208,7 +208,8 @@ def test_graduate_uses_registrar_facts_and_frozen_staff_evidence(assisted, has_p
     assert auth_client(counselor).get("/api/v1/good-moral/me/graduation-context").status_code == 403
 
 
-def test_no_record_prepare_requires_explicit_document_check_and_records_actor():
+@pytest.mark.parametrize("offset_hours", [0, 8])
+def test_no_record_prepare_requires_explicit_document_check_and_records_actor(offset_hours):
     sync_policy()
     student = make_user("documents-gm@example.test", lifecycle="GRADUATED")
     staff = make_user("documents-staff@example.test", role="COUNSELOR")
@@ -218,6 +219,7 @@ def test_no_record_prepare_requires_explicit_document_check_and_records_actor():
         request_id=item.pk,
         context=AuditContext.user(staff),
         expected_resource_version=item.updated_at.isoformat(),
+        now=datetime.now(timezone(timedelta(hours=offset_hours))),
     )
     with pytest.raises(GoodMoralGraduateDocumentCheckRequired):
         prepare_request(**values)
