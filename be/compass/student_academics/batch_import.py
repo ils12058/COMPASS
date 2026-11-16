@@ -31,7 +31,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
-from compass.organization.models import AcademicYear, College, normalize_code
+from compass.organization.models import AcademicYear, College, Program, normalize_code
 from compass.student_academics.models import (
     AcademicTerm,
     EnrollmentStatus,
@@ -65,8 +65,16 @@ PERIOD_HEADERS = (
     "enrollment_status",
 )
 PERIOD_REQUIRED_HEADERS = frozenset({"institutional_id", "campus_code", "college_code"})
-GRADUATION_HEADERS = ("institutional_id", "campus_code", "college_code", "graduation_date")
-GRADUATION_REQUIRED_HEADERS = frozenset(GRADUATION_HEADERS)
+GRADUATION_REQUIRED_HEADERS = frozenset(
+    ("institutional_id", "campus_code", "college_code", "graduation_date")
+)
+GRADUATION_HEADERS = (
+    "institutional_id",
+    "campus_code",
+    "college_code",
+    "graduation_date",
+    "program_code",
+)
 MAX_VERIFICATION_SOURCE_LENGTH = 200
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _WHOLE_NUMBER = re.compile(r"^\d{1,2}$")
@@ -148,6 +156,7 @@ class GraduationImportRow:
     campus_code: str
     college_code: str
     graduation_date: date
+    program_code: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,6 +168,8 @@ class GraduationImportRowResult:
     campus_code: str
     college_code: str
     graduation_date: str
+    program_code: str
+    previous_program_code: str | None
     lifecycle_status: str | None
     current_placement_college_code: str | None
     previous_college_code: str | None
@@ -360,7 +371,14 @@ def _parse_graduations(
             )
             continue
         rows.append(
-            GraduationImportRow(raw.row_number, institutional_id, campus_code, college_code, parsed)
+            GraduationImportRow(
+                raw.row_number,
+                institutional_id,
+                campus_code,
+                college_code,
+                parsed,
+                normalize_code(raw.values.get("program_code", "")),
+            )
         )
     return tuple(rows), tuple(issues), len(raw_rows)
 
@@ -616,16 +634,28 @@ def _classify_graduations(
     committed: bool = False,
 ) -> GraduationImportReport:
     resolution = _load_resolution(rows=rows, lock=lock)
-    records_queryset = StudentGraduationRecord.objects.select_related("graduated_college").filter(
-        student_id__in=[user.pk for user in resolution.users.values()]
-    )
+    records_queryset = StudentGraduationRecord.objects.select_related(
+        "graduated_college", "graduated_program"
+    ).filter(student_id__in=[user.pk for user in resolution.users.values()])
     if lock:
         records_queryset = records_queryset.select_for_update(of=("self",)).order_by("student_id")
     records = {record.student_id: record for record in records_queryset}
+    programs_query = Program.objects.filter(
+        code__in={row.program_code for row in rows if row.program_code}
+    )
+    if lock:
+        programs_query = programs_query.select_for_update(of=("self",)).order_by("id")
+    programs = {(program.college_id, program.code): program for program in programs_query}
     results: list[GraduationImportRowResult] = []
     placement_cleared = 0
     for row in rows:
         user, college, problem = _student_and_college(row, resolution)
+        program = (
+            programs.get((college.pk, row.program_code)) if college and row.program_code else None
+        )
+        program_problem = bool(
+            not problem and row.program_code and (program is None or not program.is_active)
+        )
         record = records.get(user.pk) if user is not None else None
         profile = resolution.profiles.get(user.pk) if user is not None else None
         placement = (
@@ -634,10 +664,15 @@ def _classify_graduations(
         lifecycle = user.student_lifecycle_status if user is not None else None
         if problem:
             action, message = "CONFLICT", problem
+        elif program_problem:
+            action, message = (
+                "INVALID",
+                "program_code must resolve to an active Program under this row's College",
+            )
         elif (
             record is not None
             and record.graduated_college_id == college.pk
-            and record.graduated_program_id is None
+            and record.graduated_program_id == (program.pk if program else None)
             and record.graduation_date == row.graduation_date
             and record.verification_source == source
             and lifecycle == StudentLifecycleStatus.GRADUATED
@@ -669,6 +704,10 @@ def _classify_graduations(
                 campus_code=row.campus_code,
                 college_code=row.college_code,
                 graduation_date=row.graduation_date.isoformat(),
+                program_code=row.program_code,
+                previous_program_code=record.graduated_program.code
+                if record and record.graduated_program_id
+                else None,
                 lifecycle_status=lifecycle,
                 current_placement_college_code=placement.code if placement is not None else None,
                 previous_college_code=record.graduated_college.code if record is not None else None,
@@ -689,6 +728,8 @@ def _classify_graduations(
                 campus_code=issue.campus_code,
                 college_code=issue.college_code,
                 graduation_date="",
+                program_code="",
+                previous_program_code=None,
                 lifecycle_status=None,
                 current_placement_college_code=None,
                 previous_college_code=None,
@@ -709,12 +750,13 @@ def _classify_graduations(
                 "row": item.row_number,
                 "action": item.action,
                 "student_id": str(item.student_id) if item.student_id else None,
-                "target": [item.college_code, item.graduation_date],
+                "target": [item.college_code, item.graduation_date, item.program_code],
                 "current": [
                     item.lifecycle_status,
                     item.current_placement_college_code,
                     item.previous_college_code,
                     item.previous_graduation_date,
+                    item.previous_program_code,
                 ],
             }
             for item in results
@@ -764,6 +806,9 @@ def import_student_graduations(
         raise RosterImportInvalidRows(issues)
     with transaction.atomic():
         report = _classify_graduations(rows, issues, total_rows, source=source, lock=True)
+        invalid = tuple(item for item in report.rows if item.action == "INVALID")
+        if invalid:
+            raise RosterImportInvalidRows(invalid)
         conflicts = tuple(item for item in report.rows if item.action == "CONFLICT")
         if conflicts:
             raise RosterImportConflict(conflicts)
@@ -787,6 +832,11 @@ def import_student_graduations(
                 lambda item=item, row=row, college=college: record_graduation(
                     student_id=item.student_id,
                     graduated_college_id=college.pk,
+                    graduated_program_id=Program.objects.get(
+                        college=college, code=row.program_code
+                    ).pk
+                    if row.program_code
+                    else None,
                     graduation_date=row.graduation_date,
                     verification_source=source,
                     context=context,

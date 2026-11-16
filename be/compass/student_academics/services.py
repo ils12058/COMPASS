@@ -21,7 +21,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
-from compass.organization.models import AcademicYear, College
+from compass.organization.models import AcademicYear, College, Program
 from compass.student_academics.models import (
     AcademicTerm,
     EnrollmentStatus,
@@ -305,6 +305,7 @@ def record_graduation(
     *,
     student_id: UUID,
     graduated_college_id: UUID,
+    graduated_program_id: UUID | None = None,
     graduation_date: date,
     verification_source: str,
     context: AuditContext,
@@ -321,6 +322,17 @@ def record_graduation(
     with transaction.atomic():
         student = _lock_student(student_id, require_active=False)
         college = _lock_active_college(graduated_college_id)
+        program = None
+        if graduated_program_id is not None:
+            program = (
+                Program.objects.select_for_update(of=("self",))
+                .filter(pk=graduated_program_id, college=college, is_active=True)
+                .first()
+            )
+            if program is None:
+                raise InvalidStudentAcademicInput(
+                    "Choose an active Program under the graduation College."
+                )
         profile = (
             StudentAcademicProfile.objects.select_for_update().filter(student_id=student.pk).first()
         )
@@ -334,7 +346,7 @@ def record_graduation(
         if (
             record is not None
             and record.graduated_college_id == college.pk
-            and record.graduated_program_id is None
+            and record.graduated_program_id == graduated_program_id
             and record.graduation_date == graduation_date
             and record.verification_source == source
             and lifecycle_from == StudentLifecycleStatus.GRADUATED
@@ -343,13 +355,18 @@ def record_graduation(
             return record
         created = record is None
         previous_college_id = str(record.graduated_college_id) if record is not None else None
+        previous_program_id = (
+            str(record.graduated_program_id)
+            if record is not None and record.graduated_program_id
+            else None
+        )
         previous_graduation_date = record.graduation_date if record is not None else None
         previous_source = record.verification_source if record is not None else None
         actor = _actor(context)
         if record is None:
             record = StudentGraduationRecord(student=student)
         record.graduated_college = college
-        record.graduated_program = None
+        record.graduated_program = program
         record.graduation_date = graduation_date
         record.verification_source = source
         record.verified_by = actor
@@ -375,6 +392,8 @@ def record_graduation(
                 "student_id": str(student.pk),
                 "previous_college_id": previous_college_id,
                 "new_college_id": str(college.pk),
+                "previous_program_id": previous_program_id,
+                "new_program_id": str(program.pk) if program else None,
                 "previous_graduation_date": (
                     previous_graduation_date.isoformat()
                     if previous_graduation_date is not None
@@ -406,7 +425,7 @@ def get_student_academic_record(*, student_id: UUID) -> StudentAcademicRecord:
     )
     graduation = (
         StudentGraduationRecord.objects.select_related(
-            "graduated_college__campus", "verified_by__role"
+            "graduated_college__campus", "graduated_program", "verified_by__role"
         )
         .filter(student_id=student.pk)
         .first()

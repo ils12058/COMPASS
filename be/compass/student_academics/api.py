@@ -96,13 +96,21 @@ class AcademicPeriodRecordResponse(StrictSchema):
 
 class GraduationRecordRequest(StrictSchema):
     graduated_college_id: UUID
+    graduated_program_id: UUID | None = None
     graduation_date: date
     verification_source: str
+
+
+class GraduationProgramSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
 
 
 class GraduationRecordResponse(StrictSchema):
     id: UUID
     graduated_college: CollegeSummary
+    graduated_program: GraduationProgramSummary | None
     graduation_date: date
     verification_source: str
     verified_by: OrganizationPersonSummary | None
@@ -179,6 +187,8 @@ class GraduationImportRowResponse(StrictSchema):
     campus_code: str
     college_code: str
     graduation_date: str
+    program_code: str
+    previous_program_code: str | None
     lifecycle_status: str | None
     current_placement_college_code: str | None
     previous_college_code: str | None
@@ -246,6 +256,13 @@ def _graduation(record) -> dict[str, object]:
     return {
         "id": record.pk,
         "graduated_college": _college(record.graduated_college),
+        "graduated_program": {
+            "id": record.graduated_program_id,
+            "code": record.graduated_program.code,
+            "name": record.graduated_program.name,
+        }
+        if record.graduated_program_id
+        else None,
         "graduation_date": record.graduation_date,
         "verification_source": record.verification_source,
         "verified_by": _person(record.verified_by) if record.verified_by is not None else None,
@@ -442,6 +459,7 @@ def graduation_record(request, student_id: UUID, payload: GraduationRecordReques
         item = record_graduation(
             student_id=student_id,
             graduated_college_id=payload.graduated_college_id,
+            graduated_program_id=payload.graduated_program_id,
             graduation_date=payload.graduation_date,
             verification_source=payload.verification_source,
             context=_context(request),

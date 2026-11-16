@@ -1049,6 +1049,8 @@ def test_record_graduation_clears_placement_and_transitions_lifecycle():
         "student_id": str(student.pk),
         "previous_college_id": None,
         "new_college_id": str(college.pk),
+        "previous_program_id": None,
+        "new_program_id": None,
         "previous_graduation_date": None,
         "new_graduation_date": "2026-06-30",
         "previous_source": None,

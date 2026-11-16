@@ -134,7 +134,7 @@ class StudentGraduationRecord(models.Model):
         on_delete=models.PROTECT,
         related_name="student_graduation_records",
     )
-    # Present for proposal shape, never written in this slice. Always null.
+    # Optional Registrar-confirmed program; older records may contain only the College.
     graduated_program = models.ForeignKey(
         "organization.Program",
         on_delete=models.PROTECT,
