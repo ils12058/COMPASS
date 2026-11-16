@@ -47,6 +47,7 @@ from compass.good_moral.services import (
     GoodMoralCreationConflict,
     GoodMoralCurrentStudentRequired,
     GoodMoralDocumentUnavailable,
+    GoodMoralInventoryCollegeMismatch,
     InvalidGoodMoralInput,
     build_certificate_render_context,
     cancel_request,
@@ -120,6 +121,7 @@ def record_inspected_receipt(item, actor):
 
 
 def prepare_request(**kwargs):
+    kwargs.setdefault("diploma_tor_checked", True)
     item = GoodMoralRequest.objects.get(pk=kwargs["request_id"])
     item = record_inspected_receipt(item, kwargs["actor"])
     kwargs.setdefault("expected_resource_version", item.updated_at.isoformat())
@@ -419,7 +421,7 @@ def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_s
 
 
 @pytest.mark.django_db
-def test_f4_college_snapshot_uses_placement_not_inventory_program_college():
+def test_f4_refuses_conflicting_placement_and_inventory_program_college():
     sync_policy()
     student = make_user("f4.placement.precedence@example.edu")
     placement = make_placement(student, code="CAS")
@@ -433,15 +435,14 @@ def test_f4_college_snapshot_uses_placement_not_inventory_program_college():
     assert inventory.program is not None
     assert inventory.program.college_id != placement.current_college_id
 
-    item = create_my_current_student(
-        student=student,
-        year_level="4th Year",
-        semester="First Semester",
-        context=AuditContext.user(student),
-    )
-
-    assert item.college_snapshot == "CAS College"
-    assert item.college_snapshot != inventory.program.college.name
+    with pytest.raises(GoodMoralInventoryCollegeMismatch):
+        create_my_current_student(
+            student=student,
+            year_level="4th Year",
+            semester="First Semester",
+            context=AuditContext.user(student),
+        )
+    assert not GoodMoralRequest.objects.filter(student=student).exists()
 
 
 @pytest.mark.django_db
@@ -490,7 +491,7 @@ def test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts(
 ):
     sync_policy()
     student = make_user(f"f4-{expected_status.lower()}-{program_code}@example.edu")
-    make_placement(student)
+    make_placement(student, code=college_code)
     make_inventory(
         student,
         make_academic_year(),
@@ -1076,8 +1077,21 @@ def test_issuance_refuses_a_legacy_future_graduation_date_until_corrected():
     # 15:30 UTC is still 8 October in Manila; 16:30 UTC is already 9 October.
     before_midnight = datetime(2026, 10, 8, 15, 30, tzinfo=UTC)
     after_midnight = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    # Preserve real diploma/TOR evidence while isolating the legacy date validation below.
+    prepare_request(
+        actor=counselor,
+        request_id=item.pk,
+        context=AuditContext.user(counselor),
+        now=before_midnight,
+    )
     # A row saved before ADR-096 write validation, bypassing today's checks.
-    GoodMoralRequest.objects.filter(pk=item.pk).update(graduation_date=date(2026, 10, 9))
+    GoodMoralRequest.objects.filter(pk=item.pk).update(
+        graduation_date=date(2026, 10, 9),
+        status=GoodMoralStatus.REQUESTED,
+        prepared_at=None,
+        prepared_by=None,
+        prepared_receipt_verification=None,
+    )
 
     with pytest.raises(GoodMoralCertificateDateInFuture, match="Graduation date cannot be"):
         prepare_request(
@@ -1745,7 +1759,7 @@ def test_f4_persistent_replay_precedes_lifecycle_inventory_placement_and_snapsho
 ):
     sync_policy()
     student = make_user("idem-f4@example.edu")
-    placement = make_placement(student, code="F4IDEM")
+    placement = make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(
         student,
@@ -1927,7 +1941,7 @@ def test_f6_persistent_replay_precedes_lifecycle_and_profile_refresh():
 def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
     sync_policy()
     current = make_user("same-key-current@example.edu")
-    make_placement(current, code="SAMEKEY")
+    make_placement(current)
     make_inventory(current, make_academic_year(), course="BSIS")
     client = auth_client(current)
     key = "gm-shared-intent"
@@ -2225,6 +2239,15 @@ def test_good_moral_idempotency_key_validation_missing_header_and_privacy():
     assert event.metadata == {
         "variant": GoodMoralVariant.GRADUATE,
         "transition": "NONE -> REQUESTED",
+        "graduation": {
+            "graduation_basis": "DOCUMENT_CHECK",
+            "graduated_college": None,
+            "degree": None,
+            "graduation_date": None,
+            "record_id": None,
+            "verification_source": None,
+            "verified_at": None,
+        },
     }
     assert raw_key not in json.dumps(event.metadata)
     assert "creation" not in json.dumps(event.metadata).lower()

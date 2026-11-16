@@ -335,6 +335,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Good Moral requests, preparation, issuance, and release audit.",
         (
             "test_good_moral.py",
+            "test_gm_inventory_academic_basis.py",
             "test_good_moral_assisted.py",
             "test_good_moral_preparation.py",
             "test_good_moral_receipts.py",
@@ -397,6 +398,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_call_slips.py",
             "test_referrals.py",
             "test_good_moral.py",
+            "test_gm_inventory_academic_basis.py",
             "test_final_api_ergonomics.py",
         ),
     ),

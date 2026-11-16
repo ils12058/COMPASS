@@ -54,6 +54,10 @@ from compass.institutional_forms.services import (
     require_active_supported_form_revision,
 )
 from compass.inventory.models import StudentInventory
+from compass.inventory.services import (
+    InventoryProgramCollegeMismatch,
+    require_program_college_match,
+)
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
@@ -61,6 +65,11 @@ from compass.organization.integrity import catalog_dependent_write
 from compass.organization.program_policy import AcademicClassification, get_program_policy
 from compass.student_academics.reads import StudentPlacementFacts, get_current_placement
 
+from .graduation_basis import (
+    graduation_context,
+    needs_document_confirmation,
+    request_graduation_evidence,
+)
 from .models import (
     CANONICAL_SEMESTERS,
     CANONICAL_YEAR_LEVELS,
@@ -102,6 +111,14 @@ class GoodMoralInventoryRequired(GoodMoralError):
     pass
 
 
+class GoodMoralInventoryCollegeMismatch(GoodMoralError):
+    pass
+
+
+class GoodMoralGraduateDocumentCheckRequired(GoodMoralError):
+    pass
+
+
 class GoodMoralF4AcademicEligibilityRequired(GoodMoralError):
     pass
 
@@ -110,6 +127,7 @@ class F4AcademicEligibility(StrEnum):
     ELIGIBLE = "ELIGIBLE"
     NOT_CURRENT = "NOT_CURRENT"
     INVENTORY_REQUIRED = "INVENTORY_REQUIRED"
+    COLLEGE_MISMATCH = "COLLEGE_MISMATCH"
     UNCLASSIFIED_PROGRAM = "UNCLASSIFIED_PROGRAM"
     POSTGRADUATE_PROGRAM = "POSTGRADUATE_PROGRAM"
     UNSUPPORTED_YEAR_LEVEL = "UNSUPPORTED_YEAR_LEVEL"
@@ -420,6 +438,16 @@ def _clean_amount(value: object) -> Decimal | None:
     return amount
 
 
+def _require_inventory_college_match(student_id, program):
+    try:
+        require_program_college_match(student_id=student_id, program=program)
+    except InventoryProgramCollegeMismatch as exc:
+        raise GoodMoralInventoryCollegeMismatch(
+            "Your Inventory's College doesn't match your current College. "
+            "Ask the Guidance Office to correct it."
+        ) from exc
+
+
 def _require_submitted_inventory(student: User):
     current_year = get_current_academic_year()
     if current_year is None:
@@ -453,6 +481,7 @@ def _require_submitted_inventory(student: User):
         raise GoodMoralInventoryRequired(
             "A submitted Individual Inventory for the current Academic Year is required."
         )
+    _require_inventory_college_match(student.pk, inventory.program)
     return inventory
 
 
@@ -507,6 +536,10 @@ def get_f4_academic_context(student: User) -> F4AcademicContext:
     )
     if inventory is None or inventory.submitted_at is None:
         return F4AcademicContext(F4AcademicEligibility.INVENTORY_REQUIRED)
+    try:
+        _require_inventory_college_match(student.pk, inventory.program)
+    except GoodMoralInventoryCollegeMismatch:
+        return F4AcademicContext(F4AcademicEligibility.COLLEGE_MISMATCH)
     return _f4_academic_context(program=inventory.program, year_level=inventory.year_level)
 
 
@@ -860,11 +893,7 @@ def _create_graduate(
     _validate_creation_student(student, initiator=initiator)
     key = _validate_idempotency_key(idempotency_key)
     fingerprint = _validate_fingerprint(request_fingerprint)
-    degree_value = _clean_required(degree, "degree", 255)
     major_value = _clean_optional(major, "major", 180)
-    graduation_value = _clean_date(graduation_date, "graduation_date", allow_none=False)
-    assert graduation_value is not None
-    _reject_future_occurred_date(graduation_value, "graduation_date")
     digest = (
         hashlib.sha256(f"gco_assisted\0{initiator.pk}\0{key}".encode()).hexdigest()
         if initiator
@@ -898,6 +927,17 @@ def _create_graduate(
             )
 
         _reject_assisted_pending(locked_student, initiator=initiator)
+        graduation = graduation_context(locked_student.pk)
+        degree_value = _clean_required(graduation["degree"] or degree, "degree", 255)
+        graduation_value = _clean_date(
+            date.fromisoformat(graduation["graduation_date"])
+            if graduation["graduation_date"]
+            else graduation_date,
+            "graduation_date",
+            allow_none=False,
+        )
+        assert graduation_value is not None
+        _reject_future_occurred_date(graduation_value, "graduation_date")
         profile = get_person_profile_context(locked_student)
         try:
             with transaction.atomic():
@@ -933,6 +973,7 @@ def _create_graduate(
             target_id=item.pk,
             metadata={
                 "variant": item.variant,
+                "graduation": graduation,
                 "transition": "NONE -> REQUESTED",
                 **({"initiation_origin": item.initiation_origin} if initiator else {}),
             },
@@ -1109,6 +1150,12 @@ def correction_fields(actor: User, item: GoodMoralRequest) -> frozenset[str]:
         if item.variant == GoodMoralVariant.CURRENT_STUDENT
         else GRADUATE_EDITABLE_FIELDS
     )
+    if item.variant == GoodMoralVariant.GRADUATE:
+        evidence = request_graduation_evidence(item)
+        if evidence.get("graduation_basis") == "REGISTRAR_RECORD":
+            allowed = allowed - {"graduation_date"}
+            if evidence.get("degree"):
+                allowed = allowed - {"degree_snapshot"}
     if actor.role.code != "COUNSELOR" or not actor.has_capability("good_moral.manage"):
         return allowed & CLERICAL_FIELDS
     return allowed
@@ -1304,6 +1351,7 @@ def update_request(
 
 def prepare_request(
     *,
+    diploma_tor_checked: bool = False,
     actor: User,
     request_id: UUID,
     context: AuditContext,
@@ -1330,12 +1378,28 @@ def prepare_request(
         evidence = inspection.gate(
             item, expected_resource_version=expected_resource_version, lock=True
         )
-        actor = inspection.authority(actor, "good_moral.prepare", context, lock=True)
-        if item.status == GoodMoralStatus.READY_FOR_ISSUANCE:
+        actor = inspection.authority(
+            actor,
+            "good_moral.prepare",
+            context,
+            lock=True,
+            student_id=item.student_id
+            if item.variant == GoodMoralVariant.CURRENT_STUDENT
+            else None,
+        )
+        if item.variant == GoodMoralVariant.CURRENT_STUDENT:
+            _require_inventory_college_match(item.student_id, item.inventory.program)
+        renew_document_check = (
+            item.status == GoodMoralStatus.READY_FOR_ISSUANCE and needs_document_confirmation(item)
+        )
+        if item.status == GoodMoralStatus.READY_FOR_ISSUANCE and not renew_document_check:
             return _queryset().get(pk=item.pk)
-        if item.status != GoodMoralStatus.REQUESTED:
+        if item.status != GoodMoralStatus.REQUESTED and not renew_document_check:
             raise GoodMoralConflict("Only a requested Good Moral certificate can be prepared.")
-        _validate_issuance_completeness(item, on=institution_date(prepared_at))
+        _validate_issuance_completeness(
+            item, on=institution_date(prepared_at), diploma_tor_checked=diploma_tor_checked
+        )
+        previous_status = item.status
         item.status = GoodMoralStatus.READY_FOR_ISSUANCE
         item.prepared_by = actor
         item.prepared_at = prepared_at
@@ -1355,7 +1419,21 @@ def prepare_request(
             outcome=AuditOutcome.SUCCESS,
             target_type="goodmoral.request",
             target_id=item.pk,
-            metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
+            metadata={
+                "variant": item.variant,
+                "transition": f"{previous_status} -> READY_FOR_ISSUANCE",
+                **(
+                    {
+                        "diploma_tor_checked": True,
+                        "document_checked_by_id": str(actor.pk),
+                        "document_checked_at": prepared_at.isoformat(),
+                    }
+                    if item.variant == GoodMoralVariant.GRADUATE
+                    and request_graduation_evidence(item).get("graduation_basis")
+                    != "REGISTRAR_RECORD"
+                    else {}
+                ),
+            },
         )
         inspection.authority(actor, "good_moral.prepare", context)
         if inspection.checked_fee_terms(item, evidence[0]) != evidence[2]:
@@ -1370,7 +1448,9 @@ def _require_meaningful(value: str, label: str) -> None:
         raise GoodMoralConflict(f"{label} must be completed before issuance.")
 
 
-def _validate_issuance_completeness(item: GoodMoralRequest, *, on: date) -> None:
+def _validate_issuance_completeness(
+    item: GoodMoralRequest, *, on: date, diploma_tor_checked: bool = False
+) -> None:
     """Check what the certificate will state, as of the institutional date ``on``.
 
     The date checks repeat the write-time rules for rows saved before them (ADR-096); a stored date
@@ -1386,12 +1466,17 @@ def _validate_issuance_completeness(item: GoodMoralRequest, *, on: date) -> None
     if item.variant == GoodMoralVariant.CURRENT_STUDENT:
         if item.inventory_id is None or item.academic_year_id is None:
             raise GoodMoralConflict("Current Student Good Moral provenance is incomplete.")
+        _require_inventory_college_match(item.student_id, item.inventory.program)
         _require_meaningful(item.year_level_snapshot, "Year level")
         _require_meaningful(item.college_snapshot, "College")
         _require_meaningful(item.course_snapshot, "Course")
         _require_meaningful(item.semester_snapshot, "Semester")
         return
     if item.variant == GoodMoralVariant.GRADUATE:
+        if needs_document_confirmation(item) and diploma_tor_checked is not True:
+            raise GoodMoralGraduateDocumentCheckRequired(
+                "Check the diploma or TOR and confirm it before preparing."
+            )
         _require_meaningful(item.degree_snapshot, "Degree")
         if item.graduation_date is None:
             raise GoodMoralConflict("Graduation date must be completed before issuance.")

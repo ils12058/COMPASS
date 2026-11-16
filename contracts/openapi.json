@@ -13661,6 +13661,16 @@
             "title": "Current Address",
             "type": "string"
           },
+          "current_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryCollegeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current_concerns": {
             "default": "",
             "title": "Current Concerns",
@@ -14259,6 +14269,7 @@
           }
         },
         "required": [
+          "current_college",
           "id",
           "academic_year",
           "program",
@@ -21319,6 +21330,26 @@
               }
             ]
           },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralStudentCollegeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduationBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "graduation_date": {
             "anyOf": [
               {
@@ -21467,6 +21498,8 @@
           "semester",
           "degree",
           "graduation_date",
+          "graduation_basis",
+          "graduated_college",
           "official_receipt_number",
           "official_receipt_date",
           "official_receipt_amount",
@@ -21518,12 +21551,62 @@
           "ELIGIBLE",
           "NOT_CURRENT",
           "INVENTORY_REQUIRED",
+          "COLLEGE_MISMATCH",
           "UNCLASSIFIED_PROGRAM",
           "POSTGRADUATE_PROGRAM",
           "UNSUPPORTED_YEAR_LEVEL"
         ],
         "title": "GoodMoralF4EligibilityStatus",
         "type": "string"
+      },
+      "GoodMoralGraduationContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralStudentCollegeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_basis": {
+            "$ref": "#/components/schemas/GraduationBasis"
+          },
+          "graduation_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Date"
+          }
+        },
+        "required": [
+          "graduation_basis",
+          "graduated_college",
+          "degree",
+          "graduation_date"
+        ],
+        "title": "GoodMoralGraduationContextResponse",
+        "type": "object"
       },
       "GoodMoralHistoryResponse": {
         "additionalProperties": false,
@@ -21658,6 +21741,30 @@
             "title": "Degree",
             "type": "string"
           },
+          "document_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Checked At"
+          },
+          "document_checked_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Checked By Id"
+          },
           "document_template_key": {
             "anyOf": [
               {
@@ -21714,6 +21821,26 @@
               }
             ]
           },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralStudentCollegeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduationBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "graduation_date": {
             "anyOf": [
               {
@@ -21737,6 +21864,29 @@
               }
             ],
             "title": "Graduation Opportunity Id"
+          },
+          "graduation_verification_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Verification Source"
+          },
+          "graduation_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Verified At"
           },
           "id": {
             "format": "uuid",
@@ -21945,6 +22095,8 @@
           "semester",
           "degree",
           "graduation_date",
+          "graduation_basis",
+          "graduated_college",
           "official_receipt_number",
           "official_receipt_date",
           "official_receipt_amount",
@@ -21953,6 +22105,10 @@
           "document_template_version",
           "issued_by",
           "issued_by_name_snapshot",
+          "graduation_verification_source",
+          "graduation_verified_at",
+          "document_checked_by_id",
+          "document_checked_at",
           "initiated_by",
           "student_institutional_id",
           "cancellation",
@@ -22128,6 +22284,11 @@
       "GoodMoralPreparationPayload": {
         "additionalProperties": false,
         "properties": {
+          "diploma_tor_checked": {
+            "default": false,
+            "title": "Diploma Tor Checked",
+            "type": "boolean"
+          },
           "expected_resource_version": {
             "title": "Expected Resource Version",
             "type": "string"
@@ -22467,6 +22628,80 @@
         "title": "GoodMoralReceiptVerificationResult",
         "type": "object"
       },
+      "GoodMoralStaffGraduationContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "degree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralStudentCollegeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_basis": {
+            "$ref": "#/components/schemas/GraduationBasis"
+          },
+          "graduation_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Date"
+          },
+          "verification_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Source"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "graduation_basis",
+          "graduated_college",
+          "degree",
+          "graduation_date",
+          "verification_source",
+          "verified_at"
+        ],
+        "title": "GoodMoralStaffGraduationContextResponse",
+        "type": "object"
+      },
       "GoodMoralStatusValue": {
         "enum": [
           "REQUESTED",
@@ -22555,6 +22790,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/GoodMoralF4AcademicContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralStaffGraduationContextResponse"
               },
               {
                 "type": "null"
@@ -24315,6 +24560,14 @@
         "title": "GraduateTracerTrainingPayload",
         "type": "object"
       },
+      "GraduationBasis": {
+        "enum": [
+          "REGISTRAR_RECORD",
+          "DOCUMENT_CHECK"
+        ],
+        "title": "GraduationBasis",
+        "type": "string"
+      },
       "GraduationImportResponse": {
         "additionalProperties": false,
         "properties": {
@@ -24458,6 +24711,21 @@
             ],
             "title": "Previous Graduation Date"
           },
+          "previous_program_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Program Code"
+          },
+          "program_code": {
+            "title": "Program Code",
+            "type": "string"
+          },
           "row_number": {
             "title": "Row Number",
             "type": "integer"
@@ -24487,6 +24755,8 @@
           "campus_code",
           "college_code",
           "graduation_date",
+          "program_code",
+          "previous_program_code",
           "lifecycle_status",
           "current_placement_college_code",
           "previous_college_code",
@@ -24497,6 +24767,31 @@
         "title": "GraduationImportRowResponse",
         "type": "object"
       },
+      "GraduationProgramSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GraduationProgramSummary",
+        "type": "object"
+      },
       "GraduationRecordRequest": {
         "additionalProperties": false,
         "properties": {
@@ -24504,6 +24799,18 @@
             "format": "uuid",
             "title": "Graduated College Id",
             "type": "string"
+          },
+          "graduated_program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduated Program Id"
           },
           "graduation_date": {
             "format": "date",
@@ -24533,6 +24840,16 @@
           },
           "graduated_college": {
             "$ref": "#/components/schemas/CollegeSummary"
+          },
+          "graduated_program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduationProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "graduation_date": {
             "format": "date",
@@ -24572,6 +24889,7 @@
         "required": [
           "id",
           "graduated_college",
+          "graduated_program",
           "graduation_date",
           "verification_source",
           "verified_by",
@@ -26980,6 +27298,31 @@
         "title": "InterestValue",
         "type": "string"
       },
+      "InventoryCollegeSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "InventoryCollegeSummary",
+        "type": "object"
+      },
       "InventoryCorrectionSummary": {
         "additionalProperties": false,
         "properties": {
@@ -28083,6 +28426,16 @@
             "title": "Current Address",
             "type": "string"
           },
+          "current_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InventoryCollegeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current_concerns": {
             "default": "",
             "title": "Current Concerns",
@@ -28678,6 +29031,7 @@
           }
         },
         "required": [
+          "current_college",
           "id",
           "academic_year",
           "program",
@@ -63116,6 +63470,53 @@
           }
         ],
         "summary": "Good Moral My Academic Context",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/graduation-context": {
+      "get": {
+        "operationId": "goodMoralGetMyGraduationContext",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralGraduationContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral My Graduation Context",
         "tags": [
           "good-moral"
         ]

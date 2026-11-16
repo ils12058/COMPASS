@@ -47,6 +47,8 @@ def setup_request(*, graduate=False):
 
 def post(client, item, action, payload):
     item.refresh_from_db()
+    if action == "prepare":
+        payload = {"diploma_tor_checked": True, **payload}
     if action == "issue":
         payload = {
             "expected_resource_version": item.updated_at.isoformat(),

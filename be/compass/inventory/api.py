@@ -77,6 +77,7 @@ from .services import (
     InventoryNotFound,
     InventoryNotPermitted,
     InventoryNotSubmitted,
+    InventoryProgramCollegeMismatch,
     InventoryPSGCUnavailable,
     InventoryRosterOrdering,
     InventoryStatus,
@@ -473,6 +474,12 @@ class AcademicYearSummary(StrictSchema):
     label: str
 
 
+class InventoryCollegeSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
 class InventoryProgramSummary(StrictSchema):
     id: UUID
     code: str
@@ -521,6 +528,7 @@ class InventorySummaryResponse(StrictSchema):
 
 
 class InventoryResponse(InventoryPayload):
+    current_college: InventoryCollegeSummary | None
     id: UUID
     academic_year: AcademicYearSummary
     program: InventoryProgramSummary | None
@@ -655,6 +663,8 @@ def _raise(exc: InventoryError) -> NoReturn:
                 "Your draft is saved; try submitting again later."
             ),
         ) from exc
+    if isinstance(exc, InventoryProgramCollegeMismatch):
+        raise APIError(409, "inventory_program_college_mismatch", str(exc)) from exc
     if isinstance(exc, InventoryConflict):
         raise APIError(409, "inventory_conflict", str(exc)) from exc
     if isinstance(exc, InvalidInventoryInput):
@@ -767,7 +777,12 @@ def _inventory(item) -> dict[str, object]:
         private = read_inventory_private_projection(item)
     except InventoryConfidentialContentUnavailable as exc:
         _raise(exc)
+    profile = getattr(item.student, "student_academic_profile", None)
+    college = profile.current_college if profile else None
     data: dict[str, object] = {
+        "current_college": {"id": college.pk, "code": college.code, "name": college.name}
+        if college
+        else None,
         "id": item.pk,
         "academic_year": _academic_year(item.academic_year),
         "status": _status(item),

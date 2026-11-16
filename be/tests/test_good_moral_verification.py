@@ -80,6 +80,7 @@ def verify(item, actor, **overrides):
 def prepare(item, actor):
     item.refresh_from_db()
     return prepare_request(
+        diploma_tor_checked=True,
         actor=actor,
         request_id=item.pk,
         context=AuditContext.user(actor),

@@ -16,6 +16,7 @@ from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     InvalidInventoryInput,
     InventoryConflict,
+    InventoryProgramCollegeMismatch,
     ensure_current_inventory,
     get_my_inventory_history_item,
     replace_current_inventory,
@@ -246,18 +247,18 @@ def test_inventory_program_does_not_mutate_guidance_student_placement():
     ).count()
 
     ensure_current_inventory(student=student, context=context(student))
-    replace_current_inventory(
-        student=student,
-        values=minimum_normalized_inventory_values(
-            program_id=program_b.pk,
-            year_level=2,
-        ),
-    )
-    submitted = submit_current_inventory(student=student, context=context(student))
+    with pytest.raises(InventoryProgramCollegeMismatch):
+        replace_current_inventory(
+            student=student,
+            values=minimum_normalized_inventory_values(
+                program_id=program_b.pk,
+                year_level=2,
+            ),
+        )
 
     placement = StudentAcademicProfile.objects.get(student=student)
     assert placement.current_college_id == college_a.pk
-    assert submitted.program.college_id == college_b.pk
+    assert StudentInventory.objects.get(student=student).program_id is None
     assert (
         AuditEvent.objects.filter(action="student_academics.placement.set").count()
         == placement_audits_before

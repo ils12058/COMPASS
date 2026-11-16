@@ -101,6 +101,7 @@ def test_inspection_competes_with_request_lifecycle(scene, action, verification_
             from compass.good_moral.services import prepare_request
 
             return prepare_request(
+                diploma_tor_checked=True,
                 actor=actor,
                 request_id=item.pk,
                 context=AuditContext.user(actor),

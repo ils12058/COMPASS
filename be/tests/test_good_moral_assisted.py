@@ -499,6 +499,7 @@ def test_options_bound_minimized_office_wide_and_revalidated(world):
         "college",
         "variant",
         "f4_eligibility",
+        "graduation",
     }
     assert "email" not in response.content.decode()
     assert client.get(url, {"page_size": 51}).status_code == 422

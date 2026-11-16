@@ -163,6 +163,7 @@ def test_authenticated_api_full_workflow_exact_provenance_and_owned_pdf(actors, 
         path + "/prepare",
         {
             "expected_resource_version": verified["actions"]["request_version"],
+            "diploma_tor_checked": True,
         },
     )
     assert prepared.status_code == 200, prepared.content
@@ -368,6 +369,7 @@ def test_real_postgresql_cancellation_and_preparation_preserve_one_terminal_hist
 
     def prepare():
         return prepare_request(
+            diploma_tor_checked=True,
             actor=inspector,
             request_id=item.pk,
             context=AuditContext.user(inspector),

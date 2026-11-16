@@ -567,6 +567,7 @@ def test_lifecycle_competition_keeps_one_serial_history(world, action, correctio
             )
         if action == "prepare":
             return prepare_request(
+                diploma_tor_checked=True,
                 actor=actor,
                 request_id=item.pk,
                 context=AuditContext.user(actor),

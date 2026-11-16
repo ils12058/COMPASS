@@ -53,6 +53,7 @@ from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import AcademicYear, College, Program
 from compass.organization.program_policy import get_program_policy
 from compass.organization.selection import program_has_active_ancestry
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -242,6 +243,10 @@ class InventoryNotPermitted(InventoryError):
     pass
 
 
+class InventoryProgramCollegeMismatch(InventoryConflict):
+    pass
+
+
 class InventoryNotSubmitted(InventoryConflict):
     pass
 
@@ -395,6 +400,7 @@ def _inventory_queryset():
     return StudentInventory.objects.select_related(
         "student",
         "student__role",
+        "student__student_academic_profile__current_college",
         "academic_year",
         "program",
         "program__college",
@@ -545,6 +551,19 @@ def _current_year() -> AcademicYear:
     if current is None:
         raise CurrentAcademicYearNotConfigured("No current Academic Year is configured.")
     return current
+
+
+def require_program_college_match(*, student_id: UUID, program: Program | None) -> None:
+    college_id = (
+        StudentAcademicProfile.objects.filter(student_id=student_id)
+        .values_list("current_college_id", flat=True)
+        .first()
+    )
+    if college_id is not None and program is not None and program.college_id != college_id:
+        raise InventoryProgramCollegeMismatch(
+            "Choose a Program from your College. "
+            "If your College has changed, ask the Guidance Office."
+        )
 
 
 def _require_active_program(program_id: UUID) -> Program:
@@ -1617,6 +1636,7 @@ def replace_current_inventory(
             program_changed = program_id != original_program_id
             if program_changed:
                 item.program = None if program_id is None else _require_active_program(program_id)
+                require_program_college_match(student_id=locked_student.pk, program=item.program)
         if item.program_id is not None:
             if not program_changed:
                 # An unchanged historical snapshot may be inactive and remains editable without
@@ -1811,6 +1831,7 @@ def submit_current_inventory(
         )
         if item is None:
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
+        require_program_college_match(student_id=locked_student.pk, program=item.program)
         if item.submitted_at is not None:
             return _inventory_queryset().get(pk=item.pk)
         if item.program_id is None:
@@ -1818,6 +1839,7 @@ def submit_current_inventory(
         if item.year_level is None:
             raise InventoryConflict("Year Level is required before Inventory submission.")
         item.program = _require_active_program(item.program_id)
+        require_program_college_match(student_id=locked_student.pk, program=item.program)
         _validate_program_year_level(item.program, item.year_level)
         item.course_currently_enrolled = item.program.name
         profile = _lock_or_create_support_profile(item)

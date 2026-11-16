@@ -458,6 +458,7 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralCreateMyGraduateRequest",
     "goodMoralListDegreeOptions",
     "goodMoralGetMyF4AcademicContext",
+    "goodMoralGetMyGraduationContext",
     "goodMoralListMyRequests",
     "goodMoralGetMyRequest",
     "goodMoralCancelMyRequest",
@@ -711,6 +712,44 @@ def test_publication_update_contract_exposes_consequence_acknowledgement() -> No
         acknowledgement = schemas[schema_name]["properties"]["acknowledge_publication_consequences"]
         assert acknowledgement["type"] == "boolean"
         assert acknowledgement["default"] is False
+
+
+def test_graduation_basis_contract_keeps_verification_evidence_staff_only():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert schemas["GraduationBasis"]["enum"] == ["REGISTRAR_RECORD", "DOCUMENT_CHECK"]
+    assert "COLLEGE_MISMATCH" in schemas["GoodMoralF4EligibilityStatus"]["enum"]
+    context = _operation(schema, "/api/v1/good-moral/me/graduation-context", "get")
+    assert context["operationId"] == "goodMoralGetMyGraduationContext"
+    assert _response_statuses(context) == {200, 401, 403}
+    student_context = schemas["GoodMoralGraduationContextResponse"]["properties"]
+    assert set(student_context) == {
+        "graduation_basis",
+        "graduated_college",
+        "degree",
+        "graduation_date",
+    }
+    staff_context = schemas["GoodMoralStaffGraduationContextResponse"]["properties"]
+    assert set(staff_context) == set(student_context) | {"verification_source", "verified_at"}
+    student_detail = schemas["GoodMoralDetailResponse"]["properties"]
+    staff_detail = schemas["GoodMoralOperationalDetailResponse"]["properties"]
+    evidence = {
+        "graduation_verification_source",
+        "graduation_verified_at",
+        "document_checked_by_id",
+        "document_checked_at",
+    }
+    assert {"graduation_basis", "graduated_college"} <= set(student_detail)
+    assert evidence <= set(staff_detail)
+    assert not evidence & set(student_detail)
+    acknowledgement = schemas["GoodMoralPreparationPayload"]["properties"]["diploma_tor_checked"]
+    assert acknowledgement["type"] == "boolean" and acknowledgement["default"] is False
+    graduation = schemas["GraduationRecordRequest"]
+    assert "graduated_program_id" in graduation["properties"]
+    assert "graduated_program_id" not in graduation["required"]
+    assert "current_college" in schemas["InventoryResponse"]["properties"]
+    preview = schemas["GraduationImportRowResponse"]["properties"]
+    assert {"program_code", "previous_program_code"} <= set(preview)
 
 
 def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions():

@@ -29,6 +29,12 @@ from compass.privacy_governance.releases import (
     record_good_moral_release,
 )
 
+from .graduation_basis import (
+    document_check_evidence,
+    graduation_context,
+    needs_document_confirmation,
+    request_graduation_evidence,
+)
 from .models import GoodMoralInitiationOrigin, GoodMoralStatus, GoodMoralVariant
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -41,6 +47,8 @@ from .services import (
     GoodMoralError,
     GoodMoralExitInterviewRequired,
     GoodMoralF4AcademicEligibilityRequired,
+    GoodMoralGraduateDocumentCheckRequired,
+    GoodMoralInventoryCollegeMismatch,
     GoodMoralInventoryRequired,
     GoodMoralNotFound,
     GoodMoralNotPermitted,
@@ -129,6 +137,7 @@ class GoodMoralF4EligibilityStatus(StrEnum):
     ELIGIBLE = "ELIGIBLE"
     NOT_CURRENT = "NOT_CURRENT"
     INVENTORY_REQUIRED = "INVENTORY_REQUIRED"
+    COLLEGE_MISMATCH = "COLLEGE_MISMATCH"
     UNCLASSIFIED_PROGRAM = "UNCLASSIFIED_PROGRAM"
     POSTGRADUATE_PROGRAM = "POSTGRADUATE_PROGRAM"
     UNSUPPORTED_YEAR_LEVEL = "UNSUPPORTED_YEAR_LEVEL"
@@ -144,6 +153,23 @@ class GoodMoralDegreeOptionsResponse(StrictSchema):
     items: list[str]
 
 
+class GraduationBasis(StrEnum):
+    REGISTRAR_RECORD = "REGISTRAR_RECORD"
+    DOCUMENT_CHECK = "DOCUMENT_CHECK"
+
+
+class GoodMoralGraduationContextResponse(StrictSchema):
+    graduation_basis: GraduationBasis
+    graduated_college: GoodMoralStudentCollegeResponse | None
+    degree: str | None
+    graduation_date: date | None
+
+
+class GoodMoralStaffGraduationContextResponse(GoodMoralGraduationContextResponse):
+    verification_source: str | None
+    verified_at: datetime | None
+
+
 class GoodMoralStudentOptionResponse(StrictSchema):
     id: UUID
     display_name: str
@@ -151,6 +177,7 @@ class GoodMoralStudentOptionResponse(StrictSchema):
     college: GoodMoralStudentCollegeResponse | None
     variant: GoodMoralVariantValue
     f4_eligibility: GoodMoralF4AcademicContextResponse | None = None
+    graduation: GoodMoralStaffGraduationContextResponse | None = None
 
 
 class GoodMoralStudentOptionPage(StrictSchema):
@@ -165,6 +192,7 @@ class GoodMoralCancellationPayload(StrictSchema):
 
 
 class GoodMoralPreparationPayload(StrictSchema):
+    diploma_tor_checked: bool = False
     expected_resource_version: str
 
 
@@ -255,6 +283,8 @@ class GoodMoralDetailResponse(GoodMoralSummaryResponse):
     semester: str
     degree: str
     graduation_date: date | None
+    graduation_basis: GraduationBasis | None
+    graduated_college: GoodMoralStudentCollegeResponse | None
     official_receipt_number: str
     official_receipt_date: date | None
     official_receipt_amount: Decimal | None
@@ -330,6 +360,10 @@ class GoodMoralReceiptVerificationResult(StrictSchema):
 
 
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
+    graduation_verification_source: str | None
+    graduation_verified_at: datetime | None
+    document_checked_by_id: UUID | None
+    document_checked_at: datetime | None
     initiated_by: PersonSummary | None
     student_institutional_id: str | None
     cancellation: GoodMoralCancellationSummary | None
@@ -429,6 +463,10 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(409, "good_moral_f4_academic_eligibility_required", str(exc)) from exc
     if isinstance(exc, GoodMoralExitInterviewRequired):
         raise APIError(409, "good_moral_exit_interview_required", str(exc)) from exc
+    if isinstance(exc, GoodMoralInventoryCollegeMismatch):
+        raise APIError(409, "good_moral_inventory_college_mismatch", str(exc)) from exc
+    if isinstance(exc, GoodMoralGraduateDocumentCheckRequired):
+        raise APIError(409, "good_moral_graduate_document_check_required", str(exc)) from exc
     if isinstance(exc, GoodMoralInventoryRequired):
         raise APIError(409, "good_moral_inventory_required", str(exc)) from exc
     if isinstance(exc, GoodMoralPlacementRequired):
@@ -497,8 +535,16 @@ def _operational_detail(item, actor) -> dict[str, object]:
             "cancelled_by": _person(item.cancelled_by) if item.cancelled_by_id else None,
             "reason": item.cancellation_reason,
         }
+    graduation = (
+        request_graduation_evidence(item) if item.variant == GoodMoralVariant.GRADUATE else {}
+    )
+    document_check = document_check_evidence(item) or {}
     return {
         **_detail(item),
+        "graduation_verification_source": graduation.get("verification_source"),
+        "graduation_verified_at": graduation.get("verified_at"),
+        "document_checked_by_id": document_check.get("document_checked_by_id"),
+        "document_checked_at": document_check.get("document_checked_at"),
         "initiated_by": _person(item.initiated_by) if item.initiated_by_id else None,
         "student_institutional_id": item.student.institutional_id,
         "cancellation": cancellation,
@@ -545,12 +591,19 @@ def _actions(item, actor):
         "semester_snapshot": "semester",
         "degree_snapshot": "degree",
     }
+    document_check_required = needs_document_confirmation(item)
     return {
         "request_version": item.updated_at.isoformat(),
         "preparation_version": item.prepared_at.isoformat() if item.prepared_at else None,
-        "can_prepare": prepare and receipt_ready and item.status == GoodMoralStatus.REQUESTED,
+        "can_prepare": prepare
+        and receipt_ready
+        and (
+            item.status == GoodMoralStatus.REQUESTED
+            or (item.status == GoodMoralStatus.READY_FOR_ISSUANCE and document_check_required)
+        ),
         "can_correct": prepare and preparable,
         "can_issue": receipt_ready
+        and not document_check_required
         and item.prepared_receipt_verification_id is not None
         and counselor
         and actor.has_capability("good_moral.issue")
@@ -567,7 +620,14 @@ def _actions(item, actor):
 
 def _detail(item) -> dict[str, object]:
     revision = item.form_revision
+    graduation = (
+        request_graduation_evidence(item) if item.variant == GoodMoralVariant.GRADUATE else {}
+    )
     return {
+        "graduation_basis": graduation.get("graduation_basis", "DOCUMENT_CHECK")
+        if item.variant == GoodMoralVariant.GRADUATE
+        else None,
+        "graduated_college": graduation.get("graduated_college"),
         **_summary(item),
         "student": _person(item.student),
         "graduation_opportunity_id": item.graduation_opportunity_id,
@@ -687,6 +747,31 @@ def _require_degree_options_access(request) -> None:
     )
 
 
+@router.get(
+    "/me/graduation-context",
+    response=response_with_errors(GoodMoralGraduationContextResponse, 401, 403),
+    auth=session_auth,
+    operation_id="goodMoralGetMyGraduationContext",
+)
+def good_moral_my_graduation_context(request):
+    user = request.auth_user
+    if not (
+        user.is_active
+        and user.role.code == "STUDENT"
+        and user.has_capability("good_moral.request_self")
+    ):
+        raise APIError(
+            403,
+            "permission_denied",
+            "You don't have permission to request a Good Moral Certificate.",
+        )
+    return {
+        k: v
+        for k, v in graduation_context(user.pk).items()
+        if k not in {"record_id", "verification_source", "verified_at"}
+    }
+
+
 # Static operational routes precede UUID detail routes.
 @router.get(
     "/degree-options",
@@ -740,6 +825,9 @@ def good_moral_student_options(
                 "variant": GoodMoralVariant.CURRENT_STUDENT
                 if student.student_lifecycle_status == "CURRENT"
                 else GoodMoralVariant.GRADUATE,
+                "graduation": {
+                    k: v for k, v in graduation_context(student.pk).items() if k != "record_id"
+                },
                 "f4_eligibility": (
                     _f4_academic_context_response(student)
                     if student.student_lifecycle_status == "CURRENT"
@@ -1146,6 +1234,7 @@ def good_moral_prepare(request, request_id: UUID, payload: GoodMoralPreparationP
             request_id=request_id,
             context=_context(request),
             expected_resource_version=payload.expected_resource_version,
+            diploma_tor_checked=payload.diploma_tor_checked,
         )
     except GoodMoralError as exc:
         _raise(exc)
