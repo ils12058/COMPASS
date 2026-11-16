@@ -596,7 +596,9 @@ def _uat_50_unit(account: AccountSpec) -> str:
         return f"Guidance and Counseling Office ({_caseload(supervisor)})"
     if account.role == "IT_ADMIN":
         return "ITSO"
-    return "Data Protection Office"
+    if account.role == "INSTITUTIONAL_OFFICER":
+        return "University offices (Institutional Officer)"
+    raise ValueError(f"No UAT-50 unit label for role {account.role!r}.")
 
 
 def uat_50_rows(result) -> list[dict[str, str]]:

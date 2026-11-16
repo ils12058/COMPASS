@@ -88,6 +88,7 @@ from compass.staging_seed.reports import (
     UAT_50_COLUMNS,
     ReportError,
     _scan,
+    _uat_50_unit,
     render_reports,
     write_reports,
 )
@@ -494,6 +495,15 @@ def test_50_person_staff_roles_designations_and_scenario_ownership():
                 if subject == key and scenario.mutating:
                     consumers.setdefault(predicate, []).append(scenario.id)
         assert all(len(ids) == 1 for ids in consumers.values()), (key, consumers)
+
+
+def test_50_person_units_name_each_participant_office():
+    units = {key: _uat_50_unit(ACCOUNTS_BY_KEY[key]) for key in UAT_50_KEYS}
+    assert not any("Data Protection" in unit for unit in units.values())
+    for key in UAT_50_ALLOCATION["Institutional Officer"]:
+        assert units[key] == "University offices (Institutional Officer)"
+    for key in UAT_50_ALLOCATION["ITSO Personnel"]:
+        assert units[key] == "ITSO"
 
 
 def test_documentation_scan_rejects_credential_material():
