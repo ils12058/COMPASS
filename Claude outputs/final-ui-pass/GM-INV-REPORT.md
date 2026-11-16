@@ -22,7 +22,7 @@ Branch: `feature/gm-graduation-inventory-college` · PR base: `staging` · 16 No
 
 - A graduate without a record can request using typed degree, major, and date. Student copy is: “Bring your diploma or TOR when you present your Official Receipt.”
 - Staff copy is: “Not in the Registrar's record. Check the diploma or TOR before preparing.” The Prepare dialog requires “I checked the diploma or TOR” for this basis.
-- The backend rejects missing confirmation. A successful Prepare audits the confirming actor and time, tied to the request's preparation actor/time. Issuance requires that evidence as well.
+- The backend rejects missing confirmation. A successful Prepare audits the confirming actor and time, tied to the request's preparation actor/time. Confirmation time is normalized to UTC so a Manila-offset service timestamp matches its persisted preparation evidence. Issuance requires that evidence as well.
 - A legacy ready request without this evidence offers Prepare again, requires confirmation, and records a fresh preparation. Issuance stays unavailable until that check is recorded. Repeating a completed preparation preserves its actor and time.
 
 ### A4 — Basis copy
@@ -32,7 +32,7 @@ Replaced all four specified “doesn't/hasn't/can't verify” strings with the b
 ### B1 — Inventory–College check
 
 - A changed Program is checked on save, and the saved Program is checked again on submit, including submit replay. When current College is unset, any active Program remains allowed.
-- The Inventory response exposes a bounded current College summary. The editor filters active choices to that College and retains an out-of-College saved value with a correction note.
+- The Inventory response exposes a bounded, read-only current College summary. The editor omits it from writable payloads, filters active choices to that College, and retains an out-of-College saved value with a correction note. Its saved Year Level is preserved without calling an active Program from another College “inactive.”
 - Searched all Program assignments and Program-ID writes. The Student writer is the single editing path; there is no staff-assisted Inventory content writer. Staff reopen for correction, and the Student's save/resubmit uses the same guard. Existing staff permissions remain enforced.
 
 ### B2 — Current Student Good Moral
@@ -89,6 +89,7 @@ All database tests used local synthetic test data with `tests.settings`; no stag
 | OpenAPI export `--settings=tests.settings --check` | Passed |
 | Backend CI manifest `verify` | Passed: 241 files, each exactly once across six full-regression shards |
 | Frontend affected unit tests | Initial affected set: 160 passed. Final affected set after review fix: 154 passed. |
+| Inventory save/caption follow-up | 110 frontend unit tests and 28 backend correction-target tests passed; browser checks in both engines verify actual save payloads omit read-only College context |
 | Frontend lint | Passed with five existing unused-variable warnings in counseling browser specs |
 | Frontend typecheck | Passed |
 | Normal production build | Passed |
@@ -103,13 +104,23 @@ Browser suites: `gm-inventory-academic-basis`, `good-moral-request`, `good-moral
 
 The receipt/authenticated/verification regression rerun passed 435 tests and skipped two opt-in loopback Next proxy tests. Its one legacy-date fixture failure was corrected and passed in the final focused run.
 
-The final focused run passed 178 cases. The remaining new replay assertion was corrected to compare the canonical full-precision preparation token, rather than the millisecond-formatted display timestamp. The complete new GM-INV test file then passed all 17 cases (including that case). All 179 cases in the final focused set are now verified passing. Academic import/record/read, Inventory, seed, and lock-scope cases outside that focused set passed in the initial affected run.
+The final focused run passed 178 cases. The remaining new replay assertion was corrected to compare the canonical full-precision preparation token, rather than the millisecond-formatted display timestamp. The complete new GM-INV test file then passed all 17 cases (including that case). All 179 cases in that focused set are verified passing. Academic import/record/read, Inventory, seed, and lock-scope cases outside that focused set passed in the initial affected run.
 
-Final static validation passed for all 24 changed backend Python files, and OpenAPI export confirmed the committed contract is current. No whole local repository suite was run.
+The follow-up document/preparation/verification run passed all 120 cases, including the new UTC/Manila timestamp regression. The GM-INV file now has 18 passing cases. Inventory correction-target regression passed all 28 cases after the read-only payload fix.
+
+Final static validation passed for all 25 changed backend Python files, and OpenAPI export confirmed the committed contract is current. No whole local repository suite was run.
 
 ### Hosted CI
 
-Pending PR creation and hosted validation. Known prior failures to distinguish if observed: `ux15-consolidation` Form reflows at 320/390 px, and WebKit `ux15-goa-home`.
+PR: [#376](https://github.com/ils12058/COMPASS/pull/376), targeting `staging`. Rebase immediately before PR creation completed without conflicts against `origin/staging` at `8ff40ef8`; FINAL-UI-1 had not merged at that fetch.
+
+Hosted validation on `95e43e83ffc2277199fde85b42ae584b82137704`:
+
+- Frontend lint, typecheck, builds, and all 1,330 unit tests passed. An earlier unit fixture lacked graduation context; the fixture was updated and its 17 tests passed locally before this rerun.
+- Six of eight browser shards passed. Chromium and WebKit shard 1 failed only `ux15-consolidation.browser.mjs`: Inventory, customer, and CSM Form reflows at 320/390 px. These are the known prior failures identified in the task and were left unchanged. The previously noted WebKit GOA Home failure did not recur.
+- Full backend regression completed with five passing shards and one failed Inventory correction round-trip assertion, caused by the newly read-only College summary being echoed into the request. The frontend serializer and round-trip test now exclude that field; all 28 correction-target tests pass locally, and browser save assertions prove the field is omitted. Targeted backend validation reported the same failure in its duplicate full-suite shard.
+
+Runs: [full backend](https://github.com/ils12058/COMPASS/actions/runs/43782463741), [targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43782463748), [frontend](https://github.com/ils12058/COMPASS/actions/runs/43782463772). Final follow-up validation is tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks).
 
 ## Screenshots
 
