@@ -132,7 +132,21 @@ Remaining browser failures were left unchanged as requested:
 
 Earlier hosted runs on `95e43e83ffc2277199fde85b42ae584b82137704` caught the Inventory round-trip failure, now fixed, and passed all 1,330 frontend unit tests. An earlier Exit Interview unit fixture also lacked graduation context and was fixed. Prior runs: [full backend](https://github.com/ils12058/COMPASS/actions/runs/43782463741), [targeted backend](https://github.com/ils12058/COMPASS/actions/runs/43782463748), [frontend](https://github.com/ils12058/COMPASS/actions/runs/43782463772).
 
-The final report-only follow-up changes Markdown alone; implementation and test files are unchanged from the completed CI head above. GitHub scheduled its automatic checks after a delay. The final-head runs are tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks). No merge or deployment was performed.
+Report-only validation also completed on `44cb211e957bd1934caf49bc139e832bee3ae87b`, with unchanged implementation and tests:
+
+| Workflow | Result |
+| --- | --- |
+| [Full backend regression](https://github.com/ils12058/COMPASS/actions/runs/43787852350) | Passed: all six shards and final gate; 6,783 passed, four skipped |
+| [Targeted backend validation](https://github.com/ils12058/COMPASS/actions/runs/43787852342) | Passed: all six shards and final gate |
+| [Frontend validation](https://github.com/ils12058/COMPASS/actions/runs/43787852347) | Lint, typecheck, both builds, and units passed. Five of eight browser shards passed. The known Form reflows remained in both engines; two additional WebKit focus checks failed below. All GM-INV browser suites passed. |
+
+Additional unrelated failures on that report-only head were left unchanged:
+
+- WebKit shard 4: `faculty-referrals.browser.mjs`, `backend-window-refusal-returns-to-preserved-field-with-focus`, timed out waiting for the preserved end-time field to receive focus (42 of 43 checks passed).
+- WebKit shard 1: `referral-timing.browser.mjs`, `failed-verification-422`, reported an equality assertion in its end-time field focus check (31 of 32 checks passed).
+- The Faculty and Referral implementations and specs are unchanged by this package. The earlier Chromium Counseling closure keyboard failure did not recur on this head.
+
+Subsequent report-only heads retain the implementation above. Their runs are tracked in [the PR checks](https://github.com/ils12058/COMPASS/pull/376/checks), and the PR body records the latest completed validation. GitHub may take time to schedule automatic checks. No merge or deployment was performed.
 
 ## Screenshots
 
