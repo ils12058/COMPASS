@@ -1,0 +1,26 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "current Student re-enrolled in local postgraduate Program retains F6 request access",
+      "passed": true
+    },
+    {
+      "name": "former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service",
+      "passed": true
+    },
+    {
+      "name": "eligible current Student sees the current form directly and can switch to the graduate form",
+      "passed": true
+    },
+    {
+      "name": "current Student without Inventory sees the reason and no form until they choose the graduate certificate",
+      "passed": true
+    },
+    {
+      "name": "Registrar graduate fields are filled and locked",
+      "passed": true
+    }
+  ]
+}

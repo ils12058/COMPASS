@@ -1,0 +1,130 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "blocker-MISSING",
+      "passed": true
+    },
+    {
+      "name": "blocker-INCOMPLETE",
+      "passed": true
+    },
+    {
+      "name": "blocker-DISPUTED",
+      "passed": true
+    },
+    {
+      "name": "fee-mismatch-keeps-actual-and-expected",
+      "passed": true
+    },
+    {
+      "name": "backend-refusal-hides-verification-despite-capability",
+      "passed": true
+    },
+    {
+      "name": "goa-intentional-inspection-pins-payload-and-refreshes-provenance",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-stale",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-already",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-conflict",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-cancelled",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-revoked",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-deactivated",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-account-changed",
+      "passed": true
+    },
+    {
+      "name": "inspection-recovery-late-invalidated",
+      "passed": true
+    },
+    {
+      "name": "uncertain-before-commit-retries-same-operation-after-new-review",
+      "passed": true
+    },
+    {
+      "name": "uncertain-after-commit-refreshes-without-replay",
+      "passed": true
+    },
+    {
+      "name": "failed-refresh-blocks-other-mutations-until-current-outcome-checked",
+      "passed": true
+    },
+    {
+      "name": "pending-dialog-traps-keyboard-and-rejects-dismissal-or-double-submit",
+      "passed": true
+    },
+    {
+      "name": "receipt-correction-needs-reinspection-and-preparation",
+      "passed": true
+    },
+    {
+      "name": "unrelated-correction-retains-inspection-and-resets-preparation",
+      "passed": true
+    },
+    {
+      "name": "counselor-verifies-prepares-and-issues-without-printing-on-inspection",
+      "passed": true
+    },
+    {
+      "name": "receipt-keyboard-responsive-320",
+      "passed": true
+    },
+    {
+      "name": "receipt-keyboard-responsive-768",
+      "passed": true
+    },
+    {
+      "name": "receipt-keyboard-responsive-1440",
+      "passed": true
+    },
+    {
+      "name": "concurrent-request-prepared-elsewhere",
+      "passed": true
+    },
+    {
+      "name": "concurrent-request-issued-elsewhere",
+      "passed": true
+    },
+    {
+      "name": "concurrent-request-session-changed",
+      "passed": true
+    },
+    {
+      "name": "uncertain-correction-with-failed-refresh-keeps-unsaved-draft",
+      "passed": true
+    },
+    {
+      "name": "student-CURRENT_STUDENT-requests-without-receipt-and-sees-next-steps",
+      "passed": true
+    },
+    {
+      "name": "student-GRADUATE-requests-without-receipt-and-sees-next-steps",
+      "passed": true
+    },
+    {
+      "name": "own-request-history-is-labeled-metadata-with-no-global-lookup",
+      "passed": true
+    }
+  ]
+}

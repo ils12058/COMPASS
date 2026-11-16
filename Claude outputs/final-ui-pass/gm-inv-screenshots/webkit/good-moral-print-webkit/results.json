@@ -1,0 +1,102 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320",
+      "passed": true
+    },
+    {
+      "name": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440",
+      "passed": true
+    },
+    {
+      "name": "issue-confirm-verify-preview-download-reprint-GRADUATE-320",
+      "passed": true
+    },
+    {
+      "name": "issue-confirm-verify-preview-download-reprint-GRADUATE-1440",
+      "passed": true
+    },
+    {
+      "name": "native-print-unavailable-opens-authorized-pdf-preview",
+      "passed": true
+    },
+    {
+      "name": "popup-blocked-download-fallback",
+      "passed": true
+    },
+    {
+      "name": "popup-throws-download-fallback",
+      "passed": true
+    },
+    {
+      "name": "issued-then-pdf-failure-and-retry-without-reissue",
+      "passed": true
+    },
+    {
+      "name": "unauthorized-pdf-has-no-preview-and-retry-never-issues",
+      "passed": true
+    },
+    {
+      "name": "uncertain-issuance-verified-issued",
+      "passed": true
+    },
+    {
+      "name": "uncertain-issuance-verified-ready",
+      "passed": true
+    },
+    {
+      "name": "issuance-successful-refresh-fails-no-print-until-verified",
+      "passed": true
+    },
+    {
+      "name": "issuance-uncertain-refresh-fails-no-print-until-verified",
+      "passed": true
+    },
+    {
+      "name": "issuance-rejection-good_moral_preparation_changed",
+      "passed": true
+    },
+    {
+      "name": "issuance-rejection-current_student_required",
+      "passed": true
+    },
+    {
+      "name": "unissued-REQUESTED-has-no-print-flow",
+      "passed": true
+    },
+    {
+      "name": "unissued-READY_FOR_ISSUANCE-has-no-print-flow",
+      "passed": true
+    },
+    {
+      "name": "unissued-CANCELLED-has-no-print-flow",
+      "passed": true
+    },
+    {
+      "name": "permission-loss-during-pdf-read-discards-response-before-authorized-remount",
+      "passed": true
+    },
+    {
+      "name": "existing-authorized-goa-can-reprint-without-issue-authority",
+      "passed": true
+    },
+    {
+      "name": "student-original-download-remains-unchanged",
+      "passed": true
+    },
+    {
+      "name": "direct-print-requests-browser-print-from-finalized-pdf-click",
+      "passed": true
+    },
+    {
+      "name": "active-issue-sends-exact-reviewed-receipt-evidence",
+      "passed": true
+    },
+    {
+      "name": "changed-receipt-closes-confirmation-without-resubmission",
+      "passed": true
+    }
+  ]
+}

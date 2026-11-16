@@ -1,0 +1,26 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "01 Directory Student link opens the aggregate record",
+      "passed": true
+    },
+    {
+      "name": "02 Period recording saves the exact classification and refetches the aggregate",
+      "passed": true
+    },
+    {
+      "name": "03 Graduation states consequences, completes in place, and clears placement and lifecycle after refetch",
+      "passed": true
+    },
+    {
+      "name": "04 Missing Academic Years authority disables period recording but keeps facts visible",
+      "passed": true
+    },
+    {
+      "name": "05 View-only access shows the record without write controls",
+      "passed": true
+    }
+  ]
+}
