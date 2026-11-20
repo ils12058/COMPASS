@@ -54,6 +54,7 @@ class FacultyReferralSubmitRequest(StrictSchema):
     confirmation: str = Field(min_length=1, max_length=4096)
     course_year_block: str = Field(min_length=1, max_length=255)
     reason: str = Field(min_length=1, max_length=10000)
+    is_urgent: bool = Field(default=False, strict=True)
     scheduling_statement: ReferralSchedulingStatementRequest | None = None
 
 
@@ -65,6 +66,7 @@ class FacultyReferralSubmissionResponse(StrictSchema):
     student: FacultyConfirmedStudent
     received_at: datetime | None
     closed_at: datetime | None
+    is_urgent: bool = False
     timing_status: ReferralTimingStatus = ReferralTimingStatus.NOT_PROVIDED
 
 

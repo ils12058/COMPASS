@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
 import { Textarea } from "@/components/ui/textarea";
+import { UrgencyCheckbox } from "./referral-urgency";
 import { TimingEditor } from "@/features/referral-timing/timing-editor";
 import { emptyTimingDraft, focusTimingError, timingBackendErrors, timingDraftDirty, timingStatementRequest, validateTimingDraft, type TimingFieldErrors } from "@/features/referral-timing/timing-draft";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
@@ -46,6 +47,7 @@ export function ReferralCreatePage() {
   const [student, setStudent] = useState<EligibleStudentOption | null>(null);
   const [courseYearBlock, setCourseYearBlock] = useState("");
   const [reason, setReason] = useState("");
+  const [urgent, setUrgent] = useState(false);
   const [referrerName, setReferrerName] = useState("");
   const [referredOn, setReferredOn] = useState("");
   const [receivedAt, setReceivedAt] = useState("");
@@ -55,7 +57,7 @@ export function ReferralCreatePage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const intent = useRef<CreationIntent | null>(null);
-  useUnsavedChangesGuard({ dirty: !saved && (timingDraftDirty(timing) || !!(student || courseYearBlock || reason || referrerName || referredOn || receivedAt)), message: "Discard your unsaved Referral? Its scheduling information is kept only on this page." });
+  useUnsavedChangesGuard({ dirty: !saved && (urgent || timingDraftDirty(timing) || !!(student || courseYearBlock || reason || referrerName || referredOn || receivedAt)), message: "Discard your unsaved Referral? Its scheduling information is kept only on this page." });
 
   const eligibleStudents = useReferralsListEligibleStudents(
     {
@@ -116,6 +118,7 @@ export function ReferralCreatePage() {
       referrer_name: referrerName.trim(),
       referred_on: referredOn,
       received_at: receivedAtIso,
+      is_urgent: urgent,
       scheduling_statement: statement,
     };
     const fingerprint = JSON.stringify(payload);
@@ -198,6 +201,9 @@ export function ReferralCreatePage() {
             </div>
           </PanelSection>
 
+          <PanelSection title="Urgency" titleId="gco-urgency-heading">
+            <UrgencyCheckbox id="gco-urgent" checked={urgent} onChange={setUrgent} disabled={create.isPending} />
+          </PanelSection>
           <PanelSection title="History" titleId="referral-chronology-heading">
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="grid content-start gap-2">

@@ -63,6 +63,9 @@ export function notificationDestination(
     // reloads the Appointment within the recipient's current access.
     return { href: "/portal/appointments/" + notification.target_id, label: "Open Appointment" };
   }
+  if (notification.target_type === NotificationTargetType.REFERRAL && notification.target_id) {
+    return { href: "/portal/referrals/" + notification.target_id, label: "Open urgent referral" };
+  }
   if (notification.target_type === NotificationTargetType.FACULTY_REFERRAL && notification.target_id) {
     return { href: "/portal/faculty/referrals/" + notification.target_id, label: "Open Referral" };
   }

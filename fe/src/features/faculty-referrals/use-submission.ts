@@ -28,6 +28,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   const [identifier, setIdentifier] = useState("");
   const [course, setCourse] = useState("");
   const [reason, setReason] = useState("");
+  const [urgent, setUrgent] = useState(false);
   const [timing, setTiming] = useState<TimingDraft>(emptyTimingDraft);
   const [timingErrors, setTimingErrors] = useState<TimingFieldErrors>({});
   const [confirmed, setConfirmed] = useState<Confirmed | null>(null);
@@ -40,7 +41,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   const [result, setResult] = useState<FacultyReferralSubmissionResponse | null>(null);
   const intent = useRef<IntendedSubmission | null>(null);
   const busy = useRef(false);
-  const dirty = !!(identifier || course || reason) || timingDraftDirty(timing);
+  const dirty = urgent || !!(identifier || course || reason) || timingDraftDirty(timing);
   useUnsavedChangesGuard({ dirty, message: uncertain
     ? "The submission outcome is not confirmed. Check My Referrals before starting another. Discard this draft and its retry information?"
     : "Discard your unsaved Referral? Its confidential information is kept only on this page." });
@@ -68,7 +69,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     const reply = await referralsFacultySubmit(intended.body, { headers: { "Idempotency-Key": intended.key } });
     if ((reply.status !== 200 && reply.status !== 201) || !["SUBMITTED", "RECEIVED_BY_GCO", "ADMINISTRATIVELY_CLOSED"].includes(reply.data.state)) throw new Error("Unconfirmed submission result");
     setResult(reply.data);
-    setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null); setTiming(emptyTimingDraft()); setTimingErrors({});
+    setIdentifier(""); setCourse(""); setReason(""); setUrgent(false); setConfirmed(null); setTiming(emptyTimingDraft()); setTimingErrors({});
     intent.current = null; setUncertain(false); setReviewing(false); setError("");
     void client.invalidateQueries({ queryKey: getReferralsFacultyListMineQueryKey() });
   } });
@@ -102,7 +103,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
       if (!confirmed?.response.confirmation || expired || Date.now() >= confirmed.deadline) { setExpired(true); setError("Confirm the Student again before preparing a new submission."); return; }
       const statement = timingStatementRequest(timing);
       if (!statement) return;
-      intent.current = { key: crypto.randomUUID(), body: { confirmation: confirmed.response.confirmation, course_year_block: course, reason, scheduling_statement: statement } };
+      intent.current = { key: crypto.randomUUID(), body: { confirmation: confirmed.response.confirmation, course_year_block: course, reason, is_urgent: urgent, scheduling_statement: statement } };
     }
     busy.current = true; setError("");
     try { await submission.mutateAsync(); }
@@ -116,7 +117,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
   }
   function discard() {
     if (busy.current || (dirty && !confirmDiscard())) return;
-    setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null); setError(""); setErrors({ identifier: "", course: "", reason: "" });
+    setIdentifier(""); setCourse(""); setReason(""); setUrgent(false); setConfirmed(null); setError(""); setErrors({ identifier: "", course: "", reason: "" });
     setTiming(emptyTimingDraft()); setTimingErrors({});
     setReviewing(false); setUncertain(false); setExpired(false); intent.current = null;
   }
@@ -125,7 +126,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     intent.current = null; setReviewing(false); setError("");
     requestAnimationFrame(() => document.getElementById("faculty-student-id")?.focus());
   }
-  return { identifier, course, reason, timing, timingErrors, changeTiming: setTiming, confirmed: confirmed?.response, expired, reviewing, uncertain, error, errors, cooldown, result, pending, dirty,
+  return { identifier, course, reason, urgent, changeUrgent: setUrgent, timing, timingErrors, changeTiming: setTiming, confirmed: confirmed?.response, expired, reviewing, uncertain, error, errors, cooldown, result, pending, dirty,
     confirming: confirmation.isPending, submitting: submission.isPending,
     changeIdentifier(value: string) { if (busy.current || uncertain) return; setIdentifier(value); setConfirmed(null); setExpired(false); intent.current = null; },
     changeCourse: setCourse, changeReason: setReason, confirmStudent, review, submit, discard, edit };

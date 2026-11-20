@@ -230,6 +230,7 @@ def _validate_confirmation(payload, *, actor, home, student, placement, now):
 
 def _projection(item, *, detail=False):
     # Never read the reason envelope or staff verification; detail adds only the own statement.
+    urgency = item.urgency_changes.first()
     result = {
         "id": item.pk,
         "reference_code": item.reference_code,
@@ -239,6 +240,7 @@ def _projection(item, *, detail=False):
         "received_at": item.received_at,
         "closed_at": item.administratively_closed_at,
         "timing_status": timing_status(item),
+        "is_urgent": urgency.is_urgent if urgency else False,
     }
     if detail:
         result["scheduling_statement"] = reported_statement(item)
@@ -265,6 +267,7 @@ def submit_referral(
     idempotency_key,
     context,
     scheduling_statement=None,
+    is_urgent=False,
 ):
     actor = _current_actor(actor, "referrals.submit_self")
     key = _validate_idempotency_key(idempotency_key)
@@ -279,6 +282,10 @@ def submit_referral(
     # Keep absent legacy fingerprints byte-identical; timing becomes part of a new intention.
     if scheduling_statement is not None:
         fingerprint_body["scheduling_statement"] = scheduling_statement
+    if type(is_urgent) is not bool:
+        raise FacultyReferralError("invalid_request", 422)
+    if is_urgent:
+        fingerprint_body["is_urgent"] = True
     fingerprint = request_fingerprint(
         method="POST",
         route=SUBMIT_ROUTE,
@@ -359,6 +366,7 @@ def submit_referral(
         channel=ReferralSubmissionChannel.FACULTY_PORTAL,
         scheduling_statement=scheduling_statement,
         timing_at=latest,
+        is_urgent=is_urgent,
         faculty_origin={
             "submitted_by": actor,
             "submitted_at": now,
@@ -374,6 +382,10 @@ def submit_referral(
         target_id=item.pk,
         metadata={},
     )
+    if is_urgent:
+        from .notification_contract import create_urgent_notices
+
+        create_urgent_notices(referral_id=item.pk)
     return _projection(item, detail=True), True
 
 

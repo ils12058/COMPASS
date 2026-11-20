@@ -102,6 +102,7 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
         "student",
         "received_at",
         "closed_at",
+        "is_urgent",
         "timing_status",
         "scheduling_statement",
     }
@@ -286,6 +287,7 @@ def test_own_submission_queries_never_read_another_faculty_or_operational_detail
         "student",
         "received_at",
         "closed_at",
+        "is_urgent",
         "timing_status",
     }
     assert set(summary).isdisjoint({"scheduling_statement", "verifications", "note", "reason"})
@@ -403,6 +405,7 @@ def test_strict_api_safe_dtos_csrf_and_no_gco_or_directory_authority(world):
         "student",
         "received_at",
         "closed_at",
+        "is_urgent",
         "timing_status",
     }
     assert set(summary).isdisjoint({"scheduling_statement", "verifications", "note", "reason"})

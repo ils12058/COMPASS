@@ -176,7 +176,10 @@ def render_notification_email(
             raise ValueError("inconsistent notification email action")
         if presentation.target is not None:
             if (
-                event_code not in APPROVED_EMAIL_EVENTS | FACULTY_REFERRAL_NOTICE_EVENTS
+                event_code
+                not in APPROVED_EMAIL_EVENTS
+                | FACULTY_REFERRAL_NOTICE_EVENTS
+                | {NotificationEvent.REFERRAL_URGENT}
                 or (
                     presentation.reason == EmailPresentationReason.LINK_AVAILABLE
                     and event_code in APPOINTMENT_EMAIL_EVENTS
@@ -185,7 +188,9 @@ def render_notification_email(
                 or not isinstance(presentation.target, NotificationEmailTarget)
                 or presentation.target.target_type
                 != (
-                    NotificationTargetType.GRADUATE_TRACER
+                    NotificationTargetType.REFERRAL
+                    if event_code == NotificationEvent.REFERRAL_URGENT
+                    else NotificationTargetType.GRADUATE_TRACER
                     if event_code == NotificationEvent.GRADUATE_TRACER_REMINDER
                     else NotificationTargetType.FACULTY_REFERRAL
                     if event_code in FACULTY_REFERRAL_NOTICE_EVENTS

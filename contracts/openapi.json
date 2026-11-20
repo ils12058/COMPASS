@@ -18481,6 +18481,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
           "received_at": {
             "anyOf": [
               {
@@ -18591,6 +18596,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
           "received_at": {
             "anyOf": [
               {
@@ -18662,6 +18672,11 @@
             "minLength": 1,
             "title": "Course Year Block",
             "type": "string"
+          },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
           },
           "reason": {
             "maxLength": 10000,
@@ -30872,7 +30887,8 @@
           "GRADUATE_TRACER",
           "INVENTORY",
           "ROUTINE_INTERVIEW",
-          "FACULTY_REFERRAL"
+          "FACULTY_REFERRAL",
+          "REFERRAL"
         ],
         "title": "NotificationTargetType",
         "type": "string"
@@ -33029,6 +33045,11 @@
             "title": "Course Year Block",
             "type": "string"
           },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -33117,6 +33138,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -33194,6 +33220,33 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "urgency_changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency Changed At"
+          },
+          "urgency_changed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralUrgencyActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "urgency_version": {
+            "default": 0,
+            "title": "Urgency Version",
+            "type": "integer"
           },
           "void_reason": {
             "title": "Void Reason",
@@ -33705,6 +33758,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_urgent": {
+            "default": false,
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
           "received_at": {
             "anyOf": [
               {
@@ -33759,6 +33817,33 @@
               }
             ],
             "default": "NOT_PROVIDED"
+          },
+          "urgency_changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency Changed At"
+          },
+          "urgency_changed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralUrgencyActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "urgency_version": {
+            "default": 0,
+            "title": "Urgency Version",
+            "type": "integer"
           },
           "voided_at": {
             "anyOf": [
@@ -34097,6 +34182,89 @@
           "expired"
         ],
         "title": "ReferralTimingWindowResponse",
+        "type": "object"
+      },
+      "ReferralUrgencyActor": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ReferralUrgencyActor",
+        "type": "object"
+      },
+      "ReferralUrgencyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "is_urgent": {
+            "title": "Is Urgent",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_version",
+          "is_urgent"
+        ],
+        "title": "ReferralUrgencyRequest",
+        "type": "object"
+      },
+      "ReferralUrgencyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "is_urgent": {
+            "title": "Is Urgent",
+            "type": "boolean"
+          },
+          "urgency_changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency Changed At"
+          },
+          "urgency_changed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralAdministrativeActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "urgency_version": {
+            "title": "Urgency Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "is_urgent",
+          "urgency_version",
+          "urgency_changed_at",
+          "urgency_changed_by"
+        ],
+        "title": "ReferralUrgencyResponse",
         "type": "object"
       },
       "ReferralVoidRequest": {
@@ -40127,6 +40295,7 @@
           "ROUTINE_EVALUATION",
           "GOOD_MORAL_PREPARATION",
           "GOOD_MORAL_ISSUANCE",
+          "URGENT_REFERRAL",
           "CALL_SLIP_DUE"
         ],
         "title": "WorkKind",
@@ -80711,6 +80880,22 @@
           },
           {
             "in": "query",
+            "name": "is_urgent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Urgent"
+            }
+          },
+          {
+            "in": "query",
             "name": "submission_channel",
             "required": false,
             "schema": {
@@ -81817,6 +82002,104 @@
           }
         ],
         "summary": "Append staff verification without changing the referrer's statement",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/urgency": {
+      "post": {
+        "operationId": "referralsUpdateUrgency",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralUrgencyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralUrgencyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Update Urgency",
         "tags": [
           "referrals"
         ]

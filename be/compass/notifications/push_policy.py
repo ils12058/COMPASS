@@ -12,6 +12,7 @@ class PushDecision(StrEnum):
 
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
+    NotificationEvent.REFERRAL_URGENT: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GRADUATE_TRACER_REMINDER: (PushDecision.IN_APP_ONLY, ""),
     # Case continuity reviews stay in-app; push would reveal case activity on a lock screen.
     NotificationEvent.CASE_TRANSFER_REVIEW: (PushDecision.IN_APP_ONLY, ""),

@@ -27,6 +27,7 @@ export default async function Page({
   const query = await searchParams;
   const filters: ReferralListFilters = {
     search: singleValue(query.search),
+    urgentOnly: singleValue(query.is_urgent) === "true",
     origin: readOrdering(singleValue(query.submission_channel), ReferralSubmissionChannel),
     formRevisionId: singleValue(query.form_revision_id),
     fromDate: singleValue(query.from_date),

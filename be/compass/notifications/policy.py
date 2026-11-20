@@ -43,6 +43,7 @@ class NotificationTargetType(StrEnum):
     INVENTORY = "INVENTORY"
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
     FACULTY_REFERRAL = "FACULTY_REFERRAL"
+    REFERRAL = "REFERRAL"
 
 
 class NotificationEvent(StrEnum):
@@ -52,6 +53,7 @@ class NotificationEvent(StrEnum):
     CASE_COVERAGE_REVIEW = "counseling.case_coverage.review"
     SESSION_PROPOSAL_RECEIVED = "counseling.session_proposal.received"
     SESSION_PROPOSAL_DECIDED = "counseling.session_proposal.decided"
+    REFERRAL_URGENT = "referral.urgent"
     FACULTY_REFERRAL_RECEIVED = "referral.received_by_guidance_office"
     FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
@@ -111,6 +113,15 @@ _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMA
 
 
 _EVENT_CATALOG = {
+    NotificationEvent.REFERRAL_URGENT: NotificationEventDefinition(
+        event=NotificationEvent.REFERRAL_URGENT,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Urgent referral",
+        message="An urgent referral needs attention",
+        email_subject="An urgent referral needs attention",
+        email_template="referral_urgent",
+    ),
     # NS-1 D4: content-free. No case, purpose, Counselor note or time appears in the notice.
     NotificationEvent.SESSION_PROPOSAL_RECEIVED: NotificationEventDefinition(
         event=NotificationEvent.SESSION_PROPOSAL_RECEIVED,

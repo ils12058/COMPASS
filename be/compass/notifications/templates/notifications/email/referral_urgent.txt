@@ -1,0 +1,3 @@
+An urgent referral needs attention
+
+{% if action_url %}{{ action_url }}{% endif %}
