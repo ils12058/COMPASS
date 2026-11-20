@@ -180,7 +180,12 @@ def test_invalid_or_inactive_ancestry_is_rejected_atomically(setup_faculty, inva
 def test_affiliation_versions_role_changes_and_catalog_retirement(setup_faculty):
     args, college = setup_faculty
     faculty = provision(args, college)
-    assert "active_faculty_affiliations" in {issue.code for issue in _impact(college).blockers}
+    impact = _impact(college)
+    assert {issue.code: issue.count for issue in impact.warnings}[
+        "active_faculty_affiliations"
+    ] == 1
+    assert "active_faculty_affiliations" not in {issue.code for issue in impact.blockers}
+    assert impact.can_deactivate
     other = College.objects.create(campus=college.campus, code="OTHER", name="Other College")
     assign(args, faculty, other, 1)
     with pytest.raises(OrganizationRelationshipConflict):
@@ -366,7 +371,7 @@ def test_student_placement_and_cross_college_routing_remain_independent(setup_fa
     assert not StudentAcademicProfile.objects.filter(student=faculty).exists()
 
 
-def test_faculty_catalog_impact_api_includes_strict_counts_and_blockers(setup_faculty):
+def test_faculty_catalog_impact_api_includes_strict_counts_and_warnings(setup_faculty):
     args, college = setup_faculty
     provision(args, college)
     set_user_capability_override(
@@ -381,7 +386,11 @@ def test_faculty_catalog_impact_api_includes_strict_counts_and_blockers(setup_fa
     assert body["counts"]["faculty_affiliations"] == 1
     assert body["counts"]["active_faculty_affiliations"] == 1
     assert body["counts"]["inactive_faculty_affiliations"] == 0
-    assert {"code": "active_faculty_affiliations", "count": 1} in body["blockers"]
+    assert {"code": "active_faculty_affiliations", "count": 1} in body["warnings"]
+    assert body["blockers"] == []
+    assert body["can_deactivate"]
+    assert body["impact_token"]
+    assert body["active_children"] == []
 
 
 def test_affiliation_audit_failure_rolls_back_account_and_assignment(setup_faculty, monkeypatch):

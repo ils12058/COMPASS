@@ -1,20 +1,36 @@
 // Synthetic ORG-2 wire shapes. No live backend or institutional grants.
 import { user } from "./ui-hierarchy-fixtures.mjs";
 export const ids={campus:"10000000-0000-4000-8000-000000000001",college:"20000000-0000-4000-8000-000000000001",program:"30000000-0000-4000-8000-000000000001",student:"40000000-0000-4000-8000-000000000001",academicYear:"50000000-0000-4000-8000-000000000001"};
-const countKeys=["active_child_colleges","active_child_programs","active_student_placements","child_colleges","child_programs","counselor_responsibilities","draft_inventories","graduate_tracer_references","inactive_student_placements","issued_good_moral","open_office_threads","pending_f4","pending_good_moral","pending_operational_followups","resolved_threads","student_placements","submitted_inventories"];
+const countKeys=["active_child_colleges","active_child_programs","active_student_placements","child_colleges","child_programs","faculty_affiliations","active_faculty_affiliations","inactive_faculty_affiliations","counselor_responsibilities","draft_inventories","graduate_tracer_references","inactive_student_placements","issued_good_moral","open_office_threads","pending_f4","pending_good_moral","pending_operational_followups","resolved_threads","student_placements","submitted_inventories"];
 export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR",readonly=false}={}){
- const campus={id:ids.campus,code:"MAIN",name:"Main Campus",is_active:true,resource_version:1};
- const college={id:ids.college,code:"COMP",name:"College of Computing",campus,is_active:true,resource_version:1};
- const program={id:ids.program,code:"BSIS",name:"Information Systems",college,is_active:true,resource_version:1,academic_classification:"BACHELORS",year_level_policy_status:"CONFIGURED",applicable_year_levels:[1,3,5]};
+ const campus={id:ids.campus,code:"MAIN",name:"Main Campus",is_active:true,is_retired:false,resource_version:1};
+ const college={id:ids.college,code:"COMP",name:"College of Computing",campus,is_active:true,is_retired:false,resource_version:1};
+ const program={id:ids.program,code:"BSIS",name:"Information Systems",college,is_active:true,is_retired:false,resource_version:1,academic_classification:"BACHELORS",year_level_policy_status:"CONFIGURED",applicable_year_levels:[1,3,5]};
  const actor={...user(role),capabilities:["organization.structure.view",...(catalog && !readonly?["organization.catalog.manage"]:[]),...(relationships?["organization.manage","student_academics.view","student_academics.manage"]:[])]};
  const student={id:ids.student,full_name:"Maria Santos",institutional_id:"2024-00123",email:"maria.santos@example.test",is_active:true,responsibility_scope:null,role:"STUDENT"};
  const placement={student,college};
  const studentRecord={student,lifecycle_status:"CURRENT",placement:structuredClone(placement),periods:[],graduation:null};
- const state={campuses:[campus],colleges:[college],programs:[program],actor,sessionId:"catalog-session",histories:{},writes:[],reads:[],recordReads:0,placements:[],academicYears:[{id:ids.academicYear,label:"2026-2027",is_current:true}],records:{},error:null,commitThenDisconnect:false,disconnect:false,failRefresh:false,blocked:false,impactReads:0,stalePreview:false,staleOnWrite:false,verified:false,mfa:null,delay:0};
+ const state={campuses:[campus],colleges:[college],programs:[program],actor,sessionId:"catalog-session",histories:{},writes:[],reads:[],recordReads:0,placements:[],academicYears:[{id:ids.academicYear,label:"2026-2027",is_current:true}],records:{},error:null,commitThenDisconnect:false,disconnect:false,failRefresh:false,impactReads:0,impactRevision:0,stalePreview:false,staleImpactOnWrite:false,staleOnWrite:false,verified:false,mfa:null,delay:0};
  const plural={campuses:"campus",colleges:"college",programs:"program"};
  const session=()=>({authenticated:true,user:state.actor,session:{id:state.sessionId,expires_at:"2099-10-07T00:00:00Z",is_current:true}});
  const replyError=(reply,code,status=409)=>reply({error:{code,message:"Synthetic server refusal",details:null}},status);
  function hydrate(){for(const c of state.colleges)c.campus=state.campuses.find(x=>x.id===c.campus.id);for(const p of state.programs)p.college=state.colleges.find(x=>x.id===p.college.id);}
+ function impact(record,collection){
+  const colleges=collection==="campuses"?state.colleges.filter(c=>c.campus.id===record.id):[];
+  const collegeIds=collection==="colleges"?[record.id]:colleges.map(c=>c.id);
+  const programs=state.programs.filter(p=>collegeIds.includes(p.college.id));
+  const activeChildren=[...colleges.filter(c=>c.is_active).map(c=>({id:c.id,kind:"college",code:c.code,name:c.name,resource_version:c.resource_version})),...programs.filter(p=>p.is_active).map(p=>({id:p.id,kind:"program",code:p.code,name:p.name,resource_version:p.resource_version}))];
+  const counts=Object.fromEntries(countKeys.map(k=>[k,0]));
+  Object.assign(counts,{draft_inventories:2,submitted_inventories:9,pending_good_moral:4});
+  if(collection!=="programs")Object.assign(counts,{active_student_placements:45+state.impactRevision,student_placements:45+state.impactRevision,active_faculty_affiliations:3,faculty_affiliations:3,counselor_responsibilities:2,open_office_threads:6,pending_operational_followups:7});
+  counts.child_colleges=colleges.length;counts.child_programs=programs.length;
+  counts.active_child_colleges=activeChildren.filter(c=>c.kind==="college").length;counts.active_child_programs=activeChildren.filter(c=>c.kind==="program").length;
+  const blockers=["active_child_colleges","active_child_programs"].filter(code=>counts[code]).map(code=>({code,count:counts[code]}));
+  const warnings=["active_student_placements","active_faculty_affiliations","counselor_responsibilities","open_office_threads","pending_operational_followups","draft_inventories","pending_good_moral"].filter(code=>counts[code]).map(code=>({code,count:counts[code]}));
+  // Synthetic opaque server token changes whenever the reviewed aggregate/children/version change.
+  const impact_token=JSON.stringify({target_id:record.id,resource_version:record.resource_version,counts,activeChildren});
+  return {target_id:record.id,resource_version:record.resource_version,observed_at:new Date().toISOString(),can_deactivate:!blockers.length,blockers,warnings,counts,active_children:activeChildren,impact_token,preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots","graduate_tracer_references","resolved_guidance_threads","inactive_placements"]};
+ }
  function history(record,collection,before,data,action){
   const fields=action==="created"?["name","is_active",...(collection==="programs"?["academic_classification","year_level_policy_status","applicable_year_levels"]:[])]:action==="updated"?["name"]:action==="policy_changed"?["academic_classification","year_level_policy_status","applicable_year_levels"]:["is_active"];
   const pick=r=>Object.fromEntries(fields.map(k=>[k,r[k]]));
@@ -62,11 +78,8 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
     if(!record){await replyError(reply,"catalog_not_found",404);return true;}
     if(action==="impact"){
       state.impactReads++;
-      const blocked=state.blocked||(state.stalePreview&&state.impactReads>=2);
-      const blockers=blocked?[{code:collection==="campuses"?"active_child_colleges":collection==="colleges"?"active_student_placements":"open_office_threads",count:2}]:[];
-      const counts=Object.fromEntries(countKeys.map(k=>[k,0]));counts.draft_inventories=2;counts.submitted_inventories=9;
-      for(const b of blockers)counts[b.code]=b.count;
-      await reply({target_id:id,resource_version:record.resource_version,observed_at:new Date().toISOString(),can_deactivate:!blocked,blockers,warnings:[{code:"draft_inventories",count:2}],counts,preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots","graduate_tracer_references","resolved_guidance_threads","inactive_placements"]});return true;
+      if(state.stalePreview&&state.impactReads===2)state.impactRevision++;
+      await reply(impact(record,collection));return true;
     }
     if(action==="history"){
       const page=Number(url.searchParams.get("page")??1);const pageSize=Number(url.searchParams.get("page_size")??10);const all=state.histories[id]??[];
@@ -85,7 +98,7 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
   let result;
   if(method==="POST"){
     if(records.some(r=>r.code===data.code&&(collection==="campuses"||(r.campus?.id??r.college?.id)===(data.campus_id??data.college_id)))){await replyError(reply,"catalog_duplicate_code");return true;}
-    const common={id:`${collection}-new-${state.writes.length}`,code:data.code,name:data.name,is_active:data.is_active,resource_version:1};
+    const common={id:`${collection}-new-${state.writes.length}`,code:data.code,name:data.name,is_active:data.is_active,is_retired:false,resource_version:1};
     result=collection==="campuses"?common:collection==="colleges"?{...common,campus:state.campuses.find(c=>c.id===data.campus_id)}:{...common,college:state.colleges.find(c=>c.id===data.college_id),academic_classification:data.academic_classification,year_level_policy_status:data.year_level_policy_status,applicable_year_levels:data.applicable_year_levels};
     records.push(result);history(result,collection,null,data,"created");
   }else{
@@ -93,7 +106,22 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
     if(record.resource_version!==data.expected_resource_version){await replyError(reply,"catalog_stale_version");return true;}
     const before=structuredClone(record);
     if(action==="name")record.name=data.name;
-    if(action==="active")record.is_active=data.is_active;
+    if(action==="active"){
+      if(!data.is_active){
+        if(state.staleImpactOnWrite){state.staleImpactOnWrite=false;state.impactRevision++;}
+        const observed=impact(record,collection);
+        if(data.acknowledged_impact!==true||!data.impact_token){await replyError(reply,"invalid_catalog_request",422);return true;}
+        if(data.impact_token!==observed.impact_token){await replyError(reply,"catalog_stale_impact");return true;}
+        if(observed.active_children.length&&!data.cascade){await replyError(reply,"catalog_deactivation_blocked");return true;}
+        for(const child of observed.active_children){
+          const childCollection=child.kind==="college"?"colleges":"programs";
+          const childRecord=state[childCollection].find(r=>r.id===child.id);const childBefore=structuredClone(childRecord);
+          childRecord.is_active=false;childRecord.is_retired=true;childRecord.resource_version++;
+          history(childRecord,childCollection,childBefore,data,"disabled");
+        }
+      }
+      record.is_active=data.is_active;record.is_retired=!data.is_active;
+    }
     if(action==="policy")Object.assign(record,{academic_classification:data.academic_classification,year_level_policy_status:data.year_level_policy_status,applicable_year_levels:data.applicable_year_levels});
     record.resource_version++;
     history(record,collection,before,data,action==="name"?"updated":action==="policy"?"policy_changed":record.is_active?"enabled":"disabled");result=record;
