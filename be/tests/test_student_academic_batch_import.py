@@ -54,7 +54,8 @@ def post_periods(
         "academic_year_id": str(year.pk),
         "term": term,
     }
-    if file_hash is not None:
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
         data["file_hash"] = (
             hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
         )
@@ -84,7 +85,8 @@ def post_graduations(
         "file": SimpleUploadedFile("graduates.csv", content, content_type="text/csv"),
         "verification_source": source,
     }
-    if file_hash is not None:
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
         data["file_hash"] = (
             hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
         )
@@ -582,7 +584,8 @@ def test_batch_selected_conflict_after_preview_rolls_back_entire_selection(world
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("kind", ["periods", "graduations"])
-def test_batch_selection_requires_matching_file_and_preview(world, kind):
+@pytest.mark.parametrize("selected_rows", [[], [2]])
+def test_batch_selection_requires_matching_file_and_preview(world, kind, selected_rows):
     make_user("UCN-ONE")
     content = batch_content(kind, "UCN-ONE")
     preview = selected_batch(world, kind, content).json()
@@ -596,7 +599,7 @@ def test_batch_selection_requires_matching_file_and_preview(world, kind):
             content,
             dry_run=False,
             preview=preview,
-            selected_rows=[2],
+            selected_rows=selected_rows,
             file_hash=digest,
             confirmed=1,
         )

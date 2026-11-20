@@ -102,7 +102,8 @@ def upload(
     file_hash="auto",
 ):
     data = {"file": SimpleUploadedFile(name, content, content_type="text/csv")}
-    if file_hash is not None:
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
         data["file_hash"] = (
             hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
         )
@@ -874,10 +875,13 @@ def test_csv_selected_placement_invalidated_after_preview_rolls_back_all_account
         ("é", "csv_import_file_mismatch"),
     ],
 )
-def test_csv_commit_requires_matching_file_hash(file_hash, code):
+@pytest.mark.parametrize("selected_rows", [[], [2]])
+def test_csv_commit_requires_matching_file_hash(file_hash, code, selected_rows):
     sync_policy()
     client, _ = admin_client()
-    response = upload(client, VALID_CSV, dry_run=False, selected_rows=[2], file_hash=file_hash)
+    response = upload(
+        client, VALID_CSV, dry_run=False, selected_rows=selected_rows, file_hash=file_hash
+    )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == code
     assert not User.objects.filter(email="student.one@example.edu").exists()

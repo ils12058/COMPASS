@@ -471,7 +471,8 @@ def provision_accounts_from_csv(
             classified = _classify_rows(parsed.rows, lock_existing=False)
         return _report(parsed, classified, committed=False)
 
-    require_file_hash(data, file_hash)
+    if selected_rows is not None:
+        require_file_hash(data, file_hash)
     with transaction.atomic():
         _lock_management_mutex()
         locked_actor, _target = _lock_users(actor_id=actor.pk)

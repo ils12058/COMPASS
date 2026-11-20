@@ -544,7 +544,8 @@ def import_student_academic_roster(
         resolution = _load_resolution(rows=parsed.rows, lock=False)
         return _report(parsed, _classify(parsed.rows, resolution), committed=False)
 
-    require_file_hash(data, file_hash)
+    if selected_rows is not None:
+        require_file_hash(data, file_hash)
     selected = selected_row_numbers(parsed.rows, parsed.issues, selected_rows)
     parsed = ParsedRosterCsv(
         rows=tuple(row for row in parsed.rows if row.row_number in selected),

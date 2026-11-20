@@ -1,6 +1,7 @@
 // SAR-7 academic roster reconciliation. Synthetic sessions, catalogs, and CSVs only: no Django or
 // institutional record is contacted.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
@@ -47,7 +48,10 @@ const viewer = sessionWith([
   "student_academics.manage",
 ]);
 const rosterCsv =
-  "institutional_id,campus_code,college_code\n2026-0101,MAIN,ENG\n2026-0102,MAIN,EDU\n";
+  "institutional_id,campus_code,college_code\n2026-0101,MAIN,ENG\n2026-0102,MAIN,EDU\n2026-0103,MAIN,ENG\n";
+const headers = ["institutional_id", "campus_code", "college_code"];
+const digest = (csv) => createHash("sha256").update(csv).digest("hex");
+const field = (body, name) => body.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`))?.[1];
 
 function handler({ session = importer, onImport = null } = {}) {
   return async ({ pathname, method, reply, request, url }) => {
@@ -76,7 +80,7 @@ function handler({ session = importer, onImport = null } = {}) {
 }
 
 function row(number, institutionalId, action, fields = {}) {
-  return {
+  const result = {
     row_number: number,
     institutional_id: institutionalId,
     student_id: `student-${institutionalId}`,
@@ -88,6 +92,7 @@ function row(number, institutionalId, action, fields = {}) {
     message: "",
     ...fields,
   };
+  return { ...result, values: [institutionalId, result.campus_code, result.college_code] };
 }
 
 function report(fields) {
@@ -99,6 +104,10 @@ function report(fields) {
     noop_count: 0,
     conflict_count: 0,
     invalid_count: 0,
+    headers,
+    file_hash: digest([headers.join(","), ...fields.rows.map((row) => row.values.join(",")), ""].join("\n")),
+    selected_count: fields.rows.length,
+    not_selected_count: 0,
     rows: fields.rows,
     ...fields,
   };
@@ -128,6 +137,7 @@ const mixedReport = report({
     }),
   ],
 });
+const mixedCsv = [headers.join(","), ...mixedReport.rows.map((row) => row.values.join(",")), ""].join("\n");
 
 const cleanReport = report({
   set_count: 2,
@@ -232,7 +242,7 @@ await h.check(
     await h.shown(page.getByRole("cell", { name: "EDU", exact: true }));
 
     await h.shown(page.getByLabel("CSV file", { exact: true }));
-    await upload(page);
+    await upload(page, mixedCsv);
     await h.shown(page.getByRole("heading", { name: "Validation report", exact: true }));
     assert.deepEqual(
       await page.locator("dl").first().locator("dd").allTextContents(),
@@ -242,13 +252,13 @@ await h.check(
     const setRow = page.getByRole("row", { name: /2026-0101/ });
     await h.shown(setRow.getByRole("cell", { name: "EDU", exact: true }));
     await h.shown(setRow.getByRole("cell", { name: "MAIN · ENG", exact: true }));
-    await h.shown(setRow.getByRole("cell", { name: "Set", exact: true }));
+    await h.shown(setRow.getByRole("cell", { name: "Ready", exact: true }));
     const noopRow = page.getByRole("row", { name: /2026-0102/ });
     await h.shown(noopRow.getByRole("cell", { name: "ENG", exact: true }));
-    await h.shown(noopRow.getByRole("cell", { name: "No change", exact: true }));
+    await h.shown(noopRow.getByRole("cell", { name: "Already exists", exact: true }));
     const conflictRow = page.getByRole("row", { name: /2026-0103/ });
     await h.shown(conflictRow.getByRole("cell", { name: "MAIN · EDU", exact: true }));
-    await h.shown(conflictRow.getByRole("cell", { name: "Conflict", exact: true }));
+    await h.shown(conflictRow.getByRole("cell", { name: "Has problems", exact: true }));
     await h.shown(
       conflictRow.getByText("Current placement is VERIFIED and differs from this CSV.", {
         exact: true,
@@ -256,10 +266,32 @@ await h.check(
     );
     await h.screenshot(page, "roster-validation-conflict");
 
-    assert.equal(
-      await page.getByRole("button", { name: "Import placements", exact: true }).count(),
-      0,
-    );
+    assert.equal(await setRow.getByRole("checkbox", { name: "Select row 2", exact: true }).isChecked(), true);
+    assert.equal(await noopRow.getByRole("checkbox", { name: "Select row 3", exact: true }).isChecked(), false);
+    const problem = conflictRow.getByRole("checkbox", { name: "Select row 4", exact: true });
+    assert.equal(await problem.isDisabled(), true);
+    assert.equal(await problem.isChecked(), false);
+    await h.shown(page.getByText("Import 1 of 3 rows", { exact: true }));
+    const download = page.getByRole("link", { name: "Download rows with problems", exact: true });
+    const problemHref = await download.getAttribute("href");
+    assert.equal(decodeURIComponent(problemHref.slice(problemHref.indexOf(",") + 1)),
+      '"institutional_id","campus_code","college_code","problem"\r\n' +
+      '"2026-0103","MAIN","EDU","Current placement is VERIFIED and differs from this CSV."\r\n');
+    assert.equal(await download.getAttribute("download"), "compass-rows-with-problems.csv");
+    await page.getByRole("button", { name: "Clear selection", exact: true }).click();
+    await h.shown(page.getByText("Import 0 of 3 rows", { exact: true }));
+    assert.equal(await page.getByRole("button", { name: "Import selected", exact: true }).isDisabled(), true);
+    await page.getByRole("button", { name: "Select all ready", exact: true }).click();
+    await h.shown(page.getByText("Import 1 of 3 rows", { exact: true }));
+    assert.equal(await noopRow.getByRole("checkbox").isChecked(), false);
+    await page.getByLabel("Status", { exact: true }).selectOption("problems");
+    assert.equal(await page.getByRole("checkbox").count(), 1);
+    assert.equal(await problem.isDisabled(), true);
+    await page.getByLabel("Status", { exact: true }).selectOption("exists");
+    assert.equal(await page.getByRole("checkbox").count(), 1);
+    await page.getByLabel("Status", { exact: true }).selectOption("all");
+    assert.equal(await setRow.getByRole("checkbox").isChecked(), true);
+    assert.equal(await page.getByRole("button", { name: "Import selected", exact: true }).isDisabled(), false, "a problem row cannot block the ready selection");
   },
 );
 
@@ -268,13 +300,16 @@ await h.check(
   importPath,
   {
     handler: handler({
-      onImport: async ({ url, reply }) => {
+      onImport: async ({ url, request, reply }) => {
         if (url.searchParams.get("dry_run") === "true") {
           await reply(cleanReport);
           return;
         }
         assert.equal(url.searchParams.get("dry_run"), "false");
-        await reply({ ...cleanReport, committed: true });
+        const body = request.postData() ?? "";
+        assert.equal(field(body, "file_hash"), digest(rosterCsv));
+        assert.deepEqual(JSON.parse(field(body, "selected_rows")), [2, 3]);
+        await reply({ ...cleanReport, committed: true, noop_count: 0, selected_count: 2, not_selected_count: 1, rows: cleanReport.rows.slice(0, 2) });
       },
     }),
   },
@@ -286,7 +321,11 @@ await h.check(
       await page.locator("dl").first().locator("dd").allTextContents(),
       ["3", "2", "1", "0", "0"],
     );
-    const commitButton = page.getByRole("button", { name: "Import placements", exact: true });
+    await h.shown(page.getByText("Import 2 of 3 rows", { exact: true }));
+    assert.equal(await page.getByRole("checkbox", { name: "Select row 2", exact: true }).isChecked(), true);
+    assert.equal(await page.getByRole("checkbox", { name: "Select row 3", exact: true }).isChecked(), true);
+    assert.equal(await page.getByRole("checkbox", { name: "Select row 4", exact: true }).isChecked(), false);
+    const commitButton = page.getByRole("button", { name: "Import selected", exact: true });
     await h.shown(commitButton);
     await commitButton.click();
 
@@ -294,15 +333,17 @@ await h.check(
     await h.shown(dialog);
     await h.shown(dialog.getByRole("heading", { name: "Import 2 placements?", exact: true }));
     await h.shown(
-      dialog.getByText("2 Student placements will be set from this CSV. 1 matching row will not change.", {
+      dialog.getByText("2 Student placements will be set from this CSV. 0 matching rows will not change.", {
         exact: true,
       }),
     );
+    assert.deepEqual(await dialog.locator("dd").allTextContents(), ["2", "0", "2", "1"]);
+    await h.shown(dialog.getByText("Imported placements don't confirm enrollment. COMPASS will check the CSV again before saving.", { exact: true }));
     await h.screenshot(page, "roster-commit-review");
     await dialog.getByRole("button", { name: "Import placements", exact: true }).click();
 
     await h.shown(
-      page.getByText("Academic roster import completed. Review the committed result below.", {
+      page.getByText("2 placements imported, 0 already existed, 1 rows not selected.", {
         exact: true,
       }),
     );
@@ -310,7 +351,7 @@ await h.check(
     const committed = page.getByRole("row", { name: /2026-0102/ });
     await h.shown(committed.getByRole("cell", { name: "MAIN · EDU", exact: true }));
     assert.equal(
-      await page.getByRole("button", { name: "Import placements", exact: true }).count(),
+      await page.getByRole("button", { name: "Import selected", exact: true }).count(),
       0,
     );
     await h.screenshot(page, "roster-committed-result");
@@ -334,8 +375,8 @@ await h.check(
     await h.shown(page.getByRole("heading", { name: "Validation report", exact: true }));
     await h.shown(page.getByText("No placement changes are needed.", { exact: true }));
     assert.equal(
-      await page.getByRole("button", { name: "Import placements", exact: true }).count(),
-      0,
+      await page.getByRole("button", { name: "Import selected", exact: true }).isDisabled(),
+      true,
     );
     assert.equal(await page.getByRole("alertdialog").count(), 0);
   },

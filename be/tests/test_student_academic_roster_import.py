@@ -96,7 +96,8 @@ def upload(
     file_hash="auto",
 ):
     data = {"file": SimpleUploadedFile(name, content, content_type="text/csv")}
-    if file_hash is not None:
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
         data["file_hash"] = (
             hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
         )
@@ -903,7 +904,8 @@ def test_roster_selected_conflict_after_preview_prevents_all_placement_writes():
     "file_hash,code",
     [(None, "csv_import_preview_required"), ("0" * 64, "csv_import_file_mismatch")],
 )
-def test_roster_selection_requires_same_file(file_hash, code):
+@pytest.mark.parametrize("selected_rows", [[], [2]])
+def test_roster_selection_requires_same_file(file_hash, code, selected_rows):
     sync_policy()
     client, _ = admin_client()
     make_campus_with_college()
@@ -912,7 +914,7 @@ def test_roster_selection_requires_same_file(file_hash, code):
         client,
         roster_csv("UCN-ONE,MAIN,CCMS"),
         dry_run=False,
-        selected_rows=[2],
+        selected_rows=selected_rows,
         file_hash=file_hash,
     )
     assert response.status_code == 422

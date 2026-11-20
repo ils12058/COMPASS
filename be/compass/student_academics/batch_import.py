@@ -625,7 +625,8 @@ def import_student_academic_periods(
         )
     if not preview_fingerprint:
         raise BatchImportPreviewRequired("Validate the CSV before importing it.")
-    require_file_hash(data, file_hash)
+    if selected_rows is not None:
+        require_file_hash(data, file_hash)
     selected = selected_row_numbers(rows, issues, selected_rows)
     rows = tuple(row for row in rows if row.row_number in selected)
     issues = tuple(issue for issue in issues if issue.row_number in selected)
@@ -887,7 +888,8 @@ def import_student_graduations(
         )
     if not preview_fingerprint:
         raise BatchImportPreviewRequired("Validate the CSV before importing it.")
-    require_file_hash(data, file_hash)
+    if selected_rows is not None:
+        require_file_hash(data, file_hash)
     selected = selected_row_numbers(rows, issues, selected_rows)
     rows = tuple(row for row in rows if row.row_number in selected)
     issues = tuple(issue for issue in issues if issue.row_number in selected)
