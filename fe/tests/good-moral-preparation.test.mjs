@@ -64,11 +64,24 @@ test("GOA queue shows year, preparation state, and useful status filters", () =>
   assert.doesNotMatch(html, /Issue certificate/);
 });
 
-test("GOA direct detail can correct and mark ready but cannot cancel or issue", () => {
+test("GOA direct detail prepares in one step and cannot cancel or issue", () => {
   const html = render(h(GoodMoralDetailPage, { requestId: item.id }));
   assert.match(html, /Correct certificate details/);
-  assert.match(html, /Mark ready for issuance/);
+  assert.match(html, /Save and mark ready/);
+  assert.match(html, /good-moral-one-step-receipt-number/);
+  assert.match(html, /good-moral-one-step-attestation/);
   assert.doesNotMatch(html, /Issue certificate|Cancel request/);
+});
+
+test("GOA keeps the separate mark-ready path once the receipt is verified", () => {
+  const verified = {
+    ...item,
+    receipt_identity: { revision_id: "rev-1", history: [] },
+    receipt_inspection: { status: "VERIFIED", can_verify: false, blocker: null, currency: "PHP", expected_amount: "80.00", method: "PHYSICAL_OR_INSPECTION", verification_id: "ver-1", verified_at: "2026-10-05T00:30:00Z", verified_by_id: "staff" },
+  };
+  const html = render(h(GoodMoralDetailPage, { requestId: item.id }), staff, verified);
+  assert.match(html, /Mark ready for issuance/);
+  assert.doesNotMatch(html, /Save and mark ready/);
 });
 
 test("view-only GOA sees the record without preparation controls", () => {
@@ -76,7 +89,7 @@ test("view-only GOA sees the record without preparation controls", () => {
   const request = { ...item, actions: { ...actions, can_prepare: false, can_correct: false, correction_fields: [] } };
   const html = render(h(GoodMoralDetailPage, { requestId: item.id }), user, request);
   assert.match(html, /Student Example/);
-  assert.doesNotMatch(html, /Mark ready for issuance|Correct certificate details|Issue certificate/);
+  assert.doesNotMatch(html, /Mark ready for issuance|Save and mark ready|Correct certificate details|Issue certificate/);
 });
 
 test("clerical editor excludes protected identity and graduation facts", () => {

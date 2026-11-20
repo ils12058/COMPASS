@@ -22,6 +22,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { GoodMoralListSkeleton, GoodMoralHeading, GoodMoralStatus, formatGoodMoralDateTime, goodMoralErrorMessage, goodMoralOrderingOptions, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
+import { GoodMoralListIssueAction } from "@/features/good-moral/good-moral-list-issue-action";
 import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import { GoodMoralOrdering, GoodMoralStatusValue, GoodMoralVariantValue } from "@/lib/api/generated/model";
 
@@ -64,6 +65,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
   };
   const router = useRouter();
   const { user } = usePortalSession();
+  const canIssue = getGoodMoralAccess(user).canIssue;
   const years = useAcademicYearsList({ query: { enabled: user.capabilities.includes("academic_years.view"), retry: false } });
   const queue = useGoodMoralListRequests(params, { query: { retry: false } });
   const page = safeQueryData(queue)?.data;
@@ -154,7 +156,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[680px]`}>
+            <table className={`${dataTable.table} ${canIssue ? "min-w-[760px]" : "min-w-[680px]"}`}>
               <caption className="sr-only">Good Moral Certificate request queue</caption>
               <thead className={dataTable.head}>
                 <tr>
@@ -173,6 +175,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
                   <th scope="col" className={dataTable.headerCell}>Status</th>
                   <th scope="col" className={dataTable.headerCell}>Requested</th>
                   <th scope="col" className={dataTable.headerCell}>Issued</th>
+                  {canIssue ? <th scope="col" className={dataTable.headerCell}>Actions</th> : null}
                 </tr>
               </thead>
               <tbody className={dataTable.body}>
@@ -190,6 +193,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
                     <td className={dataTable.cell}><GoodMoralStatus status={item.status} /></td>
                     <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatGoodMoralDateTime(item.created_at)}</td>
                     <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatGoodMoralDateTime(item.issued_at)}</td>
+                    {canIssue ? <td className={dataTable.cell}>{item.status === "READY_FOR_ISSUANCE" ? <GoodMoralListIssueAction requestId={item.id} /> : null}</td> : null}
                   </tr>
                 ))}
               </tbody>
