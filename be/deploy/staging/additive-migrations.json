@@ -1,4 +1,5 @@
 {
+  "compass/authentication/migrations/0002_accountrecoverylink.py": "eb3fb9f5d13033c986da52706412c85b172af2c0826b08bc807d67fbfa6f1dd8",
   "compass/counseling/migrations/0003_counseling_cases.py": "87c4ad02b7c90d6da0b14bef5323683b2f1cd302563f98a0735bfc663df1a0c4",
   "compass/counseling/migrations/0004_case_appointments.py": "199292ce1b4c6370a572e53e8160624d17404b5704bf2a4c3c4434b0fd6355d5",
   "compass/counseling/migrations/0005_case_transfers.py": "62c0cb72667fb040cfcd5e657fc7779b4d1cb39db962cbb9e907c4d1a61a5cf8",
