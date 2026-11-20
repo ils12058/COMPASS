@@ -68,6 +68,22 @@ _POLICIES: dict[str, tuple[tuple[str, RateLimitPolicy], ...]] = {
             RateLimitPolicy("auth.password_change.combination", limit=8, window_seconds=15 * 60),
         ),
     ),
+    "account_link_verify": (
+        ("ip", RateLimitPolicy("auth.account_link.verify.ip", limit=30, window_seconds=10 * 60)),
+        (
+            "identifier",
+            RateLimitPolicy(
+                "auth.account_link.verify.identifier", limit=20, window_seconds=10 * 60
+            ),
+        ),
+    ),
+    "account_link_submit": (
+        ("ip", RateLimitPolicy("auth.account_link.submit.ip", limit=30, window_seconds=10 * 60)),
+        (
+            "identifier",
+            RateLimitPolicy("auth.account_link.submit.identifier", limit=5, window_seconds=10 * 60),
+        ),
+    ),
     "email_otp_issue": (
         (
             "ip",

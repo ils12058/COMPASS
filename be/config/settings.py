@@ -439,6 +439,11 @@ if (
 ):
     raise ValueError("email OTP settings must be positive")
 
+AUTH_ACCOUNT_RECOVERY_LINK_TTL_SECONDS = env_int("AUTH_ACCOUNT_RECOVERY_LINK_TTL_SECONDS", 60 * 60)
+AUTH_PASSWORD_RESET_LINK_TTL_SECONDS = env_int("AUTH_PASSWORD_RESET_LINK_TTL_SECONDS", 30 * 60)
+if AUTH_ACCOUNT_RECOVERY_LINK_TTL_SECONDS < 1 or AUTH_PASSWORD_RESET_LINK_TTL_SECONDS < 1:
+    raise ValueError("account recovery link settings must be positive")
+
 IDEMPOTENCY_TTL_SECONDS = env_int("IDEMPOTENCY_TTL_SECONDS", 86_400)
 IDEMPOTENCY_MAX_RESPONSE_BYTES = env_int("IDEMPOTENCY_MAX_RESPONSE_BYTES", 1_048_576)
 
@@ -843,6 +848,10 @@ CELERY_BEAT_SCHEDULE = {
     "notification-email-recovery": {
         "task": "compass.notifications.email.dispatch_due",
         "schedule": NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS,
+    },
+    "account-recovery-completion-notices": {
+        "task": "compass.authentication.recovery_link.recover_notices",
+        "schedule": 300.0,
     },
     "email-change-security-alert-recovery": {
         "task": "compass.authentication.email_change.recover_unsent_alerts",

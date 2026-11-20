@@ -29,6 +29,16 @@ class RequestContextMiddleware:
         response: HttpResponse | None = None
         try:
             response = self.get_response(request)
+            # All link responses, including schema/CSRF/auth errors, must avoid caches.
+            if (
+                request.path.startswith("/api/v1/auth/account-recovery/")
+                or request.path == "/api/v1/auth/password-link/request"
+                or (
+                    request.path.startswith("/api/v1/accounts/")
+                    and request.path.endswith("/recovery-link")
+                )
+            ):
+                response["Cache-Control"] = "no-store"
             response[REQUEST_ID_HEADER] = request_id
             return response
         finally:

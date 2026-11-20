@@ -14,6 +14,7 @@ from compass.api.v1.metadata import SystemMetadataResponse, system_metadata
 from compass.appointments.api import router as appointments_router
 from compass.assessment_records.api import router as assessment_records_router
 from compass.authentication.api import router as authentication_router
+from compass.authentication.recovery_api import router as recovery_router
 from compass.availability.api import router as availability_router
 from compass.call_slips.api import router as call_slips_router
 from compass.common.errors import register_exception_handlers
@@ -257,6 +258,7 @@ api.get(
 )(system_metadata)
 api.add_router("/health", health_router)
 api.add_router("/auth", authentication_router)
+api.add_router("/auth", recovery_router)
 api.add_router("/me", activity_router)
 api.add_router("/me", profile_router)
 api.add_router("/accounts", account_management_router)

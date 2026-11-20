@@ -9,6 +9,10 @@ from celery import shared_task
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 
+from compass.authentication.recovery_tasks import (
+    deliver_recovery_completion,
+    recover_recovery_completion_notices,
+)
 from compass.authentication.security_email import (
     render_email_changed_alert,
     render_security_code_email,
@@ -150,5 +154,7 @@ def recover_unsent_email_change_security_alerts(self, batch_size: int = 100) -> 
 __all__ = [
     "deliver_email_change_security_alert",
     "deliver_email_otp",
+    "deliver_recovery_completion",
+    "recover_recovery_completion_notices",
     "recover_unsent_email_change_security_alerts",
 ]

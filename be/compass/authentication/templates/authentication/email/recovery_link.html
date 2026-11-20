@@ -1,0 +1,11 @@
+{% extends "compass/email/security.html" %}
+{% block preheader %}Use this expiring link to recover your COMPASS account.{% endblock %}
+{% block heading %}Recover your account{% endblock %}
+{% block content %}
+{% if email_change %}<p>An IT Administrator recorded an identity check and requested a new sign-in email for your COMPASS account.</p><p>Open this link to verify this email and choose a new password. Your sign-in email will change only when you finish.</p>
+{% else %}<p>A password link was requested for your COMPASS account.</p><p>Open this link to choose a new password.</p>{% endif %}
+<p><a href="{{ url }}" rel="noreferrer">Choose a new password</a></p>
+<p>This link can be used once and expires on {{ expiry }} ({{ zone }}).</p>
+<p>An existing authenticator is still required at sign-in. If you lost it, ask the ITSO for help.</p>
+<p>If you didn't expect this email, ignore it. Your account will not change unless you use the link.</p>
+{% endblock %}

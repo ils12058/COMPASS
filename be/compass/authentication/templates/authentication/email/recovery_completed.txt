@@ -1,0 +1,4 @@
+{% extends "compass/email/security.txt" %}
+{% block content %}Your COMPASS password was updated. All existing sign-ins were ended.
+You can sign in with your new password. An existing authenticator is still required.
+If you didn't expect this change, contact the ITSO.{% endblock %}

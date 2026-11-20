@@ -33,6 +33,12 @@ from compass.authentication.email_change import (
     request_administrative_email_change,
 )
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
+from compass.authentication.recovery_api import (
+    AssistedRecoveryRequest,
+    AssistedRecoveryResponse,
+    raise_recovery_link_error,
+)
+from compass.authentication.recovery_links import request_assisted_recovery
 from compass.authentication.sessions import RecentMFARequired
 from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
@@ -1128,3 +1134,35 @@ __all__ = [
     "AccountSummaryResponse",
     "router",
 ]
+
+
+@router.post(
+    "/{user_id}/recovery-link",
+    response=response_with_errors(
+        AssistedRecoveryResponse, 400, 401, 403, 409, 422, 429, 503, success_status=202
+    ),
+    auth=session_auth,
+    operation_id="accountsRequestRecoveryLink",
+    summary="Change email and send an account recovery link",
+    description=(
+        "Requires account management and recent MFA. Records the staff identity "
+        "check; the account holder completes recovery without signing in."
+    ),
+)
+def account_recovery_link(request, user_id: UUID, payload: AssistedRecoveryRequest):
+    _require_management(request, recent_mfa=True)
+    try:
+        link = request_assisted_recovery(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            new_email=payload.new_email,
+            identity_check_basis=payload.identity_check_basis.value,
+            identity_check_reason=payload.identity_check_reason,
+            expected_updated_at=payload.expected_updated_at,
+            request=request,
+            turnstile_token=payload.turnstile_token,
+        )
+    except Exception as exc:
+        raise_recovery_link_error(exc)
+    return Status(202, {"request_id": link.pk, "expires_at": link.expires_at})
