@@ -145,3 +145,10 @@ def run_serialized_race(first, second):
         finally:
             release.set()
         return a.result(timeout=15), b.result(timeout=15)
+
+
+def retirement_preview(auth, item):
+    from compass.organization.catalog_services import get_catalog_impact
+
+    impact = get_catalog_impact(actor=auth["actor"], model=type(item), target_id=item.pk)
+    return {"acknowledged_impact": True, "impact_token": impact.impact_token}

@@ -24,6 +24,7 @@ from compass.organization.access_scope import (
     active_head_guidance_counselors,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import (
     Campus,
@@ -87,7 +88,9 @@ def effective_responsibility_colleges(user: User) -> tuple[College, ...]:
     """Project current handled workload; domain authorization remains a separate decision."""
     scope = resolve_operational_responsibility_scope(user)
     return tuple(
-        _active_colleges().filter(pk__in=scope.college_ids).order_by("campus__code", "code")
+        College.objects.select_related("campus")
+        .filter(existing_college_q(), pk__in=scope.college_ids)
+        .order_by("campus__code", "code")
     )
 
 
@@ -170,6 +173,8 @@ def list_colleges(
         qs = qs.filter(campus_id=campus_id)
     if is_active is not None:
         qs = qs.filter(is_active=is_active)
+    if is_active is True:
+        qs = qs.filter(campus__is_active=True)
     if search and search.strip():
         term = search.strip()[:160]
         qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
@@ -196,6 +201,8 @@ def list_programs(
         qs = qs.filter(college_id=college_id)
     if is_active is not None:
         qs = qs.filter(is_active=is_active)
+    if is_active is True:
+        qs = qs.filter(college__is_active=True, college__campus__is_active=True)
     if search and search.strip():
         term = search.strip()[:160]
         qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
@@ -407,7 +414,9 @@ def validate_account_catalog_reactivation(user: User) -> None:
     """Retained placements may not silently become operational beneath retired ancestry."""
     if user.role.code == "STUDENT":
         placement = get_current_placement(student_id=user.pk)
-        if placement is not None and not placement.college.is_usable:
+        if placement is not None and not (
+            placement.college.is_active and placement.college.campus_is_active
+        ):
             raise OrganizationConflict("Repair the retained Student placement before reactivation.")
     if (
         user.role.code == "FACULTY"

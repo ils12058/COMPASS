@@ -11,6 +11,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import Service
 from compass.student_academics.reads import student_is_placed_in_colleges
@@ -97,8 +98,7 @@ def scope_managed_appointments(queryset, actor: User):
         allowed |= (
             organizational
             & Q(student__student_academic_profile__current_college_id__in=scope.college_ids)
-            & Q(student__student_academic_profile__current_college__is_active=True)
-            & Q(student__student_academic_profile__current_college__campus__is_active=True)
+            & existing_college_q("student__student_academic_profile__current_college__")
         )
 
     return queryset.filter(allowed).distinct()

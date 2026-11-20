@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from compass.organization.catalog_availability import (
+    college_available_for_existing_records,
+    existing_college_q,
+)
 from compass.student_academics.models import StudentAcademicProfile
 
 
@@ -24,10 +28,14 @@ class AcademicCollegeFacts:
     campus_code: str
     campus_name: str
     campus_is_active: bool
+    is_retired: bool | None = None
+    campus_is_retired: bool | None = None
 
     @property
     def is_usable(self) -> bool:
-        return self.is_active and self.campus_is_active
+        return bool(self.is_active or self.is_retired) and bool(
+            self.campus_is_active or self.campus_is_retired
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +62,7 @@ def get_current_placement(
     if profile is None or profile.current_college is None:
         return None
     college = profile.current_college
-    if require_active_college and (not college.is_active or not college.campus.is_active):
+    if require_active_college and not college_available_for_existing_records(college):
         return None
     return StudentPlacementFacts(
         student_id=profile.student_id,
@@ -68,6 +76,8 @@ def get_current_placement(
             campus_code=college.campus.code,
             campus_name=college.campus.name,
             campus_is_active=college.campus.is_active,
+            is_retired=college.is_retired,
+            campus_is_retired=college.campus.is_retired,
         ),
         updated_at=profile.updated_at,
     )
@@ -84,8 +94,7 @@ def student_is_placed_in_colleges(
     )
     if require_active_college:
         queryset = queryset.filter(
-            current_college__is_active=True,
-            current_college__campus__is_active=True,
+            existing_college_q("current_college__"),
         )
     return queryset.exists()
 

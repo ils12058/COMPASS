@@ -51,6 +51,7 @@
     "guidance_followups/migrations/0003_case_transfers.py",
     "guidance_followups/migrations/0004_case_coverage.py",
     "guidance_followups/migrations/0005_case_closure.py",
-    "referrals/migrations/0003_referral_timing.py"
+    "referrals/migrations/0003_referral_timing.py",
+    "organization/migrations/0003_campus_is_retired_college_is_retired_and_more.py"
   ]
 }

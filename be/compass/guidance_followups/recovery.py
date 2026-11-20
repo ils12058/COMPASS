@@ -14,6 +14,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.models import CounselorResponsibility
 
 from . import policy
@@ -57,11 +58,10 @@ def recoverable_queryset(*, actor):
     )
     if not is_head_guidance(actor):
         rows = rows.filter(
+            existing_college_q("student__student_academic_profile__current_college__"),
             student__student_academic_profile__current_college_id__in=resolve_operational_responsibility_scope(
                 actor
             ).college_ids,
-            student__student_academic_profile__current_college__is_active=True,
-            student__student_academic_profile__current_college__campus__is_active=True,
         )
     # Eligibility of the *current* owner, including capability dependency revocations, is decided
     # before pagination. These annotations read no protected content.
@@ -74,23 +74,22 @@ def recoverable_queryset(*, actor):
     head = Q(
         role__code="COUNSELOR", designation_assignments__designation__code="HEAD_GUIDANCE_COUNSELOR"
     )
-    scope = head | Q(
-        role__code="COUNSELOR",
-        organization_counselor_responsibilities__college_id=college,
-        organization_counselor_responsibilities__college__is_active=True,
-        organization_counselor_responsibilities__college__campus__is_active=True,
+    scope = head | (
+        existing_college_q("organization_counselor_responsibilities__college__")
+        & Q(
+            role__code="COUNSELOR",
+            organization_counselor_responsibilities__college_id=college,
+        )
     )
     supervisor_colleges = (
         "organization_staff_supervision__supervisor__organization_counselor_responsibilities"
     )
-    scope |= Q(
+    scope |= existing_college_q(supervisor_colleges + "__college__") & Q(
         role__code="GUIDANCE_OFFICE_ASSISTANT",
         organization_staff_supervision__supervisor__is_active=True,
         organization_staff_supervision__supervisor__role__code="COUNSELOR",
         **{
             supervisor_colleges + "__college_id": college,
-            supervisor_colleges + "__college__is_active": True,
-            supervisor_colleges + "__college__campus__is_active": True,
         },
     )
     heads = list(active_head_guidance_counselors().values_list("pk", flat=True)[:2])
@@ -104,18 +103,29 @@ def recoverable_queryset(*, actor):
                 OuterRef("student__student_academic_profile__current_college__is_active"),
                 output_field=BooleanField(),
             ),
+            _student_college_retired=ExpressionWrapper(
+                OuterRef("student__student_academic_profile__current_college__is_retired"),
+                output_field=BooleanField(),
+            ),
+            _student_campus_retired=ExpressionWrapper(
+                OuterRef("student__student_academic_profile__current_college__campus__is_retired"),
+                output_field=BooleanField(),
+            ),
             _student_campus_active=ExpressionWrapper(
                 OuterRef("student__student_academic_profile__current_college__campus__is_active"),
                 output_field=BooleanField(),
             ),
         )
-        scope |= Q(
-            role__code="GUIDANCE_OFFICE_ASSISTANT",
-            organization_staff_supervision__supervisor_id=heads[0],
-            _assigned_college__isnull=False,
-            _student_college_active=True,
-            _student_campus_active=True,
-        ) & ~Q(_assigned_college__in=valid_responsibility.values("college_id"))
+        scope |= (
+            Q(
+                role__code="GUIDANCE_OFFICE_ASSISTANT",
+                organization_staff_supervision__supervisor_id=heads[0],
+                _assigned_college__isnull=False,
+            )
+            & (Q(_student_college_active=True) | Q(_student_college_retired=True))
+            & (Q(_student_campus_active=True) | Q(_student_campus_retired=True))
+            & ~Q(_assigned_college__in=valid_responsibility.values("college_id"))
+        )
     candidates = candidates.filter(scope, pk=OuterRef("assigned_to_id"))
     return rows.alias(_owner_eligible=Exists(candidates)).filter(_owner_eligible=False)
 

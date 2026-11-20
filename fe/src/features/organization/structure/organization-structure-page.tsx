@@ -14,8 +14,8 @@ import { Select } from "@/components/ui/select";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { focusHeading } from "@/lib/focus-heading";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
-import { canManageOrganization, canManageOrganizationCatalog } from "@/features/institution-configuration/institution-access";
-import { QueryError, StatusBadge, TableSkeleton } from "@/features/organization/components/organization-shared";
+import { canManageOrganizationCatalog } from "@/features/institution-configuration/institution-access";
+import { QueryError, TableSkeleton } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useOrganizationListCampuses, useOrganizationListColleges, useOrganizationListPrograms } from "@/lib/api/generated/organization/organization";
 import { CatalogActions } from "./catalog/catalog-actions";
@@ -79,24 +79,24 @@ function StructureWorkspace() {
       help={<ContextHelp title="Organization structure" sections={[
         { heading: "Catalog and relationships", content: <p>Manage Campuses, Colleges and Programs here. Manage Counselor assignments in Responsibilities and Student placements in Student academic records.</p> },
         { heading: "Academic policy and history", content: <p>Year levels show the Program&apos;s settings; you need approved settings to activate it. Renaming can change names shown on linked pages, while submitted records and issued certificates keep their saved details.</p> },
-        { heading: "Browse context", content: <p>Search covers the listed codes and names, including inactive records. A matching College or Program keeps its Campus or College visible, even when that parent falls outside your filters.</p> },
+        { heading: "Browse context", content: <p>Search covers the listed codes and names, including retired records. A matching College or Program keeps its Campus or College visible, even when that parent falls outside your filters.</p> },
       ]} />}
     /></div>
-    {editing && editor ? <CatalogEditor key={editor.id} intent={editor.intent} knownIds={[...campusItems, ...collegeItems, ...programItems].map((item) => item.id)} canManageRelationships={canManageOrganization(user)} onClose={() => { setEditor(null); returnFocus(); }} onSaved={showSaved} /> : null}
+    {editing && editor ? <CatalogEditor key={editor.id} intent={editor.intent} knownIds={[...campusItems, ...collegeItems, ...programItems].map((item) => item.id)} onClose={() => { setEditor(null); returnFocus(); }} onSaved={showSaved} /> : null}
     {pending ? <TableSkeleton /> : hasError && !loaded ? <QueryError error={campuses.error ?? colleges.error ?? programs.error} fallback="Couldn't load organization structure. Try again." onRetry={() => { void campuses.refetch(); void colleges.refetch(); void programs.refetch(); }} /> : <>
       {hasError ? <RefreshFailureNotice onRetry={() => { void campuses.refetch(); void colleges.refetch(); void programs.refetch(); }} /> : null}
       {loaded && !campusItems.length ? <Notice>No organization structure is available.</Notice> : !visible.length ? <Notice action={<Button variant="secondary" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); }}>Clear filters</Button>}>No records match the current search and filters.</Notice> : <ol className="space-y-5">
         {visible.map(({ campus, colleges: children, contextOnly }) => <li key={campus.id}>
           <Panel aria-labelledby={`campus-${campus.id}`}>
-            <PanelHeader title={campus.name} titleId={`campus-${campus.id}`} description={<><span className="font-mono">{campus.code}</span>{contextOnly ? " · Parent context" : ""}</>} actions={<StatusBadge active={campus.is_active} />} />
+            <PanelHeader title={campus.name} titleId={`campus-${campus.id}`} description={<><span className="font-mono">{campus.code}</span>{contextOnly ? " · Parent context" : ""}</>} actions={<CatalogStatusBadge active={campus.is_active} />} />
             {canEdit ? <div className="px-4 sm:px-5">{actions({ kind: "campus", record: campus })}</div> : null}
             {!children.length ? <PanelMessage>{filtered ? "No colleges match these filters in this campus." : "No colleges are recorded for this campus."}</PanelMessage> : <ul className="divide-y divide-border">
               {children.map(({ college, programs: items, contextOnly }) => <li key={college.id} className="px-4 py-3.5 sm:px-5" aria-labelledby={`college-${college.id}`}>
-                <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 id={`college-${college.id}`} className="font-heading text-base font-semibold text-ink">{college.name}</h3><p className="text-sm text-muted"><span className="font-mono">{college.code}</span>{contextOnly ? " · Parent context" : ""}</p></div><StatusBadge active={college.is_active} /></div>
+                <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 id={`college-${college.id}`} className="font-heading text-base font-semibold text-ink">{college.name}</h3><p className="text-sm text-muted"><span className="font-mono">{college.code}</span>{contextOnly ? " · Parent context" : ""}</p></div><CatalogStatusBadge active={college.is_active} /></div>
                 {actions({ kind: "college", record: college })}
                 {!items.length ? <p className="mt-2 pl-3 text-sm text-muted">{filtered ? "No programs match these filters." : "No programs are recorded."}</p> : <ul aria-label={`Programs in ${college.name}`} className="mt-2 divide-y divide-border pl-3 sm:pl-6">
                   {items.map((program) => <li key={program.id} className="py-3" aria-label={program.name}>
-                    <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink">{program.name}</p><p className="font-mono text-xs text-muted">{program.code}</p><p className="mt-1 text-sm text-muted">{academicProgramLabel(program)}</p></div><StatusBadge active={program.is_active} /></div>
+                    <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink">{program.name}</p><p className="font-mono text-xs text-muted">{program.code}</p><p className="mt-1 text-sm text-muted">{academicProgramLabel(program)}</p></div><CatalogStatusBadge active={program.is_active} /></div>
                     {actions({ kind: "program", record: program })}
                   </li>)}
                 </ul>}
@@ -108,7 +108,7 @@ function StructureWorkspace() {
       {!editing && loaded ? <form role="search" aria-label="Search organization structure" onSubmit={(event) => { event.preventDefault(); setApplied({ ...filters }); }}>
         <FloatingListTools submits filterCount={[applied.status, applied.campus, applied.college].filter(Boolean).length} clear={filtered ? <Button variant="quiet" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); }}>Clear filters</Button> : null}
           filters={<>
-            <FilterField label="Status" htmlFor="structure-status"><Select id="structure-status" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></Select></FilterField>
+            <FilterField label="Status" htmlFor="structure-status"><Select id="structure-status" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Retired</option></Select></FilterField>
             <FilterField label="Campus" htmlFor="structure-campus"><Select id="structure-campus" value={filters.campus} onChange={(event) => setFilters({ ...filters, campus: event.target.value, college: "" })}><option value="">All campuses</option>{campusItems.map((campus) => <option key={campus.id} value={campus.id}>{campus.name} ({campus.code})</option>)}</Select></FilterField>
             <FilterField label="College" htmlFor="structure-college"><Select id="structure-college" value={filters.college} onChange={(event) => setFilters({ ...filters, college: event.target.value })}><option value="">All colleges</option>{collegeItems.filter((college) => !filters.campus || college.campus.id === filters.campus).map((college) => <option key={college.id} value={college.id}>{college.name} ({college.campus.code} / {college.code})</option>)}</Select></FilterField>
           </>}>
@@ -118,4 +118,8 @@ function StructureWorkspace() {
     </>}
     {canEdit && history ? <CatalogHistory key={`${history.kind}:${history.record.id}`} target={history} onClose={() => setHistory(null)} onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus(); }} /> : null}
   </section>;
+}
+
+function CatalogStatusBadge({ active }: { active: boolean }) {
+  return <span className="text-sm font-semibold text-muted">{active ? "Active" : "Retired"}</span>;
 }

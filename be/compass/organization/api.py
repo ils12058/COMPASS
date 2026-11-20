@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, NoReturn
+from typing import Annotated, Literal, NoReturn
 from uuid import UUID
 
 from django.http import HttpResponse
@@ -538,6 +538,9 @@ class CatalogStatusRequest(StrictSchema):
     expected_resource_version: PositiveVersion
     is_active: StrictBool
     basis: CatalogText
+    acknowledged_impact: StrictBool = False
+    impact_token: Annotated[str, Field(max_length=64)] | None = None
+    cascade: StrictBool = False
 
 
 class CatalogPolicyRequest(CatalogPolicyFields):
@@ -587,6 +590,15 @@ class CatalogDependentCounts(StrictSchema):
     pending_operational_followups: int
 
 
+class CatalogChildSummary(StrictSchema):
+    id: UUID
+    kind: Literal["college", "program"]
+    code: str
+    name: str
+    resource_version: int
+    counts: CatalogDependentCounts
+
+
 class CatalogImpactResponse(StrictSchema):
     target_id: UUID
     resource_version: int
@@ -596,6 +608,8 @@ class CatalogImpactResponse(StrictSchema):
     warnings: list[CatalogIssueSummary]
     counts: CatalogDependentCounts
     preserved_categories: list[str]
+    active_children: list[CatalogChildSummary]
+    impact_token: str
 
 
 class CatalogHistoryValues(StrictSchema):

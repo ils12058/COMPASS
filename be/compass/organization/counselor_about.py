@@ -21,6 +21,7 @@ from django.db.models import Q
 
 from compass.accounts.models import User
 from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.models import College, CounselorResponsibility
 
 STUDENT_CAPABILITIES = frozenset(
@@ -123,7 +124,7 @@ def _handled_colleges(counselor: User) -> tuple[AboutCollege, ...]:
         ).values_list("college_id", flat=True)
     )
     colleges = (
-        College.objects.filter(Q(pk__in=scope.college_ids), is_active=True, campus__is_active=True)
+        College.objects.filter(Q(pk__in=scope.college_ids), existing_college_q())
         .select_related("campus")
         .order_by("campus__code", "campus__name", "code", "pk")
     )

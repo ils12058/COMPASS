@@ -1,7 +1,7 @@
 import type {
   AcademicClassification, CampusSummary, CollegeSummary, ProgramSummary,
   CatalogCreateCampusRequest, CatalogCreateCollegeRequest, CatalogCreateProgramRequest,
-  CatalogRenameRequest, CatalogPolicyRequest, CatalogStatusRequest,
+  CatalogRenameRequest, CatalogPolicyRequest, CatalogStatusRequest, CatalogImpactResponse,
   YearLevelPolicyStatus,
 } from "@/lib/api/generated/model";
 import { yearLevelLabel } from "@/lib/year-level";
@@ -117,4 +117,14 @@ export function filterHierarchy(campuses: CampusSummary[], colleges: CollegeSumm
     const ownMatch = !filters.college && textMatches(campus) && statusMatches(campus);
     return ownMatch || children.length ? [{ campus, colleges: children, contextOnly: !ownMatch }] : [];
   });
+}
+
+
+export function retirementPreviewMatches(target: CatalogTarget | undefined, impact: CatalogImpactResponse | undefined) {
+  return Boolean(target && impact && impact.target_id === target.record.id && impact.resource_version === target.record.resource_version);
+}
+
+export function acknowledgeRetirement(command: CatalogCommand, impact: CatalogImpactResponse, cascade: boolean): CatalogCommand {
+  if (command.operation !== "status" || command.data.is_active || !retirementPreviewMatches(command.target, impact)) throw new Error("Review the retirement impact again");
+  return { ...command, data: { ...command.data, acknowledged_impact: true, impact_token: impact.impact_token, cascade } };
 }

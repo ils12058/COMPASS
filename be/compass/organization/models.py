@@ -51,6 +51,8 @@ class Campus(models.Model):
     code = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    # Retired definitions remain available to their existing operational references.
+    is_retired = models.BooleanField(null=True, editable=False)
     resource_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -80,6 +82,8 @@ class College(models.Model):
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    # Retired definitions remain available to their existing operational references.
+    is_retired = models.BooleanField(null=True, editable=False)
     resource_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -112,6 +116,8 @@ class Program(models.Model):
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    # Retired definitions remain available to their existing operational references.
+    is_retired = models.BooleanField(null=True, editable=False)
     resource_version = models.PositiveIntegerField(default=1)
     academic_classification = models.CharField(
         max_length=16,

@@ -20,6 +20,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 
 from .confidential_content import (
     CONTENT_LIMITS,
@@ -87,9 +88,8 @@ def _students(actor):
     colleges = _scope(actor)
     if colleges is not None:
         qs = qs.filter(
+            existing_college_q("student_academic_profile__current_college__"),
             student_academic_profile__current_college_id__in=colleges,
-            student_academic_profile__current_college__is_active=True,
-            student_academic_profile__current_college__campus__is_active=True,
         )
     return qs
 

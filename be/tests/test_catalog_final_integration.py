@@ -26,7 +26,14 @@ from compass.organization.models import (
     Program,
 )
 from compass.student_academics.models import StudentAcademicProfile
-from tests.catalog_test_helpers import authority, hierarchy, manager, run_serialized_race, student
+from tests.catalog_test_helpers import (
+    authority,
+    hierarchy,
+    manager,
+    retirement_preview,
+    run_serialized_race,
+    student,
+)
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("inventory_psgc")]
 
@@ -72,12 +79,17 @@ def test_new_operational_work_waits_before_catalog_retirement_recount(work, kind
     item, error = run_serialized_race(
         lambda: new_work(kind, counselor, s),
         lambda: cs.set_college_active(
-            **auth, target_id=k.pk, expected_resource_version=1, is_active=False
+            **retirement_preview(auth, k),
+            **auth,
+            target_id=k.pk,
+            expected_resource_version=1,
+            is_active=False,
         ),
     )
-    assert isinstance(error, cs.CatalogError) and error.code == "catalog_deactivation_blocked"
+    assert isinstance(error, cs.CatalogError) and error.code == "catalog_stale_impact"
     key = "open_office_threads" if kind == "office" else "pending_operational_followups"
-    assert {i["code"]: i["count"] for i in error.details["blockers"]}[key] == 1
+    impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
+    assert impact.counts[key] == 1
     k.refresh_from_db()
     assert k.is_active and k.resource_version == 1
     assert type(item).objects.filter(pk=item.pk).exists()
@@ -127,7 +139,13 @@ def test_resolved_completed_work_and_encrypted_history_survive_retirement(work, 
     impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
     assert impact.can_deactivate
     assert impact.counts["inactive_student_placements"] == 1
-    cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
+    cs.set_college_active(
+        **retirement_preview(auth, k),
+        **auth,
+        target_id=k.pk,
+        expected_resource_version=1,
+        is_active=False,
+    )
     assert StudentAcademicProfile.objects.get(student=s).current_college_id == k.pk
     if kind == "office":
         assert GuidanceThread.objects.get(pk=item.pk).status == "RESOLVED"
@@ -245,7 +263,13 @@ def test_issued_f4_f6_pdf_facts_survive_protected_catalog_changes(work, variant)
     )
     # The work fixture's Program was an inactive draft; use actual current status,
     # avoiding a fabricated increment for a no-op retirement in the F6 case.
-    cs.set_program_active(**auth, target_id=p.pk, expected_resource_version=3, is_active=False)
+    cs.set_program_active(
+        **retirement_preview(auth, p),
+        **auth,
+        target_id=p.pk,
+        expected_resource_version=3,
+        is_active=False,
+    )
     item.refresh_from_db()
     assert GoodMoralRequest.objects.filter(pk=item.pk).values().get() == before
     assert build_certificate_render_context(item) == facts
@@ -305,7 +329,11 @@ def test_program_retirement_first_prevents_waiting_inventory_submission(work):
     s, _ = inventory_fixture(auth, p)
     _, error = run_serialized_race(
         lambda: cs.set_program_active(
-            **auth, target_id=p.pk, expected_resource_version=1, is_active=False
+            **retirement_preview(auth, p),
+            **auth,
+            target_id=p.pk,
+            expected_resource_version=1,
+            is_active=False,
         ),
         lambda: submit_current_inventory(student=s, context=AuditContext.user(s)),
     )

@@ -17,16 +17,17 @@ import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-pro
 import { canManageOrganizationCatalog } from "@/features/institution-configuration/institution-access";
 import { TableSkeleton } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import type { CatalogImpactResponse } from "@/lib/api/generated/model";
 import { getAuthGetSessionQueryOptions } from "@/lib/api/generated/auth/auth";
 import { catalogErrorCode, catalogErrorMessage, uncertainCatalogOutcome } from "./catalog-errors";
 import { CatalogImpact } from "./catalog-impact";
-import { academicProgramLabel, draftError, initialDraft, makeCommand, parentLabel, type CatalogCommand, type CatalogIntent, type CatalogTarget } from "./catalog-model";
+import { acknowledgeRetirement, retirementPreviewMatches, academicProgramLabel, draftError, initialDraft, makeCommand, parentLabel, type CatalogCommand, type CatalogIntent, type CatalogTarget } from "./catalog-model";
 import { CatalogPolicyFields } from "./catalog-policy-fields";
 import { catalogDetailKey, catalogImpactKey, executeCatalogCommand, readCatalogImpact, readCatalogTarget, reconcileCatalogCommand, refreshCatalog } from "./catalog-query";
 import { CatalogReview } from "./catalog-review";
 
-export function CatalogEditor({ intent, knownIds, canManageRelationships, onClose, onSaved }: {
-  intent: CatalogIntent; knownIds: readonly string[]; canManageRelationships: boolean;
+export function CatalogEditor({ intent, knownIds, onClose, onSaved }: {
+  intent: CatalogIntent; knownIds: readonly string[];
   onClose: () => void; onSaved: (target: CatalogTarget) => void;
 }) {
   const { user, session } = usePortalSession();
@@ -37,6 +38,8 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   // A refetch must never silently rebase an unsent rename onto a new version.
   const [reviewedRename, setReviewedRename] = useState<CatalogTarget | null>(() => intent.mode === "rename" ? intent.target : null);
   const [review, setReview] = useState<CatalogCommand | null>(null);
+  const [reviewImpact, setReviewImpact] = useState<CatalogImpactResponse | null>(null);
+  const [cascade, setCascade] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   const dirty = !saved && JSON.stringify(draft) !== JSON.stringify(initialDraft(intent));
   useUnsavedChangesGuard({ dirty, message: "Discard the unsaved Catalog change?" });
   const { confirmDiscard } = useUnsavedNavigation();
-  const title = intent.mode === "create" ? `Add ${kind}` : intent.mode === "rename" ? `Rename ${kind}` : intent.mode === "policy" ? "Edit Program settings" : `${draft.active === "active" ? "Activate" : "Deactivate"} ${kind}`;
+  const title = intent.mode === "create" ? `Add ${kind}` : intent.mode === "rename" ? `Rename ${kind}` : intent.mode === "policy" ? "Edit Program settings" : `${draft.active === "active" ? "Reactivate" : "Retire"} ${kind}`;
 
   function close() { if (!busy && (!dirty || confirmDiscard())) onClose(); }
   async function authority() {
@@ -115,14 +118,14 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
       if (intent.mode !== "rename" && fresh && target.data && fresh.record.resource_version !== target.data.record.resource_version) {
         setNotice("This information was updated. Your input is preserved. Compare the latest saved values below, then review again."); return;
       }
-      if (retiring && (!preview?.can_deactivate || preview.resource_version !== fresh?.record.resource_version)) {
-        setError("Review the linked records and address the blockers before deactivating this record."); return;
+      if (retiring && !retirementPreviewMatches(fresh, preview)) {
+        setError("The impact changed. Review it again."); return;
       }
       const invalidFresh = draftError(intent, draft, intent.mode === "create" ? undefined : fresh);
       if (invalidFresh) { setError(invalidFresh); return; }
       const command = makeCommand(intent, draft, intent.mode === "rename" ? reviewedRename ?? undefined : fresh);
       if (intent.mode === "rename") await execute(command);
-      else setReview(command);
+      else { setReviewImpact(preview ?? null); setCascade(false); setReview(command); }
     } catch (caught) { if (mounted.current) setError(catalogErrorMessage(caught)); }
     finally { running.current = false; if (mounted.current) setReading(false); }
   }
@@ -151,7 +154,12 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   async function submit() {
     if (!review || running.current || busy || denied || saved || unconfirmed) return;
     running.current = true;
-    try { await execute(review); }
+    try {
+      const command = review.operation === "status" && !review.data.is_active && reviewImpact
+        ? acknowledgeRetirement(review, reviewImpact, cascade)
+        : review;
+      await execute(command);
+    }
     finally { running.current = false; }
   }
   async function execute(command: CatalogCommand) {
@@ -203,7 +211,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
           {confirmedTarget ? <div className="mb-5 space-y-1 break-words text-sm" aria-label="Latest saved record">
             <h3 className="font-semibold">{intent.mode === "create" ? "Fixed parent" : target.isError ? "Last confirmed record" : "Latest saved record"}</h3>
             <p>{confirmedTarget.record.name} · <span className="font-mono">{confirmedTarget.record.code}</span></p>
-            <p>{parentLabel(confirmedTarget)} · {confirmedTarget.record.is_active ? "Active" : "Inactive"}</p>
+            <p>{parentLabel(confirmedTarget)} · {confirmedTarget.record.is_active ? "Active" : "Retired"}</p>
             {confirmedTarget.kind === "program" ? <p>{academicProgramLabel(confirmedTarget.record)}</p> : null}
           </div> : null}
           {renameChanged && reviewedRename && !target.isError ? <Notice className="mb-4" tone="warning" action={<Button variant="secondary" disabled={busy || target.isFetching} onClick={() => { if (confirmedTarget) { setReviewedRename(confirmedTarget); setNotice(null); setError(null); } }}>Review latest record</Button>}>
@@ -222,22 +230,22 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
                 <Input id="catalog-name" required maxLength={160} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
               </div> : null}
               {intent.mode === "create" ? <div className="grid gap-2"><Label htmlFor="catalog-active">Initial status</Label><Select id="catalog-active" required value={draft.active} onChange={(event) => { const value = event.target.value; if (value === "active" || value === "inactive") setDraft({ ...draft, active: value }); }}>
-                <option value="" disabled>Choose status</option><option value="active">Active</option><option value="inactive">Inactive</option>
+                <option value="" disabled>Choose status</option><option value="active">Active</option><option value="inactive">Retired</option>
               </Select></div> : null}
               {intent.mode === "policy" || (intent.mode === "create" && kind === "program") ? <CatalogPolicyFields draft={draft} onChange={setDraft} disabled={busy} /> : null}
               {intent.mode === "rename" ? <p className="text-sm text-muted">The new official name may appear in current linked views. Finalized historical records keep their saved facts; documents are not regenerated.</p> : null}
               {intent.mode === "status" && draft.active === "active" ? <p className="text-sm text-muted">Any parent Campus or College must be active, and Programs need a classification and year levels. Linked Colleges and Programs aren&apos;t activated automatically, and past assignments aren&apos;t restored automatically.</p> : null}
-              <div className="grid gap-2"><Label htmlFor="catalog-basis">Change note</Label><Input id="catalog-basis" required maxLength={160} placeholder={intent.mode === "rename" ? `Corrected the ${kind} name.` : intent.mode === "status" ? `${draft.active === "active" ? "Activated" : "Deactivated"} the ${kind}.` : intent.mode === "policy" ? "Updated Program settings." : `Added a ${kind}.`} value={draft.basis} aria-describedby="catalog-basis-help" onChange={(event) => setDraft({ ...draft, basis: event.target.value })} /><p id="catalog-basis-help" className="text-sm text-muted">A short note about this change, up to 160 characters. It will appear in the change history.</p></div>
+              <div className="grid gap-2"><Label htmlFor="catalog-basis">Change note</Label><Input id="catalog-basis" required maxLength={160} placeholder={intent.mode === "rename" ? `Corrected the ${kind} name.` : intent.mode === "status" ? `${draft.active === "active" ? "Reactivated" : "Retired"} the ${kind}.` : intent.mode === "policy" ? "Updated Program settings." : `Added a ${kind}.`} value={draft.basis} aria-describedby="catalog-basis-help" onChange={(event) => setDraft({ ...draft, basis: event.target.value })} /><p id="catalog-basis-help" className="text-sm text-muted">A short note about this change, up to 160 characters. It will appear in the change history.</p></div>
             </fieldset>
-            {retiring ? impact.isPending ? <TableSkeleton label="Loading deactivation impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>Couldn&apos;t check the linked records. Refresh the impact before deactivating this record.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} canManageRelationships={canManageRelationships} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
+            {retiring ? impact.isPending ? <TableSkeleton label="Loading retirement impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>Couldn&apos;t check the linked records. Refresh the impact before retiring this record.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} kind={kind} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
             {unconfirmed ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void reconcile(unconfirmed)}>Check saved state</Button>}>The save is still unconfirmed. Check saved state before making another change.</Notice> : null}
-            <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || renameChanged || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data?.can_deactivate || impact.isError || impact.isFetching))}>{saving ? "Saving…" : reading ? "Loading latest details…" : intent.mode === "rename" ? "Save changes" : "Review change"}</Button></div>
+            <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || renameChanged || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data || impact.isError || impact.isFetching))}>{saving ? "Saving…" : reading ? "Loading latest details…" : intent.mode === "rename" ? "Save changes" : "Review change"}</Button></div>
           </form>
         </>}
       </>}
     </PanelBody>
-    <ConsequentialActionDialog open={Boolean(review)} title={`Review: ${title}`} confirmLabel={title === "Edit Program settings" ? "Save Program settings" : title} pendingLabel="Saving Catalog change…" pending={saving} confirmDisabled={reading || denied} variant={retiring ? "danger" : "primary"} error={null} onOpenChange={(open) => { if (!open) setReview(null); }} onConfirm={() => void submit()} onCloseAutoFocus={(event) => { event.preventDefault(); reviewButton.current?.focus(); }}>
-      {review ? <CatalogReview command={review} parent={intent.mode === "create" ? target.data : undefined} impact={retiring ? impact.data : undefined} /> : null}
+    <ConsequentialActionDialog open={Boolean(review)} title={`Review: ${title}`} confirmLabel={retiring ? "Retire" : title === "Edit Program settings" ? "Save Program settings" : title} pendingLabel="Saving Catalog change…" pending={saving} confirmDisabled={reading || denied || (retiring && Boolean(reviewImpact?.active_children.length) && !cascade)} variant={retiring ? "danger" : "primary"} error={null} onOpenChange={(open) => { if (!open) setReview(null); }} onConfirm={() => void submit()} onCloseAutoFocus={(event) => { event.preventDefault(); reviewButton.current?.focus(); }}>
+      {review ? <CatalogReview command={review} parent={intent.mode === "create" ? target.data : undefined} impact={retiring ? reviewImpact ?? undefined : undefined} cascade={cascade} onCascade={setCascade} disabled={saving || reading} /> : null}
     </ConsequentialActionDialog>
     <StepUpDialog setupInNewTab reviewAfterVerification open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={(open) => { if (!open) setStepUp(null); }} onVerified={afterVerification} />
   </Panel>;

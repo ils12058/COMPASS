@@ -10,6 +10,10 @@ from django.db.models import Q
 
 from compass.accounts.models import StudentLifecycleStatus, User
 from compass.accounts.profile_photos import profile_photo_projection
+from compass.organization.catalog_availability import (
+    college_available_for_existing_records,
+    existing_college_q,
+)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -71,7 +75,7 @@ def _college_option(student: User) -> OperationalCollegeOption | None:
     if profile is None or profile.current_college is None:
         return None
     college = profile.current_college
-    if not college.is_active or not college.campus.is_active:
+    if not college_available_for_existing_records(college):
         return None
     return OperationalCollegeOption(id=college.pk, code=college.code, name=college.name)
 
@@ -100,9 +104,8 @@ def list_scoped_operational_students(
             queryset = queryset.none()
         else:
             queryset = queryset.filter(
+                existing_college_q("student_academic_profile__current_college__"),
                 student_academic_profile__current_college_id__in=college_ids,
-                student_academic_profile__current_college__is_active=True,
-                student_academic_profile__current_college__campus__is_active=True,
             )
     if term:
         queryset = queryset.filter(

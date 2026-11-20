@@ -10,6 +10,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.student_academics.reads import student_is_placed_in_colleges
 
 from .errors import FollowUpInvalid, FollowUpNotFound, FollowUpPermissionDenied
@@ -272,11 +273,11 @@ def scope(actor, queryset, *, manage=False, include_owned_delegated=False):
         colleges = resolve_operational_responsibility_scope(actor).college_ids
         operational = Q(pk__in=[])
         if colleges:
-            operational = Q(
+            operational = existing_college_q(
+                "student__student_academic_profile__current_college__"
+            ) & Q(
                 visibility=FollowUpVisibility.OPERATIONAL,
                 student__student_academic_profile__current_college_id__in=colleges,
-                student__student_academic_profile__current_college__is_active=True,
-                student__student_academic_profile__current_college__campus__is_active=True,
             )
     if actor.role.code != "COUNSELOR":
         return queryset.filter(operational).distinct()
