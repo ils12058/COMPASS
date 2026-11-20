@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { FacultyCollegeReferences } from "@/features/accounts/import/faculty-college-references";
+
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
 import { dataTable } from "@/components/ui/data-table";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
+import { CsvPreviewTable } from "@/features/csv-import/csv-preview-table";
+import { csvProblemMessage, readyRowNumbers, selectionSummary, problemRowsCsv } from "@/features/csv-import/csv-selection";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -21,18 +24,6 @@ import { CompassApiError } from "@/lib/api/errors";
 
 const template =
   "institutional_id,email,first_name,middle_name,last_name,suffix,role,faculty_college_id,campus_code,college_code\n";
-
-const rowActionLabels: Record<string, [review: string, committed: string]> = {
-  CREATE: ["Create", "Created"],
-  SKIP: ["Skip", "Skipped"],
-  CONFLICT: ["Conflict", "Conflict"],
-  INVALID: ["Invalid", "Invalid"],
-};
-
-function rowActionLabel(action: string, committed: boolean): string {
-  const labels = rowActionLabels[action];
-  return labels ? labels[committed ? 1 : 0] : action;
-}
 
 type CsvIssue = {
   row: number | null;
@@ -89,25 +80,32 @@ export function ImportAccounts() {
   const action = useManagedAction();
   const [file, setFile] = useState<File | null>(null);
   const [reviewedFile, setReviewedFile] = useState<File | null>(null);
+  const [problemDownload, setProblemDownload] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [report, setReport] = useState<CsvImportResponse | null>(null);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<CsvIssue[]>([]);
   const [commitReview, setCommitReview] = useState<{
     file: File;
     report: CsvImportResponse;
+    selectedRows: number[];
   } | null>(null);
+  const chosen = selectionSummary(report?.rows ?? [], selectedRows);
+  const reviewCounts = commitReview ? selectionSummary(commitReview.report.rows, commitReview.selectedRows) : chosen;
   const readyToCommit = Boolean(
     file &&
       reviewedFile === file &&
-      report?.valid &&
+      report &&
       !report.committed &&
       !conflict &&
-      report.create_count > 0,
+      chosen.write_count > 0,
   );
 
   async function validate() {
     if (!file) return;
     setReport(null);
+    setSelectedRows([]);
+    setProblemDownload(null);
     setReviewedFile(null);
     setConflict(false);
     setIssues([]);
@@ -121,13 +119,15 @@ export function ImportAccounts() {
     if (!response) return;
     setReviewedFile(file);
     setReport(response.data);
+    setSelectedRows(readyRowNumbers(response.data.rows));
+    setProblemDownload(response.data.rows.some((row) => ["INVALID", "CONFLICT"].includes(row.action)) ? problemRowsCsv(response.data.headers, response.data.rows) : null);
   }
 
   function openCommitReview() {
     if (!file || !report || !readyToCommit) return;
     action.setError(null);
     action.setNotice(null);
-    setCommitReview({ file, report });
+    setCommitReview({ file, report, selectedRows: [...selectedRows] });
   }
 
   async function commit() {
@@ -136,7 +136,7 @@ export function ImportAccounts() {
     const response = await action.run(
       () =>
         importCsv.mutateAsync({
-          data: { file: reviewed.file },
+          data: { file: reviewed.file, file_hash: reviewed.report.file_hash, selected_rows: JSON.stringify(reviewed.selectedRows) },
           params: { dry_run: false },
         }),
       "Couldn't complete the CSV import. Try again.",
@@ -151,12 +151,12 @@ export function ImportAccounts() {
     setReport(response.data);
     await invalidate();
     action.setNotice(
-      "CSV import completed. Review the committed result below.",
+      `${response.data.create_count} accounts imported, ${response.data.skip_count} already existed, ${response.data.not_selected_count} rows not selected.`,
     );
   }
 
   return (
-    <section aria-labelledby="import-accounts-heading">
+    <section className="min-w-0 max-w-full" aria-labelledby="import-accounts-heading">
       <PageHeader
         title="Import accounts"
         headingId="import-accounts-heading"
@@ -165,13 +165,13 @@ export function ImportAccounts() {
             Back to Accounts
           </Link>
         }
-        description="CSV import provisions new accounts. It does not update existing account identity, roles, or status. Exact matching active accounts are skipped; conflicting records are reported."
+        description="CSV import creates new accounts. It does not update existing account identity, roles, or status. Exact matching active accounts are skipped; conflicting records are reported."
       />
       <Panel as="div">
         <PanelBody className="py-5">
         <p className="text-sm text-muted">
           Required columns: institutional_id, email, first_name, last_name,
-          role. Optional: middle_name, suffix, faculty_college_id (Faculty only; active catalog College UUID),
+          role. Optional: middle_name, suffix, faculty_college_id (Faculty only; active college ID),
           campus_code and college_code (Student only; both or neither; active catalog codes).
           Initial placement applies only to newly created accounts, is recorded as unverified and does not confirm
           enrollment. A blank Faculty College leaves the affiliation unassigned. Existing affiliations and placements
@@ -192,10 +192,13 @@ export function ImportAccounts() {
             id="account-csv-file"
             className="block w-full text-sm text-ink file:mr-4 file:rounded-md file:border file:border-border file:bg-surface-raised file:px-3 file:py-2 file:text-sm file:font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             type="file"
+            disabled={importCsv.isPending}
             accept=".csv,text/csv"
             onChange={(event) => {
               setFile(event.target.files?.[0] ?? null);
               setReport(null);
+              setSelectedRows([]);
+              setProblemDownload(null);
               setReviewedFile(null);
               setConflict(false);
               setIssues([]);
@@ -246,7 +249,7 @@ export function ImportAccounts() {
                       {issue.institutionalId || "—"}
                     </td>
                     <td className={dataTable.cell}>{issue.email || "—"}</td>
-                    <td className={dataTable.cell}>{issue.message}</td>
+                    <td className={dataTable.cell}>{csvProblemMessage(issue.message)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -272,15 +275,15 @@ export function ImportAccounts() {
               report.valid
                 ? report.committed
                   ? "The import was completed."
-                  : "The CSV is valid for import. Records may change before commit."
-                : "Resolve the conflicts or invalid rows, then validate the CSV again."
+                  : "Choose the rows to import. COMPASS checks them again before saving."
+                : "Select ready rows to import. Download rows with problems to fix and upload later."
             }
           />
           <dl className="grid grid-cols-2 gap-px border-b border-brand-line bg-border text-sm sm:grid-cols-5">
             {[
               ["Total rows", report.total_rows],
-              ["Create", report.create_count],
-              ["Skip", report.skip_count],
+              [report.committed ? "Created" : "Ready", report.create_count],
+              ["Already exists", report.skip_count],
               ["Conflict", report.conflict_count],
               ["Invalid", report.invalid_count],
             ].map(([label, value]) => (
@@ -292,61 +295,31 @@ export function ImportAccounts() {
               </div>
             ))}
           </dl>
-          <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[52rem]`}>
-              <caption className="sr-only">CSV rows</caption>
-              <thead className={dataTable.head}>
-                <tr>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Row
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Institutional ID
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Email
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Placement
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Action
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Message
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={dataTable.body}>
-                {report.rows.map((row) => (
-                  <tr
-                    key={`${row.row_number}-${row.institutional_id}`}
-                    className={dataTable.row}
-                  >
-                    <td className={dataTable.cell}>{row.row_number}</td>
-                    <td className={dataTable.cell}>{row.institutional_id || "—"}</td>
-                    <td className={dataTable.cell}>{row.email || "—"}</td>
-                    <td className={dataTable.cell}>
-                      {row.campus_code || row.college_code
-                        ? `${row.campus_code ?? "—"} · ${row.college_code ?? "—"}`
-                        : "—"}
-                    </td>
-                    <td className={`${dataTable.cell} font-semibold`}>
-                      {rowActionLabel(row.action, report.committed)}
-                    </td>
-                    <td className={dataTable.cell}>{row.message || "—"}{row.faculty_college_id ? <span className="mt-1 block break-all">Faculty College: {row.faculty_college_id}</span> : null}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {readyToCommit ? (
+          <CsvPreviewTable
+            caption="CSV rows"
+            rows={report.rows}
+            headers={report.headers}
+            problemDownload={problemDownload}
+            total={report.total_rows}
+            selected={selectedRows}
+            onSelectionChange={setSelectedRows}
+            committed={report.committed}
+            disabled={importCsv.isPending || conflict}
+            columns={[
+              { header: "Row", cell: (row) => row.row_number },
+              { header: "Institutional ID", cell: (row) => row.institutional_id || "—" },
+              { header: "Email", cell: (row) => row.email || "—" },
+              { header: "Placement", cell: (row) => row.campus_code || row.college_code ? `${row.campus_code ?? "—"} · ${row.college_code ?? "—"}` : "—" },
+              { header: "Faculty college", cell: (row) => row.faculty_college_id || "—" },
+            ]}
+          />
+          {!report.committed ? (
             <PanelFooter>
               <Button
-                disabled={importCsv.isPending}
+                disabled={importCsv.isPending || !readyToCommit}
                 onClick={openCommitReview}
               >
-                Import accounts
+                Import selected
               </Button>
             </PanelFooter>
           ) : null}
@@ -356,16 +329,17 @@ export function ImportAccounts() {
         open={commitReview !== null}
         title={
           commitReview
-            ? `Import ${commitReview.report.create_count} ${commitReview.report.create_count === 1 ? "account" : "accounts"}?`
+            ? `Import ${reviewCounts.create_count} ${reviewCounts.create_count === 1 ? "account" : "accounts"}?`
             : "Import accounts?"
         }
         confirmLabel={
           commitReview
-            ? `Import ${commitReview.report.create_count} ${commitReview.report.create_count === 1 ? "account" : "accounts"}`
+            ? `Import ${reviewCounts.create_count} ${reviewCounts.create_count === 1 ? "account" : "accounts"}`
             : "Import accounts"
         }
         pendingLabel="Importing accounts…"
         pending={importCsv.isPending}
+        confirmDisabled={conflict}
         error={action.error}
         onOpenChange={(open) => {
           if (!open) setCommitReview(null);
@@ -375,16 +349,16 @@ export function ImportAccounts() {
         {commitReview ? (
           <>
             <p>
-              {commitReview.report.create_count} new active {commitReview.report.create_count === 1 ? "account" : "accounts"} will be created.
+              {reviewCounts.create_count} new active {reviewCounts.create_count === 1 ? "account" : "accounts"} will be created.
               {" "}
-              {commitReview.report.skip_count} exact existing {commitReview.report.skip_count === 1 ? "account" : "accounts"} will be skipped.
+              {reviewCounts.skip_count} exact existing {reviewCounts.skip_count === 1 ? "account" : "accounts"} will be skipped.
             </p>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               {[
-                ["Create", commitReview.report.create_count],
-                ["Skip", commitReview.report.skip_count],
-                ["Conflict", commitReview.report.conflict_count],
-                ["Invalid", commitReview.report.invalid_count],
+                ["Create", reviewCounts.create_count],
+                ["Skip", reviewCounts.skip_count],
+                ["Selected rows", reviewCounts.selected_count],
+                ["Not selected", commitReview.report.total_rows - reviewCounts.selected_count],
               ].map(([label, value]) => (
                 <div key={String(label)}>
                   <dt className="text-muted">{label}</dt>

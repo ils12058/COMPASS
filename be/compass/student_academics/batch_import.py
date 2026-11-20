@@ -20,6 +20,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
+from django.core import signing
 from django.db import IntegrityError, transaction
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -30,6 +31,12 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.csv_selection import (
+    file_digest,
+    require_file_hash,
+    selected_row_numbers,
+    selection_counts,
+)
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import AcademicYear, College, Program, normalize_code
 from compass.student_academics.models import (
@@ -82,6 +89,10 @@ _WHOLE_NUMBER = re.compile(r"^\d{1,2}$")
 
 class BatchImportStale(RuntimeError):
     """Affected records changed after the preview; the operator must validate again."""
+
+    def __init__(self, message: str, rows=()) -> None:
+        super().__init__(message)
+        self.rows = rows
 
 
 class BatchImportPreviewRequired(RuntimeError):
@@ -294,7 +305,9 @@ def _identity(raw: _RawRow, seen: dict[str, int]) -> tuple[str, str, str] | Batc
 def _parse_periods(
     data: bytes,
 ) -> tuple[tuple[PeriodImportRow, ...], tuple[BatchImportIssue, ...], int]:
-    raw_rows = _read_rows(data, allowed=PERIOD_HEADERS, required=PERIOD_REQUIRED_HEADERS)
+    raw_rows = _read_rows(
+        data, allowed=(*PERIOD_HEADERS, "problem"), required=PERIOD_REQUIRED_HEADERS
+    )
     rows: list[PeriodImportRow] = []
     issues: list[BatchImportIssue] = []
     seen: dict[str, int] = {}
@@ -339,7 +352,9 @@ def _parse_periods(
 def _parse_graduations(
     data: bytes,
 ) -> tuple[tuple[GraduationImportRow, ...], tuple[BatchImportIssue, ...], int]:
-    raw_rows = _read_rows(data, allowed=GRADUATION_HEADERS, required=GRADUATION_REQUIRED_HEADERS)
+    raw_rows = _read_rows(
+        data, allowed=(*GRADUATION_HEADERS, "problem"), required=GRADUATION_REQUIRED_HEADERS
+    )
     rows: list[GraduationImportRow] = []
     issues: list[BatchImportIssue] = []
     seen: dict[str, int] = {}
@@ -406,8 +421,41 @@ def _student_and_college(
 
 
 def _fingerprint(scope: dict[str, Any], rows: list[dict[str, Any]]) -> str:
-    encoded = json.dumps({"scope": scope, "rows": rows}, sort_keys=True, default=str).encode()
-    return hashlib.sha256(encoded).hexdigest()
+    # Signed per-row snapshots allow a subset to be confirmed without trusting client snapshots.
+    snapshots = {
+        str(row["row"]): hashlib.sha256(
+            json.dumps(row, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        for row in rows
+    }
+    return signing.Signer(salt="student-academic-csv-preview").sign_object(
+        {"scope": scope, "rows": snapshots}, compress=True
+    )
+
+
+def _check_preview(report, preview_fingerprint: str, selected_rows: list[int] | None) -> None:
+    try:
+        signer = signing.Signer(salt="student-academic-csv-preview")
+        previous = signer.unsign_object(preview_fingerprint)
+        current = signer.unsign_object(report.preview_fingerprint)
+        same_scope = previous["scope"] == current["scope"]
+        changed = tuple(
+            row
+            for row in report.rows
+            if not same_scope
+            or previous["rows"].get(str(row.row_number)) != current["rows"][str(row.row_number)]
+        )
+        if selected_rows is None and previous != current:
+            changed = changed or report.rows
+    except (signing.BadSignature, ValueError, KeyError, TypeError):
+        changed = report.rows
+        same_scope = False
+    if changed or not same_scope:
+        raise BatchImportStale(
+            "Selected records changed after the preview. "
+            "Validate the CSV again. Nothing was imported.",
+            changed,
+        )
 
 
 def _guarded(write: Callable[[], Any], *, what: str) -> Any:
@@ -441,6 +489,7 @@ def _classify_periods(
     academic_year: AcademicYear,
     term: str,
     lock: bool,
+    file_hash: str,
     committed: bool = False,
 ) -> PeriodImportReport:
     resolution = _load_resolution(rows=rows, lock=lock)
@@ -509,10 +558,18 @@ def _classify_periods(
         for kind in ("CREATE", "UPDATE", "NOOP", "CONFLICT", "INVALID")
     }
     fingerprint = _fingerprint(
-        {"kind": "periods", "academic_year_id": str(academic_year.pk), "term": term},
+        {
+            "kind": "periods",
+            "academic_year_id": str(academic_year.pk),
+            "term": term,
+            "file_hash": file_hash,
+        },
         [
             {
                 "row": item.row_number,
+                "version": records[item.student_id].updated_at
+                if item.student_id in records
+                else None,
                 "action": item.action,
                 "student_id": str(item.student_id) if item.student_id else None,
                 "target": [item.college_code, item.year_level, item.enrollment_status],
@@ -548,6 +605,8 @@ def import_student_academic_periods(
     term: str,
     dry_run: bool,
     preview_fingerprint: str | None = None,
+    selected_rows: list[int] | None = None,
+    file_hash: str | None = None,
 ) -> PeriodImportReport:
     """Record one academic year and term for many Students. Current placement is never changed."""
 
@@ -556,23 +615,38 @@ def import_student_academic_periods(
     rows, issues, total_rows = _parse_periods(data)
     if dry_run:
         return _classify_periods(
-            rows, issues, total_rows, academic_year=academic_year, term=term, lock=False
+            rows,
+            issues,
+            total_rows,
+            academic_year=academic_year,
+            term=term,
+            lock=False,
+            file_hash=file_digest(data),
         )
     if not preview_fingerprint:
         raise BatchImportPreviewRequired("Validate the CSV before importing it.")
+    require_file_hash(data, file_hash)
+    selected = selected_row_numbers(rows, issues, selected_rows)
+    rows = tuple(row for row in rows if row.row_number in selected)
+    issues = tuple(issue for issue in issues if issue.row_number in selected)
     if issues:
         if any(issue.code == "duplicate_identity" for issue in issues):
             raise RosterImportDuplicateIdentity(issues)
         raise RosterImportInvalidRows(issues)
     with transaction.atomic():
         report = _classify_periods(
-            rows, issues, total_rows, academic_year=academic_year, term=term, lock=True
+            rows,
+            issues,
+            total_rows,
+            academic_year=academic_year,
+            term=term,
+            lock=True,
+            file_hash=file_digest(data),
         )
         conflicts = tuple(item for item in report.rows if item.action == "CONFLICT")
         if conflicts:
             raise RosterImportConflict(conflicts)
-        if report.preview_fingerprint != preview_fingerprint:
-            raise BatchImportStale("Records changed after the preview. Validate the CSV again.")
+        _check_preview(report, preview_fingerprint, selected_rows)
         by_number = {row.row_number: row for row in rows}
         writes = sorted(
             (item for item in report.rows if item.action in {"CREATE", "UPDATE"}),
@@ -595,7 +669,7 @@ def import_student_academic_periods(
                 ),
                 what="A term record",
             )
-        if writes:
+        if writes or selected_rows is not None:
             record_event(
                 context=context,
                 action=STUDENT_ACADEMICS_PERIODS_IMPORTED,
@@ -603,7 +677,12 @@ def import_student_academic_periods(
                 metadata={
                     "academic_year_id": str(academic_year.pk),
                     "term": term,
-                    "total_rows": report.total_rows,
+                    **selection_counts(
+                        total=total_rows,
+                        selected=len(selected),
+                        imported=len(writes),
+                        skipped=report.noop_count,
+                    ),
                     "create_count": report.create_count,
                     "update_count": report.update_count,
                     "noop_count": report.noop_count,
@@ -631,6 +710,7 @@ def _classify_graduations(
     *,
     source: str,
     lock: bool,
+    file_hash: str,
     committed: bool = False,
 ) -> GraduationImportReport:
     resolution = _load_resolution(rows=rows, lock=lock)
@@ -744,10 +824,13 @@ def _classify_graduations(
         for kind in ("GRADUATE", "UPDATE", "NOOP", "CONFLICT", "INVALID")
     }
     fingerprint = _fingerprint(
-        {"kind": "graduations", "verification_source": source},
+        {"kind": "graduations", "verification_source": source, "file_hash": file_hash},
         [
             {
                 "row": item.row_number,
+                "version": records[item.student_id].updated_at
+                if item.student_id in records
+                else None,
                 "action": item.action,
                 "student_id": str(item.student_id) if item.student_id else None,
                 "target": [item.college_code, item.graduation_date, item.program_code],
@@ -786,6 +869,8 @@ def import_student_graduations(
     verification_source: str,
     dry_run: bool,
     preview_fingerprint: str | None = None,
+    selected_rows: list[int] | None = None,
+    file_hash: str | None = None,
     confirmed_count: int | None = None,
 ) -> GraduationImportReport:
     """Record graduations for many Students, with the single-record side effects for each.
@@ -797,23 +882,30 @@ def import_student_graduations(
     source = _validate_source(verification_source)
     rows, issues, total_rows = _parse_graduations(data)
     if dry_run:
-        return _classify_graduations(rows, issues, total_rows, source=source, lock=False)
+        return _classify_graduations(
+            rows, issues, total_rows, source=source, lock=False, file_hash=file_digest(data)
+        )
     if not preview_fingerprint:
         raise BatchImportPreviewRequired("Validate the CSV before importing it.")
+    require_file_hash(data, file_hash)
+    selected = selected_row_numbers(rows, issues, selected_rows)
+    rows = tuple(row for row in rows if row.row_number in selected)
+    issues = tuple(issue for issue in issues if issue.row_number in selected)
     if issues:
         if any(issue.code == "duplicate_identity" for issue in issues):
             raise RosterImportDuplicateIdentity(issues)
         raise RosterImportInvalidRows(issues)
     with transaction.atomic():
-        report = _classify_graduations(rows, issues, total_rows, source=source, lock=True)
+        report = _classify_graduations(
+            rows, issues, total_rows, source=source, lock=True, file_hash=file_digest(data)
+        )
         invalid = tuple(item for item in report.rows if item.action == "INVALID")
         if invalid:
             raise RosterImportInvalidRows(invalid)
         conflicts = tuple(item for item in report.rows if item.action == "CONFLICT")
         if conflicts:
             raise RosterImportConflict(conflicts)
-        if report.preview_fingerprint != preview_fingerprint:
-            raise BatchImportStale("Records changed after the preview. Validate the CSV again.")
+        _check_preview(report, preview_fingerprint, selected_rows)
         if confirmed_count != report.write_count:
             raise BatchImportConfirmationMismatch(
                 f"Type {report.write_count} to confirm the number of Students to record."
@@ -843,13 +935,18 @@ def import_student_graduations(
                 ),
                 what="A graduation record",
             )
-        if writes:
+        if writes or selected_rows is not None:
             record_event(
                 context=context,
                 action=STUDENT_ACADEMICS_GRADUATIONS_IMPORTED,
                 outcome=AuditOutcome.SUCCESS,
                 metadata={
-                    "total_rows": report.total_rows,
+                    **selection_counts(
+                        total=total_rows,
+                        selected=len(selected),
+                        imported=len(writes),
+                        skipped=report.noop_count,
+                    ),
                     "graduate_count": report.graduate_count,
                     "update_count": report.update_count,
                     "noop_count": report.noop_count,

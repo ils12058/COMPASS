@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from unittest.mock import patch
 
 import pytest
@@ -96,10 +98,19 @@ def upload(
     *,
     dry_run: bool,
     name: str = "accounts.csv",
+    selected_rows=None,
+    file_hash="auto",
 ):
+    data = {"file": SimpleUploadedFile(name, content, content_type="text/csv")}
+    if file_hash is not None:
+        data["file_hash"] = (
+            hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
+        )
+    if selected_rows is not None:
+        data["selected_rows"] = json.dumps(selected_rows)
     return client.post(
         f"/api/v1/accounts/imports/csv?dry_run={'true' if dry_run else 'false'}",
-        data={"file": SimpleUploadedFile(name, content, content_type="text/csv")},
+        data=data,
         **csrf(client),
     )
 
@@ -168,6 +179,10 @@ def test_csv_commit_creates_multiple_unverified_unpassworded_accounts_and_studen
         "created_count": 2,
         "skipped_count": 0,
         "total_validated_rows": 2,
+        "total_rows": 2,
+        "selected_count": 2,
+        "imported_count": 2,
+        "not_selected_count": 0,
     }
     serialized_audit = str(list(AuditEvent.objects.values_list("metadata", flat=True)))
     assert "student.one@example.edu" not in serialized_audit
@@ -754,3 +769,167 @@ def test_csv_placement_failure_rolls_back_whole_batch(monkeypatch):
     assert not StudentAcademicProfile.objects.exists()
     assert not AuditEvent.objects.filter(action="account.created").exists()
     assert not AuditEvent.objects.filter(action="account.csv_imported").exists()
+
+
+@pytest.mark.django_db
+def test_csv_selection_ignores_problem_rows_preserves_source_and_audits_counts():
+    sync_policy()
+    client, admin = admin_client()
+    content = VALID_CSV + b'BAD,not-an-email,"A, B",User,STUDENT,,\n'
+    preview = upload(client, content, dry_run=True).json()
+    assert preview["file_hash"] == hashlib.sha256(content).hexdigest()
+    assert preview["headers"] == [
+        "institutional_id",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "middle_name",
+        "suffix",
+    ]
+    assert preview["rows"][2]["values"] == [
+        "BAD",
+        "not-an-email",
+        "A, B",
+        "User",
+        "STUDENT",
+        "",
+        "",
+    ]
+    assert preview["rows"][2]["action"] == "INVALID"
+    result = upload(
+        client, content, dry_run=False, selected_rows=[2], file_hash=preview["file_hash"]
+    )
+    assert result.status_code == 200
+    assert result.json()["create_count"] == 1
+    assert result.json()["selected_count"] == 1
+    assert result.json()["not_selected_count"] == 2
+    assert not User.objects.filter(email="officer.one@example.edu").exists()
+    summary = AuditEvent.objects.get(action="account.csv_imported", actor_user=admin)
+    assert {
+        key: summary.metadata[key]
+        for key in [
+            "total_rows",
+            "selected_count",
+            "imported_count",
+            "skipped_count",
+            "not_selected_count",
+        ]
+    } == {
+        "total_rows": 3,
+        "selected_count": 1,
+        "imported_count": 1,
+        "skipped_count": 0,
+        "not_selected_count": 2,
+    }
+
+
+@pytest.mark.django_db
+def test_csv_selected_row_rechecked_after_preview_and_selection_is_atomic():
+    sync_policy()
+    client, _ = admin_client()
+    preview = upload(client, VALID_CSV, dry_run=True).json()
+    make_user(
+        email="officer.one@example.edu",
+        institutional_id="EMP-CSV-201",
+        role="INSTITUTIONAL_OFFICER",
+        active=False,
+    )
+    response = upload(
+        client, VALID_CSV, dry_run=False, selected_rows=[2, 3], file_hash=preview["file_hash"]
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["details"][0]["row_number"] == 3
+    assert not User.objects.filter(email="student.one@example.edu").exists()
+    assert not AuditEvent.objects.filter(action="account.csv_imported").exists()
+
+
+@pytest.mark.django_db
+def test_csv_selected_placement_invalidated_after_preview_rolls_back_all_accounts():
+    sync_policy()
+    client, _ = admin_client()
+    _, college = make_campus_with_college()
+    content = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-ONE,one@example.edu,One,Student,STUDENT,,\n"
+        b"UCN-TWO,two@example.edu,Two,Student,STUDENT,MAIN,CCMS\n"
+    )
+    preview = upload(client, content, dry_run=True).json()
+    college.is_active = False
+    college.save(update_fields=["is_active"])
+    response = upload(
+        client, content, dry_run=False, selected_rows=[2, 3], file_hash=preview["file_hash"]
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["details"][0]["row_number"] == 3
+    assert not User.objects.filter(email__in=["one@example.edu", "two@example.edu"]).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "file_hash,code",
+    [
+        (None, "csv_import_preview_required"),
+        ("0" * 64, "csv_import_file_mismatch"),
+        ("é", "csv_import_file_mismatch"),
+    ],
+)
+def test_csv_commit_requires_matching_file_hash(file_hash, code):
+    sync_policy()
+    client, _ = admin_client()
+    response = upload(client, VALID_CSV, dry_run=False, selected_rows=[2], file_hash=file_hash)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == code
+    assert not User.objects.filter(email="student.one@example.edu").exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("selected_rows", [[2, 2], [1], [999], [True], [2.0], ["2"]])
+def test_csv_rejects_invalid_selection_without_writes(selected_rows):
+    sync_policy()
+    client, _ = admin_client()
+    response = upload(client, VALID_CSV, dry_run=False, selected_rows=selected_rows)
+    assert response.status_code == 422
+    assert not User.objects.filter(email="student.one@example.edu").exists()
+
+
+@pytest.mark.django_db
+def test_csv_empty_selection_is_not_omission_and_identical_selected_accounts_skip():
+    sync_policy()
+    client, _ = admin_client()
+    assert upload(client, VALID_CSV, dry_run=False, selected_rows=[]).json()["create_count"] == 0
+    assert not User.objects.filter(email="student.one@example.edu").exists()
+    assert upload(client, VALID_CSV, dry_run=False, selected_rows=[2]).status_code == 200
+    result = upload(client, VALID_CSV, dry_run=False, selected_rows=[2]).json()
+    assert result["create_count"] == 0
+    assert result["skip_count"] == 1
+    event = AuditEvent.objects.filter(action="account.csv_imported").latest("occurred_at")
+    assert event.metadata["selected_count"] == event.metadata["skipped_count"] == 1
+
+
+@pytest.mark.django_db
+def test_csv_selection_keeps_mfa_and_management_permission_required():
+    sync_policy()
+    client, admin = admin_client(recent_mfa=False)
+    assert upload(client, VALID_CSV, dry_run=False, selected_rows=[2]).status_code == 403
+    admin.role = Role.objects.get(code="STUDENT")
+    admin.save(update_fields=["role"])
+    assert upload(client, VALID_CSV, dry_run=False, selected_rows=[2]).status_code == 403
+    assert not User.objects.filter(email="student.one@example.edu").exists()
+
+
+@pytest.mark.django_db
+def test_corrected_account_download_can_be_reuploaded_with_problem_column_ignored():
+    sync_policy()
+    client, _ = admin_client()
+    content = (
+        b"institutional_id,email,first_name,last_name,role,problem\n"
+        b"UCN-RETRY,retry@example.edu,Retry,Student,STUDENT,old explanation\n"
+    )
+    preview = upload(client, content, dry_run=True).json()
+    response = upload(
+        client, content, dry_run=False, selected_rows=[2], file_hash=preview["file_hash"]
+    )
+    assert response.status_code == 200
+    assert User.objects.filter(email="retry@example.edu").exists()
+    assert "old explanation" not in str(list(AuditEvent.objects.values_list("metadata", flat=True)))

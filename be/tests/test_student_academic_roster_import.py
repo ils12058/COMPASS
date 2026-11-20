@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from unittest.mock import patch
 
 import pytest
@@ -90,10 +92,19 @@ def upload(
     *,
     dry_run: bool,
     name: str = "roster.csv",
+    selected_rows=None,
+    file_hash="auto",
 ):
+    data = {"file": SimpleUploadedFile(name, content, content_type="text/csv")}
+    if file_hash is not None:
+        data["file_hash"] = (
+            hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
+        )
+    if selected_rows is not None:
+        data["selected_rows"] = json.dumps(selected_rows)
     return client.post(
         f"{BASE}/imports/csv?dry_run={'true' if dry_run else 'false'}",
-        data={"file": SimpleUploadedFile(name, content, content_type="text/csv")},
+        data=data,
         **csrf(client),
     )
 
@@ -664,6 +675,10 @@ def test_commit_sets_placement_audits_each_set_row_and_one_summary():
         "total_rows": 3,
         "set_count": 2,
         "noop_count": 1,
+        "selected_count": 3,
+        "imported_count": 2,
+        "skipped_count": 1,
+        "not_selected_count": 0,
     }
     serialized = str(
         list(
@@ -833,3 +848,110 @@ def test_commit_never_creates_accounts_or_clears_missing_rows():
     assert not User.objects.filter(institutional_id="UCN-NOT-IN-CSV").exists()
     assert StudentAcademicProfile.objects.get(student=listed).current_college_id == ccms.pk
     assert StudentAcademicProfile.objects.get(student=unlisted).current_college_id == cea.pk
+
+
+@pytest.mark.django_db
+def test_roster_selection_skips_unselected_problems_and_records_counts():
+    sync_policy()
+    client, _ = admin_client()
+    _, college = make_campus_with_college()
+    first, second = make_user("UCN-ONE"), make_user("UCN-TWO")
+    content = roster_csv(
+        "UCN-ONE,MAIN,CCMS", "UCN-TWO,MAIN,CCMS", ",MAIN,CCMS", "MISSING,MAIN,CCMS"
+    )
+    preview = upload(client, content, dry_run=True).json()
+    assert preview["rows"][2]["values"] == ["", "MAIN", "CCMS"]
+    result = upload(
+        client, content, dry_run=False, selected_rows=[2], file_hash=preview["file_hash"]
+    )
+    assert result.status_code == 200
+    assert result.json()["not_selected_count"] == 3
+    assert StudentAcademicProfile.objects.get(student=first).current_college_id == college.pk
+    assert not StudentAcademicProfile.objects.filter(student=second).exists()
+    assert AuditEvent.objects.get(action="student_academics.roster.imported").metadata == {
+        "total_rows": 4,
+        "selected_count": 1,
+        "imported_count": 1,
+        "skipped_count": 0,
+        "not_selected_count": 3,
+        "set_count": 1,
+        "noop_count": 0,
+    }
+
+
+@pytest.mark.django_db
+def test_roster_selected_conflict_after_preview_prevents_all_placement_writes():
+    sync_policy()
+    client, _ = admin_client()
+    make_campus_with_college()
+    first, second = make_user("UCN-ONE"), make_user("UCN-TWO")
+    content = roster_csv("UCN-ONE,MAIN,CCMS", "UCN-TWO,MAIN,CCMS")
+    preview = upload(client, content, dry_run=True).json()
+    second.is_active = False
+    second.save(update_fields=["is_active"])
+    response = upload(
+        client, content, dry_run=False, selected_rows=[2, 3], file_hash=preview["file_hash"]
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["details"][0]["row_number"] == 3
+    assert not StudentAcademicProfile.objects.filter(student=first).exists()
+    assert not academic_audits().exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "file_hash,code",
+    [(None, "csv_import_preview_required"), ("0" * 64, "csv_import_file_mismatch")],
+)
+def test_roster_selection_requires_same_file(file_hash, code):
+    sync_policy()
+    client, _ = admin_client()
+    make_campus_with_college()
+    student = make_user("UCN-ONE")
+    response = upload(
+        client,
+        roster_csv("UCN-ONE,MAIN,CCMS"),
+        dry_run=False,
+        selected_rows=[2],
+        file_hash=file_hash,
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == code
+    assert not StudentAcademicProfile.objects.filter(student=student).exists()
+
+
+@pytest.mark.django_db
+def test_roster_selection_keeps_mfa_and_permission_required_and_empty_means_no_writes():
+    sync_policy()
+    make_campus_with_college()
+    student = make_user("UCN-ONE")
+    content = roster_csv("UCN-ONE,MAIN,CCMS")
+    client, admin = admin_client(recent_mfa=False)
+    assert upload(client, content, dry_run=False, selected_rows=[2]).status_code == 403
+    assert (
+        upload(auth_client(student), content, dry_run=False, selected_rows=[2]).status_code == 403
+    )
+    response = upload(auth_client(admin), content, dry_run=False, selected_rows=[])
+    assert response.status_code == 200
+    assert response.json()["set_count"] == 0
+    assert not StudentAcademicProfile.objects.filter(student=student).exists()
+    event = AuditEvent.objects.get(action="student_academics.roster.imported")
+    assert event.metadata["selected_count"] == 0
+    assert event.metadata["not_selected_count"] == 1
+
+
+@pytest.mark.django_db
+def test_corrected_roster_download_ignores_problem_note():
+    sync_policy()
+    client, _ = admin_client()
+    _, college = make_campus_with_college()
+    student = make_user("UCN-RETRY")
+    content = (
+        b"institutional_id,campus_code,college_code,problem\nUCN-RETRY,MAIN,CCMS,old explanation\n"
+    )
+    preview = upload(client, content, dry_run=True).json()
+    response = upload(
+        client, content, dry_run=False, selected_rows=[2], file_hash=preview["file_hash"]
+    )
+    assert response.status_code == 200
+    assert StudentAcademicProfile.objects.get(student=student).current_college_id == college.pk

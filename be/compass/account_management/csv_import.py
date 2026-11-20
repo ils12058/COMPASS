@@ -16,6 +16,7 @@ from compass.audit.actions import ACCOUNT_CREATED, ACCOUNT_CSV_IMPORTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.csv_selection import require_file_hash, selected_row_numbers, selection_counts
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import FacultyAffiliation
 from compass.student_academics.services import StudentAcademicError, set_current_placement
@@ -39,7 +40,7 @@ MAX_CSV_BYTES = 1_048_576
 MAX_CSV_ROWS = 1_000
 REQUIRED_HEADERS = frozenset({"institutional_id", "email", "first_name", "last_name", "role"})
 OPTIONAL_HEADERS = frozenset(
-    {"middle_name", "suffix", "faculty_college_id", "campus_code", "college_code"}
+    {"middle_name", "suffix", "faculty_college_id", "campus_code", "college_code", "problem"}
 )
 ALLOWED_HEADERS = REQUIRED_HEADERS | OPTIONAL_HEADERS
 
@@ -64,7 +65,9 @@ class CsvImportInvalidRows(CsvImportError):
     """One or more rows contain invalid account-provisioning values."""
 
     def __init__(self, issues: tuple[CsvImportIssue, ...]) -> None:
-        super().__init__("one or more CSV rows are invalid")
+        super().__init__(
+            "Some selected rows have problems. Validate the CSV again. Nothing was imported."
+        )
         self.issues = issues
 
 
@@ -76,7 +79,10 @@ class CsvImportConflict(CsvImportError):
     """One or more rows conflict with existing institutional account state."""
 
     def __init__(self, rows: tuple[CsvImportRowResult, ...]) -> None:
-        super().__init__("one or more CSV rows conflict with existing account state")
+        super().__init__(
+            "Some selected rows conflict with account records. "
+            "Validate the CSV again. Nothing was imported."
+        )
         self.rows = rows
 
 
@@ -450,6 +456,8 @@ def provision_accounts_from_csv(
     context: AuditContext,
     data: bytes,
     dry_run: bool,
+    selected_rows: list[int] | None = None,
+    file_hash: str | None = None,
 ) -> CsvImportReport:
     parsed = _parse_csv(data)
     placement_requested = any(row.student_college_id is not None for row in parsed.rows)
@@ -463,17 +471,26 @@ def provision_accounts_from_csv(
             classified = _classify_rows(parsed.rows, lock_existing=False)
         return _report(parsed, classified, committed=False)
 
-    if parsed.issues:
-        if any(issue.code == "duplicate_identity" for issue in parsed.issues):
-            raise CsvImportDuplicateIdentity(parsed.issues)
-        raise CsvImportInvalidRows(parsed.issues)
-
+    require_file_hash(data, file_hash)
     with transaction.atomic():
         _lock_management_mutex()
         locked_actor, _target = _lock_users(actor_id=actor.pk)
         _assert_manager(locked_actor)
         _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+        # Resolve catalog-dependent values again while holding the existing write gates.
+        parsed = _parse_csv(data)
+        selected = selected_row_numbers(parsed.rows, parsed.issues, selected_rows)
+        parsed = ParsedCsv(
+            rows=tuple(row for row in parsed.rows if row.row_number in selected),
+            issues=tuple(issue for issue in parsed.issues if issue.row_number in selected),
+            total_rows=parsed.total_rows,
+        )
+        placement_requested = any(row.student_college_id is not None for row in parsed.rows)
         _assert_academic_placement_authorized(locked_actor, requested=placement_requested)
+        if parsed.issues:
+            if any(issue.code == "duplicate_identity" for issue in parsed.issues):
+                raise CsvImportDuplicateIdentity(parsed.issues)
+            raise CsvImportInvalidRows(parsed.issues)
 
         classified = _classify_rows(parsed.rows, lock_existing=True)
         conflicts = tuple(item for item in classified if item.action == "CONFLICT")
@@ -567,8 +584,13 @@ def provision_accounts_from_csv(
             outcome=AuditOutcome.SUCCESS,
             metadata={
                 "created_count": create_count,
-                "skipped_count": skip_count,
                 "total_validated_rows": parsed.total_rows,
+                **selection_counts(
+                    total=parsed.total_rows,
+                    selected=len(selected),
+                    imported=create_count,
+                    skipped=skip_count,
+                ),
             },
         )
 

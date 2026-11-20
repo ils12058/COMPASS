@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
+import { csvProblemMessage } from "@/features/csv-import/csv-selection";
 import { dataTable } from "@/components/ui/data-table";
 import { Label } from "@/components/ui/label";
 import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
@@ -46,7 +46,7 @@ export function CsvTemplateLink({ fileName, template }: { fileName: string; temp
   );
 }
 
-export function CsvFileField({ id, onChange }: { id: string; onChange: (file: File | null) => void }) {
+export function CsvFileField({ id, onChange, disabled = false }: { id: string; onChange: (file: File | null) => void; disabled?: boolean }) {
   return (
     <div className="grid max-w-lg gap-1.5">
       <Label htmlFor={id}>CSV file</Label>
@@ -54,6 +54,7 @@ export function CsvFileField({ id, onChange }: { id: string; onChange: (file: Fi
         id={id}
         className="block w-full text-sm text-ink file:mr-4 file:rounded-md file:border file:border-border file:bg-surface-raised file:px-3 file:py-2 file:text-sm file:font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         type="file"
+        disabled={disabled}
         accept=".csv,text/csv"
         onChange={(event) => onChange(event.target.files?.[0] ?? null)}
       />
@@ -91,46 +92,7 @@ export function ImportIssuesTable({ issues, label }: { issues: RosterIssue[]; la
             <tr key={`${issue.row ?? index}-${index}`} className={dataTable.row}>
               <td className={dataTable.cell}>{issue.row ?? "—"}</td>
               <td className={dataTable.cell}>{issue.institutionalId || "—"}</td>
-              <td className={dataTable.cell}>{issue.message}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** One preview row table; each import supplies its own columns. */
-export function ImportRowsTable<Row>({
-  caption,
-  columns,
-  rows,
-  rowKey,
-}: {
-  caption: string;
-  columns: Array<{ header: string; cell: (row: Row) => ReactNode; strong?: boolean }>;
-  rows: Row[];
-  rowKey: (row: Row) => string;
-}) {
-  return (
-    <div className={dataTable.scroll}>
-      <table className={`${dataTable.table} min-w-[56rem]`}>
-        <caption className="sr-only">{caption}</caption>
-        <thead className={dataTable.head}>
-          <tr>
-            {columns.map((column) => (
-              <th key={column.header} scope="col" className={dataTable.headerCell}>{column.header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className={dataTable.body}>
-          {rows.map((row) => (
-            <tr key={rowKey(row)} className={dataTable.row}>
-              {columns.map((column) => (
-                <td key={column.header} className={column.strong ? `${dataTable.cell} font-semibold` : dataTable.cell}>
-                  {column.cell(row)}
-                </td>
-              ))}
+              <td className={dataTable.cell}>{csvProblemMessage(issue.message)}</td>
             </tr>
           ))}
         </tbody>

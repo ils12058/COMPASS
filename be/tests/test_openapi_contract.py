@@ -3879,3 +3879,33 @@ def test_referral_urgency_contract_is_separate_versioned_and_backward_compatible
         assert schemas[name]["properties"]["is_urgent"]["default"] is False
         assert "is_urgent" not in schemas[name]["required"]
     assert schemas["NotificationTargetType"]["enum"].count("REFERRAL") == 1
+
+
+def test_csv_selection_contract_preserves_empty_selection_and_original_download_columns():
+    schema = api.get_openapi_schema()
+    schemas = schema["components"]["schemas"]
+    operations = {
+        operation["operationId"]: operation for _, _, operation in iter_operations(schema)
+    }
+    for name in [
+        "accountsImportCsv",
+        "studentAcademicsImportRosterCsv",
+        "studentAcademicsImportPeriodsCsv",
+        "studentAcademicsImportGraduationsCsv",
+    ]:
+        body = operations[name]["requestBody"]["content"]["multipart/form-data"]["schema"]
+        body_schema = body
+        selection = body_schema["properties"]["selected_rows"]["anyOf"][0]
+        assert selection["contentMediaType"] == "application/json"
+        assert selection["contentSchema"]["type"] == "array"
+        assert selection["contentSchema"]["items"]["type"] == "integer"
+        assert "selected_rows" not in body_schema["required"]
+        assert "file_hash" in body_schema["properties"]
+    for prefix in ["CsvImport", "RosterImport", "PeriodImport", "GraduationImport"]:
+        report = schemas[f"{prefix}Response"]
+        assert {"file_hash", "headers", "selected_count", "not_selected_count"} <= set(
+            report["required"]
+        )
+        row = schemas[f"{prefix}RowResponse"]
+        assert row["properties"]["values"]["items"]["type"] == "string"
+        assert "values" in row["required"]

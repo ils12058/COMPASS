@@ -6,12 +6,16 @@ from datetime import date, datetime
 from typing import NoReturn
 from uuid import UUID
 
+from django.db import transaction
 from ninja import File, Form, Router
 from ninja.files import UploadedFile
+from pydantic import Json, StrictInt
 
+from compass.account_management.services import _lock_management_mutex, _lock_users
 from compass.accounts.models import StudentLifecycleStatus
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
+from compass.common.csv_selection import CsvSelectionError, source_payload
 from compass.common.errors import APIError
 from compass.organization.academic_years_api import AcademicYearResponse
 from compass.organization.api import (
@@ -24,6 +28,7 @@ from compass.organization.api import (
     _person,
     _require,
 )
+from compass.organization.integrity import catalog_gate
 from compass.student_academics.batch_import import (
     BatchImportConfirmationMismatch,
     BatchImportPreviewRequired,
@@ -128,6 +133,7 @@ class StudentAcademicRecordResponse(StrictSchema):
 
 
 class RosterImportRowResponse(StrictSchema):
+    values: list[str]
     row_number: int
     institutional_id: str
     student_id: UUID | None
@@ -140,6 +146,10 @@ class RosterImportRowResponse(StrictSchema):
 
 
 class RosterImportResponse(StrictSchema):
+    file_hash: str
+    headers: list[str]
+    selected_count: int
+    not_selected_count: int
     valid: bool
     committed: bool
     total_rows: int
@@ -151,6 +161,7 @@ class RosterImportResponse(StrictSchema):
 
 
 class PeriodImportRowResponse(StrictSchema):
+    values: list[str]
     row_number: int
     institutional_id: str
     student_id: UUID | None
@@ -167,6 +178,10 @@ class PeriodImportRowResponse(StrictSchema):
 
 
 class PeriodImportResponse(StrictSchema):
+    file_hash: str
+    headers: list[str]
+    selected_count: int
+    not_selected_count: int
     valid: bool
     committed: bool
     total_rows: int
@@ -180,6 +195,7 @@ class PeriodImportResponse(StrictSchema):
 
 
 class GraduationImportRowResponse(StrictSchema):
+    values: list[str]
     row_number: int
     institutional_id: str
     student_id: UUID | None
@@ -198,6 +214,10 @@ class GraduationImportRowResponse(StrictSchema):
 
 
 class GraduationImportResponse(StrictSchema):
+    file_hash: str
+    headers: list[str]
+    selected_count: int
+    not_selected_count: int
     valid: bool
     committed: bool
     total_rows: int
@@ -479,16 +499,25 @@ def graduation_record(request, student_id: UUID, payload: GraduationRecordReques
 def roster_csv_import(
     request,
     file: File[UploadedFile],
+    selected_rows: Form[Json[list[StrictInt]] | None] = None,
+    file_hash: Form[str | None] = None,
     dry_run: bool = True,
 ):
     _require(request, "student_academics.import", recent_mfa=True)
     data = file.read(MAX_CSV_BYTES + 1)
     try:
-        report = import_student_academic_roster(
-            context=_context(request),
-            data=data,
-            dry_run=dry_run,
+        report = _authorized_csv_import(
+            request,
+            lambda: import_student_academic_roster(
+                context=_context(request),
+                data=data,
+                dry_run=dry_run,
+                selected_rows=selected_rows,
+                file_hash=file_hash,
+            ),
         )
+    except CsvSelectionError as exc:
+        raise APIError(422, exc.code, str(exc)) from exc
     except RosterImportTooLarge as exc:
         raise APIError(422, "csv_import_too_large", str(exc)) from exc
     except RosterImportUnsupportedHeaders as exc:
@@ -523,7 +552,17 @@ def roster_csv_import(
                 for row in exc.rows
             ],
         ) from exc
-    return _roster_report_payload(report)
+    return source_payload(report, data, _roster_report_payload(report))
+
+
+def _authorized_csv_import(request, run):
+    # The catalog gate precedes account/domain locks. Recheck authority under the same mutex
+    # used by access changes, so a queued import cannot use authority revoked after the request.
+    with catalog_gate(), transaction.atomic():
+        _lock_management_mutex()
+        request.auth_user, _ = _lock_users(actor_id=request.auth_user.pk)
+        _require(request, "student_academics.import", recent_mfa=True)
+        return run()
 
 
 def _batch_report(report) -> dict[str, object]:
@@ -536,13 +575,16 @@ def _batch_report(report) -> dict[str, object]:
     return payload
 
 
-def _run_batch_import(run):
+def _run_batch_import(request, run, data: bytes):
     """Map the shared CSV import failures onto the roster import's stable error codes."""
 
     try:
-        return _batch_report(run())
+        report = _authorized_csv_import(request, run)
+        return source_payload(report, data, _batch_report(report))
     except StudentAcademicError as exc:
         _raise(exc)
+    except CsvSelectionError as exc:
+        raise APIError(422, exc.code, str(exc)) from exc
     except RosterImportTooLarge as exc:
         raise APIError(422, "csv_import_too_large", str(exc)) from exc
     except RosterImportUnsupportedHeaders as exc:
@@ -565,7 +607,19 @@ def _run_batch_import(run):
     except BatchImportConfirmationMismatch as exc:
         raise APIError(422, "csv_import_confirmation_mismatch", str(exc)) from exc
     except BatchImportStale as exc:
-        raise APIError(409, "csv_import_stale", str(exc)) from exc
+        raise APIError(
+            409,
+            "csv_import_stale",
+            str(exc),
+            details=[
+                {
+                    "row_number": row.row_number,
+                    "institutional_id": row.institutional_id,
+                    "message": "This row changed after the preview. Validate the CSV again.",
+                }
+                for row in exc.rows
+            ],
+        ) from exc
     except RosterImportConflict as exc:
         raise APIError(
             409,
@@ -594,20 +648,26 @@ def periods_csv_import(
     file: File[UploadedFile],
     academic_year_id: Form[UUID],
     term: Form[AcademicTerm],
+    selected_rows: Form[Json[list[StrictInt]] | None] = None,
+    file_hash: Form[str | None] = None,
     preview_fingerprint: Form[str | None] = None,
     dry_run: bool = True,
 ):
     _require(request, "student_academics.import", recent_mfa=True)
     data = file.read(MAX_CSV_BYTES + 1)
     return _run_batch_import(
+        request,
         lambda: import_student_academic_periods(
             context=_context(request),
             data=data,
             academic_year_id=academic_year_id,
             term=term,
             dry_run=dry_run,
+            selected_rows=selected_rows,
+            file_hash=file_hash,
             preview_fingerprint=preview_fingerprint,
-        )
+        ),
+        data,
     )
 
 
@@ -622,6 +682,8 @@ def graduations_csv_import(
     request,
     file: File[UploadedFile],
     verification_source: Form[str],
+    selected_rows: Form[Json[list[StrictInt]] | None] = None,
+    file_hash: Form[str | None] = None,
     preview_fingerprint: Form[str | None] = None,
     confirmed_count: Form[int | None] = None,
     dry_run: bool = True,
@@ -629,12 +691,16 @@ def graduations_csv_import(
     _require(request, "student_academics.import", recent_mfa=True)
     data = file.read(MAX_CSV_BYTES + 1)
     return _run_batch_import(
+        request,
         lambda: import_student_graduations(
             context=_context(request),
             data=data,
             verification_source=verification_source,
             dry_run=dry_run,
+            selected_rows=selected_rows,
+            file_hash=file_hash,
             preview_fingerprint=preview_fingerprint,
             confirmed_count=confirmed_count,
-        )
+        ),
+        data,
     )
