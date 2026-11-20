@@ -1,2 +1,11 @@
-<p>An urgent referral needs attention</p>
-{% if action_url %}<p><a href="{{ action_url }}">View referral</a></p>{% endif %}
+{% extends "compass/email/base.html" %}
+{% block preheader %}An urgent referral needs attention.{% endblock %}
+{% block heading %}Urgent referral{% endblock %}
+{% block content %}
+<p>An urgent referral needs attention.</p>
+{% if action_url %}
+<p><a href="{{ action_url }}" style="display:inline-block;padding:12px 20px;border:1px solid #6b1f2a;color:#6b1f2a;text-decoration:none;font-weight:600;">View referral</a></p>
+{% else %}
+<p>Sign in to COMPASS to review the referral.</p>
+{% endif %}
+{% endblock %}

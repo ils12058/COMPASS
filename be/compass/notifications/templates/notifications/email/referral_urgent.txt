@@ -1,3 +1,5 @@
-An urgent referral needs attention
+{% extends "compass/email/base.txt" %}
+{% block content %}An urgent referral needs attention.
 
-{% if action_url %}{{ action_url }}{% endif %}
+{% if action_url %}View referral: {{ action_url }}{% else %}Sign in to COMPASS to review the referral.{% endif %}
+{% endblock %}

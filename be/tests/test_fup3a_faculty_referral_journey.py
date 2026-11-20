@@ -44,6 +44,7 @@ FACULTY_ITEM_KEYS = {
     "student",
     "received_at",
     "closed_at",
+    "is_urgent",
 }
 FOLLOWUP_FIELD_NAMES = {
     "followup",
@@ -194,6 +195,7 @@ def assert_faculty_projection(client, referral_id, state):
     for item in page["items"]:
         assert set(item) == FACULTY_ITEM_KEYS | {"timing_status"}
         assert item["timing_status"] == "NOT_PROVIDED"
+        assert item["is_urgent"] is False
         assert not {"scheduling_statement", "verifications", "note", "reason"}.intersection(item)
         assert set(item["student"]) == {"display_name"}
         assert not nested_keys(item) & FOLLOWUP_FIELD_NAMES
@@ -202,6 +204,7 @@ def assert_faculty_projection(client, referral_id, state):
     assert detail.status_code == 200
     assert set(detail.json()) == FACULTY_ITEM_KEYS | {"timing_status", "scheduling_statement"}
     assert detail.json()["timing_status"] == "NOT_PROVIDED"
+    assert detail.json()["is_urgent"] is False
     assert detail.json()["scheduling_statement"] is None
     assert not {"verifications", "note", "reason"}.intersection(detail.json())
     assert set(detail.json()["student"]) == {"display_name"}

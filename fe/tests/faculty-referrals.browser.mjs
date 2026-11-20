@@ -197,7 +197,8 @@ await check("safe-own-detail-404-never-probes-internal-record", `${root}/${recor
   await shown(page.getByText("This Referral is not available. Return to My Referrals.", { exact: true }));
   assert.equal(observed.requests.some(r => r.pathname.startsWith("/api/v1/referrals")), false);
 });
-await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fixture().handler }, async page => {
+const keyboardSubmission = fixture();
+await check("keyboard-only-confirm-review-submit", root + "/new", { handler: keyboardSubmission.handler }, async page => {
   const input = page.getByLabel("Student institutional ID");
   await input.focus();
   await page.keyboard.type("SYNTHETIC-EXACT-ID");
@@ -210,6 +211,11 @@ await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fix
   await page.keyboard.press(tabKey);
   await page.keyboard.type("Synthetic relevant observations");
   await page.keyboard.press(tabKey);
+  const urgency = page.getByRole("checkbox", { name: "This concern is urgent", exact: true });
+  assert.equal(await urgency.evaluate(e => e === document.activeElement), true);
+  await page.keyboard.press("Space");
+  assert.equal(await urgency.isChecked(), true);
+  await page.keyboard.press(tabKey);
   assert.equal(await page.getByRole("radio", { name: "Known times", exact: true }).evaluate(e => e === document.activeElement), true);
   await page.keyboard.press("ArrowRight");
   assert.equal(await page.getByRole("radio", { name: "Unknown / needs confirmation", exact: true }).isChecked(), true);
@@ -217,9 +223,12 @@ await check("keyboard-only-confirm-review-submit", root + "/new", { handler: fix
   assert.equal(await page.getByRole("button", { name: "Review Referral", exact: true }).evaluate(e => e === document.activeElement), true);
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.activeElement?.id === "faculty-review-heading");
+  await shown(page.getByText("Urgent", { exact: true }));
   await page.keyboard.press(tabKey);
   await page.keyboard.press("Enter");
   await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
+  assert.equal(keyboardSubmission.calls.length, 1);
+  assert.equal(JSON.parse(keyboardSubmission.calls[0].body).is_urgent, true);
 });
 await check("own-list-policy-denial-hides-protected-results", root, { handler: fixture({ listError: 403 }).handler }, async page => {
   await shown(page.getByText("You don't have access to your submitted Referrals.", { exact: true }));

@@ -29,7 +29,7 @@ def test_faculty_and_student_http_payloads_are_identical_through_closure_and_reo
     settings.COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS = (Fernet.generate_key().decode(),)
     w = make_world(monkeypatch)
     create_counseling_service(w.admin)
-    submitted, _ = submit(w)
+    submitted, _ = submit(w, is_urgent=True)
     referral = Referral.objects.get(pk=submitted["id"])
     session = record(w.counselor, w.student)
     put_assigned_student_session_summary(
@@ -46,6 +46,7 @@ def test_faculty_and_student_http_payloads_are_identical_through_closure_and_reo
     before = student_client.get(student_path)
     assert before.status_code == 200, before.content
     before = before.json()
+    assert "is_urgent" not in json.dumps(before)
     faculty_before = faculty_services.get_own_submission(
         actor=w.faculty, actor_session=w.issued.session, referral_id=referral.pk
     )
@@ -77,10 +78,13 @@ def test_faculty_and_student_http_payloads_are_identical_through_closure_and_reo
         "student",
         "received_at",
         "closed_at",
+        # The referring Faculty member sees only their own referral's triage flag.
+        "is_urgent",
         # CW-5: the Faculty member's own immutable scheduling statement and its timing status.
         "scheduling_statement",
         "timing_status",
     }
+    assert faculty_after["is_urgent"] is True
     assert not any(
         text in json.dumps(faculty_after, default=str)
         for text in (

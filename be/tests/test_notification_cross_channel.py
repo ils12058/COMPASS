@@ -186,9 +186,11 @@ def test_suppressed_external_notice_keeps_truthful_in_app_history(request, setti
     assert mail.outbox == []
 
 
-def test_catalog_has_thirty_nine_events_and_sixteen_link_candidates():
-    assert len(NotificationEvent) == 39
+def test_catalog_has_forty_events_and_sixteen_disclosure_approved_link_candidates():
+    assert len(NotificationEvent) == 40
     assert len(APPROVED_EMAIL_EVENTS) == 16
+    # Urgent referrals use a content-free link, never an external-detail disclosure approval.
+    assert NotificationEvent.REFERRAL_URGENT not in APPROVED_EMAIL_EVENTS
     assert push_body_for("unrecognized.event") is None
     assert notification_email_route(NotificationEmailTarget("APPOINTMENT", str(uuid4())))
 
