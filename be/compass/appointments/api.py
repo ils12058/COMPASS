@@ -43,6 +43,7 @@ from .services import (
     AppointmentActionConsequenceCode,
     AppointmentCancellationConflict,
     AppointmentCancellationCutoffPassed,
+    AppointmentCounselorNotPermitted,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
     AppointmentCurrentStudentRequired,
@@ -358,6 +359,7 @@ class EligibleCounselorResponse(StrictSchema):
     profile_photo_url: str | None
     profile_photo_updated_at: datetime | None
     is_default: bool
+    is_head_approved: bool
 
 
 class EligibleCounselorListResponse(StrictSchema):
@@ -414,6 +416,8 @@ def _require_student_self_management(request) -> None:
 def _raise(exc: AppointmentError) -> NoReturn:
     if isinstance(exc, AppointmentCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
+    if isinstance(exc, AppointmentCounselorNotPermitted):
+        raise APIError(403, "appointment_counselor_not_permitted", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentInventoryRequired):
@@ -877,6 +881,7 @@ def appointments_list_eligible_counselors(
                 "display_name": row.user.get_full_name(),
                 **profile_photo_projection(row.user),
                 "is_default": row.is_default,
+                "is_head_approved": row.is_head_approved,
             }
             for row in rows
         ]

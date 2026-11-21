@@ -13,6 +13,7 @@ from pydantic import ConfigDict, Field
 from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.access import appointment_management_access_allowed
 from compass.appointments.services import (
+    AppointmentCounselorNotPermitted,
     AppointmentCurrentAcademicYearNotConfigured,
     AppointmentCurrentInventoryRequired,
     AppointmentCurrentStudentRequired,
@@ -260,6 +261,8 @@ def _raise_slot_error(exc: Exception) -> NoReturn:
         raise APIError(422, "slot_time_invalid", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentStudentRequired):
         raise APIError(403, "current_student_required", str(exc)) from exc
+    if isinstance(exc, AppointmentCounselorNotPermitted):
+        raise APIError(403, "appointment_counselor_not_permitted", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):
         raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
     if isinstance(exc, AppointmentCurrentInventoryRequired):

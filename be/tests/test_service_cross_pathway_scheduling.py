@@ -14,6 +14,7 @@ from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Role, User
+from compass.appointments.counselor_access_models import StudentCounselorApproval
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.appointments.services import (
     AppointmentNotSchedulable,
@@ -37,7 +38,7 @@ from compass.group_sessions.services import (
     register_student,
     update_group_session,
 )
-from compass.organization.models import StaffSupervision
+from compass.organization.models import Campus, College, CounselorResponsibility, StaffSupervision
 from compass.service_catalog.fixed_slots_services import (
     SlotConflictError,
     create_fixed_slot,
@@ -50,6 +51,7 @@ from compass.service_catalog.services import (
     set_service_active,
     update_service,
 )
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def _user(email: str, role_code: str) -> User:
@@ -97,6 +99,19 @@ def schedule_env(db):
             windows=[_weekly_window()],
             context=context,
         )
+    campus = Campus.objects.create(code="CORR1B_CAMP", name="Cross-Pathway Campus")
+    college_a = College.objects.create(campus=campus, code="CORR1B_COLA", name="College A")
+    college_b = College.objects.create(campus=campus, code="CORR1B_COLB", name="College B")
+    CounselorResponsibility.objects.create(college=college_a, counselor=counselor)
+    CounselorResponsibility.objects.create(college=college_b, counselor=counselor_b)
+    StudentAcademicProfile.objects.create(student=student, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
+    StudentCounselorApproval.objects.create(
+        student=student, counselor=counselor_b, approved_by=counselor
+    )
+    StudentCounselorApproval.objects.create(
+        student=student_b, counselor=counselor, approved_by=counselor
+    )
     service = create_service(
         code="CORR1B_CROSS_PATH",
         name="Cross-pathway Consultation and Workshops",

@@ -1,13 +1,15 @@
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { CounselorAboutButton } from "@/features/counselor-about/counselor-about-dialog";
 import type { EligibleCounselorResponse } from "@/lib/api/generated/model";
+import { counselorRelationshipLabel } from "./counselor-request-presentation";
 
 function CounselorIdentity({ counselor }: { counselor: EligibleCounselorResponse }) {
+  const relationship = counselorRelationshipLabel(counselor);
   return <>
     <PersonAvatar displayName={counselor.display_name} photoUrl={counselor.profile_photo_url} photoUpdatedAt={counselor.profile_photo_updated_at} />
     <span className="min-w-0 flex-1 basis-full text-sm leading-6 [overflow-wrap:anywhere] @min-[20rem]:basis-auto">
       <span className="block font-semibold text-ink">{counselor.display_name}</span>
-      {counselor.is_default ? <span className="block text-xs text-muted">Assigned to you</span> : null}
+      {relationship ? <span className="block text-xs text-muted">{relationship}</span> : null}
     </span>
   </>;
 }

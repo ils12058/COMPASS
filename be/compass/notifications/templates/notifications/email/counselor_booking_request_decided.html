@@ -1,0 +1,11 @@
+{% extends "compass/email/base.html" %}
+{% block preheader %}The Head Guidance Counselor updated your counselor request.{% endblock %}
+{% block heading %}Counselor request updated{% endblock %}
+{% block content %}
+<p>The Head Guidance Counselor updated your counselor request.</p>
+{% if action_url %}
+<p><a href="{{ action_url }}" style="display:inline-block;padding:12px 20px;border:1px solid #6b1f2a;color:#6b1f2a;text-decoration:none;font-weight:600;">Open Appointment booking</a></p>
+{% else %}
+<p>Sign in to COMPASS to view your available counselors.</p>
+{% endif %}
+{% endblock %}
