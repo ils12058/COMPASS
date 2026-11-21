@@ -86,14 +86,28 @@ export async function createBrowserHarness(suite) {
     // Route delivery has its own bounded budget; interactions keep the strict 12-second limit.
     page.setDefaultNavigationTimeout(30_000);
     const errors = [];
+    const cspConsole = [];
     const requests = [];
     const failedRequests = [];
     const navigation = [];
-    const fixture = { page, context, errors, requests, failedRequests, navigation };
+    const fixture = { page, context, errors, cspConsole, requests, failedRequests, navigation };
     pendingFixtures.add(fixture);
     // Diagnostics contain paths and error names only, never request bodies, query strings or URLs
     // embedded in provider errors. The in-memory requests remain available for exact assertions.
     page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+    // Keep CSP console diagnostics for header changes, including report-only violations. Redact
+    // URL/query details with the same diagnostic boundary used for runtime failures.
+    page.on("console", (message) => {
+      const text = message.text();
+      if (/content.security.policy/i.test(text)) {
+        cspConsole.push({
+          type: message.type(),
+          kind: /violat|refused|invalid source|could not be parsed/i.test(text) ? "violation" : "notice",
+          directive: text.match(/\b(?:default-src|script-src(?:-elem|-attr)?|style-src(?:-elem|-attr)?|img-src|font-src|connect-src|media-src|frame-src|worker-src|manifest-src|frame-ancestors|base-uri|form-action|object-src|upgrade-insecure-requests)\b/i)?.[0] ?? null,
+          diagnostic: diagnosticError(text),
+        });
+      }
+    });
     page.on("requestfailed", (request) => failedRequests.push({
       method: request.method(), url: diagnosticURL(request.url()), failure: request.failure()?.errorText?.split(":")[0],
     }));
@@ -180,7 +194,7 @@ export async function createBrowserHarness(suite) {
       fixture = await openPage(path, options);
       await run(fixture.page, fixture);
       assert.equal(fixture.errors.length, 0, `No browser runtime errors: ${JSON.stringify(fixture.errors.map(diagnosticError))}`);
-      results.push({ name, passed: true });
+      results.push({ name, passed: true, cspConsole: fixture.cspConsole });
       console.log(`PASS ${name}`);
     } catch (error) {
       failures.push(name);
@@ -190,6 +204,7 @@ export async function createBrowserHarness(suite) {
         readyState: await documentReadiness(fixture.page),
         navigation: fixture.navigation,
         errors: fixture.errors.map(diagnosticError),
+        cspConsole: fixture.cspConsole,
         failedRequests: fixture.failedRequests,
         requests: fixture.requests.map(({ method, pathname }) => ({ method, pathname })),
       } : {};
@@ -207,6 +222,8 @@ export async function createBrowserHarness(suite) {
     await browser.close();
     await writeFile(join(artifacts, "results.json"), `${JSON.stringify({ baseURL, engine, results }, null, 2)}\n`);
     console.log(`${results.length - failures.length}/${results.length} browser checks passed; artifacts: ${artifacts}`);
+    const policyEntries = results.flatMap((result) => result.cspConsole ?? []);
+    console.log(`CSP console violations: ${policyEntries.filter((entry) => entry.kind === "violation").length}; notices: ${policyEntries.filter((entry) => entry.kind === "notice").length} (see results.json)`);
     if (failures.length) process.exitCode = 1;
   }
 
