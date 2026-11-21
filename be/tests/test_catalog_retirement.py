@@ -1,9 +1,12 @@
 """Retirement acknowledgement, atomic cascades, retained work and active-only new references."""
 
 import json
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from compass.accounts.confidential_profile import (
     AccountProfileConfidentialContent,
@@ -13,6 +16,9 @@ from compass.accounts.models import Designation, UserDesignation
 from compass.accounts.services import projected_capabilities, set_user_capability_override
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
+from compass.counseling.case_coverage_models import CounselingCaseCoverage
+from compass.counseling.case_coverage_work import pending_coverage_work
+from compass.counseling.case_models import CounselingCase
 from compass.graduate_tracer import services as tracer
 from compass.guidance_followups import services as followups
 from compass.guidance_followups.recovery import recoverable_queryset
@@ -351,3 +357,89 @@ def test_reactivation_preserves_parent_and_program_policy_requirements(setup):
     for row in (c, k, p):
         row.refresh_from_db()
         assert row.is_active and row.is_retired is False and row.resource_version == 3
+
+
+@pytest.mark.parametrize("head", [False, True])
+def test_retired_college_keeps_bounded_coverage_work_and_independent_authority(setup, head):
+    auth, (_, college, _), _ = setup
+    owner, _ = manager("COUNSELOR", grant=False)
+    actor, _ = manager("COUNSELOR", grant=False)
+    other, _ = manager("COUNSELOR", grant=False)
+    authorizer, _ = manager("COUNSELOR", grant=False)
+    UserDesignation.objects.create(
+        user=authorizer, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    if head:
+        UserDesignation.objects.create(
+            user=actor, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+        )
+    now = timezone.now()
+
+    def arrangement(label, *, receiver=None, preparer=None, state="AUTHORIZED", **changes):
+        person = student()
+        StudentAcademicProfile.objects.create(student=person, current_college=college)
+        case = CounselingCase.objects.create(
+            reference_code=f"CAT-CASE-{label}",
+            student=person,
+            primary_counselor=owner,
+            opened_by=owner,
+            origin="INTAKE",
+        )
+        values = dict(
+            reference_code=f"CAT-COVER-{label}",
+            case=case,
+            primary_counselor=owner,
+            receiving_counselor=receiver or actor,
+            prepared_by=preparer or owner,
+            communication_recorded_by=owner,
+            reason="TEMPORARY_SUPPORT",
+            starts_at=now - timedelta(minutes=1),
+            expires_at=now + timedelta(days=2),
+            submitted_at=now - timedelta(minutes=1),
+            state=state,
+            authorized_by=authorizer if state == "AUTHORIZED" else None,
+            authorized_at=now if state == "AUTHORIZED" else None,
+            authorized_version=1 if state == "AUTHORIZED" else None,
+            authorization_route="INDEPENDENT_HEAD" if state == "AUTHORIZED" else "",
+            review_expires_at=now + timedelta(days=1) if state == "AUTHORIZED" else None,
+        )
+        values.update(changes)
+        return CounselingCaseCoverage.objects.create(**values)
+
+    incoming = arrangement("incoming")
+    independent = arrangement("independent", receiver=other, state="PREPARED")
+    arrangement("foreign", receiver=other)
+    arrangement("self-prepared", receiver=other, preparer=actor, state="PREPARED")
+    arrangement("self-receiving", state="PREPARED")
+    arrangement("expired", review_expires_at=now - timedelta(seconds=1))
+    arrangement("stale-authorization", authorized_version=2)
+    obsolete = arrangement("obsolete")
+    CounselingCase.objects.filter(pk=obsolete.case_id).update(primary_counselor=other)
+    closed = arrangement("closed")
+    CounselingCase.objects.filter(pk=closed.case_id).update(status="CLOSED")
+    expected = {incoming.pk} | ({independent.pk} if head else set())
+
+    for retired in (False, True):
+        if retired:
+            retire(auth, college, cascade=True)
+        # A small operational projection must finish without the detail selector's role joins.
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL statement_timeout = '5s'")
+        with CaptureQueriesContext(connection) as queries:
+            work = pending_coverage_work(actor=actor, limit=21, now=now)
+        assert {item.source_id for item in work} == expected
+        assert next(item for item in work if item.source_id == incoming.pk).kind.value == (
+            "CASE_COVERAGE_ACCEPTANCE"
+        )
+        if head:
+            assert next(item for item in work if item.source_id == independent.pk).kind.value == (
+                "CASE_COVERAGE_AUTHORIZATION"
+            )
+        projection = [
+            query["sql"]
+            for query in queries
+            if f'FROM "{CounselingCaseCoverage._meta.db_table}"' in query["sql"]
+            and '"review_expires_at" ASC' in query["sql"]
+        ]
+        assert len(projection) == 1
+        assert 'JOIN "accounts_role"' not in projection[0]
