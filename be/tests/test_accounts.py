@@ -151,7 +151,17 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 129
-    assert DesignationCapability.objects.count() == 21
+    assert DesignationCapability.objects.count() == 22
+    assert set(
+        DesignationCapability.objects.filter(
+            capability__code="organization.catalog.manage"
+        ).values_list("designation__code", flat=True)
+    ) == {"HEAD_GUIDANCE_COUNSELOR"}
+    assert set(
+        RoleCapability.objects.filter(capability__code="organization.catalog.manage").values_list(
+            "role__code", flat=True
+        )
+    ) == {"IT_ADMIN"}
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -164,7 +174,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert Designation.objects.count() == 2
     assert Capability.objects.count() == len(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 129
-    assert DesignationCapability.objects.count() == 21
+    assert DesignationCapability.objects.count() == 22
 
 
 @pytest.mark.django_db
@@ -280,6 +290,7 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "accounts.view",
         "accounts.manage",
         "organization.structure.view",
+        "organization.catalog.manage",
         "organization.manage",
         "academic_years.view",
         "academic_years.manage",

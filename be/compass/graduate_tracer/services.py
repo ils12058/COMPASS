@@ -22,6 +22,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.institutional_time import institution_day_start, institution_today
 from compass.common.ordering import parse_ordering
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import College, Program
 
 from .confidential_content import (
@@ -655,6 +656,7 @@ def _replace_children(
         model.objects.bulk_create(rows)
 
 
+@catalog_dependent_write
 def replace_my_draft(
     *,
     student: User,
@@ -691,6 +693,27 @@ def replace_my_draft(
         if item.status != GraduateTracerStatus.DRAFT:
             raise GraduateTracerConflict("A submitted Graduate Tracer response is immutable.")
 
+        # A retained graduation reference can still be edited; selecting a different
+        # definition for this draft requires an active complete ancestry.
+        college_id = normalized["graduated_college_id"]
+        program_id = normalized["graduated_program_id"]
+        if college_id is not None and college_id != item.graduated_college_id:
+            if not College.objects.filter(
+                pk=college_id, is_active=True, campus__is_active=True
+            ).exists():
+                raise InvalidGraduateTracerInput(
+                    "Choose an active college for a new graduation reference."
+                )
+        if program_id is not None and program_id != item.graduated_program_id:
+            if not Program.objects.filter(
+                pk=program_id,
+                is_active=True,
+                college__is_active=True,
+                college__campus__is_active=True,
+            ).exists():
+                raise InvalidGraduateTracerInput(
+                    "Choose an active program for a new graduation reference."
+                )
         read_private_projection(_queryset().get(pk=item.pk))
         private_names = FIELDS["GraduateTracerResponse"]
         write_confidential_content(item, {name: normalized[name] for name in private_names})
@@ -1041,12 +1064,14 @@ def list_submitted_for_head(
 
 def get_classification_options() -> tuple[tuple[College, ...], tuple[Program, ...]]:
     colleges = tuple(
-        College.objects.filter(is_active=True)
+        College.objects.filter(is_active=True, campus__is_active=True)
         .select_related("campus")
         .order_by("campus__code", "code")
     )
     programs = tuple(
-        Program.objects.filter(is_active=True, college__is_active=True)
+        Program.objects.filter(
+            is_active=True, college__is_active=True, college__campus__is_active=True
+        )
         .select_related("college__campus")
         .order_by("college__campus__code", "college__code", "code")
     )

@@ -240,8 +240,12 @@ jobs:
         run: uv run playwright install --with-deps --only-shell chromium
       # Daily provider traffic is fully mocked; CI must never contact Daily.co.
       - name: Backend tests
+        timeout-minutes: 30
         working-directory: be
         env:
+          # Surface stalled test transactions instead of waiting for the six-hour job limit.
+          PGOPTIONS: "-c lock_timeout=60s -c statement_timeout=180s"
+          PYTEST_ADDOPTS: "-o faulthandler_timeout=120"
           SELECTED_FILES: ${{ needs.prepare.outputs.files }}
           SHARD_INDEX: ${{ matrix.index }}
           SHARD_TOTAL: ${{ needs.prepare.outputs.shard_count }}

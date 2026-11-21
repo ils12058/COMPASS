@@ -8,6 +8,7 @@ from compass.accounts.models import UserDesignation
 from compass.accounts.services import is_current_student
 from compass.counseling.continuity_models import ContinuityReason
 from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.models import College
 from compass.student_academics.models import StudentAcademicProfile
 
@@ -66,9 +67,7 @@ def is_office_requester(actor):
 
 
 def active_college_ids():
-    return frozenset(
-        College.objects.filter(is_active=True, campus__is_active=True).values_list("pk", flat=True)
-    )
+    return frozenset(College.objects.filter(existing_college_q()).values_list("pk", flat=True))
 
 
 def office_college_ids(actor):
@@ -137,7 +136,9 @@ def student_placement_marker(student):
     if student is None or not is_current_student(student):
         raise ContinuityError("ineligible_student", 422)
     placement = (
-        StudentAcademicProfile.objects.filter(student_id=student.pk)
+        StudentAcademicProfile.objects.filter(
+            existing_college_q("current_college__"), student_id=student.pk
+        )
         .values(
             "current_college_id",
             "updated_at",
@@ -150,8 +151,6 @@ def student_placement_marker(student):
         not placement
         or placement["current_college_id"] is None
         or placement["current_college_id"] not in active_college_ids()
-        or not placement["current_college__is_active"]
-        or not placement["current_college__campus__is_active"]
     ):
         raise ContinuityError("ineligible_student", 422)
     return str(placement["current_college_id"]) + ":" + placement["updated_at"].isoformat()

@@ -49,6 +49,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import AcademicYear, College, Program
 from compass.organization.program_policy import get_program_policy
@@ -439,10 +440,9 @@ def _counselor_college_ids(actor: User) -> tuple[UUID, ...] | None:
 def _scoped_students(actor: User):
     college_ids = _counselor_college_ids(actor)
     queryset = User.objects.filter(
+        existing_college_q("student_academic_profile__current_college__"),
         is_active=True,
         role__code="STUDENT",
-        student_academic_profile__current_college__is_active=True,
-        student_academic_profile__current_college__campus__is_active=True,
     ).select_related("role", "student_academic_profile__current_college__campus")
     if college_ids is None:
         return queryset

@@ -29,7 +29,14 @@ from compass.organization.models import (
     Program,
 )
 from compass.student_academics.models import StudentAcademicProfile
-from tests.catalog_test_helpers import authority, client_for, hierarchy, manager, student
+from tests.catalog_test_helpers import (
+    authority,
+    client_for,
+    hierarchy,
+    manager,
+    retirement_preview,
+    student,
+)
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("inventory_psgc")]
 
@@ -49,7 +56,7 @@ def test_only_it_admin_has_a_baseline_catalog_grant(role):
     assert user.has_capability("organization.catalog.manage") is (role == "IT_ADMIN")
     baselines = (*ROLE_CAPABILITY_GRANTS.items(), *DESIGNATION_CAPABILITY_GRANTS.items())
     holders = {code for code, grants in baselines if "organization.catalog.manage" in grants}
-    assert holders == {"IT_ADMIN"}
+    assert holders == {"IT_ADMIN", "HEAD_GUIDANCE_COUNSELOR"}
     if role not in CATALOG_ELIGIBLE_ROLES:
         with pytest.raises(ValueError, match="eligible staff"):
             set_user_capability_override(
@@ -317,41 +324,55 @@ def test_incomplete_draft_policy_requires_deliberate_configured_activation(setup
 
 
 def test_impact_rechecks_stale_preview_all_student_lifecycles_and_stale_responsibility(setup):
-    auth, (c, k, p), _ = setup
+    auth, (_, k, p), _ = setup
     Program.objects.filter(pk=p.pk).update(is_active=False)
     preview = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-    assert preview.can_deactivate
     s = student()
     StudentAcademicProfile.objects.create(student=s, current_college=k)
     for lifecycle in ("CURRENT", "GRADUATED", "FORMER"):
         type(s).objects.filter(pk=s.pk).update(student_lifecycle_status=lifecycle)
         impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
         assert impact.counts["active_student_placements"] == 1
-        with pytest.raises(cs.CatalogError, match="active_student_placements"):
+        assert impact.can_deactivate
+        assert "active_student_placements" in {i.code for i in impact.warnings}
+        with pytest.raises(cs.CatalogError) as error:
             cs.set_college_active(
                 **auth,
                 target_id=k.pk,
-                expected_resource_version=preview.resource_version,
+                expected_resource_version=1,
                 is_active=False,
+                acknowledged_impact=True,
+                impact_token=preview.impact_token,
             )
+        assert error.value.code == "catalog_stale_impact"
     type(s).objects.filter(pk=s.pk).update(is_active=False)
     CounselorResponsibility.objects.create(college=k, counselor=auth["actor"])
-    with pytest.raises(cs.CatalogError, match="counselor_responsibilities"):
-        cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
-    CounselorResponsibility.objects.filter(college=k).delete()
-    impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-    assert impact.can_deactivate and impact.warnings[0].code == "inactive_student_placements"
-    cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
+    cs.set_college_active(
+        **retirement_preview(auth, k),
+        **auth,
+        target_id=k.pk,
+        expected_resource_version=1,
+        is_active=False,
+    )
     assert StudentAcademicProfile.objects.filter(student=s, current_college=k).exists()
+    assert CounselorResponsibility.objects.filter(college=k).exists()
 
 
-def test_campus_blockers_include_inconsistent_inactive_child_placements(setup):
-    auth, (c, k, p), _ = setup
+def test_campus_warning_includes_inconsistent_inactive_child_placements(setup):
+    auth, (c, k, _), _ = setup
     College.objects.filter(pk=k.pk).update(is_active=False)
-    s = student()
-    StudentAcademicProfile.objects.create(student=s, current_college=k)
-    with pytest.raises(cs.CatalogError, match="active_student_placements"):
-        cs.set_campus_active(**auth, target_id=c.pk, expected_resource_version=1, is_active=False)
+    StudentAcademicProfile.objects.create(student=student(), current_college=k)
+    impact = cs.get_catalog_impact(actor=auth["actor"], model=Campus, target_id=c.pk)
+    assert impact.counts["active_student_placements"] == 1
+    assert "active_student_placements" in {i.code for i in impact.warnings}
+    cs.set_campus_active(
+        **retirement_preview(auth, c),
+        **auth,
+        target_id=c.pk,
+        expected_resource_version=1,
+        is_active=False,
+        cascade=True,
+    )
 
 
 @pytest.mark.parametrize("operation", ["rename", "status", "policy", "create"])
@@ -367,7 +388,11 @@ def test_audit_failure_rolls_back_entity_and_version(setup, monkeypatch, operati
             cs.rename_program(**auth, target_id=p.pk, expected_resource_version=1, name="Changed")
         elif operation == "status":
             cs.set_program_active(
-                **auth, target_id=p.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, p),
+                **auth,
+                target_id=p.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
         elif operation == "policy":
             cs.update_program_policy(
@@ -607,7 +632,13 @@ def test_policy_and_retirement_preserve_submitted_inventory_and_pending_f4_facts
         )
     assert error.value.code == "catalog_pending_f4_policy_decision_required"
     cs.rename_program(**auth, target_id=p.pk, expected_resource_version=1, name="New official name")
-    cs.set_program_active(**auth, target_id=p.pk, expected_resource_version=2, is_active=False)
+    cs.set_program_active(
+        **retirement_preview(auth, p),
+        **auth,
+        target_id=p.pk,
+        expected_resource_version=2,
+        is_active=False,
+    )
     inventory.refresh_from_db()
     item.refresh_from_db()
     assert inventory.course_currently_enrolled == "Program" and item.course_snapshot == "Program"
@@ -628,25 +659,27 @@ def test_unknown_target_and_malformed_versions_have_stable_errors(setup):
         assert error.value.status == 422
 
 
-def test_impact_open_office_work_is_blocked_and_history_is_counted_without_contents(setup):
+def test_impact_open_office_work_is_warned_and_history_is_counted_without_contents(setup):
     from compass.guidance_messages.models import GuidanceThread
 
     auth, (_, k, p), _ = setup
     Program.objects.filter(pk=p.pk).update(is_active=False)
     s = student()
-    type(s).objects.filter(pk=s.pk).update(is_active=False)
     thread = GuidanceThread.objects.create(
         student=s, kind="OFFICE", routing_college=k, created_by=auth["actor"]
     )
     impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-    assert impact.counts["open_office_threads"] == 1 and not impact.can_deactivate
-    with pytest.raises(cs.CatalogError, match="open_office_threads"):
-        cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
-    GuidanceThread.objects.filter(pk=thread.pk).update(
-        status="RESOLVED", resolved_at=timezone.now(), resolved_by=auth["actor"]
+    assert impact.counts["open_office_threads"] == 1 and impact.can_deactivate
+    assert "open_office_threads" in {issue.code for issue in impact.warnings}
+    cs.set_college_active(
+        **retirement_preview(auth, k),
+        **auth,
+        target_id=k.pk,
+        expected_resource_version=1,
+        is_active=False,
     )
-    impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-    assert impact.counts["resolved_threads"] == 1 and impact.can_deactivate
+    thread.refresh_from_db()
+    assert thread.status == "OPEN" and thread.routing_college_id == k.pk
     assert not {"student", "messages", "body", "student_id"} & impact.counts.keys()
 
 
@@ -734,7 +767,11 @@ def test_adopted_unchanged_identity_and_names_are_not_normalized_or_falsely_audi
     )
     assert result.resource_version == 1 and result.name == " Retained name "
     result = cs.set_program_active(
-        **auth, target_id=p.pk, expected_resource_version=1, is_active=False
+        **retirement_preview(auth, p),
+        **auth,
+        target_id=p.pk,
+        expected_resource_version=1,
+        is_active=False,
     )
     p.refresh_from_db()
     assert result.code == p.code == "retained-code" and result.name == p.name == " Retained name "

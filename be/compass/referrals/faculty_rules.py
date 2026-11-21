@@ -1,6 +1,10 @@
 """Faculty Referral eligibility, confirmation limits and disclosure boundaries."""
 
 from compass.accounts.models import User
+from compass.organization.catalog_availability import (
+    college_available_for_existing_records,
+    existing_college_q,
+)
 from compass.organization.models import College, FacultyAffiliation
 from compass.referrals.errors import ReferralError
 
@@ -52,8 +56,7 @@ def require_faculty_home(actor):
     if (
         home is None
         or home.college is None
-        or not home.college.is_active
-        or not home.college.campus.is_active
+        or not college_available_for_existing_records(home.college)
     ):
         raise FacultyReferralError("affiliation_unavailable")
     return home
@@ -67,7 +70,7 @@ def faculty_can_track(actor):
         and current.role.code == "FACULTY"
         and current.has_capability("referrals.view_submitted_self")
         and FacultyAffiliation.objects.filter(
-            faculty=current, college__is_active=True, college__campus__is_active=True
+            existing_college_q("college__"), faculty=current
         ).exists()
     )
 

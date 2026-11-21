@@ -9178,6 +9178,49 @@
         "title": "CaseTransferVersionRequest",
         "type": "object"
       },
+      "CatalogChildSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CatalogDependentCounts"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "college",
+              "program"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "code",
+          "name",
+          "resource_version",
+          "counts"
+        ],
+        "title": "CatalogChildSummary",
+        "type": "object"
+      },
       "CatalogCreateCampusRequest": {
         "additionalProperties": false,
         "properties": {
@@ -9620,6 +9663,13 @@
       "CatalogImpactResponse": {
         "additionalProperties": false,
         "properties": {
+          "active_children": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogChildSummary"
+            },
+            "title": "Active Children",
+            "type": "array"
+          },
           "blockers": {
             "items": {
               "$ref": "#/components/schemas/CatalogIssueSummary"
@@ -9633,6 +9683,10 @@
           },
           "counts": {
             "$ref": "#/components/schemas/CatalogDependentCounts"
+          },
+          "impact_token": {
+            "title": "Impact Token",
+            "type": "string"
           },
           "observed_at": {
             "format": "date-time",
@@ -9671,7 +9725,9 @@
           "blockers",
           "warnings",
           "counts",
-          "preserved_categories"
+          "preserved_categories",
+          "active_children",
+          "impact_token"
         ],
         "title": "CatalogImpactResponse",
         "type": "object"
@@ -9795,16 +9851,38 @@
       "CatalogStatusRequest": {
         "additionalProperties": false,
         "properties": {
+          "acknowledged_impact": {
+            "default": false,
+            "title": "Acknowledged Impact",
+            "type": "boolean"
+          },
           "basis": {
             "maxLength": 160,
             "minLength": 1,
             "title": "Basis",
             "type": "string"
           },
+          "cascade": {
+            "default": false,
+            "title": "Cascade",
+            "type": "boolean"
+          },
           "expected_resource_version": {
             "minimum": 1,
             "title": "Expected Resource Version",
             "type": "integer"
+          },
+          "impact_token": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact Token"
           },
           "is_active": {
             "title": "Is Active",

@@ -14,7 +14,7 @@ export function CatalogActions({ target, disabled, onEdit, onHistory }: {
       <div className="flex flex-wrap gap-2 py-2">
       {target.kind === "program" ? <Button variant="secondary" disabled={disabled} onClick={(event) => onEdit({ mode: "policy", target }, event.currentTarget)}>Edit academic policy</Button> : null}
       <Button variant="secondary" disabled={disabled} onClick={(event) => onHistory(target, event.currentTarget)}>Change history</Button>
-      <Button variant="secondary" disabled={disabled} onClick={(event) => onEdit({ mode: "status", target }, event.currentTarget)}>{target.record.is_active ? "Deactivate" : "Activate"}</Button>
+      <Button variant="secondary" disabled={disabled} onClick={(event) => onEdit({ mode: "status", target }, event.currentTarget)}>{target.record.is_active ? "Retire" : "Reactivate"}</Button>
       </div>
     </details>
   </div>;

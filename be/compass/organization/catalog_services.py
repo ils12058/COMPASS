@@ -7,6 +7,7 @@ remain fail-closed pending institutional decisions.
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from contextlib import contextmanager
@@ -18,6 +19,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, OperationalError
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare, salted_hmac
 
 from compass.accounts.models import User
 from compass.accounts.policy import CATALOG_ELIGIBLE_ROLES
@@ -231,7 +233,7 @@ def _snapshot(item):
     return result
 
 
-def _audit(item, *, context, action, before, basis):
+def _audit(item, *, context, action, before, basis, retirement=None):
     after = _snapshot(item)
     parent = (
         str(item.college_id)
@@ -256,11 +258,12 @@ def _audit(item, *, context, action, before, basis):
             "before": before,
             "after": after,
             "basis": basis,
+            **({"retirement": retirement} if retirement is not None else {}),
         },
     )
 
 
-def _save(item, changes, *, context, action, basis):
+def _save(item, changes, *, context, action, basis, retirement=None):
     before = _snapshot(item)
     changed = {k: v for k, v in changes.items() if getattr(item, k) != v}
     if not changed:
@@ -274,7 +277,7 @@ def _save(item, changes, *, context, action, basis):
     type(item).objects.filter(pk=item.pk).update(
         **changed, resource_version=item.resource_version, updated_at=item.updated_at
     )
-    _audit(item, context=context, action=action, before=before, basis=basis)
+    _audit(item, context=context, action=action, before=before, basis=basis, retirement=retirement)
     return item
 
 
@@ -484,6 +487,16 @@ class CatalogIssue:
 
 
 @dataclass(frozen=True, slots=True)
+class CatalogChild:
+    id: UUID
+    kind: str
+    code: str
+    name: str
+    resource_version: int
+    counts: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
 class CatalogImpact:
     target_id: UUID
     resource_version: int
@@ -493,9 +506,23 @@ class CatalogImpact:
     warnings: tuple[CatalogIssue, ...]
     counts: dict[str, int]
     preserved_categories: tuple[str, ...]
+    active_children: tuple[CatalogChild, ...]
+    impact_token: str
 
 
-def _impact(item):
+def _active_children(item):
+    if isinstance(item, Campus):
+        colleges = list(College.objects.filter(campus_id=item.pk, is_active=True).order_by("pk"))
+        programs = list(
+            Program.objects.filter(college__campus_id=item.pk, is_active=True).order_by("pk")
+        )
+        return colleges + programs
+    if isinstance(item, College):
+        return list(Program.objects.filter(college_id=item.pk, is_active=True).order_by("pk"))
+    return []
+
+
+def _impact(item, *, include_children=True):
     from compass.good_moral.models import GoodMoralRequest
     from compass.graduate_tracer.models import GraduateTracerResponse
     from compass.guidance_followups.models import GuidanceFollowUp
@@ -569,25 +596,58 @@ def _impact(item):
             status="PENDING",
         ).count(),
     }
-    blocker_keys = []
-    if not is_program:
-        blocker_keys = [
-            "active_student_placements",
-            "active_faculty_affiliations",
-            "counselor_responsibilities",
-            "open_office_threads",
-            "pending_operational_followups",
-        ]
-        blocker_keys += (
-            ["active_child_colleges"] if isinstance(item, Campus) else ["active_child_programs"]
-        )
+    blocker_keys = ["active_child_colleges", "active_child_programs"]
     warning_keys = [
+        "active_student_placements",
+        "active_faculty_affiliations",
+        "counselor_responsibilities",
+        "open_office_threads",
+        "pending_operational_followups",
         "inactive_student_placements",
         "inactive_faculty_affiliations",
         "draft_inventories",
         "pending_good_moral",
     ]
     blockers = tuple(CatalogIssue(k, counts[k]) for k in blocker_keys if counts[k])
+    children = (
+        tuple(
+            CatalogChild(
+                child.pk,
+                child._meta.model_name,
+                child.code,
+                child.name,
+                child.resource_version,
+                _impact(child, include_children=False).counts,
+            )
+            for child in _active_children(item)
+        )
+        if include_children
+        else ()
+    )
+    # Deterministic, server-authenticated preview; observation time is intentionally excluded.
+    # Child identities/versions and counts catch replacements and redistributed dependencies,
+    # even when the parent's aggregate count and resource version stay the same.
+    evidence = json.dumps(
+        {
+            "kind": item._meta.model_name,
+            "id": str(item.pk),
+            "version": item.resource_version,
+            "counts": counts,
+            "children": [
+                {
+                    "id": str(child.id),
+                    "kind": child.kind,
+                    "code": child.code,
+                    "name": child.name,
+                    "version": child.resource_version,
+                    "counts": child.counts,
+                }
+                for child in children
+            ],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return CatalogImpact(
         item.pk,
         item.resource_version,
@@ -603,6 +663,8 @@ def _impact(item):
             "resolved_guidance_threads",
             "inactive_placements",
         ),
+        children,
+        salted_hmac("organization.catalog.retirement.v1", evidence, algorithm="sha256").hexdigest(),
     )
 
 
@@ -615,7 +677,18 @@ def get_catalog_impact(
 
 
 def _status(
-    model, *, actor, actor_session, context, target_id, expected_resource_version, is_active, basis
+    model,
+    *,
+    actor,
+    actor_session,
+    context,
+    target_id,
+    expected_resource_version,
+    is_active,
+    basis,
+    acknowledged_impact=False,
+    impact_token=None,
+    cascade=False,
 ):
     with _mutation(
         actor=actor, actor_session=actor_session, context=context, basis=basis
@@ -631,20 +704,49 @@ def _status(
                 _activation_policy(item)
         else:
             impact = _impact(item)
-            if not impact.can_deactivate:
+            if acknowledged_impact is not True or not isinstance(impact_token, str):
+                raise _invalid("Review and acknowledge the retirement impact before retiring.")
+            if not constant_time_compare(impact_token, impact.impact_token):
+                raise CatalogError("catalog_stale_impact", "The impact changed. Review it again.")
+            if not _boolean(cascade) and impact.active_children:
                 raise CatalogError(
                     "catalog_deactivation_blocked",
-                    "Resolve blockers before retirement: "
-                    + ", ".join(i.code for i in impact.blockers)
-                    + ".",
+                    "Also retire the active colleges and programs under this record to retire it.",
                     details={
                         "blockers": [{"code": i.code, "count": i.count} for i in impact.blockers]
                     },
                 )
+            descendants = _active_children(item) if cascade else []
+            # The exclusive gate stabilizes ancestry; row locks remain top-down.
+            descendants = [_locked(type(child), child.pk) for child in descendants]
+            retirements = [(item, impact)] + [(child, _impact(child)) for child in descendants]
+            for target, observed in retirements:
+                _save(
+                    target,
+                    {"is_active": False, "is_retired": True},
+                    context=context,
+                    action=getattr(
+                        actions, f"ORGANIZATION_{type(target).__name__.upper()}_DISABLED"
+                    ),
+                    basis=reason,
+                    retirement={
+                        "acknowledged_impact": True,
+                        "warning_counts": {issue.code: issue.count for issue in observed.warnings},
+                        "cascade": bool(descendants),
+                        "cascade_root_id": str(item.pk),
+                    },
+                )
+            return item
         action = getattr(
             actions, f"ORGANIZATION_{model.__name__.upper()}_{'ENABLED' if active else 'DISABLED'}"
         )
-        return _save(item, {"is_active": active}, context=context, action=action, basis=reason)
+        return _save(
+            item,
+            {"is_active": active, "is_retired": False},
+            context=context,
+            action=action,
+            basis=reason,
+        )
 
 
 def set_campus_active(
@@ -656,6 +758,9 @@ def set_campus_active(
     expected_resource_version: int,
     is_active: bool,
     basis: str,
+    acknowledged_impact: bool = False,
+    impact_token: str | None = None,
+    cascade: bool = False,
 ) -> Campus:
     return _status(
         Campus,
@@ -666,6 +771,9 @@ def set_campus_active(
         expected_resource_version=expected_resource_version,
         is_active=is_active,
         basis=basis,
+        acknowledged_impact=acknowledged_impact,
+        impact_token=impact_token,
+        cascade=cascade,
     )
 
 
@@ -678,6 +786,9 @@ def set_college_active(
     expected_resource_version: int,
     is_active: bool,
     basis: str,
+    acknowledged_impact: bool = False,
+    impact_token: str | None = None,
+    cascade: bool = False,
 ) -> College:
     return _status(
         College,
@@ -688,6 +799,9 @@ def set_college_active(
         expected_resource_version=expected_resource_version,
         is_active=is_active,
         basis=basis,
+        acknowledged_impact=acknowledged_impact,
+        impact_token=impact_token,
+        cascade=cascade,
     )
 
 
@@ -700,6 +814,9 @@ def set_program_active(
     expected_resource_version: int,
     is_active: bool,
     basis: str,
+    acknowledged_impact: bool = False,
+    impact_token: str | None = None,
+    cascade: bool = False,
 ) -> Program:
     return _status(
         Program,
@@ -710,6 +827,9 @@ def set_program_active(
         expected_resource_version=expected_resource_version,
         is_active=is_active,
         basis=basis,
+        acknowledged_impact=acknowledged_impact,
+        impact_token=impact_token,
+        cascade=cascade,
     )
 
 

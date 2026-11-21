@@ -143,7 +143,17 @@ def test_import_capability_policy_definition_grants_and_dependencies():
     )
     assert len(CAPABILITY_DEFINITIONS) == 104
     assert sum(len(grants) for grants in ROLE_CAPABILITY_GRANTS.values()) == 129
-    assert sum(len(grants) for grants in DESIGNATION_CAPABILITY_GRANTS.values()) == 21
+    assert sum(len(grants) for grants in DESIGNATION_CAPABILITY_GRANTS.values()) == 22
+    assert {
+        code
+        for code, grants in DESIGNATION_CAPABILITY_GRANTS.items()
+        if "organization.catalog.manage" in grants
+    } == {"HEAD_GUIDANCE_COUNSELOR"}
+    assert {
+        code
+        for code, grants in ROLE_CAPABILITY_GRANTS.items()
+        if "organization.catalog.manage" in grants
+    } == {"IT_ADMIN"}
 
     assert "student_academics.import" in ROLE_CAPABILITY_GRANTS["IT_ADMIN"]
     for role_code, grants in ROLE_CAPABILITY_GRANTS.items():
@@ -170,7 +180,7 @@ def test_import_capability_policy_definition_grants_and_dependencies():
 def test_import_effective_grants_are_limited_to_admin_and_head_with_view():
     sync_policy()
     assert RoleCapability.objects.count() == 129
-    assert DesignationCapability.objects.count() == 21
+    assert DesignationCapability.objects.count() == 22
 
     admin = make_user("UCN-POLICY-ADMIN", role="IT_ADMIN")
     assert "student_academics.import" in effective_capabilities(admin)
@@ -181,6 +191,7 @@ def test_import_effective_grants_are_limited_to_admin_and_head_with_view():
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
     assert "student_academics.import" in effective_capabilities(head)
+    assert "organization.catalog.manage" in effective_capabilities(head)
 
     for role_code in (
         "STUDENT",
@@ -190,6 +201,7 @@ def test_import_effective_grants_are_limited_to_admin_and_head_with_view():
     ):
         user = make_user(f"UCN-POLICY-{role_code}", role=role_code)
         assert "student_academics.import" not in effective_capabilities(user)
+        assert "organization.catalog.manage" not in effective_capabilities(user)
 
     delegated = make_user("UCN-POLICY-DELEGATED", role="INSTITUTIONAL_OFFICER")
     UserCapabilityOverride.objects.create(

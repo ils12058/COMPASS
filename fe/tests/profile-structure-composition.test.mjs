@@ -112,14 +112,16 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
   assert.match(computing, /Bachelor&#x27;s · 1st–4th Year/);
   assert.match(computing, /Master&#x27;s · Year levels not set/);
   assert.doesNotMatch(computing, /BS Business Administration/);
-  const business = html.slice(html.indexOf('id="college-cba"'));
-  assert.match(business, /BS Business Administration[\s\S]*Inactive/);
+  const business = html.slice(html.indexOf('id="college-cba"'), html.indexOf('id="campus-north"'));
+  assert.match(business, /College of Business[\s\S]*Retired[\s\S]*aria-label="Programs in College of Business"/);
+  assert.match(business, /BS Business Administration[\s\S]*Retired/);
+  assert.doesNotMatch(business, /BS Information Systems|Inactive/);
   // A Campus without Colleges still says so.
   assert.match(html.slice(html.indexOf('id="campus-north"')), /No colleges are recorded for this campus\./);
   // Programs are indented beneath their College, not boxed inside it.
   assert.doesNotMatch(html, /rounded-sm border border-border/);
   // Reference viewers can browse/search, but have no Catalog mutations.
-  assert.doesNotMatch(html, />Add campus<|>Rename<|>Deactivate<|>Edit academic policy</);
+  assert.doesNotMatch(html, />Add campus<|>Rename<|>Retire<|>Reactivate<|>Edit academic policy</);
 });
 
 test("a College without Programs says so, and only the Structure page is bounded", () => {

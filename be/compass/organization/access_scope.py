@@ -5,7 +5,7 @@ explicit Counselor assignments and the unique-Head unassigned fallback, inherite
 GOA. Appointment management, Referrals and other specialized consumers retain it.
 
 resolve_general_guidance_college_scope is the general Guidance *visibility* contract:
-any active Head sees all active Colleges, ordinary Counselors their explicit Colleges,
+any active Head sees all active or retired Colleges, ordinary Counselors their explicit Colleges,
 and GOA their current valid supervisor's visibility. Only Office Messages opts into
 this resolver in Slice 1; the domain's capability, actor and resource checks still
 apply. Default Counselor routing is owned by organization.services, not by either
@@ -21,6 +21,7 @@ from django.db.models import Q
 
 from compass.accounts.models import User
 
+from .catalog_availability import existing_college_q
 from .models import College, CounselorResponsibility, StaffSupervision
 
 HEAD_GUIDANCE_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
@@ -99,7 +100,7 @@ def resolve_operational_responsibility_scope(actor: User) -> OperationalResponsi
         handled |= ~Q(pk__in=valid_responsibilities.values("college_id"))
     return OperationalResponsibilityScope(
         college_ids=tuple(
-            College.objects.filter(handled, is_active=True, campus__is_active=True)
+            College.objects.filter(handled, existing_college_q())
             .order_by("pk")
             .values_list("pk", flat=True)
         )
@@ -109,7 +110,7 @@ def resolve_operational_responsibility_scope(actor: User) -> OperationalResponsi
 def resolve_general_guidance_college_scope(actor: User) -> GeneralGuidanceCollegeScope:
     """General Guidance College visibility, distinct from handled responsibility.
 
-    Heads can see all active Colleges (even those assigned to other Counselors).
+    Heads can see all active or retired Colleges (even those assigned to other Counselors).
     Ordinary Counselors see only valid explicit assignments. GOA inherits only
     the currently valid supervising Counselor's College visibility, never the
     designation, capability or provider relationship. Callers enforce their own
@@ -140,7 +141,7 @@ def resolve_general_guidance_college_scope(actor: User) -> GeneralGuidanceColleg
     if current.role.code != "COUNSELOR":
         return EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE
 
-    eligible = College.objects.filter(is_active=True, campus__is_active=True)
+    eligible = College.objects.filter(existing_college_q())
     if not is_head_guidance(current):
         eligible = eligible.filter(
             pk__in=CounselorResponsibility.objects.filter(

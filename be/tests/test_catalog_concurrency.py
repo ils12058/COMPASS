@@ -33,7 +33,14 @@ from compass.organization.services import (
 )
 from compass.student_academics.models import StudentAcademicProfile
 from compass.student_academics.services import set_current_placement
-from tests.catalog_test_helpers import authority, hierarchy, manager, run_serialized_race, student
+from tests.catalog_test_helpers import (
+    authority,
+    hierarchy,
+    manager,
+    retirement_preview,
+    run_serialized_race,
+    student,
+)
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 from tests.test_inventory import configure_year
 
@@ -118,7 +125,11 @@ def test_two_renames_or_rename_versus_deactivation_reject_stale_writer(setup, se
     second = (
         (
             lambda: cs.set_program_active(
-                **auth, target_id=p.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, p),
+                **auth,
+                target_id=p.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
         )
         if second_status
@@ -163,7 +174,11 @@ def test_child_create_or_activation_commits_before_parent_retirement_blocker_rec
 
         def second():
             return cs.set_campus_active(
-                **auth, target_id=c.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, c),
+                **auth,
+                target_id=c.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
     else:
         Program.objects.filter(pk=p.pk).update(is_active=False)
@@ -190,7 +205,11 @@ def test_child_create_or_activation_commits_before_parent_retirement_blocker_rec
 
         def second():
             return cs.set_college_active(
-                **auth, target_id=k.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, k),
+                **auth,
+                target_id=k.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
 
     _, error = run_serialized_race(first, second)
@@ -223,13 +242,15 @@ def test_relationship_assignment_vs_college_retirement(setup, relationship):
     _, error = run_serialized_race(
         first,
         lambda: cs.set_college_active(
+            acknowledged_impact=True,
+            impact_token=preview.impact_token,
             **auth,
             target_id=k.pk,
             expected_resource_version=preview.resource_version,
             is_active=False,
         ),
     )
-    assert isinstance(error, cs.CatalogError) and error.code == "catalog_deactivation_blocked"
+    assert isinstance(error, cs.CatalogError) and error.code == "catalog_stale_impact"
 
 
 def test_account_reactivation_vs_college_retirement(setup):
@@ -240,7 +261,11 @@ def test_account_reactivation_vs_college_retirement(setup):
     StudentAcademicProfile.objects.create(student=s, current_college=k)
     _, error = run_serialized_race(
         lambda: cs.set_college_active(
-            **auth, target_id=k.pk, expected_resource_version=1, is_active=False
+            **retirement_preview(auth, k),
+            **auth,
+            target_id=k.pk,
+            expected_resource_version=1,
+            is_active=False,
         ),
         lambda: set_account_active(
             actor=auth["actor"],
@@ -299,7 +324,11 @@ def test_program_retirement_vs_inventory_selection(setup):
     ensure_current_inventory(student=s, context=AuditContext.user(s))
     _, error = run_serialized_race(
         lambda: cs.set_program_active(
-            **auth, target_id=p.pk, expected_resource_version=1, is_active=False
+            **retirement_preview(auth, p),
+            **auth,
+            target_id=p.pk,
+            expected_resource_version=1,
+            is_active=False,
         ),
         lambda: replace_current_inventory(student=s, values={"program_id": p.pk, "year_level": 1}),
     )
@@ -449,7 +478,11 @@ def test_parent_retirement_first_prevents_concurrent_active_child_creation(setup
 
         def first():
             return cs.set_campus_active(
-                **auth, target_id=c.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, c),
+                **auth,
+                target_id=c.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
 
         def second():
@@ -458,7 +491,11 @@ def test_parent_retirement_first_prevents_concurrent_active_child_creation(setup
 
         def first():
             return cs.set_college_active(
-                **auth, target_id=k.pk, expected_resource_version=1, is_active=False
+                **retirement_preview(auth, k),
+                **auth,
+                target_id=k.pk,
+                expected_resource_version=1,
+                is_active=False,
             )
 
         def second():

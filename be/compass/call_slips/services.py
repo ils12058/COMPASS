@@ -43,6 +43,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.catalog_availability import existing_college_q
 from compass.organization.models import StaffSupervision
 from compass.referrals.confidential_content import ReferralConfidentialContentUnavailable
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
@@ -265,9 +266,8 @@ def _scope_queryset(queryset, actor: User):
     if not college_ids:
         return queryset.none()
     return queryset.filter(
+        existing_college_q("student__student_academic_profile__current_college__"),
         student__student_academic_profile__current_college_id__in=college_ids,
-        student__student_academic_profile__current_college__is_active=True,
-        student__student_academic_profile__current_college__campus__is_active=True,
     )
 
 

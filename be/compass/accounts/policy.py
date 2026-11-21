@@ -842,6 +842,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset(
         {
+            "organization.catalog.manage",
             "privacy_governance.activity.view",
             "assessment_records.view",
             "assessment_records.manage",

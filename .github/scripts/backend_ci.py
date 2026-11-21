@@ -114,6 +114,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         (
             "test_organization.py",
             "test_catalog_services.py",
+            "test_catalog_retirement.py",
             "test_catalog_final_integration.py",
             "test_catalog_concurrency.py",
             "test_faculty_concurrency.py",

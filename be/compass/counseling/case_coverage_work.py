@@ -5,7 +5,7 @@ from django.db.models import F, Q
 from compass.work_queue.schemas import WorkItem, WorkKind, WorkPriority, WorkStudent
 
 from .case_continuity_rules import receiver_eligible
-from .case_coverage_services import coverages
+from .case_coverage_models import CounselingCaseCoverage
 from .case_coverage_tasks import reconcile_returns
 from .continuity_rules import is_head
 
@@ -14,7 +14,11 @@ def pending_coverage_work(*, actor, limit, now):
     if not actor.has_capability("counseling.continuity.view", at=now):
         return ()
     reconcile_returns(actor=actor)
-    query = coverages().filter(case__status="ACTIVE")
+    # The bounded work projection needs the case and Student, not every arrangement actor/role
+    # from the detail selector. Keep authority below while avoiding its large join plan.
+    query = CounselingCaseCoverage.objects.select_related("case__student").filter(
+        case__status="ACTIVE"
+    )
     current = Q(case__primary_counselor_id=F("primary_counselor_id"))
     wanted = Q(pk__in=[])
     if receiver_eligible(actor, now) and actor.has_capability(

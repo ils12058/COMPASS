@@ -5,6 +5,7 @@ from uuid import UUID
 
 from ninja import Schema
 
+from compass.organization.catalog_availability import college_available_for_existing_records
 from compass.organization.models import FacultyAffiliation
 
 
@@ -35,9 +36,7 @@ def faculty_affiliation_projection(user):
         "college_name": college.name if college else None,
         "campus_id": college.campus_id if college else None,
         "campus_name": college.campus.name if college else None,
-        "active": bool(
-            user.is_active and college and college.is_active and college.campus.is_active
-        ),
+        "active": bool(user.is_active and college_available_for_existing_records(college)),
         "resource_version": affiliation.resource_version,
         "assigned_at": affiliation.assigned_at,
         "assigned_by_id": affiliation.assigned_by_id,

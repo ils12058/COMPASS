@@ -15,14 +15,14 @@ import { catalogHistoryKey, readCatalogHistory } from "./catalog-query";
 export function HistoryValues({ values }: { values: CatalogHistoryValues }) {
   return <ul className="space-y-1 break-words">
     {values.name !== undefined ? <li>Official name: {values.name}</li> : null}
-    {typeof values.is_active === "boolean" ? <li>Status: {values.is_active ? "Active" : "Inactive"}</li> : null}
+    {typeof values.is_active === "boolean" ? <li>Status: {values.is_active ? "Active" : "Retired"}</li> : null}
     {values.academic_classification !== undefined ? <li>{classificationLabel(values.academic_classification)}</li> : null}
     {values.year_level_policy_status !== undefined ? <li>Year levels: {values.year_level_policy_status === "CONFIGURED" ? "Set" : "Not set yet"}</li> : null}
     {values.applicable_year_levels !== undefined ? <li>{levelsLabel(values.applicable_year_levels, values.year_level_policy_status)}</li> : null}
   </ul>;
 }
 function changeLabel(action: string) {
-  return action.endsWith(".created") ? "Created" : action.endsWith(".policy_changed") ? "Program settings changed" : action.endsWith(".enabled") ? "Activated" : action.endsWith(".disabled") ? "Deactivated" : "Official name changed";
+  return action.endsWith(".created") ? "Created" : action.endsWith(".policy_changed") ? "Program settings changed" : action.endsWith(".enabled") ? "Reactivated" : action.endsWith(".disabled") ? "Retired" : "Official name changed";
 }
 export function CatalogHistory({ target, onClose, onCloseAutoFocus }: { target: CatalogTarget; onClose: () => void; onCloseAutoFocus: (event: Event) => void }) {
   const [page, setPage] = useState(1);

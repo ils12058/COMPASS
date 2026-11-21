@@ -6,9 +6,11 @@ import { readFileSync } from "node:fs";
 import { canEnterOrganization, canManageOrganization, canManageOrganizationCatalog } from "../src/features/institution-configuration/institution-access.ts";
 import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
 import { portalCommandDestinations } from "../src/features/portal/components/portal-command-destinations.ts";
-import { academicProgramLabel, levelsLabel, initialDraft, makeCommand, draftError, filterHierarchy } from "../src/features/organization/structure/catalog/catalog-model.ts";
+import { acknowledgeRetirement, retirementPreviewMatches, academicProgramLabel, levelsLabel, initialDraft, makeCommand, draftError, filterHierarchy } from "../src/features/organization/structure/catalog/catalog-model.ts";
 import { historyConfirmsCommand } from "../src/features/organization/structure/catalog/catalog-query.ts";
 import { catalogErrorMessage, uncertainCatalogOutcome } from "../src/features/organization/structure/catalog/catalog-errors.ts";
+import { CatalogReview } from "../src/features/organization/structure/catalog/catalog-review.tsx";
+import { CatalogActions } from "../src/features/organization/structure/catalog/catalog-actions.tsx";
 import { CatalogImpact } from "../src/features/organization/structure/catalog/catalog-impact.tsx";
 import { CompassApiError } from "../src/lib/api/errors.ts";
 import { assertBrowserSuiteInCI } from "./support/browser-registration.mjs";
@@ -82,13 +84,40 @@ test("Creation reconciliation requires version-one creation, matching parent and
  const c={operation:"createProgram",data:{name:"New name",basis:"Memo",code:program.code,college_id:college.id,is_active:false,academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}};
  const h={...item,action:"organization.program.created",resource_version_before:null,resource_version_after:1,after:{name:"New name",is_active:false,academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}};assert.equal(historyConfirmsCommand(c,h,"actor"),true);assert.equal(historyConfirmsCommand(c,{...h,parent_id:"other"},"actor"),false);
 });
-for(const code of ["permission_denied","invalid_session","mfa_setup_required","recent_mfa_required","catalog_not_found","catalog_duplicate_code","catalog_stale_version","catalog_inactive_parent","catalog_deactivation_blocked","catalog_policy_approval_required","catalog_pending_f4_policy_decision_required","catalog_not_initialized","catalog_busy","invalid_catalog_request"])test(`Safe actionable error: ${code}`,()=>{
+for(const code of ["permission_denied","invalid_session","mfa_setup_required","recent_mfa_required","catalog_not_found","catalog_duplicate_code","catalog_stale_version","catalog_inactive_parent","catalog_deactivation_blocked","catalog_stale_impact","catalog_policy_approval_required","catalog_pending_f4_policy_decision_required","catalog_not_initialized","catalog_busy","invalid_catalog_request"])test(`Safe actionable error: ${code}`,()=>{
  const err=new CompassApiError({status:409,body:{error:{code,message:"SECRET SQL OR PRIVATE DATA"}},headers:{},method:"PUT",url:"/api/v1/organization/programs/id/policy"});assert.doesNotMatch(catalogErrorMessage(err),/SECRET|SQL/);assert.equal(uncertainCatalogOutcome(err),false);
 });
 test("Network and server errors require read-only reconciliation",()=>{assert.equal(uncertainCatalogOutcome(new TypeError("Failed to fetch")),true);assert.equal(uncertainCatalogOutcome(new CompassApiError({status:503,body:{},headers:{},method:"POST",url:"/api/v1/organization/campuses"})),true);});
-test("Impact distinguishes blockers/warnings, safe counts and authorized remediation only",()=>{
- const impact={target_id:program.id,resource_version:3,observed_at:"2026-10-26T00:00:00Z",can_deactivate:false,blockers:[{code:"active_student_placements",count:7}],warnings:[{code:"draft_inventories",count:2}],counts:{draft_inventories:2},preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots"]};
- const html=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:false}));assert.match(html,/Deactivation blocked/);assert.match(html,/Count: 7/);assert.match(html,/Warnings/);assert.match(html,/Submitted Individual Inventory facts/);assert.doesNotMatch(html,/href=/);const authorized=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:true}));assert.match(authorized,/student-academics/);
+const warningImpact = {target_id: college.id, resource_version: 3, observed_at: "2026-11-20T00:00:00Z", can_deactivate: false,
+ blockers: [{code: "active_child_programs", count: 1}], warnings: [{code: "active_student_placements", count: 45}, {code: "open_office_threads", count: 2}],
+ counts: {active_child_colleges: 0, active_child_programs: 1, active_student_placements: 45},
+ active_children: [{id: program.id, kind: "program", code: program.code, name: program.name, resource_version: 3, counts: {}}],
+ impact_token: "observed-preview-token", preserved_categories: ["submitted_inventory_facts", "issued_certificate_snapshots"]};
+test("Retirement impact explains preserved existing work and lists active children", () => {
+ const html = renderToStaticMarkup(createElement(CatalogImpact, {impact: warningImpact, kind: "college"}));
+ assert.match(html, /45 active students are still placed in this college/);
+ assert.match(html, /They keep their current placement/);
+ assert.match(html, /2 open Guidance Office conversations remain/);
+ assert.match(html, /Submitted Individual Inventory facts/);
+ assert.match(html, new RegExp(program.name));
+ assert.doesNotMatch(html, /Resolve blockers|Deactivation blocked|lose access|active_student_placements|impact_token/);
+});
+test("Retirement confirmation offers one cascade checkbox and shows its selected state", () => {
+ const command = {operation: "status", target: {kind: "college", record: college}, data: {basis: "Retirement", expected_resource_version: 3, is_active: false}};
+ const html = renderToStaticMarkup(createElement(CatalogReview, {command, impact: warningImpact, cascade: true, onCascade: () => {}}));
+ assert.match(html, /type="checkbox"[^>]*checked/);
+ assert.match(html, /Also retire the 1 active program under it/);
+ assert.match(html, /All selected records retire together/);
+ assert.match(html, /45 active students/);
+ const noChildren = renderToStaticMarkup(createElement(CatalogReview, {command, impact: {...warningImpact, active_children: []}}));
+ assert.doesNotMatch(noChildren, /type="checkbox"/);
+});
+test("Retired records offer Reactivate and active records offer Retire", () => {
+ const props = {disabled: false, onEdit: () => {}, onHistory: () => {}};
+ const retired = renderToStaticMarkup(createElement(CatalogActions, {...props, target: {...target, record: {...program, is_active: false}}}));
+ assert.match(retired, />Reactivate</);
+ const active = renderToStaticMarkup(createElement(CatalogActions, {...props, target}));
+ assert.match(active, />Retire</);
 });
 test("Catalog browser suite is registered once per engine in CI discovery",()=>assertBrowserSuiteInCI("organization-catalog.browser.mjs"));
 test("Contract declares all sixteen integrated operations and no Catalog API changes",()=>{
@@ -109,3 +138,17 @@ for (const [operation,extra,after,action] of [
 });
 
 test("A timeout response is also an uncertain mutation outcome",()=>{assert.equal(uncertainCatalogOutcome(new CompassApiError({status:408,body:{},headers:{},method:"PUT",url:"/api/v1/organization/campuses/id/name"})),true);});
+
+
+test("A parent with active children can reach confirmation with its matching preview", () => {
+ const target = {kind: "college", record: college};
+ assert.equal(retirementPreviewMatches(target, warningImpact), true);
+ assert.equal(retirementPreviewMatches(target, {...warningImpact, resource_version: 2}), false);
+ assert.equal(retirementPreviewMatches(target, {...warningImpact, target_id: "other"}), false);
+ const command = {operation: "status", target, data: {basis: "Retire college", expected_resource_version: 3, is_active: false}};
+ assert.deepEqual(acknowledgeRetirement(command, warningImpact, true).data, {
+  basis: "Retire college", expected_resource_version: 3, is_active: false,
+  acknowledged_impact: true, impact_token: "observed-preview-token", cascade: true,
+ });
+ assert.throws(() => acknowledgeRetirement(command, {...warningImpact, resource_version: 4}, true));
+});
