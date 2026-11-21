@@ -13,6 +13,7 @@ import {
   occupationOptions,
   parentLifeOptions,
   parentStatusOptions,
+  soloParentOptions,
 } from "@/features/inventory/inventory-presentation";
 import { familyMemberTextLimits, inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
@@ -244,6 +245,18 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
             onChange={(value) => onChange({
               support_profile: { ...draft.support_profile, father_life_status: value },
             })}
+            required
+          />
+          <SelectField
+            id="inventory-solo-parent"
+            error={errorFor("inventory-solo-parent")}
+            label="Are you a solo parent?"
+            value={draft.support_profile?.solo_parent_status}
+            options={soloParentOptions}
+            onChange={(value) => onChange({
+              support_profile: { ...draft.support_profile, solo_parent_status: value },
+            })}
+            hint="A solo parent is raising a child alone, for example because of a partner's death, separation, abandonment, or work abroad (Republic Act No. 11861)."
             required
           />
         </div>

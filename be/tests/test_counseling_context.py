@@ -168,12 +168,12 @@ def make_inventory(
             {
                 "pwd_status": "PWD",
                 "physical_disadvantage": "Self-reported PWD detail for test projection.",
-                "civil_status_category": "SOLO_PARENT",
                 "support_profile": {
                     "four_ps_status": "BENEFICIARY",
                     "indigenous_peoples_status": "MEMBER",
                     "mother_life_status": "DECEASED",
                     "father_life_status": "DECEASED",
+                    "solo_parent_status": "YES",
                 },
             }
         )

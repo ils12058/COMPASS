@@ -48,7 +48,11 @@ from compass.reports.services import (
     year_level_label,
 )
 from compass.student_academics.models import StudentAcademicProfile
-from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
+from compass.student_support.models import (
+    ParentLifeStatus,
+    SoloParentStatus,
+    StudentSupportProfile,
+)
 from tests.inventory_encryption_helpers import create_inventory_row
 
 
@@ -135,6 +139,7 @@ def make_inventory(
     civil_status_category: str | None = CivilStatusCategory.SINGLE,
     religion: str | None = CurrentReligionCategory.ROMAN_CATHOLIC,
     physical: str | None = PWDStatus.NON_PWD,
+    solo_parent_status: str | None = SoloParentStatus.NO,
     parent_statuses: list[str] | None = None,
     living: str = LivingArrangement.OWN_HOUSE,
     with_parents: bool = True,
@@ -189,6 +194,7 @@ def make_inventory(
         inventory=item,
         mother_life_status=ParentLifeStatus.LIVING if with_parents else None,
         father_life_status=ParentLifeStatus.LIVING if with_parents else None,
+        solo_parent_status=solo_parent_status,
     )
     if with_location:
         InventoryGeographicLocation.objects.create(

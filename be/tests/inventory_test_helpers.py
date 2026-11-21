@@ -161,6 +161,7 @@ def minimum_normalized_inventory_values(
             "indigenous_peoples_status": "NOT_MEMBER",
             "mother_life_status": "LIVING",
             "father_life_status": "LIVING",
+            "solo_parent_status": "NO",
         },
         "geographic_locations": [
             {

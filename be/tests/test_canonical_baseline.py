@@ -2,6 +2,7 @@
 
 import ast
 import hashlib
+import importlib.util
 import json
 from io import StringIO
 from pathlib import Path
@@ -38,11 +39,22 @@ def registered_migrations():
     return baselines | additions
 
 
+def _reviewed_migrations() -> dict[str, str]:
+    spec = importlib.util.spec_from_file_location(
+        "canonical_baseline_database_preflight",
+        COMPASS.parent / "deploy/staging/database_preflight.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return dict(module.REVIEWED_MIGRATIONS)
+
+
 def test_the_deployment_registry_pins_exactly_the_registered_additive_migrations():
     """Reset tooling runs on the host without the application, so it carries its own copy."""
 
     manifest = json.loads((COMPASS / "common/canonical_migrations.json").read_text())
     deployed = json.loads((COMPASS.parent / "deploy/staging/additive-migrations.json").read_text())
+    reviewed = _reviewed_migrations()
     assert {name.removeprefix("compass/") for name in deployed} == set(
         manifest["additive_migrations"]
     )
@@ -50,6 +62,10 @@ def test_the_deployment_registry_pins_exactly_the_registered_additive_migrations
     for name, digest in deployed.items():
         path = COMPASS.parent / name
         assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
+        key = f"{path.parent.parent.name}/{path.stem}"
+        if key in reviewed:
+            assert reviewed[key] == digest, name
+            continue
         # Only operations the routine deployment preflight accepts without a reviewed exception.
         migration = loader.disk_migrations[(path.parent.parent.name, path.stem)]
         for operation in migration.operations:
@@ -72,16 +88,19 @@ def test_registered_migrations_preserve_immutable_schema_only_baselines():
     assert actual == registered_migrations()
     manifest = json.loads((COMPASS / "common/canonical_migrations.json").read_text())
     immutable = {name.removeprefix("compass/") for name in manifest["baseline_sha256"]}
+    reviewed = _reviewed_migrations()
     loader = MigrationLoader(None, ignore_no_migrations=True)
     for path in COMPASS.glob("*/migrations/0*.py"):
         relative = str(path.relative_to(COMPASS))
+        key = f"{path.parent.parent.name}/{path.stem}"
         tree = ast.parse(path.read_text())
         calls = {
             node.func.attr
             for node in ast.walk(tree)
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
         }
-        assert "RunPython" not in calls, path
+        if relative in immutable or key not in reviewed:
+            assert "RunPython" not in calls, path
         if relative not in immutable:
             continue
         label = labels[path.parent.parent.name]

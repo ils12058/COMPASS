@@ -1,5 +1,6 @@
 import {
   AnnualIncomeStatusValue,
+  CivilStatusCategoryResponseValue,
   CivilStatusCategoryValue,
   CourseChoiceReasonValue,
   CurrentReligionCategoryValue,
@@ -19,6 +20,7 @@ import {
   PostGraduationFieldValue,
   PWDStatusValue,
   SexValue,
+  SoloParentStatusValue,
   TransportationFrequencyCategoryValue,
   TransportationModeValue,
 } from "@/lib/api/generated/model";
@@ -45,8 +47,15 @@ export const sexOptions = [
 export const civilStatusOptions = [
   [CivilStatusCategoryValue.SINGLE, "Single"],
   [CivilStatusCategoryValue.MARRIED, "Married"],
-  [CivilStatusCategoryValue.SOLO_PARENT, "Solo parent"],
+  [CivilStatusCategoryValue.WIDOWED, "Widowed"],
+  [CivilStatusCategoryValue.SEPARATED, "Separated"],
+  [CivilStatusCategoryValue.ANNULLED, "Annulled"],
   [CivilStatusCategoryValue.OTHER, "Other"],
+] as const;
+
+export const soloParentOptions = [
+  [SoloParentStatusValue.YES, "Yes"],
+  [SoloParentStatusValue.NO, "No"],
 ] as const;
 
 export const religionOptions = [
@@ -218,6 +227,7 @@ const enumPresentationLabels: Record<string, string> = {
     [
       sexOptions,
       civilStatusOptions,
+      soloParentOptions,
       religionOptions,
       familyKindOptions,
       annualIncomeOptions,
@@ -240,6 +250,7 @@ const enumPresentationLabels: Record<string, string> = {
       organizationScopeOptions,
     ].flat(),
   ),
+  [CivilStatusCategoryResponseValue.SOLO_PARENT]: "Solo parent (recorded before the update)",
 };
 
 export function enumLabel(value: string | null | undefined): string {

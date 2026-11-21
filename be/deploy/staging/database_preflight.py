@@ -9,7 +9,16 @@ from pathlib import Path
 
 # Future coordinated exceptions require a separately reviewed source digest.
 # The immutable release graph is reset-only and is never a routine deployment exception.
-REVIEWED_MIGRATIONS: dict[str, str] = {}
+REVIEWED_MIGRATIONS: dict[str, str] = {
+    # ADR-121: choices-only AlterField on StudentInventory.civil_status_category (zero DB DDL).
+    "inventory/0002_civil_status_categories": (
+        "8391bbe9e4817718ef8210639d22c1906a382388d4e7f976ef6ab9e2aa90f55d"
+    ),
+    # ADR-121: idempotent backfill setting solo_parent_status=YES for legacy SOLO_PARENT rows only.
+    "student_support/0003_backfill_solo_parent_status": (
+        "d447d760daf1b328460aa971aec863f6226c5167d902d15e304d23af43e6b0bb"
+    ),
+}
 
 
 class Refused(RuntimeError):

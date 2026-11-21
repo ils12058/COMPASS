@@ -313,6 +313,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_inventory_form_req_1.py",
             "test_inventory_frontend_readiness.py",
             "test_inventory_profiling_normalization.py",
+            "test_solo_parent_indicator.py",
             "test_program_inventory_academic_context.py",
             "test_institutional_identity.py",
         ),
@@ -323,7 +324,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "student-support": (
         "Student Support profiles derived from the Inventory.",
-        ("test_student_support.py",),
+        ("test_student_support.py", "test_solo_parent_indicator.py"),
     ),
     "exit-interviews": (
         "Exit Interviews, opportunities, documents, and encryption.",
@@ -375,6 +376,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_student_profiling_report_coverage.py",
             "test_student_profiling_pdf.py",
             "test_student_profiling_xlsx.py",
+            "test_solo_parent_indicator.py",
             "test_graduate_tracer_graduation_classification.py",
             "test_graduate_tracer_reports.py",
             "test_graduate_tracer_xlsx.py",

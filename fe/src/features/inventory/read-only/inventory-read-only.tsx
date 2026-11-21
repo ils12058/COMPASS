@@ -10,7 +10,7 @@ import type {
 } from "@/lib/api/generated/model";
 import { recordedYearLevelFilterLabel } from "@/lib/year-level";
 import {
-  CivilStatusCategoryValue,
+  CivilStatusCategoryResponseValue,
   CurrentReligionCategoryValue,
   GeographicLocationKindValue,
   OrganizationScopeValue,
@@ -152,7 +152,7 @@ export function InventoryReadOnly({
           <DefinitionValue label="Birth order among siblings" value={shown(inventory.birth_order_among_siblings)} />
           <DefinitionValue
             label="Civil status"
-            value={inventory.civil_status_category === CivilStatusCategoryValue.OTHER
+            value={inventory.civil_status_category === CivilStatusCategoryResponseValue.OTHER
               ? `Other · ${shown(inventory.civil_status)}`
               : enumLabel(inventory.civil_status_category)}
           />
@@ -214,6 +214,7 @@ export function InventoryReadOnly({
             <DefinitionValue label="Indigenous Peoples status" value={enumLabel(inventory.support_profile?.indigenous_peoples_status)} />
             <DefinitionValue label="Mother's life status" value={enumLabel(inventory.support_profile?.mother_life_status)} />
             <DefinitionValue label="Father's life status" value={enumLabel(inventory.support_profile?.father_life_status)} />
+            <DefinitionValue label="Solo parent" value={enumLabel(inventory.support_profile?.solo_parent_status)} />
           </ValueGrid>
         </div>
       </RecordSection>

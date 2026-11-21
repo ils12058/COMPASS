@@ -9986,11 +9986,27 @@
         "title": "CategoryCount",
         "type": "object"
       },
+      "CivilStatusCategoryResponseValue": {
+        "description": "Read schema for civil status, preserving legacy submitted SOLO_PARENT records (ADR-121).",
+        "enum": [
+          "SINGLE",
+          "MARRIED",
+          "WIDOWED",
+          "SEPARATED",
+          "ANNULLED",
+          "OTHER",
+          "SOLO_PARENT"
+        ],
+        "title": "CivilStatusCategoryResponseValue",
+        "type": "string"
+      },
       "CivilStatusCategoryValue": {
         "enum": [
           "SINGLE",
           "MARRIED",
-          "SOLO_PARENT",
+          "WIDOWED",
+          "SEPARATED",
+          "ANNULLED",
           "OTHER"
         ],
         "title": "CivilStatusCategoryValue",
@@ -13751,7 +13767,7 @@
           "civil_status_category": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+                "$ref": "#/components/schemas/CivilStatusCategoryResponseValue"
               },
               {
                 "type": "null"
@@ -27840,6 +27856,7 @@
           "family.indigenous_peoples_status",
           "family.mother_life_status",
           "family.father_life_status",
+          "family.solo_parent_status",
           "section.background",
           "background.siblings",
           "background.friends_in_school",
@@ -28787,7 +28804,7 @@
           "civil_status_category": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+                "$ref": "#/components/schemas/CivilStatusCategoryResponseValue"
               },
               {
                 "type": "null"
@@ -38316,6 +38333,14 @@
         "title": "SignificantLearningValue",
         "type": "string"
       },
+      "SoloParentStatusValue": {
+        "enum": [
+          "YES",
+          "NO"
+        ],
+        "title": "SoloParentStatusValue",
+        "type": "string"
+      },
       "SourceContext": {
         "additionalProperties": false,
         "properties": {
@@ -39129,6 +39154,9 @@
           },
           "sex": {
             "$ref": "#/components/schemas/DistributionSection"
+          },
+          "solo_parent_status": {
+            "$ref": "#/components/schemas/DistributionSection"
           }
         },
         "required": [
@@ -39136,6 +39164,7 @@
           "age",
           "civil_status",
           "physical_disadvantage",
+          "solo_parent_status",
           "current_religion",
           "mother_life_status",
           "father_life_status",
@@ -39765,6 +39794,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ParentLifeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "solo_parent_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoloParentStatusValue"
               },
               {
                 "type": "null"
