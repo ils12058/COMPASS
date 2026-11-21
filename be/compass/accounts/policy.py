@@ -94,6 +94,27 @@ def faculty_capability_eligible(role_code: str, capability_code: str) -> bool:
     return capability_code not in FACULTY_CAPABILITY_CEILING
 
 
+# Guidance Office Assistants perform office support only and never hold counseling continuity
+# or handoff capabilities, whether through baseline grants or explicit capability overrides.
+GOA_FORBIDDEN_CAPABILITIES = frozenset(
+    {
+        "counseling.continuity.view",
+        "counseling.continuity.request",
+        "counseling.continuity.approve",
+        "counseling.continuity.revoke",
+        "counseling.continuity.read_selected",
+        "counseling.handoff.manage_own",
+        "counseling.handoff.read_received",
+    }
+)
+
+
+def goa_capability_eligible(role_code: str, capability_code: str) -> bool:
+    if role_code == "GUIDANCE_OFFICE_ASSISTANT":
+        return capability_code not in GOA_FORBIDDEN_CAPABILITIES
+    return True
+
+
 CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 CAPABILITY_DEFINITIONS = (
@@ -776,8 +797,6 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "GUIDANCE_OFFICE_ASSISTANT": frozenset(
         {
-            "counseling.continuity.view",
-            "counseling.continuity.request",
             "guidance_followups.view",
             "guidance_followups.manage",
             "guidance_messages.view",

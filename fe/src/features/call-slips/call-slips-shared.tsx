@@ -140,6 +140,8 @@ export function callSlipStateLabel(
   state: CallSlipLifecycleStateValue,
   studentFacing = false,
 ): string {
+  if (state === CallSlipLifecycleStateValue.PENDING_APPROVAL) return "Waiting for approval";
+  if (state === CallSlipLifecycleStateValue.RETURNED) return "Returned for changes";
   if (state === CallSlipLifecycleStateValue.ACTIVE) return "Active";
   if (state === CallSlipLifecycleStateValue.COMPLETED) return "Completed";
   return studentFacing ? "Withdrawn" : "Voided";
@@ -152,7 +154,7 @@ export function CallSlipStatusBadge({
   state: CallSlipLifecycleState;
   studentFacing?: boolean;
 }) {
-  const tone = state === CallSlipLifecycleStateValue.ACTIVE
+  const tone = state === CallSlipLifecycleStateValue.ACTIVE || state === CallSlipLifecycleStateValue.PENDING_APPROVAL
     ? "border-info/30 bg-info/10 text-info"
     : state === CallSlipLifecycleStateValue.COMPLETED
       ? "border-success/30 bg-success/10 text-success"

@@ -144,17 +144,18 @@ export function DirectCallSlipCreatePage() {
 
   const studentData = students.data?.data;
   const selectedDestination = callSlipDestinationLabel(draft.destinationType, draft.otherDestination);
+  const isGoa = user.role === "GUIDANCE_OFFICE_ASSISTANT";
 
   return (
     <div className="space-y-5">
-      <CallSlipHeading title="Issue Call Slip" description={caseId ? "Issue a Call Slip from a counseling case." : "Issue a Call Slip without linking it to a Referral."} backHref={back} backLabel={back === "/portal/call-slips" ? undefined : workflowBackLabel(back)} />
+      <CallSlipHeading title={isGoa ? "Prepare Call Slip" : "Issue Call Slip"} description={caseId ? "Issue a Call Slip from a counseling case." : isGoa ? "Prepare a Call Slip and send it to your supervising Counselor for approval." : "Issue a Call Slip without linking it to a Referral."} backHref={back} backLabel={back === "/portal/call-slips" ? undefined : workflowBackLabel(back)} />
       {prefillFailed ? <Notice tone="warning" role="status">{caseId ? "This case can't be used for a Call Slip now. Choose the Student instead, or go back and check the case." : "The Follow-Up's Student couldn't be loaded. Choose the Student instead."}</Notice> : null}
       <form className="max-w-3xl" onSubmit={prepare} aria-busy={create.isPending}>
         <Panel as="div">
         <PanelSection
           title="Student"
           titleId="direct-call-slip-student-heading"
-          description="Your name will be recorded as the issuer."
+          description={isGoa ? "Your supervising Counselor will review and issue this Call Slip." : "Your name will be recorded as the issuer."}
         >
             {prefillPending ? <p role="status" className="text-sm text-muted">Loading the Student…</p> : fixedStudent ? <div className="text-sm">
               <p className="font-semibold text-ink">{fixedStudent.display_name}{fixedStudent.institutional_id ? ` · ${fixedStudent.institutional_id}` : ""}</p>
@@ -189,7 +190,7 @@ export function DirectCallSlipCreatePage() {
         <PanelFooter>
           {error && !confirmOpen ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
           {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
-          <Button type="submit" disabled={create.isPending || prefillPending || (!fixedStudent && students.isPending)}>{create.isPending ? "Issuing…" : "Review issuance"}</Button>
+          <Button type="submit" disabled={create.isPending || prefillPending || (!fixedStudent && students.isPending)}>{create.isPending ? (isGoa ? "Submitting…" : "Issuing…") : (isGoa ? "Review for approval" : "Review issuance")}</Button>
           <Link href={back} className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
         </PanelFooter>
         </Panel>
@@ -197,17 +198,19 @@ export function DirectCallSlipCreatePage() {
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Issue Call Slip?"
-        confirmLabel="Issue Call Slip"
+        title={isGoa ? "Submit Call Slip for approval?" : "Issue Call Slip?"}
+        confirmLabel={isGoa ? "Submit for approval" : "Issue Call Slip"}
         cancelLabel="Review details"
-        pendingLabel="Issuing…"
+        pendingLabel={isGoa ? "Submitting…" : "Issuing…"}
         pending={create.isPending}
         error={error}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void issueConfirmed()}
       >
         <p>
-          Check the Student and report details before issuing. The selected notification option determines whether the Student is notified.
+          {isGoa
+            ? "Your supervising Counselor will be notified to review and approve this Call Slip. The Student will not see it or receive a notice until your supervising Counselor approves it."
+            : "Check the Student and report details before issuing. The selected notification option determines whether the Student is notified."}
         </p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs font-semibold text-muted">Student</dt><dd className="mt-1 text-ink">{(fixedStudent ?? student)?.display_name ?? "Not selected"}{(fixedStudent ?? student)?.institutional_id ? ` · ${(fixedStudent ?? student)?.institutional_id}` : ""}</dd></div>

@@ -186,8 +186,8 @@ def test_suppressed_external_notice_keeps_truthful_in_app_history(request, setti
     assert mail.outbox == []
 
 
-def test_catalog_has_forty_two_events_and_sixteen_disclosure_approved_link_candidates():
-    assert len(NotificationEvent) == 42
+def test_catalog_has_forty_eight_events_and_sixteen_disclosure_approved_link_candidates():
+    assert len(NotificationEvent) == 48
     assert len(APPROVED_EMAIL_EVENTS) == 16
     # Urgent referrals and counselor booking requests use content-free links, never
     # an external-detail disclosure approval.

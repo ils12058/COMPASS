@@ -64,7 +64,8 @@ def _case_data():
             first_name=name,
             last_name="Synthetic",
         )
-        grant_caps(u)
+        if u.role.code != "GUIDANCE_OFFICE_ASSISTANT":
+            grant_caps(u)
         return u
 
     author, receiver, head, outsider = [user(n) for n in ["author", "receiver", "head", "outsider"]]
@@ -206,14 +207,7 @@ def test_self_approval_denied_even_head(synthetic_case, monkeypatch, who):
 def test_unsupported_roles_with_all_capabilities(case, role, operation):
     actor = case.user("unsupported", role)
     g = request(case)
-    expected = (
-        "source_not_found"
-        if role == "GUIDANCE_OFFICE_ASSISTANT" and operation == "request"
-        else "not_found"
-        if role == "GUIDANCE_OFFICE_ASSISTANT" and operation == "detail"
-        else "invalid_role"
-    )
-    with expect(expected):
+    with expect("invalid_role"):
         if operation == "request":
             request(case, actor=actor)
         elif operation == "detail":
@@ -797,7 +791,7 @@ def test_capability_registration_grants_only_supported_roles(case):
             role__code="GUIDANCE_OFFICE_ASSISTANT",
             capability__code__startswith="counseling.continuity.",
         ).count()
-        == 2
+        == 0
     )
     assert not DesignationCapability.objects.filter(
         capability__code__startswith="counseling.continuity."

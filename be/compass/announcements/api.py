@@ -14,7 +14,7 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.publications import PublicationAudience, PublicationStatus
+from compass.publications import PENDING_APPROVAL_STATUS, PublicationAudience, PublicationStatus
 
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -22,6 +22,7 @@ from .services import (
     AnnouncementError,
     AnnouncementManagementOrdering,
     AnnouncementNotFound,
+    AnnouncementNotPermitted,
     AnnouncementOrdering,
     AnnouncementPublicationConsequenceReviewRequired,
     InvalidAnnouncementInput,
@@ -34,6 +35,8 @@ from .services import (
     list_public_announcements,
     list_visible_announcements,
     publish_announcement,
+    return_announcement_draft,
+    submit_announcement_for_approval,
     update_announcement,
 )
 from .validation import VALIDATION_OPENAPI
@@ -55,6 +58,7 @@ class AnnouncementAudienceValue(StrEnum):
 
 class AnnouncementStatusValue(StrEnum):
     DRAFT = PublicationStatus.DRAFT
+    PENDING_APPROVAL = PENDING_APPROVAL_STATUS
     PUBLISHED = PublicationStatus.PUBLISHED
     ARCHIVED = PublicationStatus.ARCHIVED
 
@@ -85,6 +89,11 @@ class AnnouncementManagementResponse(StrictSchema):
     created_by: PersonSummary
     updated_by: PersonSummary
     published_by: PersonSummary | None
+    prepared_by: PersonSummary | None = None
+    submitted_for_approval_at: datetime | None = None
+    returned_by: PersonSummary | None = None
+    returned_at: datetime | None = None
+    return_note: str = ""
     created_at: datetime
     updated_at: datetime
 
@@ -124,6 +133,10 @@ class AnnouncementUpdateRequest(StrictSchema):
     acknowledge_publication_consequences: bool = False
 
 
+class AnnouncementReturnRequest(StrictSchema):
+    note: str
+
+
 def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
@@ -139,6 +152,8 @@ def _require_manager(request) -> None:
 def _raise(exc: AnnouncementError) -> NoReturn:
     if isinstance(exc, AnnouncementNotFound):
         raise APIError(404, "announcement_not_found", str(exc)) from exc
+    if isinstance(exc, AnnouncementNotPermitted):
+        raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, AnnouncementPublicationConsequenceReviewRequired):
         raise APIError(
             409,
@@ -183,6 +198,11 @@ def _managed(item) -> AnnouncementManagementResponse:
         created_by=_person(item.created_by),
         updated_by=_person(item.updated_by),
         published_by=_person(item.published_by) if item.published_by_id else None,
+        prepared_by=_person(item.prepared_by) if item.prepared_by_id else _person(item.created_by),
+        submitted_for_approval_at=item.submitted_for_approval_at,
+        returned_by=_person(item.returned_by) if item.returned_by_id else None,
+        returned_at=item.returned_at,
+        return_note=item.return_note or "",
         created_at=item.created_at,
         updated_at=item.updated_at,
     )
@@ -315,6 +335,49 @@ def announcements_publish(request, announcement_id: UUID):
         item = publish_announcement(
             actor=request.auth_user,
             announcement_id=announcement_id,
+            context=_context(request),
+        )
+    except AnnouncementError as exc:
+        _raise(exc)
+    return _managed(item)
+
+
+@router.post(
+    "/management/{announcement_id}/submit",
+    response=response_with_errors(AnnouncementManagementResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="announcementsSubmitForApproval",
+)
+def announcements_submit_for_approval(request, announcement_id: UUID):
+    _require_manager(request)
+    try:
+        item = submit_announcement_for_approval(
+            actor=request.auth_user,
+            announcement_id=announcement_id,
+            context=_context(request),
+        )
+    except AnnouncementError as exc:
+        _raise(exc)
+    return _managed(item)
+
+
+@router.post(
+    "/management/{announcement_id}/return",
+    response=response_with_errors(AnnouncementManagementResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="announcementsReturnDraft",
+)
+def announcements_return_draft(
+    request,
+    announcement_id: UUID,
+    payload: AnnouncementReturnRequest,
+):
+    _require_manager(request)
+    try:
+        item = return_announcement_draft(
+            actor=request.auth_user,
+            announcement_id=announcement_id,
+            note=payload.note,
             context=_context(request),
         )
     except AnnouncementError as exc:

@@ -471,3 +471,13 @@ CASE_HANDOFF_ADDENDUM_ADDED = "counseling.case_handoff.addendum_added"
 CASE_HANDOFF_UNAVAILABLE_RECORDED = "counseling.case_handoff.unavailable_recorded"
 
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"
+
+# ADR-122 supervising-Counselor approval for GOA Call Slips and published content.
+CALL_SLIP_APPROVED = "call_slip.approved"
+CALL_SLIP_RETURNED = "call_slip.returned"
+CALL_SLIP_RESUBMITTED = "call_slip.resubmitted"
+CALL_SLIP_WITHDRAWN = "call_slip.withdrawn"
+ANNOUNCEMENT_SUBMITTED_FOR_APPROVAL = "announcement.submitted_for_approval"
+ANNOUNCEMENT_RETURNED = "announcement.returned"
+RESOURCE_SUBMITTED_FOR_APPROVAL = "resource.submitted_for_approval"
+RESOURCE_RETURNED = "resource.returned"

@@ -172,7 +172,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "work-queue": (
         "Read-only Guidance projection and source authorization/transition regressions.",
-        ("test_work_queue.py", "test_overview.py"),
+        ("test_work_queue.py", "test_overview.py", "test_goa_scope_approval.py"),
     ),
     "guidance-operations": (
         "Current aggregate authority and shared actionable source populations.",
@@ -301,6 +301,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_referral_call_slip_lifecycle.py",
             "test_call_slips.py",
             "test_call_slip_issuance_provenance.py",
+            "test_goa_scope_approval.py",
             "test_operational_students.py",
         ),
     ),
@@ -451,6 +452,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_announcements_validation.py",
             "test_resources.py",
             "test_resources_validation.py",
+            "test_goa_scope_approval.py",
             "test_storage.py",
         ),
     ),

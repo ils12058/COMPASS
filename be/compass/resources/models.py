@@ -63,6 +63,23 @@ class Resource(models.Model):
         null=True,
         blank=True,
     )
+    prepared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="resources_prepared",
+        null=True,
+        blank=True,
+    )
+    submitted_for_approval_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="resources_returned",
+        null=True,
+        blank=True,
+    )
+    returned_at = models.DateTimeField(null=True, blank=True)
+    return_note = models.TextField(max_length=1000, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

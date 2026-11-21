@@ -23,6 +23,7 @@ import {
   PublicationStatusBadge,
 } from "@/features/content/content-shared";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAnnouncementsGetManaged } from "@/lib/api/generated/announcements/announcements";
 import { AnnouncementAudienceValue, AnnouncementStatusValue } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
@@ -60,12 +61,16 @@ export function AnnouncementUnavailable({ error, onRetry, backHref = "/portal/an
 }
 
 export function AnnouncementDetailPage({ announcementId }: { announcementId: string }) {
+  const { user } = usePortalSession();
+  const isGoa = user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const searchParams = useSearchParams();
   const backHref = listReturnHref("/portal/announcements", new URLSearchParams(searchParams.toString()), ["search", "status", "audience", "page"]);
   const detail = useAnnouncementsGetManaged(announcementId, { query: { retry: false } });
   const [notice, setNotice] = useState<string | null>(() =>
     searchParams.get("notice") === "created"
-      ? "Draft saved. Review it below, then publish it when it is ready."
+      ? isGoa
+        ? "Draft saved. Review it below, then submit it for approval when it is ready."
+        : "Draft saved. Review it below, then publish it when it is ready."
       : null,
   );
 
@@ -77,7 +82,11 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
   const item = detail.data.data;
   const title = displayTitle(item.title, "Untitled Announcement");
   const isDraft = item.status === AnnouncementStatusValue.DRAFT;
+  const isPendingApproval = item.status === AnnouncementStatusValue.PENDING_APPROVAL;
   const isPublished = item.status === AnnouncementStatusValue.PUBLISHED;
+  const canEdit =
+    item.status !== AnnouncementStatusValue.ARCHIVED &&
+    !(isGoa && (isPublished || isPendingApproval));
   const expired = isAnnouncementExpired(item);
   const missing = [
     item.title.trim() ? null : "a title",
@@ -92,12 +101,12 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         backLabel="Announcements"
         action={!detail.isError ?
           <>
-            {item.status !== AnnouncementStatusValue.ARCHIVED ? (
+            {canEdit ? (
               <PageActionLink href={`/portal/announcements/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Announcement" />
             ) : null}
             <AnnouncementLifecycleActions
               announcement={item}
-              publishBlocked={missing.length > 0}
+              publishBlocked={missing.length > 0 || expired}
               onCompleted={setNotice}
             />
           </>
@@ -112,6 +121,16 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
 
       <div className="mt-5 space-y-3 empty:hidden">
         {notice ? <ContentNotice tone="success">{notice}</ContentNotice> : null}
+        {isPendingApproval ? (
+          <ContentNotice tone="info">
+            Waiting for supervising Counselor approval to publish.
+          </ContentNotice>
+        ) : null}
+        {isDraft && item.return_note ? (
+          <ContentNotice tone="warning">
+            Returned for changes{item.returned_by ? ` by ${item.returned_by.display_name}` : ""}: {item.return_note}
+          </ContentNotice>
+        ) : null}
         {isDraft && missing.length > 0 ? (
           <ContentNotice tone="warning">Add {missing.join(" and ")} before publishing.</ContentNotice>
         ) : null}
@@ -145,6 +164,9 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
             ? `${formatInstitutionalDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
             : "Not published"}
         </Detail>
+        {item.prepared_by ? (
+          <Detail label="Prepared by">{item.prepared_by.display_name}</Detail>
+        ) : null}
         <Detail label="Created">
           {formatInstitutionalDateTime(item.created_at)} by {item.created_by.display_name}
         </Detail>

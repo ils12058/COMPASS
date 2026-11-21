@@ -1241,6 +1241,16 @@
             "title": "Is Pinned",
             "type": "boolean"
           },
+          "prepared_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "published_at": {
             "anyOf": [
               {
@@ -1263,8 +1273,47 @@
               }
             ]
           },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/AnnouncementStatusValue"
+          },
+          "submitted_for_approval_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted For Approval At"
           },
           "title": {
             "title": "Title",
@@ -1394,9 +1443,24 @@
         "title": "AnnouncementReaderResponse",
         "type": "object"
       },
+      "AnnouncementReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "AnnouncementReturnRequest",
+        "type": "object"
+      },
       "AnnouncementStatusValue": {
         "enum": [
           "DRAFT",
+          "PENDING_APPROVAL",
           "PUBLISHED",
           "ARCHIVED"
         ],
@@ -4542,6 +4606,8 @@
       },
       "CallSlipLifecycleStateValue": {
         "enum": [
+          "PENDING_APPROVAL",
+          "RETURNED",
           "ACTIVE",
           "COMPLETED",
           "VOIDED"
@@ -4601,6 +4667,48 @@
                 "type": "null"
               }
             ]
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_approve": {
+            "default": false,
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_resubmit": {
+            "default": false,
+            "title": "Can Resubmit",
+            "type": "boolean"
+          },
+          "can_return": {
+            "default": false,
+            "title": "Can Return",
+            "type": "boolean"
+          },
+          "can_withdraw": {
+            "default": false,
+            "title": "Can Withdraw",
+            "type": "boolean"
           },
           "counseling_case": {
             "anyOf": [
@@ -4682,6 +4790,33 @@
             "format": "date-time",
             "title": "Report At",
             "type": "string"
+          },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "state": {
             "$ref": "#/components/schemas/CallSlipLifecycleStateValue"
@@ -4861,6 +4996,82 @@
           "reference_code"
         ],
         "title": "CallSlipReferralSummary",
+        "type": "object"
+      },
+      "CallSlipResubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Year"
+          },
+          "destination_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notify_student": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notify Student"
+          },
+          "other_destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Destination"
+          },
+          "report_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report At"
+          }
+        },
+        "title": "CallSlipResubmitRequest",
+        "type": "object"
+      },
+      "CallSlipReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "CallSlipReturnRequest",
         "type": "object"
       },
       "CallSlipStudentCollegeResponse": {
@@ -5125,6 +5336,18 @@
           "reason"
         ],
         "title": "CallSlipVoidRequest",
+        "type": "object"
+      },
+      "CallSlipWithdrawRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "CallSlipWithdrawRequest",
         "type": "object"
       },
       "CampusListResponse": {
@@ -31667,7 +31890,9 @@
           "INVENTORY",
           "ROUTINE_INTERVIEW",
           "FACULTY_REFERRAL",
-          "REFERRAL"
+          "REFERRAL",
+          "ANNOUNCEMENT",
+          "RESOURCE"
         ],
         "title": "NotificationTargetType",
         "type": "string"
@@ -35647,6 +35872,16 @@
             ],
             "title": "Original Filename"
           },
+          "prepared_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "published_at": {
             "anyOf": [
               {
@@ -35669,12 +35904,51 @@
               }
             ]
           },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "size_bytes": {
             "title": "Size Bytes",
             "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/ResourceStatusValue"
+          },
+          "submitted_for_approval_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted For Approval At"
           },
           "title": {
             "title": "Title",
@@ -35812,9 +36086,24 @@
         "title": "ResourceReaderResponse",
         "type": "object"
       },
+      "ResourceReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ResourceReturnRequest",
+        "type": "object"
+      },
       "ResourceStatusValue": {
         "enum": [
           "DRAFT",
+          "PENDING_APPROVAL",
           "PUBLISHED",
           "ARCHIVED"
         ],
@@ -41423,7 +41712,10 @@
           "GOOD_MORAL_PREPARATION",
           "GOOD_MORAL_ISSUANCE",
           "URGENT_REFERRAL",
-          "CALL_SLIP_DUE"
+          "CALL_SLIP_APPROVAL",
+          "CALL_SLIP_DUE",
+          "ANNOUNCEMENT_APPROVAL",
+          "RESOURCE_APPROVAL"
         ],
         "title": "WorkKind",
         "type": "string"
@@ -44570,6 +44862,9 @@
           "announcement_archived": {
             "loc": []
           },
+          "announcement_pending_approval": {
+            "loc": []
+          },
           "audience_invalid": {
             "loc": [
               "audience"
@@ -44623,10 +44918,26 @@
           "publication_requires_draft": {
             "loc": []
           },
+          "return_note_required": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_note_too_long": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_requires_pending_approval": {
+            "loc": []
+          },
           "status_invalid": {
             "loc": [
               "status"
             ]
+          },
+          "submission_requires_draft": {
+            "loc": []
           },
           "title_required": {
             "loc": [
@@ -44974,6 +45285,192 @@
           }
         ],
         "summary": "Announcements Publish",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/management/{announcement_id}/return": {
+      "post": {
+        "operationId": "announcementsReturnDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "announcement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Announcement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Announcements Return Draft",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/management/{announcement_id}/submit": {
+      "post": {
+        "operationId": "announcementsSubmitForApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "announcement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Announcement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Announcements Submit For Approval",
         "tags": [
           "announcements"
         ]
@@ -53042,6 +53539,94 @@
         ]
       }
     },
+    "/api/v1/call-slips/{call_slip_id}/approve": {
+      "post": {
+        "operationId": "callSlipsApprove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Approve",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
     "/api/v1/call-slips/{call_slip_id}/interview-ended": {
       "patch": {
         "operationId": "callSlipsRecordInterviewEnded",
@@ -53219,6 +53804,209 @@
         ]
       }
     },
+    "/api/v1/call-slips/{call_slip_id}/resubmit": {
+      "post": {
+        "operationId": "callSlipsResubmit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CallSlipResubmitRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Resubmit",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}/return": {
+      "post": {
+        "operationId": "callSlipsReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSlipReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Return",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
     "/api/v1/call-slips/{call_slip_id}/void": {
       "post": {
         "operationId": "callSlipsVoid",
@@ -53312,6 +54100,111 @@
           }
         ],
         "summary": "Call Slips Void",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}/withdraw": {
+      "post": {
+        "operationId": "callSlipsWithdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CallSlipWithdrawRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Withdraw",
         "tags": [
           "call-slips"
         ]
@@ -85813,10 +86706,29 @@
           "resource_archived": {
             "loc": []
           },
+          "resource_pending_approval": {
+            "loc": []
+          },
+          "return_note_required": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_note_too_long": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_requires_pending_approval": {
+            "loc": []
+          },
           "status_invalid": {
             "loc": [
               "status"
             ]
+          },
+          "submission_requires_draft": {
+            "loc": []
           },
           "title_required": {
             "loc": [
@@ -86445,6 +87357,192 @@
           }
         ],
         "summary": "Resources Publish",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/management/{resource_id}/return": {
+      "post": {
+        "operationId": "resourcesReturnDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Resources Return Draft",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/management/{resource_id}/submit": {
+      "post": {
+        "operationId": "resourcesSubmitForApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Resources Submit For Approval",
         "tags": [
           "resources"
         ]

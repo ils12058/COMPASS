@@ -20,6 +20,7 @@ import {
   PublicationStatusBadge,
 } from "@/features/content/content-shared";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   getSafeHttpUrl,
   resourceCategoryLabels,
@@ -66,6 +67,8 @@ export function ResourceUnavailable({ error, onRetry, backHref = "/portal/resour
 }
 
 export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
+  const { user } = usePortalSession();
+  const isGoa = user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const searchParams = useSearchParams();
   const backHref = listReturnHref("/portal/resources", new URLSearchParams(searchParams.toString()), ["search", "status", "audience", "category", "kind", "page"]);
   const detail = useResourcesGetManaged(resourceId, { query: { retry: false } });
@@ -81,6 +84,11 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
   const item = detail.data.data;
   const title = displayTitle(item.title, "Untitled Resource");
   const isDraft = item.status === ResourceStatusValue.DRAFT;
+  const isPendingApproval = item.status === ResourceStatusValue.PENDING_APPROVAL;
+  const isPublished = item.status === ResourceStatusValue.PUBLISHED;
+  const canEdit =
+    item.status !== ResourceStatusValue.ARCHIVED &&
+    !(isGoa && (isPublished || isPendingApproval));
   const missing = isDraft ? missingForPublication(item) : [];
   const externalUrl = getSafeHttpUrl(item.external_url);
 
@@ -92,7 +100,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         backLabel="Resources"
         action={!detail.isError ?
           <>
-            {item.status !== ResourceStatusValue.ARCHIVED ? (
+            {canEdit ? (
               <PageActionLink href={`/portal/resources/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Resource" />
             ) : null}
             <ResourceLifecycleActions resource={item} publishBlocked={missing.length > 0} onCompleted={setNotice} />
@@ -109,6 +117,16 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
 
       <div className="mt-5 space-y-3 empty:hidden">
         {notice ? <ContentNotice tone="success">{notice}</ContentNotice> : null}
+        {isPendingApproval ? (
+          <ContentNotice tone="info">
+            Waiting for supervising Counselor approval to publish.
+          </ContentNotice>
+        ) : null}
+        {isDraft && item.return_note ? (
+          <ContentNotice tone="warning">
+            Returned for changes{item.returned_by ? ` by ${item.returned_by.display_name}` : ""}: {item.return_note}
+          </ContentNotice>
+        ) : null}
         {missing.length > 0 ? (
           <ContentNotice tone="warning">
             Add {joinList(missing)} before publishing.
@@ -150,6 +168,9 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
             ? `${formatInstitutionalDateTime(item.published_at)}${item.published_by ? ` by ${item.published_by.display_name}` : ""}`
             : "Not published"}
         </Detail>
+        {item.prepared_by ? (
+          <Detail label="Prepared by">{item.prepared_by.display_name}</Detail>
+        ) : null}
         <Detail label="Created">
           {formatInstitutionalDateTime(item.created_at)} by {item.created_by.display_name}
         </Detail>

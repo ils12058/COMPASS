@@ -9,6 +9,7 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from . import case_continuity_rules as rules
 from . import case_handoff_services as services
 from .case_continuity_rules import CaseContinuityError
 from .case_handoff_models import CounselingCaseHandoff
@@ -38,7 +39,11 @@ def invoke(request, **values):
         raise APIError(exc.status, exc.code, str(exc)) from None
 
 
-def transfer_for_handoff(handoff_id):
+def transfer_for_handoff(request, handoff_id):
+    try:
+        rules.current_actor(request.auth_user)
+    except CaseContinuityError as exc:
+        raise APIError(exc.status, exc.code, str(exc)) from None
     row = (
         CounselingCaseHandoff.objects.filter(pk=handoff_id)
         .values_list("transfer_id", flat=True)
@@ -80,7 +85,7 @@ def submit(request, transfer_id: UUID, payload: CaseHandoffSubmitRequest):
 def read(request, handoff_id: UUID, addenda_page: int = 1):
     return invoke(
         request,
-        transfer_id=transfer_for_handoff(handoff_id),
+        transfer_id=transfer_for_handoff(request, handoff_id),
         handoff_id=handoff_id,
         operation="read",
         addenda_page=addenda_page,
@@ -96,7 +101,7 @@ def read(request, handoff_id: UUID, addenda_page: int = 1):
 def addendum(request, handoff_id: UUID, payload: CaseHandoffAddendumRequest):
     return invoke(
         request,
-        transfer_id=transfer_for_handoff(handoff_id),
+        transfer_id=transfer_for_handoff(request, handoff_id),
         handoff_id=handoff_id,
         operation="addendum",
         expected_transfer_version=payload.expected_transfer_version,

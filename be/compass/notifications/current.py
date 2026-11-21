@@ -20,6 +20,10 @@ def notification_is_current(notification, *, now=None):
         from compass.referrals.notification_contract import urgent_notice_is_current
 
         return urgent_notice_is_current(notification)
+    if notification.source_type.startswith("call_slip_approval"):
+        from compass.call_slips.work import call_slip_approval_notice_is_current
+
+        return call_slip_approval_notice_is_current(notification)
     if notification.source_type.startswith("case_coverage_v"):
         from compass.counseling.case_coverage_services import notification_is_current
 

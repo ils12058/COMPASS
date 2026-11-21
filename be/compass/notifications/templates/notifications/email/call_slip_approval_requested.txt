@@ -1,0 +1,5 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}A Call Slip is waiting for your approval.
+
+{% if action_url %}Review Call Slip: {{ action_url }}{% else %}Sign in to COMPASS to review the Call Slip.{% endif %}
+{% endblock %}

@@ -264,7 +264,8 @@ def test_office_to_only_head_and_head_as_requester_receiver_are_blocked_before_w
     w = cw3
     for actor in (w.goa, w.head):
         with pytest.raises(
-            CaseContinuityError, match="no independent Head|another active Counselor"
+            CaseContinuityError,
+            match="no independent Head|another active Counselor|unavailable to this account",
         ):
             prepare(
                 w,
@@ -285,20 +286,26 @@ def test_office_prepares_unavailable_owner_without_clinical_impersonation(cw3):
     task = create_task(w)
     w.a.is_active = False
     w.a.save(update_fields=["is_active"])
-    # Keep legitimate office routing via the current Head while the owner is unavailable.
-    StaffSupervision.objects.filter(staff=w.goa).update(supervisor=w.head)
+    with pytest.raises(CaseContinuityError) as denied:
+        projections.transfer_context(actor=w.goa, case_id=w.case.pk)
+    assert denied.value.code == "case_continuity_access_denied"
+    office_head = make_user("cw3-office-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=office_head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
     with patch.object(
         projections,
         "decrypt_text",
         side_effect=AssertionError("Office must never decrypt task titles"),
     ):
-        package = projections.transfer_context(actor=w.goa, case_id=w.case.pk)
+        package = projections.transfer_context(actor=office_head, case_id=w.case.pk)
         assert package["tasks"][0]["title"] is None
-        item = prepare(w, actor=w.goa)
-        detail = projections.transfer_detail(item, w.goa)
+        item = prepare(w, actor=office_head)
+        detail = projections.transfer_detail(item, office_head)
         assert detail["tasks"][0]["title"] is None
-    assert item.prepared_by_id == w.goa.pk and item.outgoing_counselor_id == w.a.pk
-    item = decide(submit(item, w.goa), w.head, "authorize")
+    assert item.prepared_by_id == office_head.pk and item.outgoing_counselor_id == w.a.pk
+    item = decide(submit(item, office_head), w.head, "authorize")
     decide(item, w.b, "accept")
     task.refresh_from_db()
     assert task.assigned_to_id == w.b.pk and task.created_by_id == w.a.pk

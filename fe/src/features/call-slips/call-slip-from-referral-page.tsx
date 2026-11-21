@@ -120,6 +120,8 @@ function LinkedCallSlipHistory({
 }
 
 function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralDetailResponse; onRefresh: () => Promise<void> }) {
+  const { user } = usePortalSession();
+  const isGoa = user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const router = useRouter();
   const queryClient = useQueryClient();
   const action = referral.actions.find((item) => item.action_type === ReferralActionTypeValue.SEND_CALL_SLIP_INTERVIEW_PERMIT);
@@ -267,7 +269,11 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
         <PanelFooter>
           {error && !confirmOpen ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
           {notice ? <p role="status" className="w-full text-sm text-muted">{notice}</p> : null}
-          <Button type="submit" disabled={create.isPending}>{create.isPending ? "Issuing…" : "Review issuance"}</Button>
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending
+              ? isGoa ? "Submitting…" : "Issuing…"
+              : isGoa ? "Review submission" : "Review issuance"}
+          </Button>
           <Link href={`/portal/referrals/${referral.id}`} className={buttonVariants({ variant: "secondary" })}>Cancel</Link>
         </PanelFooter>
         </Panel>
@@ -275,18 +281,19 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
 
       <ConsequentialActionDialog
         open={confirmOpen}
-        title="Issue linked Call Slip?"
-        confirmLabel="Issue Call Slip"
+        title={isGoa ? "Submit linked Call Slip for approval?" : "Issue linked Call Slip?"}
+        confirmLabel={isGoa ? "Submit for approval" : "Issue Call Slip"}
         cancelLabel="Review details"
-        pendingLabel="Issuing…"
+        pendingLabel={isGoa ? "Submitting…" : "Issuing…"}
         pending={create.isPending}
         error={error}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void issueConfirmed()}
       >
         <p>
-          This issues the Call Slip and, when needed, records the action on the
-          Referral in the same step. Review the details before issuing.
+          {isGoa
+            ? "This submits the linked Call Slip to your supervising Counselor for approval and, when needed, records the action on the Referral. The student will not see the Call Slip or receive a notice until your supervising Counselor approves it."
+            : "This issues the Call Slip and, when needed, records the action on the Referral in the same step. Review the details before issuing."}
         </p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs font-semibold text-muted">Referral</dt><dd className="mt-1 text-ink">{referral.reference_code}</dd></div>

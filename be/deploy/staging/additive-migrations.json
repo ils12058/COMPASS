@@ -17,7 +17,10 @@
   "compass/referrals/migrations/0003_referral_timing.py": "a05585c8a0aae8707e653b0a3218aa1e5058934d7aa6159457e99f02d2337505",
   "compass/organization/migrations/0003_campus_is_retired_college_is_retired_and_more.py": "0abd904c5cfef2734563035cbec6764cffe16eadb483f07a1767e7ee44c4ed09",
   "compass/referrals/migrations/0004_referralurgencychange.py": "13d4c6154066e617dc1920df4db1ac0e3fba875b403aabd3d9ab9a59b89dedd4",
+  "compass/announcements/migrations/0002_announcement_prepared_by_announcement_return_note_and_more.py": "208a97ce92c979f8534fa49252fcd4560f90792f50b1747907de833f26719da1",
   "compass/appointments/migrations/0003_counselor_booking_access.py": "6ae7de3c4b6d61c41f0f294581619adff1a8ecdbc2a3fbfd5abdd98a2a457d2d",
+  "compass/call_slips/migrations/0002_callslip_approval_status_callslip_approved_at_and_more.py": "50675080ec353186a99e742d0ef1ec8a4033e203f2a6306e9edb65700a5a0651",
+  "compass/resources/migrations/0002_resource_prepared_by_resource_return_note_and_more.py": "4dc5e6f69a5185e09091f0955a1f4540c5ba49e586e053c99e18b6b3c6f12194",
   "compass/student_support/migrations/0002_solo_parent_status.py": "68b24002e2f7237c412596a0370d398826af02e52d6be45a510bebac3384cba2",
   "compass/student_support/migrations/0003_backfill_solo_parent_status.py": "d447d760daf1b328460aa971aec863f6226c5167d902d15e304d23af43e6b0bb"
 }

@@ -21,6 +21,7 @@ from compass.accounts.policy import (
     CAPABILITY_CODES,
     CATALOG_ELIGIBLE_ROLES,
     faculty_capability_eligible,
+    goa_capability_eligible,
     resolve_capability_dependencies,
 )
 from compass.organization.integrity import catalog_dependent_write
@@ -79,7 +80,10 @@ def _candidate_capabilities(
     if user.role.code not in CATALOG_ELIGIBLE_ROLES:
         candidates.discard("organization.catalog.manage")
     return frozenset(
-        code for code in candidates if faculty_capability_eligible(user.role.code, code)
+        code
+        for code in candidates
+        if faculty_capability_eligible(user.role.code, code)
+        and goa_capability_eligible(user.role.code, code)
     )
 
 
@@ -176,6 +180,11 @@ def set_user_capability_override(
         capability.code,
     ):
         raise ValueError("This Permission isn't available for the current Faculty Role.")
+    if effect == UserCapabilityOverride.Effect.GRANT and not goa_capability_eligible(
+        locked_user.role.code,
+        capability.code,
+    ):
+        raise ValueError("This Permission isn't available for the Guidance Office Assistant Role.")
     if (
         capability.code == "organization.catalog.manage"
         and effect == UserCapabilityOverride.Effect.GRANT

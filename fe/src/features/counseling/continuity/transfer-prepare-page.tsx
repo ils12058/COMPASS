@@ -164,7 +164,7 @@ export function TransferPreparePage({ caseId }: { caseId: string }) {
   const privacy = useCoveragePrivacy(user.id, editId || caseId);
   const back = portalReturnHref(params.get("return_to"), `/portal/counseling/cases/${caseId}`);
   const [reasonChoice, setReasonChoice] = useState<{ editId: string; reason: CaseContinuityReason } | null>(null);
-  const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.request");
+  const allowed = user.role === "COUNSELOR" && user.capabilities.includes("counseling.continuity.request");
   const existing = useCounselingGetCaseTransfer(editId, { query: { enabled: allowed && Boolean(editId), retry: false, gcTime: 0, staleTime: 0 } });
   const reason = reasonChoice?.editId === editId ? reasonChoice.reason : existing.data?.data.reason ?? "SERVICE_RESPONSIBILITY_CHANGE";
   const purpose = existing.data?.data.purpose ?? requestedPurpose;

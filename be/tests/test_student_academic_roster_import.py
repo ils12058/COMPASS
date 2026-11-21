@@ -154,7 +154,7 @@ def test_import_capability_policy_definition_grants_and_dependencies():
         "Validate and apply approved CSV College placements for existing Student accounts."
     )
     assert len(CAPABILITY_DEFINITIONS) == 104
-    assert sum(len(grants) for grants in ROLE_CAPABILITY_GRANTS.values()) == 129
+    assert sum(len(grants) for grants in ROLE_CAPABILITY_GRANTS.values()) == 127
     assert sum(len(grants) for grants in DESIGNATION_CAPABILITY_GRANTS.values()) == 22
     assert {
         code
@@ -191,7 +191,7 @@ def test_import_capability_policy_definition_grants_and_dependencies():
 @pytest.mark.django_db
 def test_import_effective_grants_are_limited_to_admin_and_head_with_view():
     sync_policy()
-    assert RoleCapability.objects.count() == 129
+    assert RoleCapability.objects.count() == 127
     assert DesignationCapability.objects.count() == 22
 
     admin = make_user("UCN-POLICY-ADMIN", role="IT_ADMIN")
