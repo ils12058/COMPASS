@@ -40,6 +40,8 @@ const knownErrors: Record<string, string> = {
   current_inventory_required:
     "Submit your Individual Inventory for the current Academic Year before booking this Service.",
   appointment_not_found: "You can't open this Appointment.",
+  appointment_counselor_not_permitted:
+    "You can book only with your College's counselor or a counselor approved by the Head Guidance Counselor.",
   invalid_appointment_request: "Some Appointment details need attention. Review them and try again.",
   appointment_default_provider_unresolved:
     "Couldn't select a Counselor. Choose a listed Counselor and try again.",
@@ -185,13 +187,19 @@ export function AppointmentsLocalNavigation() {
     ...(access.canManageSlots
       ? [{ href: "/portal/appointments/slots", label: "Manage Appointment slots" }]
       : []),
+    ...(access.canReviewCounselorRequests
+      ? [{ href: "/portal/appointments/counselor-requests", label: "Counselor requests" }]
+      : []),
   ];
 
   if (links.length === 0) return null;
   return (
     <WorkspaceTabs label="Appointment navigation">
       {links.map((link) => {
-        const current = pathname === link.href;
+        const current =
+          pathname === link.href ||
+          (link.href === "/portal/appointments/counselor-requests" &&
+            pathname.startsWith("/portal/appointments/counselor-requests/"));
         return (
           <Link
             key={link.href}

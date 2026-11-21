@@ -158,6 +158,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_appointment_action_projection.py",
             "test_appointment_management_scope.py",
             "test_appointment_slot_reservations.py",
+            "test_college_counselor_booking.py",
             "test_availability.py",
             "test_availability_reservation_neutrality.py",
             "test_cross_domain_lifecycle_reconciliation.py",

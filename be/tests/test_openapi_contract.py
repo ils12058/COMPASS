@@ -344,6 +344,14 @@ EXPECTED_OPERATION_IDS = {
     "appointmentsListBookableSlots",
     "appointmentsListRescheduleSlots",
     "appointmentsListReassignmentCandidates",
+    "appointmentsGetMyCounselorRequest",
+    "appointmentsCreateCounselorRequest",
+    "appointmentsListCounselorRequests",
+    "appointmentsGetCounselorRequest",
+    "appointmentsDecideCounselorRequest",
+    "appointmentsListCounselorApprovals",
+    "appointmentsChangeCounselorApproval",
+    "appointmentsEndCounselorApproval",
     "counselingCreateEncounter",
     "counselingFinishAppointment",
     "counselingGetEncounterCreationOptions",
@@ -861,6 +869,7 @@ def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
             "good_moral_requested_count",
             "good_moral_ready_count",
             "active_call_slip_count",
+            "pending_counselor_requests_count",
         },
         "OverviewPlatformSummary": {
             "email_pending_count",
@@ -3622,6 +3631,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "CASE_TRANSFER_AUTHORIZATION",
         "CASE_TRANSFER_ACCEPTANCE",
         "CASE_REASSIGNMENT_APPROVAL",
+        "COUNSELOR_BOOKING_REQUEST",
         "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
@@ -3931,3 +3941,24 @@ def test_csv_selection_contract_preserves_empty_selection_and_original_download_
         row = schemas[f"{prefix}RowResponse"]
         assert row["properties"]["values"]["items"]["type"] == "string"
         assert "values" in row["required"]
+
+
+def test_college_counselor_booking_contract_keeps_reason_head_detail_only():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert "is_head_approved" in schemas["EligibleCounselorResponse"]["properties"]
+    assert "reason_ciphertext" not in json.dumps(schema)
+    for name in (
+        "StudentCounselorRequestSummary",
+        "StudentCounselorRequestDecisionSummary",
+        "StudentCounselorRequestStateResponse",
+        "HeadCounselorRequestSummary",
+        "HeadCounselorApprovalItem",
+    ):
+        assert schemas[name]["additionalProperties"] is False
+        assert "reason" not in schemas[name]["properties"]
+    detail = schemas["HeadCounselorRequestDetailResponse"]
+    assert detail["additionalProperties"] is False
+    assert "reason" in detail["properties"]
+    assert "COUNSELOR_BOOKING_REQUEST" in schemas["NotificationTargetType"]["enum"]
+    assert "APPOINTMENT_BOOKING" in schemas["NotificationTargetType"]["enum"]

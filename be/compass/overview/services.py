@@ -8,6 +8,7 @@ from datetime import datetime
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.appointments.counselor_access_services import count_pending_counselor_booking_requests
 from compass.appointments.services import (
     count_upcoming_managed_appointments,
     count_upcoming_self_appointments,
@@ -45,6 +46,7 @@ class GuidanceOverviewSummary:
     good_moral_requested_count: int | None
     active_call_slip_count: int | None
     good_moral_ready_count: int | None
+    pending_counselor_requests_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +96,10 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
             good_moral_requested_count=count_requested_requests(actor),
             good_moral_ready_count=count_ready_requests(actor),
             active_call_slip_count=count_active_call_slips(actor),
+            pending_counselor_requests_count=count_pending_counselor_booking_requests(
+                actor=actor,
+                now=current,
+            ),
         )
     elif role == "GUIDANCE_OFFICE_ASSISTANT":
         guidance = GuidanceOverviewSummary(

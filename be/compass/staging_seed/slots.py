@@ -22,6 +22,7 @@ def choose_slot(
     mode: str,
     desired: datetime,
     booked_at: datetime,
+    actor_key: str | None = None,
 ):
     last_day = desired.date() + timedelta(days=SEARCH_DAYS - 1)
     for offset in range(SEARCH_DAYS):
@@ -39,6 +40,7 @@ def choose_slot(
                 provider_id=session.users[provider_key].pk,
                 delivery_mode=mode,
                 target_date=day,
+                actor=session.user(actor_key) if actor_key else None,
                 now=booked_at,
             ).items
         except AppointmentError as exc:

@@ -32,6 +32,8 @@ class NotificationTargetType(StrEnum):
     COUNSELING_CASE = "COUNSELING_CASE"
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
+    APPOINTMENT_BOOKING = "APPOINTMENT_BOOKING"
+    COUNSELOR_BOOKING_REQUEST = "COUNSELOR_BOOKING_REQUEST"
     CALL_SLIP = "CALL_SLIP"
     STUDENT_SESSION_SUMMARY = "STUDENT_SESSION_SUMMARY"
     E_COUNSELING = "E_COUNSELING"
@@ -67,6 +69,8 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_REMINDER_24H = "appointment.reminder_24h"
     APPOINTMENT_REMINDER_3H = "appointment.reminder_3h"
     APPOINTMENT_REMINDER_MANUAL = "appointment.reminder_manual"
+    COUNSELOR_BOOKING_REQUEST_SUBMITTED = "appointment.counselor_request.submitted"
+    COUNSELOR_BOOKING_REQUEST_DECIDED = "appointment.counselor_request.decided"
     GROUP_SESSION_REGISTERED = "group_session.registered"
     GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
     GROUP_SESSION_CANCELLED = "group_session.cancelled"
@@ -121,6 +125,28 @@ _EVENT_CATALOG = {
         message="An urgent referral needs attention",
         email_subject="An urgent referral needs attention",
         email_template="referral_urgent",
+    ),
+    # ADR-120: strictly content-free. Never includes student name, counselor name, or reason.
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED: NotificationEventDefinition(
+        event=NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Different counselor requested",
+        message="A student asked for a different counselor. Sign in to review the request.",
+        email_subject="A student asked for a different counselor",
+        email_template="counselor_booking_request_submitted",
+    ),
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED: NotificationEventDefinition(
+        event=NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Counselor request updated",
+        message=(
+            "The Head Guidance Counselor updated your counselor request. "
+            "Sign in to check your available counselors."
+        ),
+        email_subject="COMPASS Counselor request update",
+        email_template="counselor_booking_request_decided",
     ),
     # NS-1 D4: content-free. No case, purpose, Counselor note or time appears in the notice.
     NotificationEvent.SESSION_PROPOSAL_RECEIVED: NotificationEventDefinition(

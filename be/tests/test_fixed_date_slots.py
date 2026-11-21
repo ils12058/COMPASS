@@ -33,7 +33,7 @@ from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
 from compass.common.institutional_time import institution_zone
 from compass.notifications.models import Notification
-from compass.organization.models import StaffSupervision
+from compass.organization.models import Campus, College, CounselorResponsibility, StaffSupervision
 from compass.service_catalog.fixed_slots_services import (
     CounselorNotQualifiedForService,
     DeliveryModeNotSupported,
@@ -58,6 +58,7 @@ from compass.service_catalog.services import (
     create_service,
     set_service_active,
 )
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -142,6 +143,12 @@ def env():
 
     configure_availability(admin, counselor)
     configure_availability(admin, counselor_b)
+
+    campus = Campus.objects.create(code="SLOTS_CAMP", name="Slots Campus")
+    college = College.objects.create(campus=campus, code="SLOTS_COL", name="Slots College")
+    CounselorResponsibility.objects.create(college=college, counselor=counselor)
+    StudentAcademicProfile.objects.create(student=student_1, current_college=college)
+    StudentAcademicProfile.objects.create(student=student_2, current_college=college)
 
     service = create_service(
         code="FIXED_CAREER_SVC",
@@ -1067,7 +1074,19 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     assert no_mfa_res.status_code == 403
     assert no_mfa_res.json()["error"]["code"] in ("mfa_setup_required", "mfa_step_up_required")
 
-    # 3. Counselor creates slot and student books it
+    # 3. Counselor creates slot and a Student from another College (with Head approval) books it,
+    #    keeping the Student outside a GOA's College scope while testing slot redaction.
+    from compass.appointments.counselor_access_models import StudentCounselorApproval
+
+    other_college = College.objects.create(
+        campus=Campus.objects.create(code="OTHER_SLOT_CAMP", name="Other Campus"),
+        code="OTHER_SLOT_COL",
+        name="Other College",
+    )
+    StudentAcademicProfile.objects.filter(student=student).update(current_college=other_college)
+    StudentCounselorApproval.objects.create(
+        student=student, counselor=counselor, approved_by=counselor_b
+    )
     create_res = counselor_client.post(
         f"/api/v1/services/{service.pk}/slots",
         data=json.dumps(create_payload),

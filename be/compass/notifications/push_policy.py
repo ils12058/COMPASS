@@ -13,6 +13,9 @@ class PushDecision(StrEnum):
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.REFERRAL_URGENT: (PushDecision.IN_APP_ONLY, ""),
+    # ADR-120: counselor-change requests stay off lock screens to avoid revealing student intent.
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GRADUATE_TRACER_REMINDER: (PushDecision.IN_APP_ONLY, ""),
     # Case continuity reviews stay in-app; push would reveal case activity on a lock screen.
     NotificationEvent.CASE_TRANSFER_REVIEW: (PushDecision.IN_APP_ONLY, ""),

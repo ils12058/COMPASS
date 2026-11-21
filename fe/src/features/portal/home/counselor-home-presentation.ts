@@ -98,19 +98,27 @@ export function getCounselorHomeDestinations(user: UserSummary) {
 export function getHeadGuidanceHomeDestinations(user: UserSummary) {
   if (!isHeadGuidanceCounselor(user)) return [];
 
+  const appointmentAccess = getAppointmentAccess(user);
   const visible = visibleWorkspaceHrefs(user);
   return withIcons(user, HEAD_OVERSIGHT_DESTINATIONS.filter((destination) => {
     if (destination.href === "/portal/availability" && !canManageAvailability(user)) return false;
     return visible.has(destination.href);
   }).concat(
-    getAppointmentAccess(user).canManage && visible.has("/portal/appointments")
+    appointmentAccess.canManage && visible.has("/portal/appointments")
       ? [{
           href: "/portal/appointments/manage",
           label: "Manage Appointments",
           description: "Open the Appointments you manage.",
         }]
       : [],
-  ).slice(0, 5));
+    appointmentAccess.canReviewCounselorRequests && visible.has("/portal/appointments")
+      ? [{
+          href: "/portal/appointments/counselor-requests",
+          label: "Counselor requests",
+          description: "Review student counselor requests and current approvals.",
+        }]
+      : [],
+  ).slice(0, 6));
 }
 
 function withIcons(user: UserSummary, destinations: CounselorHomeDestination[]): (CounselorHomeDestination & { icon: LucideIcon })[] {

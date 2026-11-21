@@ -37,5 +37,12 @@ export function presentWork(item: WorkItem, generatedAt?: string) {
       return { title: "Issue Good Moral Certificate", detail, href: `/portal/good-moral/${item.source_id}`, actionLabel: "Review certificate" };
     case WorkKind.CALL_SLIP_DUE:
       return { title: "Review Call Slip", detail, href: `/portal/call-slips/${item.source_id}`, actionLabel: "Review Call Slip" };
+    case WorkKind.COUNSELOR_BOOKING_REQUEST:
+      return {
+        title: "Review different counselor request",
+        detail,
+        href: `/portal/appointments/counselor-requests/${item.source_id}`,
+        actionLabel: "Review request",
+      };
   }
 }

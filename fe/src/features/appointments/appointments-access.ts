@@ -1,4 +1,4 @@
-import type { UserSummary } from "@/lib/api/generated/model";
+import { DesignationCode, type UserSummary } from "@/lib/api/generated/model";
 
 export type AppointmentAccess = {
   canViewSelf: boolean;
@@ -8,6 +8,7 @@ export type AppointmentAccess = {
   hasWorkspace: boolean;
   isStudent: boolean;
   canManageSlots: boolean;
+  canReviewCounselorRequests: boolean;
 };
 
 export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
@@ -22,6 +23,10 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
   const canManageSlots =
     canManage &&
     (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT");
+  const canReviewCounselorRequests =
+    canManage &&
+    user.role === "COUNSELOR" &&
+    user.designations.includes(DesignationCode.HEAD_GUIDANCE_COUNSELOR);
 
   return {
     canViewSelf,
@@ -31,5 +36,6 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
     hasWorkspace: canViewSelf || canManage,
     isStudent,
     canManageSlots,
+    canReviewCounselorRequests,
   };
 }

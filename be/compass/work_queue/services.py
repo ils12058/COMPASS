@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.appointments.counselor_access_services import pending_counselor_booking_requests
 from compass.call_slips.work import due_call_slips
 from compass.counseling.case_coverage_work import pending_coverage_work
 from compass.counseling.case_reassignment_services import pending_reassignment_work
@@ -97,6 +98,7 @@ def list_work(*, actor, page=1, page_size=20):
         *pending_transfer_work(actor=actor, limit=limit, now=now),
         *pending_reassignment_work(actor=actor, limit=limit, now=now),
         *pending_coverage_work(actor=actor, limit=limit, now=now),
+        *pending_counselor_booking_requests(actor=actor, limit=limit, now=now),
         *(_followup_item(row, now) for row in pending_followups(actor=actor, limit=limit)),
         *(
             _item(

@@ -2,6 +2,20 @@
 
 
 def notification_is_current(notification, *, now=None):
+    if notification.source_type == "counselor_booking_request_submitted":
+        from compass.appointments.counselor_access_services import (
+            counselor_request_submitted_notice_is_current,
+        )
+
+        return counselor_request_submitted_notice_is_current(notification)
+    if notification.source_type.startswith(
+        ("counselor_booking_request_decision_v", "counselor_booking_approval_update_v")
+    ):
+        from compass.appointments.counselor_access_services import (
+            counselor_request_decided_notice_is_current,
+        )
+
+        return counselor_request_decided_notice_is_current(notification)
     if notification.source_type == "referral_urgency":
         from compass.referrals.notification_contract import urgent_notice_is_current
 

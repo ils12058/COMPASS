@@ -1,0 +1,5 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}The Head Guidance Counselor updated your counselor request.
+
+{% if action_url %}Open Appointment booking: {{ action_url }}{% else %}Sign in to COMPASS to view your available counselors.{% endif %}
+{% endblock %}

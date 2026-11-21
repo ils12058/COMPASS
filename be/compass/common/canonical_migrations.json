@@ -56,6 +56,7 @@
     "referrals/migrations/0003_referral_timing.py",
     "organization/migrations/0003_campus_is_retired_college_is_retired_and_more.py",
     "referrals/migrations/0004_referralurgencychange.py",
+    "appointments/migrations/0003_counselor_booking_access.py",
     "student_support/migrations/0002_solo_parent_status.py",
     "student_support/migrations/0003_backfill_solo_parent_status.py"
   ]
