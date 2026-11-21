@@ -94,10 +94,12 @@ def test_cas_faculty_ccms_student_actual_sessions_through_closure_and_safe_track
         "state",
         "received_at",
         "closed_at",
+        "is_urgent",
         "timing_status",
         "scheduling_statement",
     }
     assert projection["timing_status"] == "NOT_PROVIDED"
+    assert projection["is_urgent"] is False
     assert projection["scheduling_statement"] is None
     assert not {"verifications", "note", "reason"}.intersection(projection)
     assert (

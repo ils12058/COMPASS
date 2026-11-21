@@ -253,3 +253,4 @@ from .timing_models import (  # noqa: E402, F401
     ReferralSchedulingStatement,
     ReferralSchedulingVerification,
 )
+from .urgency_models import ReferralUrgencyChange  # noqa: E402, F401

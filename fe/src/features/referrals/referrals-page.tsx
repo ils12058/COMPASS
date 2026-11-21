@@ -33,7 +33,10 @@ import { timingStatusLabel } from "@/features/referral-timing/timing-presentatio
 import { useReferralsList } from "@/lib/api/generated/referrals/referrals";
 import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional-time";
 
+import { UrgentBadge, UrgentFilter } from "./referral-urgency";
+
 export type ReferralListFilters = {
+  urgentOnly?: boolean;
   search: string;
   origin?: ReferralSubmissionChannel;
   formRevisionId: string;
@@ -45,8 +48,9 @@ export type ReferralListFilters = {
   page: number;
 };
 
-function filtersToUrl(filters: ReferralListFilters): string {
+export function filtersToUrl(filters: ReferralListFilters): string {
   const params = new URLSearchParams();
+  if (filters.urgentOnly) params.set("is_urgent", "true");
   if (filters.origin) params.set("submission_channel", filters.origin);
   if (filters.formRevisionId) params.set("form_revision_id", filters.formRevisionId);
   if (filters.search.trim()) params.set("search", filters.search.trim());
@@ -66,6 +70,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const [draft, setDraft] = useState(filters);
   const referrals = useReferralsList(
     {
+      ...(filters.urgentOnly ? { is_urgent: true } : {}),
       ...(filters.origin ? { submission_channel: filters.origin } : {}),
       ...(filters.search ? { search: filters.search } : {}),
       ...(filters.formRevisionId ? { form_revision_id: filters.formRevisionId } : {}),
@@ -84,10 +89,10 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const data = referrals.data?.data;
   const items = data?.items ?? [];
   const filtered = Boolean(
-    filters.origin || filters.formRevisionId || filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
+    filters.urgentOnly || filters.origin || filters.formRevisionId || filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
   );
 
-  const advancedCount = [filters.origin, filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
+  const advancedCount = [filters.urgentOnly, filters.origin, filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = filters.ordering ?? data?.ordering;
@@ -119,6 +124,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           clear={filtered ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
+          <UrgentFilter checked={!!draft.urgentOnly} onChange={urgentOnly => setDraft({ ...draft, urgentOnly })} />
           <FilterField label="Origin" htmlFor="referrals-origin">
             <Select id="referrals-origin" value={draft.origin ?? ""} onChange={(event) => setDraft({ ...draft, origin: (event.target.value || undefined) as ReferralSubmissionChannel | undefined })}>
               <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">Recorded by the Guidance Office</option>
@@ -190,6 +196,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                   <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                     {referral.reference_code}
                   </Link>
+                  <UrgentBadge urgent={referral.is_urgent} />
                   <IntakeContext item={referral} />
                   <p className="text-sm text-muted">{timingStatusLabel(referral.timing_status)}</p>
                   <p className="text-sm font-medium text-ink">{referral.student_name_snapshot}</p>
@@ -249,6 +256,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                     <tr key={referral.id} className={dataTable.row}>
                       <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                         <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
+                        <UrgentBadge urgent={referral.is_urgent} />
                         <IntakeContext item={referral} />
                         <span className="mt-1 block text-sm text-muted">{timingStatusLabel(referral.timing_status)}</span>
                         <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>

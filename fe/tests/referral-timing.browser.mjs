@@ -150,6 +150,8 @@ for (const writeError of [409, 422, 500, "lost", 403]) {
       await shown(form(page).getByRole("alert"));
       assert.equal(await form(page).getByLabel("Scheduling constraints note (optional)").inputValue(), "Synthetic new verification constraint");
       if (writeError === 422) {
+        // The error renders before focusTimingError's scheduled animation-frame focus.
+        await page.waitForFunction(() => document.activeElement?.id === "verification-timing-window-1-end_time");
         assert.equal(await page.locator("#verification-timing-window-1-end_time").evaluate(element => element === document.activeElement), true);
       } else {
         await shown(form(page).getByRole("button", { name: "Use latest details", exact: true }));

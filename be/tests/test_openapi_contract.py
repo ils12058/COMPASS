@@ -37,6 +37,7 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "course_year_block",
             "reason",
             "scheduling_statement",
+            "is_urgent",
         },
         "FacultyReferralSubmissionResponse": {
             "id",
@@ -47,11 +48,12 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "received_at",
             "closed_at",
             "timing_status",
+            "is_urgent",
         },
     }
     optional = {
-        "FacultyReferralSubmitRequest": {"scheduling_statement"},
-        "FacultyReferralSubmissionResponse": {"timing_status"},
+        "FacultyReferralSubmitRequest": {"scheduling_statement", "is_urgent"},
+        "FacultyReferralSubmissionResponse": {"timing_status", "is_urgent"},
     }
     for name, fields in expected.items():
         assert schemas[name]["additionalProperties"] is False
@@ -63,7 +65,8 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
         "scheduling_statement"
     }
     assert set(detail["required"]) == expected["FacultyReferralSubmissionResponse"] - {
-        "timing_status"
+        "timing_status",
+        "is_urgent",
     }
     assert schemas["FacultyReferralSubmissionState"]["enum"] == [
         "SUBMITTED",
@@ -78,6 +81,7 @@ EXPECTED_OPERATION_IDS = {
     "referralsGetAdministration",
     "referralsAcknowledge",
     "referralsCloseAdministratively",
+    "referralsUpdateUrgency",
     "referralsFacultyAvailability",
     "referralsFacultyConfirmStudent",
     "referralsFacultySubmit",
@@ -1208,6 +1212,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "page_size",
         },
         "/api/v1/referrals": {
+            "is_urgent",
             "submission_channel",
             "form_revision_id",
             "search",
@@ -3596,6 +3601,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "ROUTINE_EVALUATION",
         "GOOD_MORAL_PREPARATION",
         "GOOD_MORAL_ISSUANCE",
+        "URGENT_REFERRAL",
         "CALL_SLIP_DUE",
     ]
     assert schemas["WorkPriority"]["enum"] == ["TIME_SENSITIVE", "ACTION_REQUIRED"]
@@ -3855,3 +3861,17 @@ def test_content_validation_identifier_vocabulary_is_documented(operation_id, mo
     assert operation["responses"][422]["content"]["application/json"]["schema"]["$ref"].endswith(
         "/APIErrorResponse"
     )
+
+
+def test_referral_urgency_contract_is_separate_versioned_and_backward_compatible():
+    schema = _generated_schema()
+    operation = _operation(schema, "/api/v1/referrals/{referral_id}/urgency", "post")
+    assert operation["operationId"] == "referralsUpdateUrgency"
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(operation)
+    schemas = schema["components"]["schemas"]
+    assert set(schemas["ReferralUrgencyRequest"]["required"]) == {"expected_version", "is_urgent"}
+    assert schemas["ReferralUrgencyRequest"]["additionalProperties"] is False
+    for name in ("ReferralCreateRequest", "FacultyReferralSubmitRequest"):
+        assert schemas[name]["properties"]["is_urgent"]["default"] is False
+        assert "is_urgent" not in schemas[name]["required"]
+    assert schemas["NotificationTargetType"]["enum"].count("REFERRAL") == 1

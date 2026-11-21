@@ -120,3 +120,38 @@ def referrals_close_administratively(
     return _transition(
         request, referral_id, payload.expected_version, "CLOSURE", payload.obligations_reviewed
     )
+
+
+class ReferralUrgencyRequest(StrictSchema):
+    expected_version: int = Field(ge=0, strict=True)
+    is_urgent: bool = Field(strict=True)
+
+
+class ReferralUrgencyResponse(StrictSchema):
+    is_urgent: bool
+    urgency_version: int
+    urgency_changed_at: datetime | None
+    urgency_changed_by: ReferralAdministrativeActor | None
+
+
+@router.post(
+    "/{referral_id}/urgency",
+    auth=session_auth,
+    response=response_with_errors(ReferralUrgencyResponse, 401, 403, 404, 409, 422),
+    operation_id="referralsUpdateUrgency",
+)
+def referrals_update_urgency(request, referral_id: UUID, payload: ReferralUrgencyRequest):
+    from compass.referrals.urgency import change_urgency
+
+    _require(request, "referrals.manage")
+    try:
+        return change_urgency(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            referral_id=referral_id,
+            expected_version=payload.expected_version,
+            is_urgent=payload.is_urgent,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        )
+    except ReferralError as exc:
+        _error(exc)

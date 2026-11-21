@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from django.db.models import F, Q
+from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -135,3 +135,56 @@ def scope_current_faculty_notice_notifications(queryset, *, actor):
             source_id__in=_for_event(admitted, event, now).values("pk"),
         )
     return queryset.filter(~Q(source_type=SOURCE_TYPE) | allowed)
+
+
+URGENT_SOURCE_TYPE = "referral_urgency"
+
+
+def create_urgent_notices(*, referral_id):
+    """Synchronous in-app/outbox insert; existing workers are kicked on commit."""
+    from compass.notifications.services import create_notification_for_event
+    from compass.referrals.urgency import pending_urgent_referrals
+
+    recipients = User.objects.select_related("role").filter(
+        is_active=True, role__code__in={"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
+    )
+    for recipient in recipients:
+        item = pending_urgent_referrals(actor=recipient).filter(pk=referral_id).first()
+        if item is not None:
+            create_notification_for_event(
+                recipient=recipient,
+                event=NotificationEvent.REFERRAL_URGENT,
+                source_type=URGENT_SOURCE_TYPE,
+                source_id=item.urgency_change_id,
+                target_type=NotificationTargetType.REFERRAL,
+                target_id=item.pk,
+            )
+
+
+def urgent_notice_is_current(notification):
+    from compass.referrals.urgency import pending_urgent_referrals
+
+    return (
+        notification.source_type == URGENT_SOURCE_TYPE
+        and notification.event_code == NotificationEvent.REFERRAL_URGENT
+        and notification.target_type == NotificationTargetType.REFERRAL
+        and pending_urgent_referrals(actor=notification.recipient)
+        .filter(pk=notification.target_id, urgency_change_id=notification.source_id)
+        .exists()
+    )
+
+
+def scope_current_urgent_notifications(queryset, *, actor):
+    from compass.referrals.urgency import pending_urgent_referrals
+
+    admitted = pending_urgent_referrals(actor=actor).filter(
+        pk=OuterRef("target_id"), urgency_change_id=OuterRef("source_id")
+    )
+    return queryset.annotate(current_urgent_referral=Exists(admitted)).filter(
+        ~Q(source_type=URGENT_SOURCE_TYPE)
+        | Q(
+            current_urgent_referral=True,
+            event_code=NotificationEvent.REFERRAL_URGENT,
+            target_type=NotificationTargetType.REFERRAL,
+        )
+    )

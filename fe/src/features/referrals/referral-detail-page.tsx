@@ -6,6 +6,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { ReferralUrgencyControl } from "./referral-urgency-control";
+import { UrgentBadge } from "./referral-urgency";
 import { ReferralAdministration } from "./referral-administration";
 import { StaffReferralTiming } from "@/features/referral-timing/staff-timing";
 import { ReferralHelp } from "@/features/referrals/referral-help";
@@ -125,6 +127,8 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </PageActionGroup>
 
         <div className="min-w-0 space-y-5">
+      <UrgentBadge urgent={item.is_urgent} />
+      <ReferralUrgencyControl referral={item} canManage={referralAccess.canManage} refreshFailed={refreshFailed} refresh={refreshDetail} />
       {pdfError ? <Notice role="alert">{pdfError}</Notice> : null}
       {refreshFailed ? (
         <RefreshFailureNotice

@@ -9,7 +9,7 @@ from uuid import UUID
 
 from django.http import HttpResponse
 from ninja import Header, Router, Schema, Status
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
@@ -105,6 +105,7 @@ class ReferralCreateRequest(StrictSchema):
     referrer_name: str
     referred_on: date
     received_at: datetime | None = None
+    is_urgent: bool = Field(default=False, strict=True)
     scheduling_statement: ReferralSchedulingStatementRequest | None = None
 
 
@@ -175,6 +176,11 @@ class ReferralActionResponse(StrictSchema):
     recorded_by: ReferralActorSummary | None
 
 
+class ReferralUrgencyActor(StrictSchema):
+    id: UUID
+    display_name: str
+
+
 class ReferralSummaryResponse(StrictSchema):
     id: UUID
     reference_code: str
@@ -189,6 +195,10 @@ class ReferralSummaryResponse(StrictSchema):
     submission_channel: ReferralSubmissionChannel
     submitted_at: datetime | None = None
     administrative_state: FacultyReferralSubmissionState | None = None
+    is_urgent: bool = False
+    urgency_version: int = 0
+    urgency_changed_at: datetime | None = None
+    urgency_changed_by: ReferralUrgencyActor | None = None
     timing_status: ReferralTimingStatus = ReferralTimingStatus.NOT_PROVIDED
 
 
@@ -326,7 +336,10 @@ def _read_action(action):
 
 def _summary(item, *, content=None) -> dict[str, object]:
     content = content if content is not None else _read_content(item)
+    from .urgency import urgency_facts
+
     return {
+        **urgency_facts(item),
         "id": item.pk,
         "reference_code": item.reference_code,
         "student": _person(item.student),
@@ -439,6 +452,7 @@ def referrals_create(
             referrer_name=payload.referrer_name,
             referred_on=payload.referred_on,
             received_at=payload.received_at,
+            is_urgent=payload.is_urgent,
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
             context=_context(request),
@@ -464,6 +478,7 @@ def referrals_list(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    is_urgent: bool | None = None,
     submission_channel: ReferralSubmissionChannel | None = None,
     form_revision_id: UUID | None = None,
     ordering: ReferralOrdering | None = None,
@@ -479,6 +494,7 @@ def referrals_list(
             from_date=from_date,
             to_date=to_date,
             include_voided=include_voided,
+            is_urgent=is_urgent,
             submission_channel=submission_channel,
             form_revision_id=form_revision_id,
             ordering=ordering,

@@ -394,6 +394,7 @@ def create_referral(
     context: AuditContext,
     now: datetime | None = None,
     scheduling_statement: dict | None = None,
+    is_urgent: bool = False,
 ) -> Referral:
     _validate_operational_actor(actor)
     key = _validate_idempotency_key(idempotency_key)
@@ -464,7 +465,12 @@ def create_referral(
             channel=ReferralSubmissionChannel.GCO_RECORDED,
             scheduling_statement=scheduling_statement,
             timing_at=current,
+            is_urgent=is_urgent,
         )
+        if is_urgent:
+            from .notification_contract import create_urgent_notices
+
+            create_urgent_notices(referral_id=item.pk)
         return _detail_queryset().get(pk=item.pk)
 
 
@@ -487,6 +493,7 @@ def persist_referral(
     faculty_origin=None,
     scheduling_statement=None,
     timing_at=None,
+    is_urgent=False,
 ):
     """Canonical encrypted insert and synchronous Audit; caller owns authorization/transaction.
 
@@ -530,6 +537,12 @@ def persist_referral(
         context=context,
         now=timing_at or timezone.now(),
     )
+    if type(is_urgent) is not bool:
+        raise InvalidReferralInput("Choose whether the concern is urgent.")
+    if is_urgent:
+        from .urgency import append_urgency
+
+        append_urgency(referral=item, actor=actor, is_urgent=True, context=context, now=timing_at)
     return item
 
 
@@ -541,6 +554,7 @@ def list_referrals(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    is_urgent: bool | None = None,
     submission_channel: str | None = None,
     form_revision_id: UUID | None = None,
     ordering: str | ReferralOrdering | None = None,
@@ -563,7 +577,11 @@ def list_referrals(
         raise InvalidReferralInput("The From date can't be after the To date.")
     term = _clean_search(search)
 
-    qs = _scope_queryset(_queryset(), actor)
+    from .urgency import with_urgency
+
+    qs = with_urgency(_scope_queryset(_queryset(), actor))
+    if is_urgent is not None:
+        qs = qs.filter(is_urgent=is_urgent)
     if submission_channel is not None:
         if submission_channel not in ReferralSubmissionChannel.values:
             raise InvalidReferralInput("Unknown Referral submission channel.")

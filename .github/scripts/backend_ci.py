@@ -290,6 +290,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Referrals and Call Slips, which create and void each other.",
         (
             "test_referrals.py",
+            "test_urgent_referrals.py",
             "test_fup3a_faculty_referral_journey.py",
             "test_referral_confidential_content_encryption.py",
             "test_referral_timing.py",

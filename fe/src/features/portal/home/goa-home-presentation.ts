@@ -1,3 +1,4 @@
+import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { followupAccess } from "@/features/guidance-followups/followups-access";
@@ -23,6 +24,9 @@ export function getGoaManagedAppointmentParams(today: string) {
 export function presentGoaWork(item: WorkItem, user: UserSummary, generatedAt?: string) {
   const goodMoral = getGoodMoralAccess(user);
   switch (item.kind) {
+    case "URGENT_REFERRAL":
+      if (!getReferralAccess(user).canManage || !getReferralAccess(user).canView) return null;
+      break;
     case "ROUTINE_EVALUATION":
       // This workspace is Counselor-only. A malformed or newly broadened projection must not
       // introduce Counselor evaluation records into the GOA Home.

@@ -27,12 +27,14 @@ import { facultySubmitPath, facultyReferralsPath, facultyReferralAccess, faculty
 import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./shared";
 import { administrativeStateLabel, facultyReferralError } from "./presentation";
 
+import { UrgentBadge } from "@/features/referrals/referral-urgency";
+
 function SubmittedState({ item }: { item: FacultyReferralSubmissionResponse }) {
   return <span className="inline-block max-w-full rounded-sm [overflow-wrap:anywhere] bg-success/10 px-2 py-1 text-sm font-semibold text-success">{administrativeStateLabel(item.state)}</span>;
 }
 
 export function SubmissionFacts({ item }: { item: FacultyReferralSubmissionResponse }) {
-  return <RecordSummary label="Referral" title={item.reference_code} status={<SubmittedState item={item} />} facts={[
+  return <RecordSummary label="Referral" title={item.reference_code} status={<div className="flex flex-wrap gap-2"><UrgentBadge urgent={item.is_urgent} /><SubmittedState item={item} /></div>} facts={[
     { label: "Student", value: item.student.display_name },
     { label: "Submitted · Philippine Time", value: formatInstitutionalDateTime(item.submitted_at) },
     ...(item.received_at ? [{ label: "Received by the Guidance Office · Philippine Time", value: formatInstitutionalDateTime(item.received_at) }] : []),
@@ -49,7 +51,7 @@ export function SubmissionRows({ items }: { items: FacultyReferralSubmissionResp
         <p className="mt-1 text-sm text-muted">{timingStatusLabel(item.timing_status)}</p>
       </div>
       <p className="min-w-0 self-center text-muted [overflow-wrap:anywhere]"><span className="sr-only">Submitted </span><time dateTime={item.submitted_at}>{formatInstitutionalDateTime(item.submitted_at)}</time><span className="block text-xs">Philippine Time</span></p>
-      <div className="self-center"><SubmittedState item={item} /></div>
+      <div className="flex flex-wrap items-center gap-2 self-center"><UrgentBadge urgent={item.is_urgent} /><SubmittedState item={item} /></div>
     </li>)}
   </ul>;
 }

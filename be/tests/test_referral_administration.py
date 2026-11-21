@@ -73,6 +73,7 @@ def test_real_commit_three_states_preserve_source_and_minimal_own_projection(wor
         "state",
         "received_at",
         "closed_at",
+        "is_urgent",
         "timing_status",
         "scheduling_statement",
     }

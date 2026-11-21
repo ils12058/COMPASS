@@ -42,6 +42,7 @@ class NotificationEmailLink:
 
 _RECORD_ROUTES = {
     NotificationTargetType.FACULTY_REFERRAL: "faculty/referrals",
+    NotificationTargetType.REFERRAL: "referrals",
     NotificationTargetType.APPOINTMENT: "appointments",
     NotificationTargetType.GROUP_SESSION: "group-sessions",
     NotificationTargetType.GOOD_MORAL: "good-moral",

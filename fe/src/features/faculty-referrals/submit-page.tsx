@@ -18,6 +18,7 @@ import { useFacultyAvailability } from "./availability";
 import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./shared";
 import { SubmissionFacts } from "./records";
 import { useFacultySubmission } from "./use-submission";
+import { UrgencyCheckbox, UrgentBadge } from "@/features/referrals/referral-urgency";
 import { TimingEditor } from "@/features/referral-timing/timing-editor";
 import { TimingWindows } from "@/features/referral-timing/timing-readout";
 import { timingWindowsRequest } from "@/features/referral-timing/timing-draft";
@@ -54,6 +55,7 @@ function FacultySubmitContent() {
       {flow.reviewing ? <Panel data-guide-target="faculty-review" className="[overflow-wrap:anywhere]">
         <PanelBody><ReviewHeading /><p className="mt-2 text-sm text-muted">Review the Student and reason before submitting.</p></PanelBody>
         <PanelSection title="Student" titleId="faculty-review-student"><p className="text-sm font-medium [overflow-wrap:anywhere]">{checkedStudent?.display_name}</p></PanelSection>
+        {flow.urgent ? <PanelBody><UrgentBadge urgent /></PanelBody> : null}
         <PanelSection title="Referral information" titleId="faculty-review-information"><dl className="space-y-4 text-sm">
           <div><dt className="font-semibold text-muted">Course/Year/Block</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.course}</dd></div>
           <div><dt className="font-semibold text-muted">Referral reason</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.reason}</dd></div>
@@ -90,6 +92,9 @@ function FacultySubmitContent() {
                 <p id="faculty-reason-help" className="mt-1 text-sm text-muted">Keep observations relevant to the Referral, up to 10,000 characters. Unsaved information stays only on this page.</p>
                 {flow.errors.reason ? <p id="faculty-reason-error" role="alert" className="mt-1 text-sm text-danger">{flow.errors.reason}</p> : null}</div>
             </fieldset>
+          </PanelSection>
+          <PanelSection title="Urgency" titleId="faculty-urgency-heading">
+            <UrgencyCheckbox id="faculty-urgent" checked={flow.urgent} onChange={flow.changeUrgent} disabled={flow.pending} />
           </PanelSection>
           <PanelSection title="When can Guidance reach or meet the student?" titleId="faculty-timing-heading">
             <TimingEditor prefix="faculty-timing" draft={flow.timing} onChange={flow.changeTiming} errors={flow.timingErrors} disabled={flow.pending} />
