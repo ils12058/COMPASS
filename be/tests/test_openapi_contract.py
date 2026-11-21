@@ -471,6 +471,7 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralUpdateRequest",
     "goodMoralIssueRequest",
     "goodMoralPrepareRequest",
+    "goodMoralPrepareWithReceipt",
     "goodMoralVerifyReceipt",
     "goodMoralCancelRequest",
     "goodMoralDownloadCertificate",

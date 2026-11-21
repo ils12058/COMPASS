@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { graduateBasisMessage, inventoryCollegeMismatchStaffMessage } from "./good-moral-graduation-presentation";
 import { GoodMoralDegreeInput } from "@/features/good-moral/good-moral-degree-input";
+import { AssistedAcademicPrefill } from "@/features/good-moral/good-moral-assisted-academic";
 import { GOOD_MORAL_SEMESTERS, GoodMoralHeading, GoodMoralUnavailable, formatGoodMoralDate, goodMoralVariantLabel, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { EligibleStudentPicker } from "@/features/portal/components/eligible-student-picker";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -63,6 +64,7 @@ function AssistedRequestForm() {
     retry: false,
   });
   const graduation = student?.graduation;
+  const academic = student?.academic_context;
   const recorded = graduation?.graduation_basis === "REGISTRAR_RECORD";
   const effectiveDegree = graduation?.degree ?? degree;
   const effectiveDate = graduation?.graduation_date ?? graduationDate;
@@ -162,6 +164,7 @@ function AssistedRequestForm() {
                     <Select id="assisted-semester" className="mt-2" required value={semester} onChange={(event) => setSemester(event.target.value)}>
                       <option value="">Select semester</option>{GOOD_MORAL_SEMESTERS.map((value) => <option key={value}>{value}</option>)}
                     </Select></div>
+                  <AssistedAcademicPrefill context={academic} />
                 </> : <>
                   {graduation?.graduated_college ? <div><Label htmlFor="assisted-graduated-college">College</Label><Input id="assisted-graduated-college" className="mt-2" value={graduation.graduated_college.name} readOnly /></div> : null}
                   <GoodMoralDegreeInput id="assisted-degree" value={effectiveDegree} onChange={setDegree} disabled={locked} readOnly={Boolean(graduation?.degree)} />

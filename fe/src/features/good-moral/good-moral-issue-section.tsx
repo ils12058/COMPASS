@@ -1,14 +1,13 @@
 "use client";
 
-import { receiptStatuses } from "./receipt-presentation";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Notice } from "@/components/ui/notice";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
+import { GoodMoralIssueReviewDialog } from "@/features/good-moral/good-moral-issue-review-dialog";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralIssuePayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
@@ -171,40 +170,15 @@ export function GoodMoralIssueSection({
         </div>
       </GoodMoralSection>
 
-      <ConsequentialActionDialog
+      <GoodMoralIssueReviewDialog
         open={confirmOpen}
-        title="Issue Good Moral Certificate?"
-        confirmLabel="Issue certificate"
-        pendingLabel="Issuing certificate…"
+        reviewed={reviewed}
         pending={issuePending}
         confirmDisabled={blockedUntilRefresh || !confirmed || staleReview || !item.actions.can_issue}
         error={staleReview && !issuePending ? "This request changed. Close and review the latest details before issuing." : error}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void confirmIssue()}
-      >
-        <p>
-          The issued certificate will record the approved form revision, issuance date, and issuing Counselor. Review the details below before issuing.
-        </p>
-        {reviewed.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing a Good Moral Certificate for UCN Bachelor&apos;s graduates (F6).</Notice> : null}
-        {reviewed.receipt_inspection ? <p className="text-sm">{receiptStatuses[reviewed.receipt_inspection.status].label} · Receipt {reviewed.official_receipt_number || "not recorded"}</p> : null}
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-          <GoodMoralField label="Applicant name" value={reviewed.applicant_name} />
-          <GoodMoralField label="Variant" value={reviewed.variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree"} />
-          {reviewed.variant === "CURRENT_STUDENT" ? (
-            <>
-              <GoodMoralField label="Year level" value={reviewed.year_level} />
-              <GoodMoralField label="College" value={reviewed.college} />
-              <GoodMoralField label="Course" value={reviewed.course} />
-              <GoodMoralField label="Semester" value={reviewed.semester} />
-            </>
-          ) : (
-            <>
-              <GoodMoralField label="Degree" value={reviewed.degree} />
-              <GoodMoralField label="Graduation date" value={formatGoodMoralDate(reviewed.graduation_date)} />
-            </>
-          )}
-        </dl>
-      </ConsequentialActionDialog>
+      />
     </>
   );
 }

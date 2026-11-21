@@ -543,6 +543,64 @@ def get_f4_academic_context(student: User) -> F4AcademicContext:
     return _f4_academic_context(program=inventory.program, year_level=inventory.year_level)
 
 
+def get_assisted_academic_context(student: User) -> dict[str, str | None]:
+    """Read-only prefill facts for an assisted Current Student request.
+
+    Mirrors the records ``_create_current_student`` binds (submitted Inventory and
+    current College placement) but never raises: a missing record leaves that fact
+    empty so the form only shows what already exists. The server still owns these
+    values at creation; this projection is for display, not a new source of truth.
+    """
+    facts: dict[str, str | None] = {
+        "year_level": None,
+        "college": None,
+        "course": None,
+        "major": None,
+        "academic_year": None,
+    }
+    if not is_current_student(student):
+        return facts
+    current_year = get_current_academic_year()
+    if current_year is not None:
+        inventory = (
+            StudentInventory.objects.select_related("academic_year", "program__college__campus")
+            .only(
+                "id",
+                "student_id",
+                "academic_year_id",
+                "academic_year__label",
+                "submitted_at",
+                "program_id",
+                "program__academic_classification",
+                "program__year_level_policy_status",
+                "program__applicable_year_levels",
+                "program__college__code",
+                "program__college__campus__code",
+                "year_level",
+                "course_currently_enrolled",
+                "major",
+            )
+            .filter(student_id=student.pk, academic_year_id=current_year.pk)
+            .first()
+        )
+        if inventory is not None and inventory.submitted_at is not None:
+            facts["course"] = inventory.course_currently_enrolled.strip() or None
+            facts["major"] = inventory.major.strip() or None
+            facts["academic_year"] = inventory.academic_year.label
+            academic = _f4_academic_context(
+                program=inventory.program, year_level=inventory.year_level
+            )
+            if (
+                academic.status == F4AcademicEligibility.ELIGIBLE
+                and academic.year_level is not None
+            ):
+                facts["year_level"] = F4_YEAR_LEVEL_LABELS[academic.year_level]
+    placement = get_current_placement(student_id=student.pk, require_active_college=True)
+    if placement is not None:
+        facts["college"] = placement.college.name.strip() or None
+    return facts
+
+
 def _require_f4_bachelors_inventory(inventory) -> str:
     academic = _f4_academic_context(program=inventory.program, year_level=inventory.year_level)
     if academic.status == F4AcademicEligibility.UNCLASSIFIED_PROGRAM:
@@ -1442,6 +1500,100 @@ def prepare_request(
                 "fee_changed", "The expected fee changed during preparation."
             )
         return _queryset().get(pk=item.pk)
+
+
+@catalog_dependent_write
+def prepare_with_receipt(
+    *,
+    actor: User,
+    request_id: UUID,
+    context: AuditContext,
+    expected_resource_version: str,
+    expected_receipt_revision: UUID | None,
+    receipt_operation_id: UUID,
+    inspection_operation_id: UUID,
+    official_receipt_number: str,
+    official_receipt_date: date | None = None,
+    official_receipt_amount: Decimal | None = None,
+    diploma_tor_checked: bool = False,
+) -> GoodMoralRequest:
+    """Record the receipt, its physical inspection, and preparation in one transaction.
+
+    This composes the existing correction, inspection, and preparation services inside
+    a single outer atomic block, so every guarantee they enforce (Official Receipt
+    uniqueness, attributable attestation, resource and revision version checks,
+    idempotent replay, and one audit record per underlying action) is identical to the
+    step-by-step path. Any failure rolls back all three steps; nothing half-completes.
+
+    The system fills the receipt date (today in institutional civil time) and the
+    amount (the configured fee) when the caller leaves them empty. Retry is safe: the
+    correction replays from its operation id, and the inspection inputs are derived
+    from the recorded correction's stable result version and revision rather than the
+    live request version, so a repeated call neither duplicates records nor conflicts.
+    """
+    from . import fees
+    from . import receipt_verification as inspection
+    from .models import GoodMoralReceiptAssignment
+
+    _validate_operational(actor, "good_moral.prepare")
+    _validate_operational(actor, "good_moral.verify_receipt")
+    with transaction.atomic():
+        item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
+        if item is None:
+            raise GoodMoralNotFound("The requested Good Moral record was not found.")
+        receipt_date = (
+            official_receipt_date if official_receipt_date is not None else institution_today()
+        )
+        receipt_amount = (
+            official_receipt_amount
+            if official_receipt_amount is not None
+            else fees.expected_amount_for(item)
+        )
+        updated = update_request(
+            actor=actor,
+            request_id=request_id,
+            changes={
+                "official_receipt_number": official_receipt_number,
+                "official_receipt_date": receipt_date,
+                "official_receipt_amount": receipt_amount,
+            },
+            context=context,
+            expected_resource_version=expected_resource_version,
+            expected_receipt_revision=expected_receipt_revision,
+            operation_id=receipt_operation_id,
+        )
+        mutation = updated.receipt_mutation_result
+        if mutation is None or mutation.result_revision_id is None:
+            raise inspection.ReceiptBlocked(
+                "missing", "Record the presented Official Receipt before inspection."
+            )
+        assignment = GoodMoralReceiptAssignment.objects.select_for_update().get(
+            pk=mutation.result_revision_id
+        )
+        live = GoodMoralRequest.objects.select_for_update().get(pk=request_id)
+        existing = inspection.current_verification(assignment, lock=True)
+        if existing is not None and inspection.verification_matches_fee(live, assignment, existing):
+            # A matching physical inspection already exists (a prior attempt or another
+            # staff member). Keep its attributable record and proceed to preparation.
+            pass
+        else:
+            inspection.verify_receipt(
+                actor=actor,
+                request_id=request_id,
+                context=context,
+                expected_resource_version=mutation.result_request_version,
+                assignment_id=mutation.result_revision_id,
+                operation_id=inspection_operation_id,
+                method=inspection.METHOD,
+            )
+        live = GoodMoralRequest.objects.select_for_update().get(pk=request_id)
+        return prepare_request(
+            actor=actor,
+            request_id=request_id,
+            context=context,
+            expected_resource_version=live.updated_at.isoformat(),
+            diploma_tor_checked=diploma_tor_checked,
+        )
 
 
 def _require_meaningful(value: str, label: str) -> None:

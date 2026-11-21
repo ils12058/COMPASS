@@ -19,6 +19,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancellation-action";
 import { GoodMoralCorrectionForm } from "@/features/good-moral/good-moral-correction-form";
 import { GoodMoralPreparationSection } from "@/features/good-moral/good-moral-preparation-section";
+import { GoodMoralOneStepPreparation } from "@/features/good-moral/good-moral-one-step-preparation";
 import { GoodMoralIssueSection } from "@/features/good-moral/good-moral-issue-section";
 import { GoodMoralIssuedPdf } from "@/features/good-moral/good-moral-issued-pdf";
 import {
@@ -78,6 +79,15 @@ export function GoodMoralCounselorDetail({
   };
   const confirmedNow = !detail.isError;
   const available = confirmedNow && !inspecting;
+  // The shorter one-step path covers a request that still needs preparation and whose receipt is
+  // not yet verified. Once the receipt is verified (or the request is already ready), the separate
+  // preparation control remains available, so the existing path keeps working.
+  const receiptVerified = item.receipt_inspection?.status === "VERIFIED";
+  const receiptDisputed = item.receipt_inspection?.status === "DISPUTED";
+  const oneStepActive = canPrepare && item.actions.can_prepare && item.status === "REQUESTED"
+    && !correctionOpen && !inspecting && !receiptVerified && !receiptDisputed;
+  const showSeparatePreparation = canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE")
+    && !correctionOpen && !inspecting && !oneStepActive;
   // The facts a counselor checks first; the remaining request details follow in the same sheet.
   const keyFacts: RecordFact[] = [
     { label: "How it started", value: goodMoralInitiationLabel(item.initiation_origin) },
@@ -149,7 +159,8 @@ export function GoodMoralCounselorDetail({
         </div>
       </GoodMoralSection> : null}
 
-      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !correctionOpen && !inspecting ? <GoodMoralPreparationSection item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
+      {oneStepActive ? <GoodMoralOneStepPreparation item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
+      {showSeparatePreparation ? <GoodMoralPreparationSection item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
       {canIssue && !correctionOpen && !inspecting ? <GoodMoralIssueSection item={item} confirmed={confirmedNow} onRefresh={refresh} /> : null}
 
       {item.status === "ISSUED" ? (

@@ -62,6 +62,7 @@ from .services import (
     create_assisted_request,
     create_my_current_student,
     create_my_graduate,
+    get_assisted_academic_context,
     get_f4_academic_context,
     get_mine,
     get_request,
@@ -70,6 +71,7 @@ from .services import (
     list_mine,
     list_requests,
     prepare_request,
+    prepare_with_receipt,
     render_certificate_pdf,
     update_request,
 )
@@ -170,6 +172,14 @@ class GoodMoralStaffGraduationContextResponse(GoodMoralGraduationContextResponse
     verified_at: datetime | None
 
 
+class GoodMoralAssistedAcademicContextResponse(StrictSchema):
+    year_level: str | None
+    college: str | None
+    course: str | None
+    major: str | None
+    academic_year: str | None
+
+
 class GoodMoralStudentOptionResponse(StrictSchema):
     id: UUID
     display_name: str
@@ -178,6 +188,7 @@ class GoodMoralStudentOptionResponse(StrictSchema):
     variant: GoodMoralVariantValue
     f4_eligibility: GoodMoralF4AcademicContextResponse | None = None
     graduation: GoodMoralStaffGraduationContextResponse | None = None
+    academic_context: GoodMoralAssistedAcademicContextResponse | None = None
 
 
 class GoodMoralStudentOptionPage(StrictSchema):
@@ -194,6 +205,17 @@ class GoodMoralCancellationPayload(StrictSchema):
 class GoodMoralPreparationPayload(StrictSchema):
     diploma_tor_checked: bool = False
     expected_resource_version: str
+
+
+class GoodMoralOneStepPreparationPayload(StrictSchema):
+    expected_resource_version: str
+    expected_receipt_revision: UUID | None
+    receipt_operation_id: UUID
+    inspection_operation_id: UUID
+    official_receipt_number: str
+    official_receipt_date: date | None = None
+    official_receipt_amount: Decimal | None = None
+    diploma_tor_checked: bool = False
 
 
 class GoodMoralIssuePayload(StrictSchema):
@@ -359,6 +381,11 @@ class GoodMoralReceiptVerificationResult(StrictSchema):
     invalidated_at: datetime | None
 
 
+class GoodMoralReceiptFeeResponse(StrictSchema):
+    expected_amount: Decimal
+    currency: Literal["PHP"]
+
+
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     graduation_verification_source: str | None
     graduation_verified_at: datetime | None
@@ -374,6 +401,7 @@ class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     receipt_mutation_result: GoodMoralReceiptMutationResponse | None = None
     receipt_inspection: GoodMoralReceiptInspectionResponse | None = None
     receipt_verification_result: GoodMoralReceiptVerificationResult | None = None
+    receipt_fee: GoodMoralReceiptFeeResponse | None = None
 
 
 class GoodMoralHistoryResponse(StrictSchema):
@@ -524,11 +552,19 @@ def _operational_summary(item) -> dict[str, object]:
 
 
 def _operational_detail(item, actor) -> dict[str, object]:
+    from . import fees
     from .receipt_identity import operational_receipt_state
     from .receipt_verification import operational_status
 
     verification = getattr(item, "receipt_verification_result", None)
     operation = getattr(item, "receipt_mutation_result", None)
+    try:
+        receipt_fee = {
+            "expected_amount": fees.expected_amount_for(item),
+            "currency": fees.GOOD_MORAL_CURRENCY,
+        }
+    except ValueError:
+        receipt_fee = None
     cancellation = None
     if item.cancelled_at is not None:
         cancellation = {
@@ -568,6 +604,7 @@ def _operational_detail(item, actor) -> dict[str, object]:
         }
         if operation
         else None,
+        "receipt_fee": receipt_fee,
     }
 
 
@@ -830,6 +867,11 @@ def good_moral_student_options(
                 },
                 "f4_eligibility": (
                     _f4_academic_context_response(student)
+                    if student.student_lifecycle_status == "CURRENT"
+                    else None
+                ),
+                "academic_context": (
+                    get_assisted_academic_context(student)
                     if student.student_lifecycle_status == "CURRENT"
                     else None
                 ),
@@ -1235,6 +1277,29 @@ def good_moral_prepare(request, request_id: UUID, payload: GoodMoralPreparationP
             context=_context(request),
             expected_resource_version=payload.expected_resource_version,
             diploma_tor_checked=payload.diploma_tor_checked,
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return _operational_detail(item, request.auth_user)
+
+
+@router.post(
+    "/requests/{request_id}/prepare-with-receipt",
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="goodMoralPrepareWithReceipt",
+)
+def good_moral_prepare_with_receipt(
+    request, request_id: UUID, payload: GoodMoralOneStepPreparationPayload
+):
+    _require_operational(request, "good_moral.prepare")
+    _require_operational(request, "good_moral.verify_receipt")
+    try:
+        item = prepare_with_receipt(
+            actor=request.auth_user,
+            request_id=request_id,
+            context=_context(request),
+            **payload.model_dump(),
         )
     except GoodMoralError as exc:
         _raise(exc)
