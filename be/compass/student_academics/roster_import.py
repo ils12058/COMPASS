@@ -14,6 +14,7 @@ from compass.audit.actions import STUDENT_ACADEMICS_ROSTER_IMPORTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.csv_selection import require_file_hash, selected_row_numbers, selection_counts
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import Campus, College, normalize_code
 from compass.student_academics.models import StudentAcademicProfile
@@ -44,7 +45,9 @@ class RosterImportInvalidRows(RosterImportError):
     """One or more rows contain invalid roster values."""
 
     def __init__(self, issues: tuple[RosterImportIssue, ...]) -> None:
-        super().__init__("one or more CSV rows are invalid")
+        super().__init__(
+            "Some selected rows have problems. Validate the CSV again. Nothing was imported."
+        )
         self.issues = issues
 
 
@@ -56,7 +59,10 @@ class RosterImportConflict(RosterImportError):
     """One or more rows conflict with existing Student academic state."""
 
     def __init__(self, rows: tuple[RosterImportRowResult, ...]) -> None:
-        super().__init__("one or more CSV rows conflict with existing Student academic state")
+        super().__init__(
+            "Some selected rows conflict with student records. "
+            "Validate the CSV again. Nothing was imported."
+        )
         self.rows = rows
 
 
@@ -145,7 +151,8 @@ def _headers(raw_headers: list[str]) -> tuple[str, ...]:
         raise RosterImportUnsupportedHeaders(
             "CSV is missing required headers: " + ", ".join(missing)
         )
-    unknown = sorted(set(headers) - REQUIRED_HEADERS)
+    # Correction downloads include an explanatory column; it never influences a write.
+    unknown = sorted(set(headers) - REQUIRED_HEADERS - {"problem"})
     if unknown:
         raise RosterImportUnsupportedHeaders(
             "CSV contains unsupported headers: " + ", ".join(unknown)
@@ -457,7 +464,9 @@ def _report(
     )
 
 
-def _commit(parsed: ParsedRosterCsv, *, context: AuditContext) -> RosterImportReport:
+def _commit(
+    parsed: ParsedRosterCsv, *, context: AuditContext, selected_rows: list[int] | None
+) -> RosterImportReport:
     try:
         with transaction.atomic():
             resolution = _load_resolution(rows=parsed.rows, lock=True)
@@ -486,13 +495,18 @@ def _commit(parsed: ParsedRosterCsv, *, context: AuditContext) -> RosterImportRe
                 )
 
             report = _report(parsed, classified, committed=True)
-            if report.set_count > 0:
+            if report.set_count > 0 or selected_rows is not None:
                 record_event(
                     context=context,
                     action=STUDENT_ACADEMICS_ROSTER_IMPORTED,
                     outcome=AuditOutcome.SUCCESS,
                     metadata={
-                        "total_rows": report.total_rows,
+                        **selection_counts(
+                            total=report.total_rows,
+                            selected=len(parsed.rows),
+                            imported=report.set_count,
+                            skipped=report.noop_count,
+                        ),
                         "set_count": report.set_count,
                         "noop_count": report.noop_count,
                     },
@@ -522,17 +536,27 @@ def import_student_academic_roster(
     context: AuditContext,
     data: bytes,
     dry_run: bool,
+    selected_rows: list[int] | None = None,
+    file_hash: str | None = None,
 ) -> RosterImportReport:
     parsed = _parse_csv(data)
     if dry_run:
         resolution = _load_resolution(rows=parsed.rows, lock=False)
         return _report(parsed, _classify(parsed.rows, resolution), committed=False)
 
+    if selected_rows is not None:
+        require_file_hash(data, file_hash)
+    selected = selected_row_numbers(parsed.rows, parsed.issues, selected_rows)
+    parsed = ParsedRosterCsv(
+        rows=tuple(row for row in parsed.rows if row.row_number in selected),
+        issues=tuple(issue for issue in parsed.issues if issue.row_number in selected),
+        total_rows=parsed.total_rows,
+    )
     if parsed.issues:
         if any(issue.code == "duplicate_identity" for issue in parsed.issues):
             raise RosterImportDuplicateIdentity(parsed.issues)
         raise RosterImportInvalidRows(parsed.issues)
-    return _commit(parsed, context=context)
+    return _commit(parsed, context=context, selected_rows=selected_rows)
 
 
 __all__ = [

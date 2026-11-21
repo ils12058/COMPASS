@@ -44,6 +44,7 @@ export function batchCommitReady({
   report,
   conflict,
   writes,
+  selectedRows,
 }: {
   file: File | null;
   reviewed: { file: File; scope: string } | null;
@@ -51,12 +52,14 @@ export function batchCommitReady({
   report: PeriodImportResponse | GraduationImportResponse | null;
   conflict: boolean;
   writes: number;
+  selectedRows?: number[];
 }): boolean {
   return Boolean(
     file &&
       reviewed?.file === file &&
       reviewed.scope === scope &&
-      report?.valid &&
+      report &&
+      (report.valid || selectedRows !== undefined) &&
       !report.committed &&
       !conflict &&
       writes > 0,

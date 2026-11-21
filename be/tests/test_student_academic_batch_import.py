@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
-from compass.accounts.models import Designation, StudentLifecycleStatus, UserDesignation
+from compass.accounts.models import Designation, Role, StudentLifecycleStatus, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.organization.models import AcademicYear
 from compass.student_academics.models import (
@@ -44,12 +46,21 @@ def post_periods(
     term="FIRST_SEMESTER",
     dry_run=True,
     fingerprint=None,
+    selected_rows=None,
+    file_hash="auto",
 ):
     data = {
         "file": SimpleUploadedFile("terms.csv", content, content_type="text/csv"),
         "academic_year_id": str(year.pk),
         "term": term,
     }
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
+        data["file_hash"] = (
+            hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
+        )
+    if selected_rows is not None:
+        data["selected_rows"] = json.dumps(selected_rows)
     if fingerprint is not None:
         data["preview_fingerprint"] = fingerprint
     return client.post(
@@ -60,12 +71,27 @@ def post_periods(
 
 
 def post_graduations(
-    client: Client, content: bytes, *, source=SOURCE, dry_run=True, fingerprint=None, confirmed=None
+    client: Client,
+    content: bytes,
+    *,
+    source=SOURCE,
+    dry_run=True,
+    fingerprint=None,
+    confirmed=None,
+    selected_rows=None,
+    file_hash="auto",
 ):
     data = {
         "file": SimpleUploadedFile("graduates.csv", content, content_type="text/csv"),
         "verification_source": source,
     }
+    # Legacy callers omit both selection fields; selected imports use the preview hash.
+    if file_hash is not None and (file_hash != "auto" or selected_rows is not None):
+        data["file_hash"] = (
+            hashlib.sha256(content).hexdigest() if file_hash == "auto" else file_hash
+        )
+    if selected_rows is not None:
+        data["selected_rows"] = json.dumps(selected_rows)
     if fingerprint is not None:
         data["preview_fingerprint"] = fingerprint
     if confirmed is not None:
@@ -220,6 +246,10 @@ def test_term_apply_writes_each_record_keeps_placement_and_audits_counts(world):
         "create_count": 2,
         "update_count": 0,
         "noop_count": 0,
+        "selected_count": 2,
+        "imported_count": 2,
+        "skipped_count": 0,
+        "not_selected_count": 0,
     }
 
     again = post_periods(world["client"], content, year=year).json()
@@ -421,6 +451,10 @@ def test_graduation_apply_requires_the_typed_count_then_graduates_and_clears_pla
         "update_count": 0,
         "noop_count": 0,
         "placement_cleared_count": 3,
+        "selected_count": 3,
+        "imported_count": 3,
+        "skipped_count": 0,
+        "not_selected_count": 0,
     }
 
 
@@ -461,3 +495,217 @@ def test_graduation_source_is_required_and_bounded(world):
         response.status_code == 422
         and response.json()["error"]["code"] == "csv_import_unsupported_headers"
     )
+
+
+def selected_batch(
+    world,
+    kind,
+    content,
+    *,
+    dry_run=True,
+    preview=None,
+    selected_rows=None,
+    file_hash="auto",
+    confirmed=None,
+    client=None,
+):
+    client = client or world["client"]
+    common = {
+        "dry_run": dry_run,
+        "fingerprint": preview["preview_fingerprint"] if preview else None,
+        "selected_rows": selected_rows,
+        "file_hash": file_hash,
+    }
+    if kind == "periods":
+        return post_periods(client, content, year=world["year"], **common)
+    return post_graduations(client, content, confirmed=confirmed, **common)
+
+
+def batch_content(kind, *ids):
+    header = PERIOD_HEADER if kind == "periods" else GRADUATION_HEADER
+    end = "2,ENROLLED" if kind == "periods" else "2026-06-30"
+    return csv_bytes(header, *(f"{identity},MAIN,CCMS,{end}" for identity in ids))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+def test_batch_selection_ignores_problem_rows_and_audits_only_selected_writes(world, kind):
+    first, second = make_user("UCN-ONE"), make_user("UCN-TWO")
+    content = batch_content(kind, "UCN-ONE", "UCN-TWO", "", "MISSING")
+    preview = selected_batch(world, kind, content).json()
+    assert preview["file_hash"] == hashlib.sha256(content).hexdigest()
+    assert preview["rows"][2]["values"][0] == ""
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[2], confirmed=1
+    )
+    assert response.status_code == 200
+    assert response.json()["selected_count"] == 1
+    assert response.json()["not_selected_count"] == 3
+    model = StudentAcademicPeriodRecord if kind == "periods" else StudentGraduationRecord
+    assert model.objects.filter(student=first).exists()
+    assert not model.objects.filter(student=second).exists()
+    event = AuditEvent.objects.get(action=f"student_academics.{kind}.imported")
+    assert {
+        key: event.metadata[key]
+        for key in [
+            "total_rows",
+            "selected_count",
+            "imported_count",
+            "skipped_count",
+            "not_selected_count",
+        ]
+    } == {
+        "total_rows": 4,
+        "selected_count": 1,
+        "imported_count": 1,
+        "skipped_count": 0,
+        "not_selected_count": 3,
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+def test_batch_selected_conflict_after_preview_rolls_back_entire_selection(world, kind):
+    make_user("UCN-ONE")
+    second = make_user("UCN-TWO")
+    content = batch_content(kind, "UCN-ONE", "UCN-TWO")
+    preview = selected_batch(world, kind, content).json()
+    second.role = Role.objects.get(code="COUNSELOR")
+    second.save(update_fields=["role"])
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[2, 3], confirmed=2
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["details"][0]["row_number"] == 3
+    assert not StudentAcademicPeriodRecord.objects.exists()
+    assert not StudentGraduationRecord.objects.exists()
+    assert not AuditEvent.objects.filter(action__startswith="student_academics.").exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+@pytest.mark.parametrize("selected_rows", [[], [2]])
+def test_batch_selection_requires_matching_file_and_preview(world, kind, selected_rows):
+    make_user("UCN-ONE")
+    content = batch_content(kind, "UCN-ONE")
+    preview = selected_batch(world, kind, content).json()
+    for digest, code in [
+        (None, "csv_import_preview_required"),
+        ("0" * 64, "csv_import_file_mismatch"),
+    ]:
+        response = selected_batch(
+            world,
+            kind,
+            content,
+            dry_run=False,
+            preview=preview,
+            selected_rows=selected_rows,
+            file_hash=digest,
+            confirmed=1,
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == code
+    tampered = {**preview, "preview_fingerprint": "not-a-signed-preview"}
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=tampered, selected_rows=[2], confirmed=1
+    )
+    assert response.status_code == 409
+    assert not StudentAcademicPeriodRecord.objects.exists()
+    assert not StudentGraduationRecord.objects.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+def test_batch_selected_state_change_rejected_with_row_report_unselected_change_ignored(
+    world, kind
+):
+    first, second = make_user("UCN-ONE"), make_user("UCN-TWO")
+    content = batch_content(kind, "UCN-ONE", "UCN-TWO")
+    preview = selected_batch(world, kind, content).json()
+    if kind == "periods":
+        StudentAcademicPeriodRecord.objects.create(
+            student=second,
+            academic_year=world["year"],
+            term="FIRST_SEMESTER",
+            college=world["cea"],
+            year_level=4,
+        )
+    else:
+        place(second, world["cea"])
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[2, 3], confirmed=2
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "csv_import_stale"
+    assert response.json()["error"]["details"][0]["row_number"] == 3
+    model = StudentAcademicPeriodRecord if kind == "periods" else StudentGraduationRecord
+    assert not model.objects.filter(student=first).exists()
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[2], confirmed=1
+    )
+    assert response.status_code == 200
+    assert model.objects.filter(student=first).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+def test_batch_selection_keeps_permissions_and_mfa_and_empty_selection_is_safe(world, kind):
+    student = make_user("UCN-ONE")
+    content = batch_content(kind, "UCN-ONE")
+    preview = selected_batch(world, kind, content).json()
+    clients = [auth_client(student), auth_client(world["admin"], recent_mfa=False)]
+    for client in clients:
+        response = selected_batch(
+            world,
+            kind,
+            content,
+            client=client,
+            dry_run=False,
+            preview=preview,
+            selected_rows=[2],
+            confirmed=1,
+        )
+        assert response.status_code == 403
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[], confirmed=0
+    )
+    assert response.status_code == 200
+    assert response.json()["selected_count"] == 0
+    assert not StudentAcademicPeriodRecord.objects.exists()
+    assert not StudentGraduationRecord.objects.exists()
+
+
+@pytest.mark.django_db
+def test_graduation_confirmation_count_is_for_selected_rows_only(world):
+    make_user("UCN-ONE")
+    make_user("UCN-TWO")
+    content = batch_content("graduations", "UCN-ONE", "UCN-TWO")
+    preview = selected_batch(world, "graduations", content).json()
+    response = selected_batch(
+        world,
+        "graduations",
+        content,
+        dry_run=False,
+        preview=preview,
+        selected_rows=[2],
+        confirmed=2,
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "csv_import_confirmation_mismatch"
+    assert not StudentGraduationRecord.objects.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["periods", "graduations"])
+def test_corrected_academic_download_ignores_problem_note(world, kind):
+    student = make_user("UCN-RETRY")
+    header = PERIOD_HEADER if kind == "periods" else GRADUATION_HEADER
+    end = "2,ENROLLED" if kind == "periods" else "2026-06-30"
+    content = csv_bytes(header + ",problem", f"UCN-RETRY,MAIN,CCMS,{end},old explanation")
+    preview = selected_batch(world, kind, content).json()
+    response = selected_batch(
+        world, kind, content, dry_run=False, preview=preview, selected_rows=[2], confirmed=1
+    )
+    assert response.status_code == 200
+    model = StudentAcademicPeriodRecord if kind == "periods" else StudentGraduationRecord
+    assert model.objects.filter(student=student).exists()

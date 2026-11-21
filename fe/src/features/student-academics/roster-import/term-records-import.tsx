@@ -9,6 +9,8 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Label } from "@/components/ui/label";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
+import { CsvPreviewTable } from "@/features/csv-import/csv-preview-table";
+import { readyRowNumbers, selectionSummary, problemRowsCsv } from "@/features/csv-import/csv-selection";
 import { Select } from "@/components/ui/select";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -17,12 +19,9 @@ import {
   CsvTemplateLink,
   ImportCounts,
   ImportIssuesTable,
-  ImportRowsTable,
 } from "@/features/student-academics/roster-import/batch-import-parts";
 import {
   batchCommitReady,
-  batchRowActionLabel,
-  periodWriteCount,
   termFacts,
   termRecordsTemplate,
 } from "@/features/student-academics/roster-import/batch-import-presentation";
@@ -54,20 +53,25 @@ export function TermRecordsImportPage() {
   const [term, setTerm] = useState<AcademicTerm>("FIRST_SEMESTER");
   const [file, setFile] = useState<File | null>(null);
   const [reviewed, setReviewed] = useState<{ file: File; scope: string } | null>(null);
+  const [problemDownload, setProblemDownload] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [report, setReport] = useState<PeriodImportResponse | null>(null);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<ReturnType<typeof rosterIssues>>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
 
+  const chosen = selectionSummary(report?.rows ?? [], selectedRows);
   // The current academic year is the usual choice; the operator can pick another before validating.
   const yearId = chosenYearId || yearItems.find((item) => item.is_current)?.id || "";
   const yearLabel = yearItems.find((item) => item.id === yearId)?.label ?? "";
   const scope = `${yearId}|${term}`;
-  const writes = report ? periodWriteCount(report) : 0;
-  const ready = batchCommitReady({ file, reviewed, scope, report, conflict, writes });
+  const writes = chosen.write_count;
+  const ready = batchCommitReady({ file, reviewed, scope, report, conflict, writes, selectedRows });
 
   function reset() {
     setReport(null);
+    setSelectedRows([]);
+    setProblemDownload(null);
     setReviewed(null);
     setConflict(false);
     setIssues([]);
@@ -89,6 +93,8 @@ export function TermRecordsImportPage() {
     if (!response) return;
     setReviewed(checked);
     setReport(response.data);
+    setSelectedRows(readyRowNumbers(response.data.rows));
+    setProblemDownload(response.data.rows.some((row) => ["INVALID", "CONFLICT"].includes(row.action)) ? problemRowsCsv(response.data.headers, response.data.rows) : null);
   }
 
   async function commit() {
@@ -96,7 +102,7 @@ export function TermRecordsImportPage() {
     const response = await action.run(
       () =>
         importCsv.mutateAsync({
-          data: { file, academic_year_id: yearId, term, preview_fingerprint: report.preview_fingerprint },
+          data: { file, academic_year_id: yearId, term, preview_fingerprint: report.preview_fingerprint, file_hash: report.file_hash, selected_rows: JSON.stringify(selectedRows) },
           params: { dry_run: false },
         }),
       "Couldn't import the term records. Try again.",
@@ -117,11 +123,11 @@ export function TermRecordsImportPage() {
         queryClient.invalidateQueries({ queryKey: getStudentAcademicsGetStudentRecordQueryKey(studentId) }),
       ),
     );
-    action.setNotice("Term records imported.");
+    action.setNotice(`${response.data.create_count + response.data.update_count} term records imported, ${response.data.noop_count} already existed, ${response.data.not_selected_count} rows not selected.`);
   }
 
   return (
-    <section aria-labelledby="term-import-heading">
+    <section className="min-w-0 max-w-full" aria-labelledby="term-import-heading">
       <AcademicImportTabs />
       <PageHeader
         title="Import term records"
@@ -133,7 +139,7 @@ export function TermRecordsImportPage() {
         <PanelBody className="space-y-4 py-5">
           <p className="text-sm leading-6 text-muted">
             Columns: <span className="font-semibold text-ink">institutional_id, campus_code, college_code, year_level, enrollment_status</span>.
-            Year level is 1 to 8 or blank. Enrollment status is ENROLLED, NOT_ENROLLED, UNKNOWN, or blank for Unknown. Up to 1,000 rows.
+            Year level is 1 to 8 or blank. Enrollment status is Enrolled, Not enrolled (with an underscore), Unknown, or blank for Unknown. Up to 1,000 rows.
           </p>
           <CsvTemplateLink fileName="compass-term-records-import.csv" template={termRecordsTemplate} />
           <RosterCollegeReferences />
@@ -143,7 +149,7 @@ export function TermRecordsImportPage() {
               <Select
                 id="term-import-year"
                 value={yearId}
-                disabled={!canViewYears || years.isPending || years.isError}
+                disabled={importCsv.isPending || !canViewYears || years.isPending || years.isError}
                 onChange={(event) => {
                   setChosenYearId(event.target.value);
                   reset();
@@ -159,6 +165,7 @@ export function TermRecordsImportPage() {
               <Label htmlFor="term-import-term">Term</Label>
               <Select
                 id="term-import-term"
+                disabled={importCsv.isPending}
                 value={term}
                 onChange={(event) => {
                   setTerm(event.target.value as AcademicTerm);
@@ -178,6 +185,7 @@ export function TermRecordsImportPage() {
             </p>
           ) : null}
           <CsvFileField
+            disabled={importCsv.isPending}
             id="term-import-file"
             onChange={(next) => {
               setFile(next);
@@ -205,7 +213,7 @@ export function TermRecordsImportPage() {
                 ? `${yearLabel} · ${academicTermLabel(term)} term records were imported.`
                 : report.valid
                   ? `${yearLabel} · ${academicTermLabel(term)}. Nothing is saved until you import.`
-                  : "Fix the rows marked Problem, then validate again."
+                  : "Select ready rows to import. Download rows with problems to fix and upload later."
             }
           />
           <ImportCounts
@@ -217,10 +225,16 @@ export function TermRecordsImportPage() {
               ["Total", report.total_rows],
             ]}
           />
-          <ImportRowsTable
+          <CsvPreviewTable
             caption="Term record rows"
             rows={report.rows}
-            rowKey={(row) => `${row.row_number}-${row.institutional_id}`}
+            headers={report.headers}
+            problemDownload={problemDownload}
+            total={report.total_rows}
+            selected={selectedRows}
+            onSelectionChange={setSelectedRows}
+            committed={report.committed}
+            disabled={importCsv.isPending || conflict}
             columns={[
               { header: "Row", cell: (row) => row.row_number },
               { header: "Institutional ID", cell: (row) => row.institutional_id || "—" },
@@ -228,16 +242,14 @@ export function TermRecordsImportPage() {
               { header: "College", cell: (row) => (row.campus_code || row.college_code ? `${row.campus_code || "—"} · ${row.college_code || "—"}` : "—") },
               { header: "Now", cell: (row) => (row.action === "CREATE" ? "No record" : termFacts(row.current_year_level, row.current_enrollment_status)) },
               { header: "From CSV", cell: (row) => (row.action === "INVALID" ? "—" : termFacts(row.year_level, row.enrollment_status)) },
-              { header: "Result", cell: (row) => batchRowActionLabel(row.action), strong: true },
-              { header: "Note", cell: (row) => row.message || "—" },
             ]}
           />
           {report.valid && writes === 0 && !report.committed ? (
             <PanelBody className="border-t border-brand-line"><p className="text-sm text-muted">Every term record already matches.</p></PanelBody>
           ) : null}
-          {ready ? (
+          {!report.committed ? (
             <PanelFooter>
-              <Button disabled={importCsv.isPending} onClick={() => setReviewOpen(true)}>Import term records</Button>
+              <Button disabled={importCsv.isPending || !ready} onClick={() => setReviewOpen(true)}>Import selected</Button>
             </PanelFooter>
           ) : null}
         </Panel>
@@ -249,13 +261,14 @@ export function TermRecordsImportPage() {
         confirmLabel="Import term records"
         pendingLabel="Importing term records…"
         pending={importCsv.isPending}
+        confirmDisabled={conflict}
         error={action.error}
         onOpenChange={setReviewOpen}
         onConfirm={() => void commit()}
       >
         {report ? (
           <p>
-            {yearLabel} · {academicTermLabel(term)}: {report.create_count} new and {report.update_count} changed.{" "}
+            {yearLabel} · {academicTermLabel(term)}: {chosen.create_count} new and {chosen.update_count} changed.{" "}
             If any record changed since the preview, nothing is saved.
           </p>
         ) : null}

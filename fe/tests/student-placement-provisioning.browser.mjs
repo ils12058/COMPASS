@@ -1,5 +1,6 @@
 // SAR-4 synthetic browser checks. No live institutional account or record is touched.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
@@ -25,11 +26,14 @@ const createdStudent = {
 const sessionWith = (capabilities) => sessionFor({ ...user("IT_ADMIN"), capabilities, designations: [] });
 const manager = sessionWith(["accounts.manage", "accounts.view", "student_academics.manage"]);
 const limitedManager = sessionWith(["accounts.manage", "accounts.view"]);
+const accountCsv = "institutional_id,email,first_name,last_name,role,campus_code,college_code\n2026-0101,student@synthetic.invalid,Synthetic,Student,STUDENT,MAIN,ENG\n2026-0102,existing@synthetic.invalid,Existing,Student,STUDENT,,\n";
 const csvReport = {
   valid: true, committed: false, total_rows: 2, create_count: 1, skip_count: 1, conflict_count: 0, invalid_count: 0,
+  file_hash: createHash("sha256").update(accountCsv).digest("hex"),
+  headers: accountCsv.split("\n")[0].split(","), selected_count: 2, not_selected_count: 0,
   rows: [
-    { row_number: 1, institutional_id: "2026-0101", email: "student@synthetic.invalid", action: "CREATE", message: "", faculty_college_id: null, campus_code: "MAIN", college_code: "ENG" },
-    { row_number: 2, institutional_id: "2026-0102", email: "existing@synthetic.invalid", action: "SKIP", message: "", faculty_college_id: null, campus_code: null, college_code: null },
+    { row_number: 2, institutional_id: "2026-0101", email: "student@synthetic.invalid", action: "CREATE", message: "", faculty_college_id: null, campus_code: "MAIN", college_code: "ENG", values: ["2026-0101", "student@synthetic.invalid", "Synthetic", "Student", "STUDENT", "MAIN", "ENG"] },
+    { row_number: 3, institutional_id: "2026-0102", email: "existing@synthetic.invalid", action: "SKIP", message: "", faculty_college_id: null, campus_code: null, college_code: null, values: ["2026-0102", "existing@synthetic.invalid", "Existing", "Student", "STUDENT", "", ""] },
   ],
 };
 
@@ -139,14 +143,18 @@ await check("csv-import-documents-and-previews-placement-code-columns", "/portal
   await page.getByLabel("CSV file", { exact: true }).setInputFiles({
     name: "accounts.csv",
     mimeType: "text/csv",
-    buffer: Buffer.from("institutional_id,email,first_name,last_name,role,campus_code,college_code\n2026-0101,student@synthetic.invalid,Synthetic,Student,STUDENT,MAIN,ENG\n"),
+    buffer: Buffer.from(accountCsv),
   });
   await page.getByRole("button", { name: "Validate CSV", exact: true }).click();
   await shown(page.getByRole("columnheader", { name: "Placement", exact: true }));
   const createRow = page.getByRole("row", { name: /2026-0101/ });
   await shown(createRow.getByRole("cell", { name: "MAIN · ENG", exact: true }));
   const skipRow = page.getByRole("row", { name: /2026-0102/ });
-  assert.equal(await skipRow.locator("td").nth(3).textContent(), "—");
+  const placementColumn = (await page.getByRole("table", { name: "CSV rows", exact: true }).getByRole("columnheader").allTextContents()).indexOf("Placement");
+  assert.ok(placementColumn >= 0, "the preview includes a Placement column");
+  assert.equal(await skipRow.getByRole("cell").nth(placementColumn).textContent(), "—");
+  assert.equal(await createRow.getByRole("checkbox", { name: "Select row 2", exact: true }).isChecked(), true);
+  assert.equal(await skipRow.getByRole("checkbox", { name: "Select row 3", exact: true }).isChecked(), false);
   await page.screenshot({ path: join(artifacts, "csv-placement-preview.png"), fullPage: true });
 });
 

@@ -15358,8 +15358,23 @@
             "title": "Create Count",
             "type": "integer"
           },
+          "file_hash": {
+            "title": "File Hash",
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
           "invalid_count": {
             "title": "Invalid Count",
+            "type": "integer"
+          },
+          "not_selected_count": {
+            "title": "Not Selected Count",
             "type": "integer"
           },
           "rows": {
@@ -15368,6 +15383,10 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "selected_count": {
+            "title": "Selected Count",
+            "type": "integer"
           },
           "skip_count": {
             "title": "Skip Count",
@@ -15383,6 +15402,10 @@
           }
         },
         "required": [
+          "file_hash",
+          "headers",
+          "selected_count",
+          "not_selected_count",
           "valid",
           "committed",
           "total_rows",
@@ -15451,9 +15474,17 @@
           "row_number": {
             "title": "Row Number",
             "type": "integer"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
           }
         },
         "required": [
+          "values",
           "row_number",
           "institutional_id",
           "email",
@@ -24919,9 +24950,20 @@
             "title": "Conflict Count",
             "type": "integer"
           },
+          "file_hash": {
+            "title": "File Hash",
+            "type": "string"
+          },
           "graduate_count": {
             "title": "Graduate Count",
             "type": "integer"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "array"
           },
           "invalid_count": {
             "title": "Invalid Count",
@@ -24929,6 +24971,10 @@
           },
           "noop_count": {
             "title": "Noop Count",
+            "type": "integer"
+          },
+          "not_selected_count": {
+            "title": "Not Selected Count",
             "type": "integer"
           },
           "placement_cleared_count": {
@@ -24945,6 +24991,10 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "selected_count": {
+            "title": "Selected Count",
+            "type": "integer"
           },
           "total_rows": {
             "title": "Total Rows",
@@ -24964,6 +25014,10 @@
           }
         },
         "required": [
+          "file_hash",
+          "headers",
+          "selected_count",
+          "not_selected_count",
           "valid",
           "committed",
           "total_rows",
@@ -25085,9 +25139,17 @@
           "student_name": {
             "title": "Student Name",
             "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
           }
         },
         "required": [
+          "values",
           "row_number",
           "institutional_id",
           "student_id",
@@ -31672,12 +31734,27 @@
             "title": "Create Count",
             "type": "integer"
           },
+          "file_hash": {
+            "title": "File Hash",
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
           "invalid_count": {
             "title": "Invalid Count",
             "type": "integer"
           },
           "noop_count": {
             "title": "Noop Count",
+            "type": "integer"
+          },
+          "not_selected_count": {
+            "title": "Not Selected Count",
             "type": "integer"
           },
           "preview_fingerprint": {
@@ -31690,6 +31767,10 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "selected_count": {
+            "title": "Selected Count",
+            "type": "integer"
           },
           "total_rows": {
             "title": "Total Rows",
@@ -31705,6 +31786,10 @@
           }
         },
         "required": [
+          "file_hash",
+          "headers",
+          "selected_count",
+          "not_selected_count",
           "valid",
           "committed",
           "total_rows",
@@ -31799,6 +31884,13 @@
             "title": "Student Name",
             "type": "string"
           },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
+          },
           "year_level": {
             "anyOf": [
               {
@@ -31812,6 +31904,7 @@
           }
         },
         "required": [
+          "values",
           "row_number",
           "institutional_id",
           "student_id",
@@ -35510,6 +35603,17 @@
             "title": "Conflict Count",
             "type": "integer"
           },
+          "file_hash": {
+            "title": "File Hash",
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
           "invalid_count": {
             "title": "Invalid Count",
             "type": "integer"
@@ -35518,12 +35622,20 @@
             "title": "Noop Count",
             "type": "integer"
           },
+          "not_selected_count": {
+            "title": "Not Selected Count",
+            "type": "integer"
+          },
           "rows": {
             "items": {
               "$ref": "#/components/schemas/RosterImportRowResponse"
             },
             "title": "Rows",
             "type": "array"
+          },
+          "selected_count": {
+            "title": "Selected Count",
+            "type": "integer"
           },
           "set_count": {
             "title": "Set Count",
@@ -35539,6 +35651,10 @@
           }
         },
         "required": [
+          "file_hash",
+          "headers",
+          "selected_count",
+          "not_selected_count",
           "valid",
           "committed",
           "total_rows",
@@ -35604,9 +35720,17 @@
           "student_name": {
             "title": "Student Name",
             "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
           }
         },
         "required": [
+          "values",
           "row_number",
           "institutional_id",
           "student_id",
@@ -41094,12 +41218,41 @@
                     "format": "binary",
                     "title": "File",
                     "type": "string"
+                  },
+                  "file_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "File Hash"
+                  },
+                  "selected_rows": {
+                    "anyOf": [
+                      {
+                        "contentMediaType": "application/json",
+                        "contentSchema": {
+                          "items": {
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Selected Rows"
                   }
                 },
                 "required": [
                   "file"
                 ],
-                "title": "FileParams",
+                "title": "MultiPartBodyParams",
                 "type": "object"
               }
             }
@@ -87707,12 +87860,41 @@
                     "format": "binary",
                     "title": "File",
                     "type": "string"
+                  },
+                  "file_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "File Hash"
+                  },
+                  "selected_rows": {
+                    "anyOf": [
+                      {
+                        "contentMediaType": "application/json",
+                        "contentSchema": {
+                          "items": {
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Selected Rows"
                   }
                 },
                 "required": [
                   "file"
                 ],
-                "title": "FileParams",
+                "title": "MultiPartBodyParams",
                 "type": "object"
               }
             }
@@ -87818,6 +88000,17 @@
                     "title": "File",
                     "type": "string"
                   },
+                  "file_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "File Hash"
+                  },
                   "preview_fingerprint": {
                     "anyOf": [
                       {
@@ -87828,6 +88021,24 @@
                       }
                     ],
                     "title": "Preview Fingerprint"
+                  },
+                  "selected_rows": {
+                    "anyOf": [
+                      {
+                        "contentMediaType": "application/json",
+                        "contentSchema": {
+                          "items": {
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Selected Rows"
                   },
                   "verification_source": {
                     "title": "Verification Source",
@@ -87938,6 +88149,17 @@
                     "title": "File",
                     "type": "string"
                   },
+                  "file_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "File Hash"
+                  },
                   "preview_fingerprint": {
                     "anyOf": [
                       {
@@ -87948,6 +88170,24 @@
                       }
                     ],
                     "title": "Preview Fingerprint"
+                  },
+                  "selected_rows": {
+                    "anyOf": [
+                      {
+                        "contentMediaType": "application/json",
+                        "contentSchema": {
+                          "items": {
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Selected Rows"
                   },
                   "term": {
                     "enum": [

@@ -10,6 +10,8 @@ import { dataTable } from "@/components/ui/data-table";
 import { Label } from "@/components/ui/label";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
+import { CsvPreviewTable } from "@/features/csv-import/csv-preview-table";
+import { csvProblemMessage, readyRowNumbers, selectionSummary, problemRowsCsv } from "@/features/csv-import/csv-selection";
 import {
   RosterImportFeedback,
   useRosterImportAction,
@@ -17,9 +19,7 @@ import {
 import { AcademicImportTabs } from "@/features/student-academics/roster-import/batch-import-parts";
 import { RosterCollegeReferences } from "@/features/student-academics/roster-import/roster-college-references";
 import {
-  rosterCommitReady,
   rosterIssues,
-  rosterRowActionLabel,
   rosterTemplate,
 } from "@/features/student-academics/roster-import/roster-import-presentation";
 import {
@@ -35,18 +35,25 @@ export function RosterImportPage() {
   const action = useRosterImportAction();
   const [file, setFile] = useState<File | null>(null);
   const [reviewedFile, setReviewedFile] = useState<File | null>(null);
+  const [problemDownload, setProblemDownload] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [report, setReport] = useState<RosterImportResponse | null>(null);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<ReturnType<typeof rosterIssues>>([]);
   const [commitReview, setCommitReview] = useState<{
     file: File;
     report: RosterImportResponse;
+    selectedRows: number[];
   } | null>(null);
-  const readyToCommit = rosterCommitReady({ file, reviewedFile, report, conflict });
+  const chosen = selectionSummary(report?.rows ?? [], selectedRows);
+  const reviewCounts = commitReview ? selectionSummary(commitReview.report.rows, commitReview.selectedRows) : chosen;
+  const readyToCommit = Boolean(file && reviewedFile === file && report && !report.committed && !conflict && chosen.write_count > 0);
 
   async function validate() {
     if (!file) return;
     setReport(null);
+    setSelectedRows([]);
+    setProblemDownload(null);
     setReviewedFile(null);
     setConflict(false);
     setIssues([]);
@@ -60,13 +67,15 @@ export function RosterImportPage() {
     if (!response) return;
     setReviewedFile(file);
     setReport(response.data);
+    setSelectedRows(readyRowNumbers(response.data.rows));
+    setProblemDownload(response.data.rows.some((row) => ["INVALID", "CONFLICT"].includes(row.action)) ? problemRowsCsv(response.data.headers, response.data.rows) : null);
   }
 
   function openCommitReview() {
     if (!file || !report || !readyToCommit) return;
     action.setError(null);
     action.setNotice(null);
-    setCommitReview({ file, report });
+    setCommitReview({ file, report, selectedRows: [...selectedRows] });
   }
 
   async function commit() {
@@ -75,7 +84,7 @@ export function RosterImportPage() {
     const response = await action.run(
       () =>
         importCsv.mutateAsync({
-          data: { file: reviewed.file },
+          data: { file: reviewed.file, file_hash: reviewed.report.file_hash, selected_rows: JSON.stringify(reviewed.selectedRows) },
           params: { dry_run: false },
         }),
       "Couldn't complete the academic roster import. Try again.",
@@ -102,12 +111,12 @@ export function RosterImportPage() {
       ),
     ]);
     action.setNotice(
-      "Academic roster import completed. Review the committed result below.",
+      `${response.data.set_count} placements imported, ${response.data.noop_count} already existed, ${response.data.not_selected_count} rows not selected.`,
     );
   }
 
   return (
-    <section aria-labelledby="roster-import-heading">
+    <section className="min-w-0 max-w-full" aria-labelledby="roster-import-heading">
       <AcademicImportTabs />
       <PageHeader
         title="Import academic roster"
@@ -132,7 +141,7 @@ export function RosterImportPage() {
             </p>
             <p>
               Required headers:{" "}
-              <span className="font-semibold text-ink">
+              <span className="break-all font-semibold text-ink">
                 institutional_id,campus_code,college_code
               </span>
               . Both codes are required and must match an active Campus and an
@@ -156,10 +165,13 @@ export function RosterImportPage() {
               id="roster-csv-file"
               className="block w-full text-sm text-ink file:mr-4 file:rounded-md file:border file:border-border file:bg-surface-raised file:px-3 file:py-2 file:text-sm file:font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               type="file"
+            disabled={importCsv.isPending}
               accept=".csv,text/csv"
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);
                 setReport(null);
+              setSelectedRows([]);
+              setProblemDownload(null);
                 setReviewedFile(null);
                 setConflict(false);
                 setIssues([]);
@@ -203,7 +215,7 @@ export function RosterImportPage() {
                     <td className={dataTable.cell}>
                       {issue.institutionalId || "—"}
                     </td>
-                    <td className={dataTable.cell}>{issue.message}</td>
+                    <td className={dataTable.cell}>{csvProblemMessage(issue.message)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -229,8 +241,8 @@ export function RosterImportPage() {
               report.valid
                 ? report.committed
                   ? "The academic roster import was completed."
-                  : "The CSV is valid for import. Records may change before commit."
-                : "Resolve the conflicts or invalid rows, then validate the CSV again."
+                  : "Choose the rows to import. COMPASS checks them again before saving."
+                : "Select ready rows to import. Download rows with problems to fix and upload later."
             }
           />
           <dl className="grid grid-cols-2 gap-px border-b border-brand-line bg-border text-sm sm:grid-cols-5">
@@ -252,73 +264,33 @@ export function RosterImportPage() {
               </div>
             ))}
           </dl>
-          <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[64rem]`}>
-              <caption className="sr-only">Academic roster rows</caption>
-              <thead className={dataTable.head}>
-                <tr>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Row
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Institutional ID
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Student
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Current College
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Target Campus/College
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Action
-                  </th>
-                  <th scope="col" className={dataTable.headerCell}>
-                    Message
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={dataTable.body}>
-                {report.rows.map((row) => (
-                  <tr
-                    key={`${row.row_number}-${row.institutional_id}`}
-                    className={dataTable.row}
-                  >
-                    <td className={dataTable.cell}>{row.row_number}</td>
-                    <td className={dataTable.cell}>
-                      {row.institutional_id || "—"}
-                    </td>
-                    <td className={dataTable.cell}>
-                      {row.student_name || "—"}
-                    </td>
-                    <td className={dataTable.cell}>
-                      {row.current_college_code ?? "—"}
-                    </td>
-                    <td className={dataTable.cell}>
-                      {row.campus_code || row.college_code
-                        ? `${row.campus_code || "—"} · ${row.college_code || "—"}`
-                        : "—"}
-                    </td>
-                    <td className={`${dataTable.cell} font-semibold`}>
-                      {rosterRowActionLabel(row.action)}
-                    </td>
-                    <td className={dataTable.cell}>{row.message || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CsvPreviewTable
+            caption="CSV rows"
+            rows={report.rows}
+            headers={report.headers}
+            problemDownload={problemDownload}
+            total={report.total_rows}
+            selected={selectedRows}
+            onSelectionChange={setSelectedRows}
+            committed={report.committed}
+            disabled={importCsv.isPending || conflict}
+            columns={[
+              { header: "Row", cell: (row) => row.row_number },
+              { header: "Institutional ID", cell: (row) => row.institutional_id || "—" },
+              { header: "Student", cell: (row) => row.student_name || "—" },
+              { header: "Current college", cell: (row) => row.current_college_code ?? "—" },
+              { header: "Target campus/college", cell: (row) => `${row.campus_code || "—"} · ${row.college_code || "—"}` },
+            ]}
+          />
           {report.valid && report.set_count === 0 && !report.committed ? (
             <PanelBody className="border-t border-brand-line">
               <p className="text-sm text-muted">No placement changes are needed.</p>
             </PanelBody>
           ) : null}
-          {readyToCommit ? (
+          {!report.committed ? (
             <PanelFooter>
-              <Button disabled={importCsv.isPending} onClick={openCommitReview}>
-                Import placements
+              <Button disabled={importCsv.isPending || !readyToCommit} onClick={openCommitReview}>
+                Import selected
               </Button>
             </PanelFooter>
           ) : null}
@@ -329,14 +301,15 @@ export function RosterImportPage() {
         open={commitReview !== null}
         title={
           commitReview
-            ? `Import ${commitReview.report.set_count} ${
-                commitReview.report.set_count === 1 ? "placement" : "placements"
+            ? `Import ${reviewCounts.set_count} ${
+                reviewCounts.set_count === 1 ? "placement" : "placements"
               }?`
             : "Import placements?"
         }
         confirmLabel="Import placements"
         pendingLabel="Importing placements…"
         pending={importCsv.isPending}
+        confirmDisabled={conflict}
         error={action.error}
         onOpenChange={(open) => {
           if (!open) setCommitReview(null);
@@ -346,19 +319,19 @@ export function RosterImportPage() {
         {commitReview ? (
           <>
             <p>
-              {commitReview.report.set_count} Student{" "}
-              {commitReview.report.set_count === 1 ? "placement" : "placements"}{" "}
+              {reviewCounts.set_count} Student{" "}
+              {reviewCounts.set_count === 1 ? "placement" : "placements"}{" "}
               will be set from this CSV.{" "}
-              {commitReview.report.noop_count} matching{" "}
-              {commitReview.report.noop_count === 1 ? "row" : "rows"} will not
+              {reviewCounts.noop_count} matching{" "}
+              {reviewCounts.noop_count === 1 ? "row" : "rows"} will not
               change.
             </p>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               {[
-                ["Set", commitReview.report.set_count],
-                ["No change", commitReview.report.noop_count],
-                ["Conflict", commitReview.report.conflict_count],
-                ["Invalid", commitReview.report.invalid_count],
+                ["Set", reviewCounts.set_count],
+                ["No change", reviewCounts.noop_count],
+                ["Selected rows", reviewCounts.selected_count],
+                ["Not selected", commitReview.report.total_rows - reviewCounts.selected_count],
               ].map(([label, value]) => (
                 <div key={String(label)}>
                   <dt className="text-muted">{label}</dt>

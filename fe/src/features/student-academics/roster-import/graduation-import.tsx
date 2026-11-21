@@ -10,17 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
+import { CsvPreviewTable } from "@/features/csv-import/csv-preview-table";
+import { readyRowNumbers, selectionSummary, problemRowsCsv } from "@/features/csv-import/csv-selection";
 import {
   AcademicImportTabs,
   CsvFileField,
   CsvTemplateLink,
   ImportCounts,
   ImportIssuesTable,
-  ImportRowsTable,
 } from "@/features/student-academics/roster-import/batch-import-parts";
 import {
   batchCommitReady,
-  batchRowActionLabel,
   graduationConsequence,
   graduationsTemplate,
   typedCountMatches,
@@ -47,18 +47,23 @@ export function GraduationImportPage() {
   const [source, setSource] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [reviewed, setReviewed] = useState<{ file: File; scope: string } | null>(null);
+  const [problemDownload, setProblemDownload] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [report, setReport] = useState<GraduationImportResponse | null>(null);
   const [conflict, setConflict] = useState(false);
   const [issues, setIssues] = useState<ReturnType<typeof rosterIssues>>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [typed, setTyped] = useState("");
 
+  const chosen = selectionSummary(report?.rows ?? [], selectedRows);
   const trimmedSource = source.trim();
-  const writes = report?.write_count ?? 0;
-  const ready = batchCommitReady({ file, reviewed, scope: trimmedSource, report, conflict, writes });
+  const writes = chosen.write_count;
+  const ready = batchCommitReady({ file, reviewed, scope: trimmedSource, report, conflict, writes, selectedRows });
 
   function reset() {
     setReport(null);
+    setSelectedRows([]);
+    setProblemDownload(null);
     setReviewed(null);
     setConflict(false);
     setIssues([]);
@@ -80,6 +85,8 @@ export function GraduationImportPage() {
     if (!response) return;
     setReviewed(checked);
     setReport(response.data);
+    setSelectedRows(readyRowNumbers(response.data.rows));
+    setProblemDownload(response.data.rows.some((row) => ["INVALID", "CONFLICT"].includes(row.action)) ? problemRowsCsv(response.data.headers, response.data.rows) : null);
   }
 
   async function commit() {
@@ -92,6 +99,8 @@ export function GraduationImportPage() {
             verification_source: trimmedSource,
             preview_fingerprint: report.preview_fingerprint,
             confirmed_count: Number(typed.trim()),
+            file_hash: report.file_hash,
+            selected_rows: JSON.stringify(selectedRows),
           },
           params: { dry_run: false },
         }),
@@ -114,11 +123,11 @@ export function GraduationImportPage() {
         queryClient.invalidateQueries({ queryKey: getStudentAcademicsGetStudentRecordQueryKey(studentId) }),
       ),
     ]);
-    action.setNotice("Graduations imported.");
+    action.setNotice(`${response.data.write_count} graduations imported, ${response.data.noop_count} already existed, ${response.data.not_selected_count} rows not selected.`);
   }
 
   return (
-    <section aria-labelledby="graduation-import-heading">
+    <section className="min-w-0 max-w-full" aria-labelledby="graduation-import-heading">
       <AcademicImportTabs />
       <PageHeader
         title="Import graduations"
@@ -138,6 +147,7 @@ export function GraduationImportPage() {
             <Label htmlFor="graduation-import-source">Verification source</Label>
             <Input
               id="graduation-import-source"
+              disabled={importCsv.isPending}
               value={source}
               maxLength={MAX_SOURCE}
               aria-describedby="graduation-import-source-help"
@@ -151,6 +161,7 @@ export function GraduationImportPage() {
             </p>
           </div>
           <CsvFileField
+            disabled={importCsv.isPending}
             id="graduation-import-file"
             onChange={(next) => {
               setFile(next);
@@ -178,9 +189,9 @@ export function GraduationImportPage() {
                 ? "Graduations were imported."
                 : report.valid
                   ? writes > 0
-                    ? graduationConsequence(report)
+                    ? graduationConsequence({ ...report, ...chosen })
                     : "Every graduation is already recorded."
-                  : "Fix the rows marked Problem, then validate again."
+                  : "Select ready rows to import. Download rows with problems to fix and upload later."
             }
           />
           <ImportCounts
@@ -192,10 +203,16 @@ export function GraduationImportPage() {
               ["Total", report.total_rows],
             ]}
           />
-          <ImportRowsTable
+          <CsvPreviewTable
             caption="Graduation rows"
             rows={report.rows}
-            rowKey={(row) => `${row.row_number}-${row.institutional_id}`}
+            headers={report.headers}
+            problemDownload={problemDownload}
+            total={report.total_rows}
+            selected={selectedRows}
+            onSelectionChange={setSelectedRows}
+            committed={report.committed}
+            disabled={importCsv.isPending || conflict}
             columns={[
               { header: "Row", cell: (row) => row.row_number },
               { header: "Institutional ID", cell: (row) => row.institutional_id || "—" },
@@ -210,21 +227,19 @@ export function GraduationImportPage() {
                     ? `${row.previous_graduation_date} → ${row.graduation_date}`
                     : row.graduation_date || "—",
               },
-              { header: "Result", cell: (row) => batchRowActionLabel(row.action), strong: true },
-              { header: "Note", cell: (row) => row.message || "—" },
             ]}
           />
-          {ready ? (
+          {!report.committed ? (
             <PanelFooter>
               <Button
                 variant="danger"
-                disabled={importCsv.isPending}
+                disabled={importCsv.isPending || !ready}
                 onClick={() => {
                   setTyped("");
                   setReviewOpen(true);
                 }}
               >
-                Import graduations
+                Import selected
               </Button>
             </PanelFooter>
           ) : null}
@@ -238,7 +253,7 @@ export function GraduationImportPage() {
         confirmLabel="Import graduations"
         pendingLabel="Importing graduations…"
         pending={importCsv.isPending}
-        confirmDisabled={!typedCountMatches(typed, writes)}
+        confirmDisabled={conflict || !typedCountMatches(typed, writes)}
         error={action.error}
         onOpenChange={setReviewOpen}
         onConfirm={() => void commit()}
@@ -255,7 +270,7 @@ export function GraduationImportPage() {
           </div>
         }
       >
-        {report ? <p>{graduationConsequence(report)} There is no batch undo.</p> : null}
+        {report ? <p>{graduationConsequence({ ...report, ...chosen })} There is no batch undo.</p> : null}
       </ConsequentialActionDialog>
     </section>
   );

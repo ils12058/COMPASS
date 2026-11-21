@@ -8,9 +8,9 @@ from typing import NoReturn
 from uuid import UUID
 
 from django.http import HttpResponse
-from ninja import File, Router, Schema, Status
+from ninja import File, Form, Router, Schema, Status
 from ninja.files import UploadedFile
-from pydantic import ConfigDict, Field, StrictInt
+from pydantic import ConfigDict, Field, Json, StrictInt
 
 from compass.account_management.faculty import set_faculty_affiliation
 from compass.accounts.api_codes import (
@@ -42,6 +42,7 @@ from compass.authentication.recovery_links import request_assisted_recovery
 from compass.authentication.sessions import RecentMFARequired
 from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
+from compass.common.csv_selection import CsvSelectionError, source_payload
 from compass.common.errors import APIError
 from compass.organization.faculty import FacultyAffiliationResponse
 from compass.organization.models import College
@@ -283,6 +284,7 @@ class MFAResetResponse(StrictSchema):
 
 
 class CsvImportRowResponse(StrictSchema):
+    values: list[str]
     faculty_college_id: UUID | None = None
     campus_code: str | None = None
     college_code: str | None = None
@@ -294,6 +296,10 @@ class CsvImportRowResponse(StrictSchema):
 
 
 class CsvImportResponse(StrictSchema):
+    file_hash: str
+    headers: list[str]
+    selected_count: int
+    not_selected_count: int
     valid: bool
     committed: bool
     total_rows: int
@@ -494,6 +500,8 @@ def accounts(
 def account_csv_import(
     request,
     file: File[UploadedFile],
+    selected_rows: Form[Json[list[StrictInt]] | None] = None,
+    file_hash: Form[str | None] = None,
     dry_run: bool = True,
 ):
     _require_management(request, recent_mfa=True)
@@ -505,7 +513,11 @@ def account_csv_import(
             context=_context(request),
             data=data,
             dry_run=dry_run,
+            selected_rows=selected_rows,
+            file_hash=file_hash,
         )
+    except CsvSelectionError as exc:
+        raise APIError(422, exc.code, str(exc)) from exc
     except RecentMFARequired as exc:
         raise step_up_api_error(exc) from exc
     except CsvImportTooLarge as exc:
@@ -544,7 +556,7 @@ def account_csv_import(
         ) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
-    return _csv_report(report)
+    return source_payload(report, data, _csv_report(report))
 
 
 class FacultyCollegeChoiceResponse(StrictSchema):
