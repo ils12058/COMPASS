@@ -132,6 +132,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 MIDDLEWARE = [
     "compass.common.middleware.RequestContextMiddleware",
+    "compass.common.security_headers.JsonSecurityHeadersMiddleware",
     "compass.counseling.continuity_middleware.ContinuityNoStoreMiddleware",
     "compass.platform_ops.middleware.MaintenanceModeMiddleware",
     "django.middleware.security.SecurityMiddleware",

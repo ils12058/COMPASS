@@ -62,6 +62,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_health.py",
             "test_build_metadata.py",
             "test_request_context.py",
+            "test_security_headers.py",
             # The reset-only canonical migration baseline and its pre-canonical history guard.
             "test_canonical_baseline.py",
             # Every locking query is scoped to its own rows; database errors map safely.
