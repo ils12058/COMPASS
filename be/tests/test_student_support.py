@@ -43,6 +43,7 @@ from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
+    SoloParentStatus,
     StudentSupportProfile,
 )
 from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_private
@@ -114,6 +115,7 @@ def make_inventory(
     indigenous_peoples_status: str | None = IndigenousPeoplesStatus.NOT_MEMBER,
     mother_life_status: str | None = ParentLifeStatus.LIVING,
     father_life_status: str | None = ParentLifeStatus.LIVING,
+    solo_parent_status: str | None = SoloParentStatus.NO,
 ) -> StudentInventory:
     item = create_inventory_row(
         StudentInventory,
@@ -132,6 +134,7 @@ def make_inventory(
         indigenous_peoples_status=indigenous_peoples_status,
         mother_life_status=mother_life_status,
         father_life_status=father_life_status,
+        solo_parent_status=solo_parent_status,
     )
     return item
 
@@ -205,11 +208,12 @@ def test_head_can_view_any_current_submitted_student_support_context():
         program=program,
         suffix="head",
         pwd_status=PWDStatus.PWD,
-        civil_status=CivilStatusCategory.SOLO_PARENT,
+        civil_status=CivilStatusCategory.WIDOWED,
         four_ps_status=FourPsStatus.BENEFICIARY,
         indigenous_peoples_status=IndigenousPeoplesStatus.MEMBER,
         mother_life_status=ParentLifeStatus.DECEASED,
         father_life_status=ParentLifeStatus.DECEASED,
+        solo_parent_status=SoloParentStatus.YES,
     )
 
     response = auth_client(head).get(f"/api/v1/student-support/students/{student.pk}/context")
@@ -442,6 +446,7 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
         "indigenous_peoples_status": "MEMBER",
         "mother_life_status": "DECEASED",
         "father_life_status": "LIVING",
+        "solo_parent_status": "YES",
     }
     response = client.put(
         "/api/v1/inventory/me/current",
@@ -476,6 +481,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         indigenous_peoples_status=None,
         mother_life_status=None,
         father_life_status=None,
+        solo_parent_status=None,
     )
 
     values = minimum_normalized_inventory_values(program_id=program.pk)
@@ -484,6 +490,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         "indigenous_peoples_status": None,
         "mother_life_status": None,
         "father_life_status": None,
+        "solo_parent_status": None,
     }
     replace_current_inventory(student=student, values=values)
     with pytest.raises(InvalidInventoryInput, match="Choose your 4Ps status."):
@@ -497,6 +504,7 @@ def test_support_profile_draft_fields_may_be_null_but_submission_requires_explic
         "indigenous_peoples_status": "NOT_MEMBER",
         "mother_life_status": "LIVING",
         "father_life_status": "LIVING",
+        "solo_parent_status": "NO",
     }
     replace_current_inventory(student=student, values=values)
     submitted = submit_current_inventory(
@@ -525,11 +533,13 @@ def test_submitted_historical_null_support_profile_remains_readable_and_immutabl
         indigenous_peoples_status=None,
         mother_life_status=None,
         father_life_status=None,
+        solo_parent_status=None,
     )
 
     response = auth_client(student).get(f"/api/v1/inventory/me/{old.pk}")
     assert response.status_code == 200
     assert response.json()["support_profile"]["four_ps_status"] is None
+    assert response.json()["support_profile"]["solo_parent_status"] is None
     assert response.json()["pwd_status"] is None
 
     # A current-year draft can change without mutating the historical snapshot.
@@ -604,6 +614,7 @@ def test_inventory_audit_metadata_never_contains_support_or_pwd_values():
         "indigenous_peoples_status": "MEMBER",
         "mother_life_status": "DECEASED",
         "father_life_status": "DECEASED",
+        "solo_parent_status": "YES",
     }
     replace_current_inventory(student=student, values=values)
     submit_current_inventory(student=student, context=AuditContext.user(student))
@@ -619,5 +630,6 @@ def test_inventory_audit_metadata_never_contains_support_or_pwd_values():
         "four_ps",
         "indigenous",
         "life_status",
+        "solo_parent",
     ):
         assert forbidden not in serialized

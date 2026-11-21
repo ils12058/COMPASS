@@ -107,6 +107,7 @@ class InventoryCorrectionTarget(StrEnum):
     FAMILY_INDIGENOUS_PEOPLES_STATUS = "family.indigenous_peoples_status"
     FAMILY_MOTHER_LIFE_STATUS = "family.mother_life_status"
     FAMILY_FATHER_LIFE_STATUS = "family.father_life_status"
+    FAMILY_SOLO_PARENT_STATUS = "family.solo_parent_status"
 
     SECTION_BACKGROUND = "section.background"
     BACKGROUND_SIBLINGS = "background.siblings"
@@ -314,6 +315,7 @@ def _coverage() -> dict[InventoryCorrectionTarget, frozenset[str]]:
         "indigenous_peoples_status",
         "mother_life_status",
         "father_life_status",
+        "solo_parent_status",
     ):
         coverage[_T(f"family.{name}")] = _root(f"support_profile.{name}")
     for level in (

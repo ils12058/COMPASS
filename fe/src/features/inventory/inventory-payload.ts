@@ -1,5 +1,6 @@
 import {
   AnnualIncomeStatusValue,
+  CivilStatusCategoryResponseValue,
   CivilStatusCategoryValue,
   CourseChoiceReasonValue,
   CurrentReligionCategoryValue,
@@ -43,7 +44,17 @@ export function toInventoryPayload(inventory: InventoryResponse): InventoryPaylo
   } = inventory;
   // These fields belong to the response envelope, not the writable payload.
   void [id, academic_year, current_college, status, program, form_revision, submitted_at, first_submitted_at, last_submitted_at, correction_pending, latest_correction];
-  return payload;
+  const civilStatusCategory =
+    payload.civil_status_category === CivilStatusCategoryResponseValue.SOLO_PARENT
+      ? null
+      : payload.civil_status_category;
+  return {
+    ...payload,
+    civil_status_category: civilStatusCategory,
+    ...(payload.civil_status_category === CivilStatusCategoryResponseValue.SOLO_PARENT
+      ? { civil_status: "" }
+      : {}),
+  };
 }
 
 export function normalizeInventoryPayload(payload: InventoryPayload): InventoryPayload {
@@ -389,6 +400,12 @@ export function getInventorySubmissionIssues(
     "inventory-father-life-status",
     support?.father_life_status,
     "Choose whether your father is living, deceased, or unknown.",
+  );
+  requireChoice(
+    "family",
+    "inventory-solo-parent",
+    support?.solo_parent_status,
+    "Answer whether you are a solo parent.",
   );
 
   const memberRequirements = (

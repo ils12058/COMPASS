@@ -152,6 +152,7 @@ class StudentProfilingSections(StrictSchema):
     age: DistributionSection
     civil_status: DistributionSection
     physical_disadvantage: DistributionSection
+    solo_parent_status: DistributionSection
     current_religion: DistributionSection
     mother_life_status: DistributionSection
     father_life_status: DistributionSection

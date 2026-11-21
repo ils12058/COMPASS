@@ -19,6 +19,7 @@ type ProfileSectionKey =
   | "age"
   | "civil_status"
   | "physical_disadvantage"
+  | "solo_parent_status"
   | "current_religion"
   | "mother_life_status"
   | "father_life_status"
@@ -39,6 +40,7 @@ const PROFILE_SECTION_GROUPS: {
       "age",
       "civil_status",
       "physical_disadvantage",
+      "solo_parent_status",
       "current_religion",
     ],
   },

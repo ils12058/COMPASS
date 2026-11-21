@@ -30,6 +30,7 @@ from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
+    SoloParentStatus,
 )
 
 from .confidential_content import (
@@ -116,8 +117,22 @@ class SexValue(StrEnum):
 class CivilStatusCategoryValue(StrEnum):
     SINGLE = CivilStatusCategory.SINGLE
     MARRIED = CivilStatusCategory.MARRIED
-    SOLO_PARENT = CivilStatusCategory.SOLO_PARENT
+    WIDOWED = CivilStatusCategory.WIDOWED
+    SEPARATED = CivilStatusCategory.SEPARATED
+    ANNULLED = CivilStatusCategory.ANNULLED
     OTHER = CivilStatusCategory.OTHER
+
+
+class CivilStatusCategoryResponseValue(StrEnum):
+    """Read schema for civil status, preserving legacy submitted SOLO_PARENT records (ADR-121)."""
+
+    SINGLE = CivilStatusCategory.SINGLE
+    MARRIED = CivilStatusCategory.MARRIED
+    WIDOWED = CivilStatusCategory.WIDOWED
+    SEPARATED = CivilStatusCategory.SEPARATED
+    ANNULLED = CivilStatusCategory.ANNULLED
+    OTHER = CivilStatusCategory.OTHER
+    SOLO_PARENT = CivilStatusCategory.SOLO_PARENT
 
 
 class CurrentReligionCategoryValue(StrEnum):
@@ -156,6 +171,11 @@ class FourPsStatusValue(StrEnum):
 class IndigenousPeoplesStatusValue(StrEnum):
     MEMBER = IndigenousPeoplesStatus.MEMBER
     NOT_MEMBER = IndigenousPeoplesStatus.NOT_MEMBER
+
+
+class SoloParentStatusValue(StrEnum):
+    YES = SoloParentStatus.YES
+    NO = SoloParentStatus.NO
 
 
 class OccupationCategoryValue(StrEnum):
@@ -364,6 +384,7 @@ class SupportProfilePayload(StrictSchema):
     indigenous_peoples_status: IndigenousPeoplesStatusValue | None = None
     mother_life_status: ParentLifeStatusValue | None = None
     father_life_status: ParentLifeStatusValue | None = None
+    solo_parent_status: SoloParentStatusValue | None = None
 
 
 class InventoryPayload(StrictSchema):
@@ -528,6 +549,7 @@ class InventorySummaryResponse(StrictSchema):
 
 
 class InventoryResponse(InventoryPayload):
+    civil_status_category: CivilStatusCategoryResponseValue | None = None
     current_college: InventoryCollegeSummary | None
     id: UUID
     academic_year: AcademicYearSummary
@@ -904,6 +926,14 @@ def _inventory(item) -> dict[str, object]:
         "pwd_status",
     ):
         data[field] = _optional_choice(data[field])
+    # A draft carrying the legacy SOLO_PARENT civil status appears unanswered so the student must
+    # choose a real civil status (the solo-parent question is pre-set to Yes by data migration).
+    if (
+        item.submitted_at is None
+        and data["civil_status_category"] == CivilStatusCategory.SOLO_PARENT
+    ):
+        data["civil_status_category"] = None
+        data["civil_status"] = ""
     data["family_members"] = _child_rows(
         item,
         "family_members",
@@ -975,6 +1005,7 @@ def _inventory(item) -> dict[str, object]:
         "indigenous_peoples_status": _optional_choice(profile.indigenous_peoples_status),
         "mother_life_status": _optional_choice(profile.mother_life_status),
         "father_life_status": _optional_choice(profile.father_life_status),
+        "solo_parent_status": _optional_choice(profile.solo_parent_status),
     }
     correction_pending, latest_correction = _correction(item)
     data["correction_pending"] = correction_pending

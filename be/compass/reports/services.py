@@ -12,6 +12,7 @@ from django.utils import timezone
 from compass.accounts.models import StudentLifecycleStatus, User
 from compass.common.institutional_time import institution_date
 from compass.inventory.models import (
+    ACTIVE_CIVIL_STATUS_CHOICES,
     CivilStatusCategory,
     CurrentReligionCategory,
     FamilyMemberKind,
@@ -40,7 +41,11 @@ from compass.organization.access_scope import (
 )
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_academics.models import StudentAcademicProfile
-from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
+from compass.student_support.models import (
+    ParentLifeStatus,
+    SoloParentStatus,
+    StudentSupportProfile,
+)
 
 from .policy import build_disclosure_warnings
 
@@ -515,6 +520,121 @@ def _row(
         "total_count": total,
         "percentage": calculate_percentage(total, denominator),
         "program_counts": _program_count_rows(columns, counts),
+    }
+
+
+LEGACY_UNSPECIFIED_KEY = "NOT_SPECIFIED_LEGACY"
+LEGACY_UNSPECIFIED_LABEL = "Not specified (recorded before the update)"
+
+
+def _civil_status_section(
+    *,
+    base_queryset,
+    denominator: int,
+    columns: list[dict[str, object]],
+) -> dict[str, object]:
+    choice_pairs = list(ACTIVE_CIVIL_STATUS_CHOICES)
+    labels = {value: choice_label for value, choice_label in choice_pairs}
+    counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
+    legacy_counts: dict[str, int] = {}
+    for result in base_queryset.values("civil_status_category", "program_id").annotate(
+        total=Count("id")
+    ):
+        raw = result["civil_status_category"]
+        program_key = _program_key(result["program_id"])
+        total = int(result["total"])
+        if raw == CivilStatusCategory.SOLO_PARENT:
+            legacy_counts[program_key] = legacy_counts.get(program_key, 0) + total
+            continue
+        if raw not in labels:
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory is missing required civil_status_category data."
+            )
+        counts[raw][program_key] = counts[raw].get(program_key, 0) + total
+    rows = [
+        _row(
+            key=value,
+            label=choice_label,
+            denominator=denominator,
+            counts=counts[value],
+            columns=columns,
+        )
+        for value, choice_label in choice_pairs
+    ]
+    if sum(legacy_counts.values()) > 0:
+        rows.append(
+            _row(
+                key=LEGACY_UNSPECIFIED_KEY,
+                label=LEGACY_UNSPECIFIED_LABEL,
+                denominator=denominator,
+                counts=legacy_counts,
+                columns=columns,
+            )
+        )
+    return {
+        "key": "civil_status",
+        "label": "Distribution of Students based on Civil Status",
+        "denominator": denominator,
+        "rows": rows,
+    }
+
+
+def _solo_parent_section(
+    *,
+    base_queryset,
+    denominator: int,
+    columns: list[dict[str, object]],
+) -> dict[str, object]:
+    choice_pairs = list(SoloParentStatus.choices)
+    labels = {value: choice_label for value, choice_label in choice_pairs}
+    counts: dict[str, dict[str, int]] = {value: {} for value, _ in choice_pairs}
+    legacy_counts: dict[str, int] = {}
+    for result in base_queryset.values(
+        "program_id",
+        "civil_status_category",
+        "support_profile__solo_parent_status",
+    ).annotate(total=Count("id")):
+        program_key = _program_key(result["program_id"])
+        total = int(result["total"])
+        raw = result["support_profile__solo_parent_status"]
+        if raw in labels:
+            counts[raw][program_key] = counts[raw].get(program_key, 0) + total
+        elif raw is None:
+            if result["civil_status_category"] == CivilStatusCategory.SOLO_PARENT:
+                counts[SoloParentStatus.YES][program_key] = (
+                    counts[SoloParentStatus.YES].get(program_key, 0) + total
+                )
+            else:
+                legacy_counts[program_key] = legacy_counts.get(program_key, 0) + total
+        else:
+            raise ReportConfigurationConflict(
+                "A submitted Individual Inventory has invalid solo_parent_status data."
+            )
+    rows = [
+        _row(
+            key=value,
+            label=choice_label,
+            denominator=denominator,
+            counts=counts[value],
+            columns=columns,
+        )
+        for value, choice_label in choice_pairs
+    ]
+    if sum(legacy_counts.values()) > 0:
+        rows.append(
+            _row(
+                key=LEGACY_UNSPECIFIED_KEY,
+                label=LEGACY_UNSPECIFIED_LABEL,
+                denominator=denominator,
+                counts=legacy_counts,
+                columns=columns,
+            )
+        )
+    return {
+        "key": "solo_parent_status",
+        "label": "Distribution of Students based on Solo Parent Status",
+        "denominator": denominator,
+        "rows": rows,
     }
 
 
@@ -1175,12 +1295,8 @@ def build_student_profiling_report(
             denominator=denominator,
             columns=columns,
         ),
-        "civil_status": _scalar_section(
+        "civil_status": _civil_status_section(
             base_queryset=base_queryset,
-            field="civil_status_category",
-            choices=CivilStatusCategory.choices,
-            key="civil_status",
-            label="Distribution of Students based on Civil Status",
             denominator=denominator,
             columns=columns,
         ),
@@ -1190,6 +1306,11 @@ def build_student_profiling_report(
             choices=PWDStatus.choices,
             key="physical_disadvantage",
             label="Distribution of Students based on PWD Status",
+            denominator=denominator,
+            columns=columns,
+        ),
+        "solo_parent_status": _solo_parent_section(
+            base_queryset=base_queryset,
             denominator=denominator,
             columns=columns,
         ),

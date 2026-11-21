@@ -1436,11 +1436,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "ProgramListResponse",
         "InventoryProgramSummary",
         "CivilStatusCategoryValue",
+        "CivilStatusCategoryResponseValue",
         "CurrentReligionCategoryValue",
         "PWDStatusValue",
         "FourPsStatusValue",
         "IndigenousPeoplesStatusValue",
         "ParentLifeStatusValue",
+        "SoloParentStatusValue",
         "SupportProfilePayload",
         "StudentSupportContextResponse",
         "SupportIndicatorResponse",
@@ -1722,6 +1724,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "indigenous_peoples_status",
         "mother_life_status",
         "father_life_status",
+        "solo_parent_status",
     }
     transport = schemas["TransportationEntryPayload"]["properties"]
     assert "frequency_category" in transport
@@ -1863,7 +1866,26 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "submitted_inventory_count" in schemas["ProgramColumn"]["required"]
     assert {"program_id", "code", "college", "campus"} <= set(schemas["ProgramColumn"]["required"])
     assert "access_scope_note" in schemas["Methodology"]["required"]
+    assert schemas["CivilStatusCategoryValue"]["enum"] == [
+        "SINGLE",
+        "MARRIED",
+        "WIDOWED",
+        "SEPARATED",
+        "ANNULLED",
+        "OTHER",
+    ]
+    assert schemas["CivilStatusCategoryResponseValue"]["enum"] == [
+        "SINGLE",
+        "MARRIED",
+        "WIDOWED",
+        "SEPARATED",
+        "ANNULLED",
+        "OTHER",
+        "SOLO_PARENT",
+    ]
     assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD"]
+    assert schemas["SoloParentStatusValue"]["enum"] == ["YES", "NO"]
+    assert "solo_parent_status" in schemas["StudentProfilingSections"]["properties"]
     assert schemas["FourPsStatusValue"]["enum"] == [
         "BENEFICIARY",
         "NOT_BENEFICIARY",

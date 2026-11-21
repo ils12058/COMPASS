@@ -46,6 +46,7 @@ SECTION_SPECS = (
     ("age", "Age", "Age"),
     ("civil_status", "Civil Status", "Category"),
     ("physical_disadvantage", "PWD Status", "Category"),
+    ("solo_parent_status", "Solo Parent Status", "Category"),
     ("current_religion", "Religion", "Category"),
     ("mother_life_status", "Mother Life", "Category"),
     ("father_life_status", "Father Life", "Category"),

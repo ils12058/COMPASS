@@ -26,6 +26,11 @@ class ParentLifeStatus(models.TextChoices):
     UNKNOWN = "UNKNOWN", "Unknown"
 
 
+class SoloParentStatus(models.TextChoices):
+    YES = "YES", "Yes"
+    NO = "NO", "No"
+
+
 class StudentSupportProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     inventory = models.OneToOneField(
@@ -54,6 +59,12 @@ class StudentSupportProfile(models.Model):
     father_life_status = models.CharField(
         max_length=24,
         choices=ParentLifeStatus.choices,
+        null=True,
+        blank=True,
+    )
+    solo_parent_status = models.CharField(
+        max_length=24,
+        choices=SoloParentStatus.choices,
         null=True,
         blank=True,
     )

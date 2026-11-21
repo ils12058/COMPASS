@@ -98,7 +98,9 @@ def make_draft(email: str = "profiling@example.edu") -> tuple[User, Program, Stu
     [
         (CivilStatusCategory.SINGLE, "Single"),
         (CivilStatusCategory.MARRIED, "Married"),
-        (CivilStatusCategory.SOLO_PARENT, "Solo Parent"),
+        (CivilStatusCategory.WIDOWED, "Widowed"),
+        (CivilStatusCategory.SEPARATED, "Separated"),
+        (CivilStatusCategory.ANNULLED, "Annulled"),
     ],
 )
 def test_civil_status_fixed_categories_normalize_text_snapshot(category, expected_text):

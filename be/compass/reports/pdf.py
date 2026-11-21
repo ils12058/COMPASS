@@ -53,6 +53,7 @@ SECTION_SPECS = {
     "age": ("Age at Inventory Submission", "Age (years)"),
     "civil_status": ("Civil Status", "Civil Status"),
     "physical_disadvantage": ("PWD Status", "PWD Status"),
+    "solo_parent_status": ("Solo Parent Status", "Solo Parent Status"),
     "current_religion": ("Current Religion", "Religion"),
     "mother_life_status": ("Mother's Life Status", "Life Status"),
     "father_life_status": ("Father's Life Status", "Life Status"),
@@ -67,7 +68,14 @@ SECTION_SPECS = {
 REPORT_PARTS = (
     (
         "4. Demographics",
-        ("sex", "age", "civil_status", "physical_disadvantage", "current_religion"),
+        (
+            "sex",
+            "age",
+            "civil_status",
+            "physical_disadvantage",
+            "solo_parent_status",
+            "current_religion",
+        ),
     ),
     (
         "5. Family and Household",
