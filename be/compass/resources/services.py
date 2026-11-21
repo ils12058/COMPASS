@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from io import BytesIO
 from pathlib import PurePosixPath
@@ -24,6 +25,8 @@ from compass.audit.actions import (
     RESOURCE_FILE_ATTACHED,
     RESOURCE_FILE_REMOVED,
     RESOURCE_PUBLISHED,
+    RESOURCE_RETURNED,
+    RESOURCE_SUBMITTED_FOR_APPROVAL,
     RESOURCE_UPDATED,
 )
 from compass.audit.context import AuditContext
@@ -31,7 +34,16 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.ordering import parse_ordering
 from compass.integrations.storage import ObjectStorage
-from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
+from compass.organization.models import StaffSupervision
+from compass.publications import (
+    ALL_PUBLICATION_STATUSES,
+    PENDING_APPROVAL_STATUS,
+    PublicationAudience,
+    PublicationStatus,
+    eligible_audiences_for,
+)
 
 from .models import Resource, ResourceCategory, ResourceKind
 from .validation import ISSUES, issue_details
@@ -51,6 +63,10 @@ class ResourceError(RuntimeError):
 
 
 class ResourceNotFound(ResourceError):
+    pass
+
+
+class ResourceNotPermitted(ResourceError):
     pass
 
 
@@ -359,9 +375,18 @@ def list_managed_resources(
         default=ResourceManagementOrdering.RECENTLY_UPDATED,
         error=ResourceOrderingInputError,
     )
-    queryset = Resource.objects.select_related("created_by", "updated_by", "published_by").all()
+    queryset = Resource.objects.select_related(
+        "created_by",
+        "updated_by",
+        "published_by",
+        "prepared_by",
+        "returned_by",
+    ).all()
     if status is not None:
-        queryset = queryset.filter(status=_choice(status, PublicationStatus, "status"))
+        normalized_status = status.value if hasattr(status, "value") else status
+        if normalized_status not in ALL_PUBLICATION_STATUSES:
+            raise InvalidResourceInput("status_invalid")
+        queryset = queryset.filter(status=normalized_status)
     if audience is not None:
         queryset = queryset.filter(audience=_choice(audience, PublicationAudience, "audience"))
     if category is not None:
@@ -379,13 +404,71 @@ def list_managed_resources(
 
 def get_managed_resource(*, resource_id: UUID) -> Resource:
     item = (
-        Resource.objects.select_related("created_by", "updated_by", "published_by")
+        Resource.objects.select_related(
+            "created_by",
+            "updated_by",
+            "published_by",
+            "prepared_by",
+            "returned_by",
+        )
         .filter(pk=resource_id)
         .first()
     )
     if item is None:
         raise ResourceNotFound("Couldn't find this Resource.")
     return item
+
+
+def _resolve_goa_supervising_counselor_locked(actor: User) -> User:
+    supervision = StaffSupervision.objects.select_for_update().filter(staff_id=actor.pk).first()
+    if supervision is None:
+        raise ResourceNotPermitted(
+            "Guidance Office Assistant requires a current supervising Counselor."
+        )
+    supervisor = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=supervision.supervisor_id)
+        .first()
+    )
+    if supervisor is None or not supervisor.is_active or supervisor.role.code != "COUNSELOR":
+        raise ResourceNotPermitted(
+            "Guidance Office Assistant requires an active supervising Counselor."
+        )
+    return supervisor
+
+
+def _require_supervising_counselor_for_prepared_item_locked(
+    *, actor: User, prepared_by_id: UUID | None
+) -> None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or prepared_by_id is None
+    ):
+        raise ResourceNotPermitted(
+            "Only the Guidance Office Assistant's supervising Counselor can decide this Resource."
+        )
+    supervision = (
+        StaffSupervision.objects.select_for_update()
+        .filter(staff_id=prepared_by_id, supervisor_id=actor.pk)
+        .first()
+    )
+    if supervision is None:
+        raise ResourceNotPermitted(
+            "Only the Guidance Office Assistant's current supervising Counselor can decide "
+            "this Resource."
+        )
+
+
+def _clean_return_note(value: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise InvalidResourceInput("return_note_required")
+    cleaned = value.strip()
+    if len(cleaned) > 1000:
+        raise InvalidResourceInput("return_note_too_long")
+    return cleaned
 
 
 def _validate_channel_state(item: Resource, *, for_publish: bool) -> None:
@@ -446,6 +529,7 @@ def create_resource(
         display_order=_clean_display_order(display_order),
         created_by=actor,
         updated_by=actor,
+        prepared_by=actor,
     )
     _validate_channel_state(item, for_publish=False)
     item.save()
@@ -479,6 +563,13 @@ def update_resource(
         raise ResourceNotFound("Couldn't find this Resource.")
     if item.status == PublicationStatus.ARCHIVED:
         raise ResourceConflict("resource_archived")
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        if item.status == PublicationStatus.PUBLISHED:
+            raise ResourceNotPermitted(
+                "A Guidance Office Assistant cannot edit a published Resource."
+            )
+        if item.status == PENDING_APPROVAL_STATUS:
+            raise ResourceConflict("resource_pending_approval")
 
     before_audience = item.audience
     before_external_url = item.external_url
@@ -541,6 +632,8 @@ def update_resource(
     else:
         _validate_channel_state(item, for_publish=False)
 
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        item.prepared_by = actor
     item.updated_by = actor
     item.save()
     metadata: dict[str, object] = {
@@ -767,23 +860,155 @@ def remove_draft_resource_file(
 
 
 @transaction.atomic
+def submit_resource_for_approval(
+    *,
+    actor: User,
+    resource_id: UUID,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Resource:
+    if actor.role.code != "GUIDANCE_OFFICE_ASSISTANT":
+        raise ResourceNotPermitted(
+            "Counselors publish Resources directly and do not submit them for approval."
+        )
+    supervisor = _resolve_goa_supervising_counselor_locked(actor)
+    item = Resource.objects.select_for_update().filter(pk=resource_id).first()
+    if item is None:
+        raise ResourceNotFound("Couldn't find this Resource.")
+    if item.status != PublicationStatus.DRAFT:
+        raise ResourceConflict("submission_requires_draft")
+
+    _validate_published_resource_state(item)
+
+    current = now or timezone.now()
+    item.status = PENDING_APPROVAL_STATUS
+    item.prepared_by = actor
+    item.submitted_for_approval_at = current
+    item.return_note = None
+    item.updated_by = actor
+    item.save()
+    record_event(
+        context=context,
+        action=RESOURCE_SUBMITTED_FOR_APPROVAL,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="resources.resource",
+        target_id=item.pk,
+        metadata={
+            "from_status": PublicationStatus.DRAFT,
+            "to_status": PENDING_APPROVAL_STATUS,
+            "audience": item.audience,
+            "kind": item.kind,
+            "category": item.category,
+            "supervisor_id": str(supervisor.pk),
+        },
+    )
+    create_notification_for_event(
+        recipient=supervisor,
+        event=NotificationEvent.RESOURCE_APPROVAL_REQUESTED,
+        source_type=f"resource_approval:{current.isoformat()}",
+        source_id=item.pk,
+        target_type="RESOURCE",
+        target_id=item.pk,
+    )
+    return get_managed_resource(resource_id=item.pk)
+
+
+@transaction.atomic
+def return_resource_draft(
+    *,
+    actor: User,
+    resource_id: UUID,
+    note: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Resource:
+    if actor.role.code != "COUNSELOR":
+        raise ResourceNotPermitted("Only a supervising Counselor can return a Resource.")
+    cleaned_note = _clean_return_note(note)
+    item = Resource.objects.select_for_update().filter(pk=resource_id).first()
+    if item is None:
+        raise ResourceNotFound("Couldn't find this Resource.")
+    if item.status != PENDING_APPROVAL_STATUS:
+        raise ResourceConflict("return_requires_pending_approval")
+    _require_supervising_counselor_for_prepared_item_locked(
+        actor=actor, prepared_by_id=item.prepared_by_id or item.created_by_id
+    )
+
+    current = now or timezone.now()
+    item.status = PublicationStatus.DRAFT
+    item.returned_by = actor
+    item.returned_at = current
+    item.return_note = cleaned_note
+    item.updated_by = actor
+    item.save(
+        update_fields=[
+            "status",
+            "returned_by",
+            "returned_at",
+            "return_note",
+            "updated_by",
+            "updated_at",
+        ]
+    )
+    record_event(
+        context=context,
+        action=RESOURCE_RETURNED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="resources.resource",
+        target_id=item.pk,
+        metadata={
+            "from_status": PENDING_APPROVAL_STATUS,
+            "to_status": PublicationStatus.DRAFT,
+            "audience": item.audience,
+            "kind": item.kind,
+            "category": item.category,
+        },
+    )
+    prepared_by = item.prepared_by or item.created_by
+    if prepared_by is not None and prepared_by.is_active:
+        create_notification_for_event(
+            recipient=prepared_by,
+            event=NotificationEvent.RESOURCE_RETURNED,
+            source_type=f"resource_returned:{current.isoformat()}",
+            source_id=item.pk,
+            target_type="RESOURCE",
+            target_id=item.pk,
+        )
+    return get_managed_resource(resource_id=item.pk)
+
+
+@transaction.atomic
 def publish_resource(
     *,
     actor: User,
     resource_id: UUID,
     context: AuditContext,
 ) -> Resource:
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        raise ResourceNotPermitted(
+            "A Guidance Office Assistant cannot publish directly. "
+            "Submit this draft for your supervising Counselor's approval."
+        )
     item = Resource.objects.select_for_update().filter(pk=resource_id).first()
     if item is None:
         raise ResourceNotFound("Couldn't find this Resource.")
-    if item.status != PublicationStatus.DRAFT:
+    if item.status not in {PublicationStatus.DRAFT, PENDING_APPROVAL_STATUS}:
         raise ResourceConflict("publication_requires_draft")
+    if item.status == PENDING_APPROVAL_STATUS:
+        _require_supervising_counselor_for_prepared_item_locked(
+            actor=actor,
+            prepared_by_id=item.prepared_by_id or item.created_by_id,
+        )
 
+    previous_status = item.status
     _validate_published_resource_state(item)
 
+    if item.prepared_by_id is None:
+        item.prepared_by_id = item.created_by_id
     item.status = PublicationStatus.PUBLISHED
     item.published_at = timezone.now()
     item.published_by = actor
+    item.return_note = None
     item.updated_by = actor
     item.save()
     record_event(
@@ -793,14 +1018,14 @@ def publish_resource(
         target_type="resources.resource",
         target_id=item.pk,
         metadata={
-            "from_status": PublicationStatus.DRAFT,
+            "from_status": previous_status,
             "to_status": PublicationStatus.PUBLISHED,
             "audience": item.audience,
             "kind": item.kind,
             "category": item.category,
         },
     )
-    return item
+    return get_managed_resource(resource_id=item.pk)
 
 
 @transaction.atomic
@@ -815,6 +1040,13 @@ def archive_resource(
         raise ResourceNotFound("Couldn't find this Resource.")
     if item.status == PublicationStatus.ARCHIVED:
         raise ResourceConflict("resource_already_archived")
+    if (
+        actor.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+        and item.status == PublicationStatus.PUBLISHED
+    ):
+        raise ResourceNotPermitted(
+            "A Guidance Office Assistant cannot archive a published Resource."
+        )
 
     previous = item.status
     item.status = PublicationStatus.ARCHIVED
@@ -835,6 +1067,36 @@ def archive_resource(
         },
     )
     return item
+
+
+def pending_resource_approvals(*, actor: User, limit: int) -> tuple[Resource, ...]:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or not actor.has_capability("resources.manage")
+    ):
+        return ()
+    supervised_staff_ids = StaffSupervision.objects.filter(
+        supervisor_id=actor.pk,
+        supervisor__is_active=True,
+        supervisor__role__code="COUNSELOR",
+    ).values("staff_id")
+    return tuple(
+        Resource.objects.filter(
+            status=PENDING_APPROVAL_STATUS,
+            prepared_by_id__in=supervised_staff_ids,
+        )
+        .select_related("prepared_by")
+        .only(
+            "id",
+            "title",
+            "prepared_by_id",
+            "submitted_for_approval_at",
+            "updated_at",
+        )
+        .order_by("submitted_for_approval_at", "updated_at", "id")[:limit]
+    )
 
 
 def create_public_resource_download(
@@ -886,6 +1148,7 @@ __all__ = [
     "ResourceDownload",
     "ResourceError",
     "ResourceNotFound",
+    "ResourceNotPermitted",
     "ResourcePage",
     "ResourcePublicationConsequenceReviewRequired",
     "ResourceStorageError",
@@ -901,7 +1164,10 @@ __all__ = [
     "list_managed_resources",
     "list_public_resources",
     "list_visible_resources",
+    "pending_resource_approvals",
     "publish_resource",
     "remove_draft_resource_file",
+    "return_resource_draft",
+    "submit_resource_for_approval",
     "update_resource",
 ]

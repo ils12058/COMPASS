@@ -354,6 +354,9 @@ def set_staff_supervisor(
                 "new_supervisor_id": str(supervisor.pk),
             },
         )
+        from compass.call_slips.services import reassign_waiting_call_slips_for_staff
+
+        reassign_waiting_call_slips_for_staff(staff=staff, supervisor=supervisor)
         return current
 
 

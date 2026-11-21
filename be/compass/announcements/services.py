@@ -17,13 +17,24 @@ from compass.audit.actions import (
     ANNOUNCEMENT_ARCHIVED,
     ANNOUNCEMENT_CREATED,
     ANNOUNCEMENT_PUBLISHED,
+    ANNOUNCEMENT_RETURNED,
+    ANNOUNCEMENT_SUBMITTED_FOR_APPROVAL,
     ANNOUNCEMENT_UPDATED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.ordering import parse_ordering
-from compass.publications import PublicationAudience, PublicationStatus, eligible_audiences_for
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
+from compass.organization.models import StaffSupervision
+from compass.publications import (
+    ALL_PUBLICATION_STATUSES,
+    PENDING_APPROVAL_STATUS,
+    PublicationAudience,
+    PublicationStatus,
+    eligible_audiences_for,
+)
 
 from .models import Announcement
 from .validation import ISSUES, issue_details
@@ -39,6 +50,10 @@ class AnnouncementError(RuntimeError):
 
 
 class AnnouncementNotFound(AnnouncementError):
+    pass
+
+
+class AnnouncementNotPermitted(AnnouncementError):
     pass
 
 
@@ -324,9 +339,15 @@ def list_managed_announcements(
         default=AnnouncementManagementOrdering.RECENTLY_UPDATED,
         error=AnnouncementOrderingInputError,
     )
-    queryset = Announcement.objects.select_related("created_by", "updated_by", "published_by").all()
+    queryset = Announcement.objects.select_related(
+        "created_by",
+        "updated_by",
+        "published_by",
+        "prepared_by",
+        "returned_by",
+    ).all()
     if status is not None:
-        if status not in PublicationStatus.values:
+        if status not in ALL_PUBLICATION_STATUSES:
             raise InvalidAnnouncementInput("status_invalid")
         queryset = queryset.filter(status=status)
     if audience is not None:
@@ -342,13 +363,72 @@ def list_managed_announcements(
 
 def get_managed_announcement(*, announcement_id: UUID) -> Announcement:
     item = (
-        Announcement.objects.select_related("created_by", "updated_by", "published_by")
+        Announcement.objects.select_related(
+            "created_by",
+            "updated_by",
+            "published_by",
+            "prepared_by",
+            "returned_by",
+        )
         .filter(pk=announcement_id)
         .first()
     )
     if item is None:
         raise AnnouncementNotFound("Couldn't find this Announcement.")
     return item
+
+
+def _resolve_goa_supervising_counselor_locked(actor: User) -> User:
+    supervision = StaffSupervision.objects.select_for_update().filter(staff_id=actor.pk).first()
+    if supervision is None:
+        raise AnnouncementNotPermitted(
+            "Guidance Office Assistant requires a current supervising Counselor."
+        )
+    supervisor = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=supervision.supervisor_id)
+        .first()
+    )
+    if supervisor is None or not supervisor.is_active or supervisor.role.code != "COUNSELOR":
+        raise AnnouncementNotPermitted(
+            "Guidance Office Assistant requires an active supervising Counselor."
+        )
+    return supervisor
+
+
+def _require_supervising_counselor_for_prepared_item_locked(
+    *, actor: User, prepared_by_id: UUID | None
+) -> None:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or prepared_by_id is None
+    ):
+        raise AnnouncementNotPermitted(
+            "Only the Guidance Office Assistant's supervising Counselor can decide "
+            "this Announcement."
+        )
+    supervision = (
+        StaffSupervision.objects.select_for_update()
+        .filter(staff_id=prepared_by_id, supervisor_id=actor.pk)
+        .first()
+    )
+    if supervision is None:
+        raise AnnouncementNotPermitted(
+            "Only the Guidance Office Assistant's current supervising Counselor can decide "
+            "this Announcement."
+        )
+
+
+def _clean_return_note(value: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise InvalidAnnouncementInput("return_note_required")
+    cleaned = value.strip()
+    if len(cleaned) > 1000:
+        raise InvalidAnnouncementInput("return_note_too_long")
+    return cleaned
 
 
 @transaction.atomic
@@ -372,6 +452,7 @@ def create_announcement(
         expires_at=_clean_expiry(expires_at),
         created_by=actor,
         updated_by=actor,
+        prepared_by=actor,
     )
     record_event(
         context=context,
@@ -403,6 +484,13 @@ def update_announcement(
         raise AnnouncementNotFound("Couldn't find this Announcement.")
     if item.status == PublicationStatus.ARCHIVED:
         raise AnnouncementConflict("announcement_archived")
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        if item.status == PublicationStatus.PUBLISHED:
+            raise AnnouncementNotPermitted(
+                "A Guidance Office Assistant cannot edit a published Announcement."
+            )
+        if item.status == PENDING_APPROVAL_STATUS:
+            raise AnnouncementConflict("announcement_pending_approval")
 
     before_audience = item.audience
     before_expiry = item.expires_at
@@ -444,6 +532,8 @@ def update_announcement(
             raise AnnouncementPublicationConsequenceReviewRequired(tuple(consequential_fields))
         _validate_published_announcement_state(item, now=now or timezone.now())
 
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        item.prepared_by = actor
     item.updated_by = actor
     item.save()
     metadata: dict[str, object] = {
@@ -465,6 +555,122 @@ def update_announcement(
 
 
 @transaction.atomic
+def submit_announcement_for_approval(
+    *,
+    actor: User,
+    announcement_id: UUID,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Announcement:
+    if actor.role.code != "GUIDANCE_OFFICE_ASSISTANT":
+        raise AnnouncementNotPermitted(
+            "Counselors publish Announcements directly and do not submit them for approval."
+        )
+    supervisor = _resolve_goa_supervising_counselor_locked(actor)
+    item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
+    if item is None:
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
+    if item.status != PublicationStatus.DRAFT:
+        raise AnnouncementConflict("submission_requires_draft")
+
+    current = now or timezone.now()
+    _validate_published_announcement_state(item, now=current)
+
+    item.status = PENDING_APPROVAL_STATUS
+    item.prepared_by = actor
+    item.submitted_for_approval_at = current
+    item.return_note = None
+    item.updated_by = actor
+    item.save()
+    record_event(
+        context=context,
+        action=ANNOUNCEMENT_SUBMITTED_FOR_APPROVAL,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="announcements.announcement",
+        target_id=item.pk,
+        metadata={
+            "from_status": PublicationStatus.DRAFT,
+            "to_status": PENDING_APPROVAL_STATUS,
+            "audience": item.audience,
+            "is_pinned": item.is_pinned,
+            "supervisor_id": str(supervisor.pk),
+        },
+    )
+    create_notification_for_event(
+        recipient=supervisor,
+        event=NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED,
+        source_type=f"announcement_approval:{current.isoformat()}",
+        source_id=item.pk,
+        target_type="ANNOUNCEMENT",
+        target_id=item.pk,
+    )
+    return get_managed_announcement(announcement_id=item.pk)
+
+
+@transaction.atomic
+def return_announcement_draft(
+    *,
+    actor: User,
+    announcement_id: UUID,
+    note: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> Announcement:
+    if actor.role.code != "COUNSELOR":
+        raise AnnouncementNotPermitted("Only a supervising Counselor can return an Announcement.")
+    cleaned_note = _clean_return_note(note)
+    item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
+    if item is None:
+        raise AnnouncementNotFound("Couldn't find this Announcement.")
+    if item.status != PENDING_APPROVAL_STATUS:
+        raise AnnouncementConflict("return_requires_pending_approval")
+    _require_supervising_counselor_for_prepared_item_locked(
+        actor=actor, prepared_by_id=item.prepared_by_id or item.created_by_id
+    )
+
+    current = now or timezone.now()
+    item.status = PublicationStatus.DRAFT
+    item.returned_by = actor
+    item.returned_at = current
+    item.return_note = cleaned_note
+    item.updated_by = actor
+    item.save(
+        update_fields=[
+            "status",
+            "returned_by",
+            "returned_at",
+            "return_note",
+            "updated_by",
+            "updated_at",
+        ]
+    )
+    record_event(
+        context=context,
+        action=ANNOUNCEMENT_RETURNED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="announcements.announcement",
+        target_id=item.pk,
+        metadata={
+            "from_status": PENDING_APPROVAL_STATUS,
+            "to_status": PublicationStatus.DRAFT,
+            "audience": item.audience,
+            "is_pinned": item.is_pinned,
+        },
+    )
+    prepared_by = item.prepared_by or item.created_by
+    if prepared_by is not None and prepared_by.is_active:
+        create_notification_for_event(
+            recipient=prepared_by,
+            event=NotificationEvent.ANNOUNCEMENT_RETURNED,
+            source_type=f"announcement_returned:{current.isoformat()}",
+            source_id=item.pk,
+            target_type="ANNOUNCEMENT",
+            target_id=item.pk,
+        )
+    return get_managed_announcement(announcement_id=item.pk)
+
+
+@transaction.atomic
 def publish_announcement(
     *,
     actor: User,
@@ -472,18 +678,32 @@ def publish_announcement(
     context: AuditContext,
     now: datetime | None = None,
 ) -> Announcement:
+    if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+        raise AnnouncementNotPermitted(
+            "A Guidance Office Assistant cannot publish directly. "
+            "Submit this draft for your supervising Counselor's approval."
+        )
     item = Announcement.objects.select_for_update().filter(pk=announcement_id).first()
     if item is None:
         raise AnnouncementNotFound("Couldn't find this Announcement.")
-    if item.status != PublicationStatus.DRAFT:
+    if item.status not in {PublicationStatus.DRAFT, PENDING_APPROVAL_STATUS}:
         raise AnnouncementConflict("publication_requires_draft")
+    if item.status == PENDING_APPROVAL_STATUS:
+        _require_supervising_counselor_for_prepared_item_locked(
+            actor=actor,
+            prepared_by_id=item.prepared_by_id or item.created_by_id,
+        )
 
+    previous_status = item.status
     current = now or timezone.now()
     _validate_published_announcement_state(item, now=current)
 
+    if item.prepared_by_id is None:
+        item.prepared_by_id = item.created_by_id
     item.status = PublicationStatus.PUBLISHED
     item.published_at = current
     item.published_by = actor
+    item.return_note = None
     item.updated_by = actor
     item.save()
     record_event(
@@ -493,13 +713,13 @@ def publish_announcement(
         target_type="announcements.announcement",
         target_id=item.pk,
         metadata={
-            "from_status": PublicationStatus.DRAFT,
+            "from_status": previous_status,
             "to_status": PublicationStatus.PUBLISHED,
             "audience": item.audience,
             "is_pinned": item.is_pinned,
         },
     )
-    return item
+    return get_managed_announcement(announcement_id=item.pk)
 
 
 @transaction.atomic
@@ -514,6 +734,13 @@ def archive_announcement(
         raise AnnouncementNotFound("Couldn't find this Announcement.")
     if item.status == PublicationStatus.ARCHIVED:
         raise AnnouncementConflict("announcement_already_archived")
+    if (
+        actor.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+        and item.status == PublicationStatus.PUBLISHED
+    ):
+        raise AnnouncementNotPermitted(
+            "A Guidance Office Assistant cannot archive a published Announcement."
+        )
 
     previous = item.status
     item.status = PublicationStatus.ARCHIVED
@@ -535,10 +762,41 @@ def archive_announcement(
     return item
 
 
+def pending_announcement_approvals(*, actor: User, limit: int) -> tuple[Announcement, ...]:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or not actor.has_capability("announcements.manage")
+    ):
+        return ()
+    supervised_staff_ids = StaffSupervision.objects.filter(
+        supervisor_id=actor.pk,
+        supervisor__is_active=True,
+        supervisor__role__code="COUNSELOR",
+    ).values("staff_id")
+    return tuple(
+        Announcement.objects.filter(
+            status=PENDING_APPROVAL_STATUS,
+            prepared_by_id__in=supervised_staff_ids,
+        )
+        .select_related("prepared_by")
+        .only(
+            "id",
+            "title",
+            "prepared_by_id",
+            "submitted_for_approval_at",
+            "updated_at",
+        )
+        .order_by("submitted_for_approval_at", "updated_at", "id")[:limit]
+    )
+
+
 __all__ = [
     "AnnouncementConflict",
     "AnnouncementError",
     "AnnouncementNotFound",
+    "AnnouncementNotPermitted",
     "AnnouncementPage",
     "AnnouncementPublicationConsequenceReviewRequired",
     "DEFAULT_PAGE_SIZE",
@@ -552,6 +810,9 @@ __all__ = [
     "list_managed_announcements",
     "list_public_announcements",
     "list_visible_announcements",
+    "pending_announcement_approvals",
     "publish_announcement",
+    "return_announcement_draft",
+    "submit_announcement_for_approval",
     "update_announcement",
 ]

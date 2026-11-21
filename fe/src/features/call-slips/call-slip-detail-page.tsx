@@ -20,16 +20,21 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelSection, RecordSummary } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { CallSlipFormFields, type CallSlipDraft, toCallSlipRequestFields } from "@/features/call-slips/call-slip-form-fields";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, CallSlipStatusBadge, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
+  callSlipsApprove,
   callSlipsDownloadMyPdf,
   callSlipsDownloadPdf,
   callSlipsRecordInterviewEnded,
+  callSlipsResubmit,
+  callSlipsReturn,
   callSlipsVoid,
+  callSlipsWithdraw,
   getCallSlipsGetMyQueryKey,
   getCallSlipsGetQueryKey,
   getCallSlipsListMyQueryKey,
@@ -37,7 +42,7 @@ import {
   useCallSlipsGet,
   useCallSlipsGetMy,
 } from "@/lib/api/generated/call-slips/call-slips";
-import { CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
+import { CallSlipIssuanceModeValue, CallSlipLifecycleStateValue } from "@/lib/api/generated/model";
 import type { CallSlipOperationalResponse, CallSlipStudentResponse } from "@/lib/api/generated/model";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
@@ -47,6 +52,7 @@ import {
   institutionalDateInputValue,
   institutionalDateTimeInputToISO,
   isFutureInstitutionalDateTimeInput,
+  isoToInstitutionalDateTimeInput,
 } from "@/lib/institutional-time";
 
 export function CallSlipDetailPage({ callSlipId }: { callSlipId: string }) {
@@ -124,6 +130,9 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   if (!confirmed) return <CallSlipDetailSkeleton />;
 
   const item = confirmed.data;
+  const isWaitingOrReturned =
+    item.state === CallSlipLifecycleStateValue.PENDING_APPROVAL ||
+    item.state === CallSlipLifecycleStateValue.RETURNED;
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
@@ -134,12 +143,25 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
           data-page-action-rail=""
           className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
         >
-          <CallSlipPdfDownload callSlipId={item.id} />
+          {!isWaitingOrReturned ? <CallSlipPdfDownload callSlipId={item.id} /> : null}
           {item.referral && referralAccess.canView ? (
             <PageActionLink href={`/portal/referrals/${item.referral.id}`} icon={ArrowUpRight} variant="secondary" label="Open Referral" labelDetail={item.referral.reference_code} />
           ) : null}
         </PageActionGroup>
         <div className="min-w-0 space-y-5">
+          {item.state === CallSlipLifecycleStateValue.PENDING_APPROVAL ? (
+            <Notice role="status" tone="info" title="Waiting for supervising Counselor approval">
+              <p className="text-ink">
+                This Call Slip is waiting for approval from {item.issued_by.display_name}. The Student cannot see it and no Student notice is sent until it is approved.
+              </p>
+            </Notice>
+          ) : null}
+          {item.state === CallSlipLifecycleStateValue.RETURNED ? (
+            <Notice role="status" tone="warning" title={<span className="text-warning">Returned for changes</span>}>
+              {item.return_note ? <p className="whitespace-pre-wrap text-ink">{item.return_note}</p> : null}
+              {item.returned_at ? <p className="mt-1 text-muted">Returned {formatInstitutionalDateTime(item.returned_at)}{item.returned_by ? ` by ${item.returned_by.display_name}` : ""}</p> : null}
+            </Notice>
+          ) : null}
           {item.state === CallSlipLifecycleStateValue.VOIDED ? (
             <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
               <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>
@@ -165,9 +187,12 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
               <p className="max-w-3xl text-sm leading-6 text-ink">Show to the instructor; report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
             </PanelSection>
             <RecordSection title="Issuance and recordkeeping">
-              <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
+              <Field label={isWaitingOrReturned ? "Supervising Counselor approver" : "Issuer name on Call Slip"} value={item.issued_by_name_snapshot} />
               <Field label="Current issuer account" value={item.issued_by.display_name} />
               <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
+              {item.approved_by && item.approved_at ? (
+                <Field label="Approved and issued" value={`${formatInstitutionalDateTime(item.approved_at)} by ${item.approved_by.display_name}`} />
+              ) : null}
               <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
               <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
               <Field label="Created in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
@@ -232,12 +257,234 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
 }
 
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {
+  if (slip.can_approve || slip.can_return) {
+    return <SupervisorApprovalActions slip={slip} />;
+  }
+  if (slip.can_resubmit || slip.can_withdraw) {
+    return <GoaPendingActions slip={slip} />;
+  }
   if (slip.state !== CallSlipLifecycleStateValue.ACTIVE) return null;
   return (
     <Panel aria-labelledby="call-slip-actions-heading">
       <PanelHeader title="Staff actions" titleId="call-slip-actions-heading" />
       {!slip.interview_ended_at ? <RecordInterviewEnd slip={slip} onRefresh={onRefresh} /> : <p className="px-4 py-4 text-sm text-muted sm:px-5">Interview end is recorded at {formatInstitutionalDateTime(slip.interview_ended_at)} and cannot be edited.</p>}
       <VoidCallSlip slip={slip} onRefresh={onRefresh} />
+    </Panel>
+  );
+}
+
+function SupervisorApprovalActions({ slip }: { slip: CallSlipOperationalResponse }) {
+  const queryClient = useQueryClient();
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const approve = useMutation({
+    mutationFn: () => callSlipsApprove(slip.id),
+    retry: false,
+  });
+  const returnSlip = useMutation({
+    mutationFn: () => callSlipsReturn(slip.id, { note: note.trim() }),
+    retry: false,
+  });
+
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getCallSlipsGetQueryKey(slip.id) }),
+      queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
+      invalidateGuidanceWork(queryClient),
+      ...(slip.referral ? [queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey({ referral_id: slip.referral.id }) })] : []),
+    ]);
+  }
+
+  async function handleApprove() {
+    setError(null);
+    setNotice(null);
+    try {
+      await approve.mutateAsync();
+      setNotice("Call Slip approved and issued.");
+      await invalidate();
+    } catch (caught) {
+      setError(callSlipErrorMessage(caught, "Couldn't approve the Call Slip. Try again."));
+    }
+  }
+
+  async function handleReturn() {
+    setError(null);
+    setNotice(null);
+    if (!note.trim()) return setError("Enter a note for the Guidance Office Assistant.");
+    try {
+      await returnSlip.mutateAsync();
+      setReturnOpen(false);
+      setNote("");
+      setNotice("Call Slip returned for changes.");
+      await invalidate();
+    } catch (caught) {
+      setError(callSlipErrorMessage(caught, "Couldn't return the Call Slip. Try again."));
+    }
+  }
+
+  return (
+    <Panel aria-labelledby="call-slip-approval-heading">
+      <PanelHeader title="Supervising Counselor approval" titleId="call-slip-approval-heading" />
+      <div className="space-y-3 px-4 py-4 sm:px-5">
+        <p className="text-sm leading-6 text-muted">
+          Approving issues this Call Slip in your name{slip.issuance_mode === CallSlipIssuanceModeValue.LIVE ? " and sends the Student's notification" : ""}.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {slip.can_approve ? (
+            <Button onClick={() => void handleApprove()} disabled={approve.isPending || returnSlip.isPending} aria-busy={approve.isPending}>
+              {approve.isPending ? "Approving…" : "Approve and issue Call Slip"}
+            </Button>
+          ) : null}
+          {slip.can_return ? (
+            <Button variant="secondary" onClick={() => { setError(null); setReturnOpen(true); }} disabled={approve.isPending || returnSlip.isPending}>
+              Return for changes
+            </Button>
+          ) : null}
+        </div>
+        {error && !returnOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
+      </div>
+      <ConsequentialActionDialog
+        open={returnOpen}
+        title="Return Call Slip for changes?"
+        confirmLabel="Return Call Slip"
+        pendingLabel="Returning…"
+        pending={returnSlip.isPending}
+        confirmDisabled={!note.trim()}
+        error={error}
+        onOpenChange={setReturnOpen}
+        onConfirm={() => void handleReturn()}
+      >
+        <p>The Guidance Office Assistant will see your note and can edit and resubmit this Call Slip or withdraw it.</p>
+        <div className="grid gap-2">
+          <Label htmlFor="call-slip-return-note">Return note</Label>
+          <Textarea
+            id="call-slip-return-note"
+            rows={3}
+            maxLength={1_000}
+            required
+            value={note}
+            disabled={returnSlip.isPending}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <p className="text-xs text-muted">{note.length} / 1,000 characters</p>
+        </div>
+      </ConsequentialActionDialog>
+    </Panel>
+  );
+}
+
+function GoaPendingActions({ slip }: { slip: CallSlipOperationalResponse }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<CallSlipDraft>(() => ({
+    courseYear: slip.course_year_snapshot,
+    destinationType: slip.destination_type,
+    otherDestination: slip.other_destination,
+    reportAt: isoToInstitutionalDateTimeInput(slip.report_at),
+    notifyStudent: slip.issuance_mode === CallSlipIssuanceModeValue.LIVE,
+  }));
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const resubmit = useMutation({
+    mutationFn: () => {
+      const fields = toCallSlipRequestFields(draft);
+      if (!fields) throw new Error("Complete Course / Year, destination, and report date and time.");
+      return callSlipsResubmit(slip.id, fields);
+    },
+    retry: false,
+  });
+  const withdraw = useMutation({
+    mutationFn: () => callSlipsWithdraw(slip.id, { reason: withdrawReason.trim() }),
+    retry: false,
+  });
+
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getCallSlipsGetQueryKey(slip.id) }),
+      queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
+      invalidateGuidanceWork(queryClient),
+      ...(slip.referral ? [queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey({ referral_id: slip.referral.id }) })] : []),
+    ]);
+  }
+
+  async function handleResubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setNotice(null);
+    const fields = toCallSlipRequestFields(draft);
+    if (!fields) return setError("Complete Course / Year, destination, and report date and time.");
+    try {
+      await resubmit.mutateAsync();
+      setNotice("Call Slip submitted to your supervising Counselor for approval.");
+      await invalidate();
+    } catch (caught) {
+      setError(callSlipErrorMessage(caught, "Couldn't resubmit the Call Slip. Try again."));
+    }
+  }
+
+  async function handleWithdraw() {
+    setError(null);
+    setNotice(null);
+    try {
+      await withdraw.mutateAsync();
+      setWithdrawOpen(false);
+      setNotice("Call Slip withdrawn.");
+      await invalidate();
+    } catch (caught) {
+      setError(callSlipErrorMessage(caught, "Couldn't withdraw the Call Slip. Try again."));
+    }
+  }
+
+  return (
+    <Panel aria-labelledby="call-slip-goa-actions-heading">
+      <PanelHeader title="Edit, resubmit, or withdraw" titleId="call-slip-goa-actions-heading" />
+      {slip.can_resubmit ? (
+        <form className="space-y-4 px-4 py-4 sm:px-5" onSubmit={(event) => void handleResubmit(event)} aria-busy={resubmit.isPending}>
+          <CallSlipFormFields draft={draft} onChange={setDraft} />
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" disabled={resubmit.isPending || withdraw.isPending}>
+              {resubmit.isPending ? "Submitting…" : "Save and submit for approval"}
+            </Button>
+            {slip.can_withdraw ? (
+              <Button type="button" variant="danger" disabled={resubmit.isPending || withdraw.isPending} onClick={() => { setError(null); setWithdrawOpen(true); }}>
+                Withdraw Call Slip
+              </Button>
+            ) : null}
+          </div>
+          {error && !withdrawOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+          {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
+        </form>
+      ) : null}
+      <ConsequentialActionDialog
+        open={withdrawOpen}
+        title="Withdraw this Call Slip?"
+        confirmLabel="Withdraw Call Slip"
+        pendingLabel="Withdrawing…"
+        pending={withdraw.isPending}
+        error={error}
+        variant="danger"
+        onOpenChange={setWithdrawOpen}
+        onConfirm={() => void handleWithdraw()}
+      >
+        <p>This Call Slip has not been issued to the Student, so withdrawing it closes the request without notifying the Student.</p>
+        <div className="grid gap-2">
+          <Label htmlFor="call-slip-withdraw-reason">Reason (optional)</Label>
+          <Textarea
+            id="call-slip-withdraw-reason"
+            rows={3}
+            maxLength={1_000}
+            value={withdrawReason}
+            disabled={withdraw.isPending}
+            onChange={(event) => setWithdrawReason(event.target.value)}
+          />
+        </div>
+      </ConsequentialActionDialog>
     </Panel>
   );
 }

@@ -59,11 +59,7 @@ def is_head(actor):
 
 
 def is_office_requester(actor):
-    return (
-        actor is not None
-        and actor.is_active
-        and (actor.role.code == "GUIDANCE_OFFICE_ASSISTANT" or is_head(actor))
-    )
+    return is_head(actor)
 
 
 def active_college_ids():
@@ -74,6 +70,8 @@ def office_college_ids(actor):
     """Live responsibility permits selection, never confidential content reads."""
     if not is_office_requester(actor):
         return frozenset()
+    if is_head(actor):
+        return active_college_ids()
     return frozenset(resolve_operational_responsibility_scope(actor).college_ids).intersection(
         active_college_ids()
     )
@@ -115,10 +113,7 @@ def require_unchanged_placement(current_marker, recorded_marker):
 
 
 def require_actor(user, action, now):
-    roles = {"COUNSELOR"}
-    if action in {"view", "request"}:
-        roles.add("GUIDANCE_OFFICE_ASSISTANT")
-    if user is None or not user.is_active or user.role.code not in roles:
+    if user is None or not user.is_active or user.role.code != "COUNSELOR":
         raise ContinuityError("invalid_role")
     if not user.has_capability("counseling.continuity." + action, at=now):
         raise ContinuityError("missing_capability")

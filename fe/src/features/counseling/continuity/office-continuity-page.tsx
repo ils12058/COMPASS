@@ -29,7 +29,7 @@ export function OfficeContinuityPage() {
   const requested = Number(params.get("page") ?? 1);
   const page = Number.isInteger(requested) && requested >= 1 && requested <= 1000 ? requested : 1;
   const here = `/portal/counseling/continuity${params.size ? `?${params}` : ""}`;
-  const allowed = user.capabilities.includes("counseling.continuity.request") && (user.role === "GUIDANCE_OFFICE_ASSISTANT" || (user.role === "COUNSELOR" && user.designations.includes("HEAD_GUIDANCE_COUNSELOR")));
+  const allowed = user.role === "COUNSELOR" && user.designations.includes("HEAD_GUIDANCE_COUNSELOR") && user.capabilities.includes("counseling.continuity.request");
   const query = useCounselingListContinuityOfficeCases({ status, search: search || undefined, page, page_size: 20 }, { query: { enabled: allowed, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } });
   function changePage(next: number, value = search, caseStatus = status) {
     const nextParams = new URLSearchParams();

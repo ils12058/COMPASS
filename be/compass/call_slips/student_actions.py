@@ -1,8 +1,8 @@
 """Only known LIVE Student instructions contribute, under canonical self authority."""
 
-from django.db.models import Case, Value, When
+from django.db.models import Case, Q, Value, When
 
-from .models import CallSlip, CallSlipIssuanceMode
+from .models import CallSlip, CallSlipApprovalStatus, CallSlipIssuanceMode
 from .services import CallSlipNotPermitted, _validate_student_actor
 
 
@@ -15,6 +15,7 @@ def live_instructions(*, student, now, limit):
         return ()
     return tuple(
         CallSlip.objects.filter(
+            Q(approval_status__isnull=True) | Q(approval_status=CallSlipApprovalStatus.ISSUED),
             student_id=student.pk,
             issuance_mode=CallSlipIssuanceMode.LIVE,
             interview_ended_at__isnull=True,

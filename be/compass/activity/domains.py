@@ -17,7 +17,7 @@ from compass.appointments.access import scope_managed_appointments
 from compass.appointments.models import Appointment
 from compass.audit import actions
 from compass.audit.models import AuditActorType, AuditOutcome
-from compass.call_slips.models import CallSlip
+from compass.call_slips.models import CallSlip, CallSlipApprovalStatus
 from compass.call_slips.services import _scope_queryset as scope_call_slips
 from compass.exit_interviews.models import ExitInterview
 from compass.good_moral.models import GoodMoralInitiationOrigin, GoodMoralRequest
@@ -238,7 +238,13 @@ def _source_queries(user, capabilities):
             ("callslips.callslip", CallSlip, "call_slips.view_self"),
         ):
             if capability in capabilities:
-                sources[target] = model.objects.filter(student_id=user.pk)
+                qs = model.objects.filter(student_id=user.pk)
+                if target == "callslips.callslip":
+                    qs = qs.filter(
+                        Q(approval_status__isnull=True)
+                        | Q(approval_status=CallSlipApprovalStatus.ISSUED)
+                    )
+                sources[target] = qs
     elif user.role.code in OPERATIONAL:
         if "appointments.manage" in capabilities:
             sources["appointments.appointment"] = scope_managed_appointments(

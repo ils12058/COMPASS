@@ -187,7 +187,7 @@ def test_suppressed_external_notice_keeps_truthful_in_app_history(request, setti
 
 
 def test_catalog_has_forty_events_and_sixteen_disclosure_approved_link_candidates():
-    assert len(NotificationEvent) == 40
+    assert len(NotificationEvent) == 46
     assert len(APPROVED_EMAIL_EVENTS) == 16
     # Urgent referrals use a content-free link, never an external-detail disclosure approval.
     assert NotificationEvent.REFERRAL_URGENT not in APPROVED_EMAIL_EVENTS

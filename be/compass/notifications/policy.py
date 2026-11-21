@@ -44,6 +44,8 @@ class NotificationTargetType(StrEnum):
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
     FACULTY_REFERRAL = "FACULTY_REFERRAL"
     REFERRAL = "REFERRAL"
+    ANNOUNCEMENT = "ANNOUNCEMENT"
+    RESOURCE = "RESOURCE"
 
 
 class NotificationEvent(StrEnum):
@@ -59,7 +61,13 @@ class NotificationEvent(StrEnum):
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
     FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
     FOLLOWUP_DUE_CHANGED = "guidance_followup.due_changed"
+    CALL_SLIP_APPROVAL_REQUESTED = "call_slip.approval_requested"
+    CALL_SLIP_RETURNED = "call_slip.returned"
     CALL_SLIP_ISSUED = "call_slip.issued"
+    ANNOUNCEMENT_APPROVAL_REQUESTED = "announcement.approval_requested"
+    ANNOUNCEMENT_RETURNED = "announcement.returned"
+    RESOURCE_APPROVAL_REQUESTED = "resource.approval_requested"
+    RESOURCE_RETURNED = "resource.returned"
     APPOINTMENT_SCHEDULED = "appointment.scheduled"
     APPOINTMENT_CANCELLED = "appointment.cancelled"
     APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
@@ -222,6 +230,24 @@ _EVENT_CATALOG = {
             NotificationEvent.FOLLOWUP_DUE_CHANGED,
         )
     },
+    NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Call Slip waiting for approval",
+        message="A Call Slip is waiting for your approval.",
+        email_subject="A Call Slip is waiting for your approval",
+        email_template="call_slip_approval_requested",
+    ),
+    NotificationEvent.CALL_SLIP_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.CALL_SLIP_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Call Slip returned",
+        message="Your supervising Counselor returned a Call Slip for changes.",
+        email_subject="",
+        email_template="",
+    ),
     NotificationEvent.CALL_SLIP_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_ISSUED,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
@@ -230,6 +256,42 @@ _EVENT_CATALOG = {
         message="You have a new Call Slip. Open COMPASS to review it.",
         email_subject="New COMPASS Call Slip",
         email_template="call_slip_issued",
+    ),
+    NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Announcement waiting for approval",
+        message="An Announcement draft is waiting for your approval to publish.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.ANNOUNCEMENT_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.ANNOUNCEMENT_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Announcement returned",
+        message="Your supervising Counselor returned an Announcement draft for changes.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.RESOURCE_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.RESOURCE_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Resource waiting for approval",
+        message="A Resource draft is waiting for your approval to publish.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.RESOURCE_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.RESOURCE_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Resource returned",
+        message="Your supervising Counselor returned a Resource draft for changes.",
+        email_subject="",
+        email_template="",
     ),
     NotificationEvent.APPOINTMENT_SCHEDULED: NotificationEventDefinition(
         event=NotificationEvent.APPOINTMENT_SCHEDULED,

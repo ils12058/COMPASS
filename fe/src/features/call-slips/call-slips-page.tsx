@@ -131,7 +131,9 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
           <FilterField label="Status" htmlFor="my-call-slips-state">
             <Select id="my-call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
               <option value="">All statuses</option>
-              {Object.values(CallSlipLifecycleStateValue).map((state) => (
+              {Object.values(CallSlipLifecycleStateValue)
+                .filter((state) => state !== CallSlipLifecycleStateValue.PENDING_APPROVAL && state !== CallSlipLifecycleStateValue.RETURNED)
+                .map((state) => (
                 <option key={state} value={state}>{callSlipStateLabel(state, true)}</option>
               ))}
             </Select>
@@ -264,7 +266,9 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           </FilterField>
           <FilterField label="Status" htmlFor="call-slips-state">
             <Select id="call-slips-state" value={draft.state} onChange={(event) => setDraft({ ...draft, state: lifecycleStateFrom(event.target.value) })}>
-              <option value="">{access.canManageOperational ? "Active and completed" : "All statuses"}</option>
+              <option value="">{access.canManageOperational ? "Active, waiting, and completed" : "All statuses"}</option>
+              <option value={CallSlipLifecycleStateValue.PENDING_APPROVAL}>{callSlipStateLabel(CallSlipLifecycleStateValue.PENDING_APPROVAL, false)}</option>
+              <option value={CallSlipLifecycleStateValue.RETURNED}>{callSlipStateLabel(CallSlipLifecycleStateValue.RETURNED, false)}</option>
               <option value={CallSlipLifecycleStateValue.ACTIVE}>{callSlipStateLabel(CallSlipLifecycleStateValue.ACTIVE, false)}</option>
               <option value={CallSlipLifecycleStateValue.COMPLETED}>{callSlipStateLabel(CallSlipLifecycleStateValue.COMPLETED, false)}</option>
               {access.canManageOperational ? <option value={CallSlipLifecycleStateValue.VOIDED}>{callSlipStateLabel(CallSlipLifecycleStateValue.VOIDED, false)}</option> : null}

@@ -110,12 +110,19 @@ def _snapshot(grant, scopes):
         raise ContinuityError("scope_changed", 409)
 
 
-def _sources(grant, scopes, users):
+def _sources(grant, scopes, users, *, approver=None):
+    requester = users.get(grant.requested_by_id)
+    if (
+        approver is not None
+        and requester is not None
+        and requester.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+    ):
+        requester = approver
     for scope in scopes:
         revision = resolve_source(
             selection=scope,
             student_id=grant.student_id,
-            requester=users[grant.requested_by_id],
+            requester=requester,
             original_counselor_id=grant.original_counselor_id,
         )
         if revision != scope.source_revision:
@@ -441,7 +448,7 @@ def decide_coverage(
             _student(users.get(grant.student_id)), grant.student_placement_marker
         )
         _interval(grant.starts_at, grant.expires_at, now)
-        _sources(grant, selected, users)
+        _sources(grant, selected, users, approver=actor)
         # NOWAIT source locks avoid reversed-order waits; recheck expiring authority
         # immediately before persistence, after every source validation.
         now = timezone.now()

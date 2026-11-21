@@ -26,6 +26,7 @@ export const contentRecordLinkClass =
 
 const statusTones: Record<PublicationStatus, string> = {
   DRAFT: "border-warning/40 bg-warning/5 text-warning",
+  PENDING_APPROVAL: "border-info/40 bg-info/5 text-info",
   PUBLISHED: "border-success/40 bg-success/5 text-success",
   ARCHIVED: "border-border bg-surface-muted text-muted",
 };

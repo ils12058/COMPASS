@@ -130,6 +130,8 @@ def resolve_notification_email_presentation(notification) -> NotificationEmailPr
         return _graduate_tracer_presentation(notification)
     if event == NotificationEvent.REFERRAL_URGENT:
         return _urgent_referral_presentation(notification)
+    if event == NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED:
+        return _call_slip_approval_presentation(notification)
     if event in FACULTY_REFERRAL_NOTICE_EVENTS:
         return _faculty_referral_presentation(notification)
     if event in OPERATIONAL_EMAIL_EVENTS:
@@ -311,6 +313,25 @@ def _urgent_referral_presentation(notification) -> NotificationEmailPresentation
     if not urgent_notice_is_current(notification):
         return NotificationEmailPresentation(event, EmailPresentationReason.SOURCE_STALE)
     target = NotificationEmailTarget(NotificationTargetType.REFERRAL, notification.target_id)
+    link = build_notification_email_link(target)
+    if link.reason != EmailLinkReason.AVAILABLE:
+        reason = {
+            EmailLinkReason.ORIGIN_MISSING: EmailPresentationReason.ORIGIN_MISSING,
+            EmailLinkReason.ORIGIN_INVALID: EmailPresentationReason.ORIGIN_INVALID,
+        }.get(link.reason, EmailPresentationReason.INVALID_TARGET)
+        return NotificationEmailPresentation(event, reason)
+    return NotificationEmailPresentation(
+        event, EmailPresentationReason.LINK_AVAILABLE, target=target, validated_link=link
+    )
+
+
+def _call_slip_approval_presentation(notification) -> NotificationEmailPresentation:
+    from compass.call_slips.work import call_slip_approval_notice_is_current
+
+    event = notification.event_code
+    if not call_slip_approval_notice_is_current(notification):
+        return NotificationEmailPresentation(event, EmailPresentationReason.SOURCE_STALE)
+    target = NotificationEmailTarget(NotificationTargetType.CALL_SLIP, notification.target_id)
     link = build_notification_email_link(target)
     if link.reason != EmailLinkReason.AVAILABLE:
         reason = {

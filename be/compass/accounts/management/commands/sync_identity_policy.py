@@ -27,7 +27,8 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             "Baseline grants: "
-            f"role grants created={result.role_grants_created}; "
+            f"role grants created={result.role_grants_created} "
+            f"removed={result.role_grants_removed}; "
             f"designation grants created={result.designation_grants_created}. "
             "Unknown database rows were retained."
         )

@@ -72,6 +72,12 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.CALL_SLIP && notification.target_id) {
     return { href: "/portal/call-slips/" + notification.target_id, label: "Open Call Slip" };
   }
+  if (notification.target_type === NotificationTargetType.ANNOUNCEMENT && notification.target_id) {
+    return { href: "/portal/announcements/" + notification.target_id, label: "Open Announcement" };
+  }
+  if (notification.target_type === NotificationTargetType.RESOURCE && notification.target_id) {
+    return { href: "/portal/resources/" + notification.target_id, label: "Open Resource" };
+  }
   if (notification.target_type === NotificationTargetType.GOOD_MORAL && notification.target_id) {
     return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral Certificate request" };
   }

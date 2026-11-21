@@ -125,7 +125,14 @@ def test_authorization_routes_require_explicit_acceptance_and_keep_primary(cw3c,
                 designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
             )
     elif route == "office":
-        actor = w.goa
+        with pytest.raises(CaseContinuityError) as denied:
+            prepare(w, actor=w.goa, receiver=receiver)
+        assert denied.value.code == "case_continuity_access_denied"
+        actor = make_user("cw3c-office-head@example.edu", "COUNSELOR")
+        UserDesignation.objects.create(
+            user=actor,
+            designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+        )
     original = w.case.primary_counselor_id
     item = prepare(w, actor=actor, receiver=receiver)
     with pytest.raises(CaseContinuityError):
@@ -166,6 +173,7 @@ def test_office_incoming_to_only_head_is_blocked_before_writes(cw3c, actor_name)
     with pytest.raises(CaseContinuityError) as failure:
         prepare(w, actor=getattr(w, actor_name), receiver=w.head)
     assert failure.value.code in {
+        "case_continuity_access_denied",
         "case_continuity_no_independent_approver",
         "case_continuity_receiver_ineligible",
     }
@@ -392,11 +400,19 @@ def test_accepted_coverage_blocks_transfer_and_second_coverage(cw3c, scheduled):
 
 def test_office_and_head_packages_and_notifications_never_contain_task_text(cw3c):
     w = cw3c
+    office_head = make_user("cw3c-pkg-office-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=office_head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
     task = create_task(w, title="Private task title", description="Private task narrative")
+    with pytest.raises(CaseContinuityError) as denied:
+        projections.coverage_context(actor=w.goa, case_id=w.case.pk)
+    assert denied.value.code == "case_continuity_access_denied"
     with patch.object(projections, "decrypt_text", side_effect=AssertionError("Office decrypted")):
-        package = projections.coverage_context(actor=w.goa, case_id=w.case.pk)
+        package = projections.coverage_context(actor=office_head, case_id=w.case.pk)
         assert package["tasks"][0]["title"] is None
-        item = offer(w, actor=w.goa, tasks=(task,))
+        item = offer(w, actor=office_head, tasks=(task,))
         body = projections.coverage_detail(actor=w.head, coverage_id=item.pk)
         assert body["tasks"][0]["title"] is None
     current = Notification.objects.filter(target_id=item.pk).latest("created_at")

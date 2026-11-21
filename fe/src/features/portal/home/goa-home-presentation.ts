@@ -28,9 +28,20 @@ export function presentGoaWork(item: WorkItem, user: UserSummary, generatedAt?: 
       if (!getReferralAccess(user).canManage || !getReferralAccess(user).canView) return null;
       break;
     case "ROUTINE_EVALUATION":
-      // This workspace is Counselor-only. A malformed or newly broadened projection must not
-      // introduce Counselor evaluation records into the GOA Home.
-      if (!getRoutineInterviewAccess(user).canViewAssigned) return null;
+    case "CASE_TRANSFER_AUTHORIZATION":
+    case "CASE_HANDOFF_EXCEPTION":
+    case "CASE_TRANSFER_ACCEPTANCE":
+    case "CASE_REASSIGNMENT_APPROVAL":
+    case "CASE_COVERAGE_AUTHORIZATION":
+    case "CASE_COVERAGE_ACCEPTANCE":
+    case "CASE_COVERAGE_WORK":
+    case "CASE_COVERAGE_RECOVERY":
+    case "CALL_SLIP_APPROVAL":
+    case "ANNOUNCEMENT_APPROVAL":
+    case "RESOURCE_APPROVAL":
+      // These workspaces are Counselor-only. A malformed or newly broadened projection must not
+      // introduce Counselor evaluation, continuity, or approval records into the GOA Home.
+      if (!getRoutineInterviewAccess(user).canViewAssigned || item.kind !== "ROUTINE_EVALUATION") return null;
       break;
     case "GOOD_MORAL_PREPARATION":
       if (!goodMoral.canPrepare) return null;

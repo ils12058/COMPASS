@@ -117,7 +117,7 @@ export function CoverageReviewPage({ coverageId }: { coverageId: string }) {
   const params = useSearchParams();
   const client = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
-  const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.view");
+  const allowed = user.role === "COUNSELOR" && user.capabilities.includes("counseling.continuity.view");
   const query = useCounselingGetCaseCoverage(coverageId, { query: { enabled: allowed, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: "always", refetchInterval: 15_000 } });
   const item = query.data?.data;
   const back = portalReturnHref(params.get("return_to"), item?.can_open_case ? `/portal/counseling/cases/${item.case.id}` : "/portal/work");

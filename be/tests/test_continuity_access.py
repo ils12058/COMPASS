@@ -787,29 +787,41 @@ def test_real_head_receiver_outsider_and_expiry(selected_case, monkeypatch):
 def test_assistant_request_uses_live_responsibility_and_independent_head(selected_case):
     c = selected_case
     assistant = c.user("office-assistant", "GUIDANCE_OFFICE_ASSISTANT")
+    office_head = c.user("office-head")
     UserCapabilityOverride.objects.all().delete()
+    UserDesignation.objects.create(
+        user=office_head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
     StaffSupervision.objects.create(staff=assistant, supervisor=c.author)
     CounselorResponsibility.objects.create(college=c.college, counselor=c.author)
-    config = coverage_selection.configuration(actor=assistant)
-    assert config["can_request"] and not config["can_approve"]
+    with pytest.raises(ContinuityError, match="invalid_role"):
+        coverage_selection.configuration(actor=assistant)
+    with pytest.raises(ContinuityError, match="invalid_role"):
+        coverage_selection.select(
+            actor=assistant, student_id=c.student.pk, original_counselor_id=c.author.pk
+        )
+    with pytest.raises(ContinuityError, match="invalid_role"):
+        request(c, actor=assistant, coverage_kind="TEMPORARY_COVERAGE")
+    config = coverage_selection.configuration(actor=office_head)
+    assert config["can_request"] and config["can_approve"]
     assert {x["student_id"] for x in config["office_cases"]} == {c.student.pk}
     assert (
         len(
             coverage_selection.select(
-                actor=assistant, student_id=c.student.pk, original_counselor_id=c.author.pk
+                actor=office_head, student_id=c.student.pk, original_counselor_id=c.author.pk
             )["items"]
         )
         == 2
     )
-    g = request(c, actor=assistant, coverage_kind="TEMPORARY_COVERAGE")
+    g = request(c, actor=office_head, coverage_kind="TEMPORARY_COVERAGE")
     with pytest.raises(ContinuityError):
-        decide(c, g, actor=assistant)
+        decide(c, g, actor=office_head)
     assert decide(c, g)["effective_status"] == "ACTIVE"
-    CounselorResponsibility.objects.filter(college=c.college).delete()
-    assert coverage_selection.configuration(actor=assistant)["office_cases"] == []
+    foundation_tests.College.objects.filter(pk=c.college.pk).update(is_active=False)
+    assert coverage_selection.configuration(actor=office_head)["office_cases"] == []
     with pytest.raises(ContinuityError):
         coverage_selection.select(
-            actor=assistant, student_id=c.student.pk, original_counselor_id=c.author.pk
+            actor=office_head, student_id=c.student.pk, original_counselor_id=c.author.pk
         )
 
 
@@ -862,7 +874,11 @@ def test_completed_approval_survives_live_head_turnover(selected_case):
     )
     added = foundation_tests.College.objects.create(campus=c.campus, code="NEW", name="New")
     assert is_head(new_head) and not is_head(c.head)
-    assert is_office_requester(assistant) and added.pk in active_college_ids()
+    assert (
+        is_office_requester(new_head)
+        and not is_office_requester(assistant)
+        and added.pk in active_college_ids()
+    )
     assert read(c, g)["evaluation"]["recommendations"] == SENTINEL
     authorize_case_coordination(actor=c.receiver, grant_id=g["id"])
     with pytest.raises(ContinuityError):
@@ -887,26 +903,19 @@ def test_active_college_and_campus_membership_rechecked(selected_case, entity):
 @pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "FACULTY"])
 def test_office_capability_does_not_replace_live_membership(selected_case, role):
     c = selected_case
-    if role == "FACULTY":
+    if role in {"FACULTY", "GUIDANCE_OFFICE_ASSISTANT"}:
         actor = User.objects.create_user(
             email="office-impostor@synthetic.test",
             role=role,
             password=None,
             first_name="Synthetic",
-            last_name="Faculty",
+            last_name="Impostor",
         )
-        # The capability ceiling also forbids granting continuity permissions to Faculty.
-        with pytest.raises(ValueError, match="Faculty Role"):
+        # The capability ceiling forbids granting continuity permissions to Faculty and GOAs.
+        with pytest.raises(ValueError, match="Role"):
             foundation_tests.grant_caps(actor)
     else:
         actor = c.user("office-impostor", role)
-    # Continuity capabilities never replace Counselor/office membership.
-    if role == "GUIDANCE_OFFICE_ASSISTANT":
-        StaffSupervision.objects.create(staff=actor, supervisor=c.author)
-        CounselorResponsibility.objects.create(college=c.college, counselor=c.author)
-        g = request(c, actor=actor)
-        assert decide(c, g)["effective_status"] == "ACTIVE"
-        StaffSupervision.objects.filter(staff=actor).delete()
     with pytest.raises(ContinuityError):
         coverage_selection.select(
             actor=actor, student_id=c.student.pk, original_counselor_id=c.author.pk

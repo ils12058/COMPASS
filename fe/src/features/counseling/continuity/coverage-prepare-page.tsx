@@ -140,7 +140,7 @@ export function CoveragePreparePage({ caseId }: { caseId: string }) {
   const params = useSearchParams();
   const editId = params.get("edit") ?? "";
   const back = portalReturnHref(params.get("return_to"), `/portal/counseling/cases/${caseId}`);
-  const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(user.role) && user.capabilities.includes("counseling.continuity.request");
+  const allowed = user.role === "COUNSELOR" && user.capabilities.includes("counseling.continuity.request");
   const existing = useCounselingGetCaseCoverage(editId, { query: { enabled: allowed && Boolean(editId), retry: false, gcTime: 0, staleTime: 0 } });
   const query = useCounselingGetCaseCoverageContext(caseId, { query: { enabled: allowed && (!editId || existing.data?.data.can_edit === true), retry: false, gcTime: 0, staleTime: 0 } });
   if (!allowed) return <CounselingUnavailable title="Arrange coverage" />;

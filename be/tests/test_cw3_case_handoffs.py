@@ -226,8 +226,19 @@ def test_receiver_review_body_ends_and_cannot_record_receipt(cw3b, ending):
 
 
 def test_office_exception_has_head_work_and_is_historical_after_acceptance(cw3b):
+    from compass.accounts.models import Designation, UserDesignation
+    from tests.test_counseling import make_user
+
     w = cw3b
-    item = prepare(w, actor=w.goa)
+    with pytest.raises(CaseContinuityError) as denied:
+        prepare(w, actor=w.goa)
+    assert denied.value.code == "case_continuity_access_denied"
+    office_head = make_user("cw3b-office-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=office_head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    item = prepare(w, actor=office_head)
     queue = auth_client(w.head).get("/api/v1/work").json()["items"]
     assert any(
         row["kind"] == "CASE_HANDOFF_EXCEPTION" and row["source_id"] == str(item.pk)
@@ -241,9 +252,12 @@ def test_office_exception_has_head_work_and_is_historical_after_acceptance(cw3b)
     op(item, w.head, "exception", exception_reason="OWNER_UNAVAILABLE")
     assert not CounselingCaseHandoff.objects.exists()
     item.refresh_from_db()
-    assert projections.transfer_detail(item, w.goa)["can_submit"]
+    assert projections.transfer_detail(item, office_head)["can_submit"]
     item = transfers.submit_transfer(
-        actor=w.goa, transfer_id=item.pk, expected_version=item.version, context=context(w.goa)
+        actor=office_head,
+        transfer_id=item.pk,
+        expected_version=item.version,
+        context=context(office_head),
     )
     item = decide(item, w.head, "authorize")
     item = decide(item, w.b, "accept")
@@ -376,7 +390,7 @@ def test_http_private_errors_and_first_form_draft_cannot_be_written_by_office(cw
         auth_client(w.goa),
         "post",
         f"{ROOT}/cases/{w.case.pk}/transfers",
-        values(w, actor=w.goa, handoff_sections=SECTIONS),
+        values(w, handoff_sections=SECTIONS, office_preparation_reason="OWNER_UNAVAILABLE"),
     )
     assert rejected.status_code == 403
 
