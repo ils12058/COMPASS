@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 
+import { ManagedRecovery } from "@/features/accounts/detail/overview/managed-recovery";
 import { ManagedFacultyAffiliation } from "@/features/accounts/detail/overview/faculty-affiliation";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -16,10 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
-import {
-  isTurnstileConfigured,
-  TurnstileWidget,
-} from "@/features/auth/components/turnstile-widget";
 import {
   ManagedActionFeedback,
   useInvalidateManagedAccount,
@@ -38,7 +35,6 @@ import {
   useAccountsDisable,
   useAccountsEnable,
   useAccountsGetEmailChangeStatus,
-  useAccountsRequestEmailChange,
   useAccountsUpdateIdentity,
   useAccountsUpdateStudentLifecycle,
 } from "@/lib/api/generated/accounts/accounts";
@@ -57,7 +53,6 @@ export function AccountOverview() {
   const invalidate = useInvalidateManagedAccount(account.id);
   const action = useManagedAction();
   const updateIdentity = useAccountsUpdateIdentity();
-  const changeEmail = useAccountsRequestEmailChange();
   const emailChangeStatus = useAccountsGetEmailChangeStatus(account.id, {
     query: {
       enabled: !self,
@@ -73,10 +68,6 @@ export function AccountOverview() {
   const updateLifecycle = useAccountsUpdateStudentLifecycle();
   const [identityOpen, setIdentityOpen] = useState(false);
   const [identity, setIdentity] = useState<IdentityUpdateRequest>({});
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [token, setToken] = useState<string | null>(null);
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [confirm, setConfirm] = useState<Confirmation>(null);
   const [lifecycle, setLifecycle] = useState<StudentLifecycleCode | null>(
     account.student_lifecycle_status,
@@ -111,28 +102,6 @@ export function AccountOverview() {
     setIdentityOpen(false);
     await invalidate();
     action.setNotice("Identity updated.");
-  }
-
-  async function stageEmail(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const requested = newEmail.trim();
-    const response = await action.run(
-      () =>
-        changeEmail.mutateAsync({
-          userId: account.id,
-          data: {
-            new_email: requested,
-            ...(isTurnstileConfigured ? { turnstile_token: token } : {}),
-          },
-        }),
-      "Couldn't send verification to the proposed email. Try again.",
-      () => setEmailOpen(false),
-    );
-    setToken(null);
-    setTurnstileReset((value) => value + 1);
-    if (!response) return;
-    setEmailOpen(false);
-    await Promise.all([invalidate(), emailChangeStatus.refetch()]);
   }
 
   async function confirmAction() {
@@ -182,17 +151,6 @@ export function AccountOverview() {
               <Button variant="secondary" onClick={beginIdentity}>
                 Edit identity
               </Button>
-              <Button
-                variant="secondary"
-                disabled={!account.is_active}
-                onClick={() => {
-                  setNewEmail("");
-                  action.setError(null);
-                  setEmailOpen(true);
-                }}
-              >
-                Change sign-in email
-              </Button>
             </>
           }
         />
@@ -228,14 +186,14 @@ export function AccountOverview() {
             A code was sent to <span className="break-all font-semibold text-ink">{emailChangeRequest.destination_email}</span>. The current sign-in email remains active until the account holder verifies the new address.
           </Notice>
         ) : null}
-        {emailChangeRequest?.status === "confirmed" ? (
+        {emailChangeRequest?.status === "confirmed" && emailChangeRequest.destination_email === account.email ? (
           <Notice role="status" tone="success" className="mt-4" title="Email verified">
             The account holder verified <span className="break-all font-semibold text-ink">{emailChangeRequest.destination_email}</span>. The sign-in email has been updated.
           </Notice>
         ) : null}
         {emailChangeRequest && ["expired", "cancelled", "verification_unavailable"].includes(emailChangeRequest.status) ? (
           <Notice role="status" tone="info" className="mt-4">
-            This email change is no longer active. Request a new change to send another verification code.
+            This earlier email change is no longer active.
           </Notice>
         ) : null}
         {emailChangeStatus.isError ? (
@@ -243,13 +201,10 @@ export function AccountOverview() {
             Couldn&apos;t load email verification status. Try again.
           </Notice>
         ) : null}
-        {!account.is_active ? (
-          <p className="mt-3 text-sm text-muted">
-            Enable this account before requesting a sign-in email change.
-          </p>
-        ) : null}
         </PanelBody>
       </Panel>
+
+      <ManagedRecovery />
 
       {account.role === RoleCode.FACULTY ? <ManagedFacultyAffiliation /> : null}
 
@@ -422,63 +377,6 @@ export function AccountOverview() {
               </Button>
               <Button type="submit" disabled={updateIdentity.isPending}>
                 {updateIdentity.isPending ? "Saving changes…" : "Save changes"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-        <DialogContent dismissible={!changeEmail.isPending}>
-          <DialogTitle>Change sign-in email</DialogTitle>
-          <DialogDescription>
-            Verification goes to the proposed new mailbox. The account holder
-            must confirm the change.
-          </DialogDescription>
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(event) => void stageEmail(event)}
-          >
-            <p className="text-sm text-muted">
-              Current email:{" "}
-              <span className="font-semibold text-ink">{account.email}</span>
-            </p>
-            <div className="grid gap-2">
-              <Label htmlFor="managed-new-email">New email</Label>
-              <Input
-                id="managed-new-email"
-                type="email"
-                required
-                value={newEmail}
-                onChange={(event) => setNewEmail(event.target.value)}
-              />
-            </div>
-            <TurnstileWidget
-              action="email_otp"
-              onTokenChange={setToken}
-              resetKey={turnstileReset}
-            />
-            {action.error ? (
-              <p role="alert" className="text-sm text-danger">
-                {action.error}
-              </p>
-            ) : null}
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                disabled={changeEmail.isPending}
-                onClick={() => setEmailOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  changeEmail.isPending || (isTurnstileConfigured && !token)
-                }
-              >
-                {changeEmail.isPending
-                  ? "Sending verification…"
-                  : "Send verification"}
               </Button>
             </div>
           </form>

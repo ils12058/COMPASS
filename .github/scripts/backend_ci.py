@@ -82,6 +82,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_accounts.py",
             "test_authentication.py",
             "test_password_access.py",
+            "test_account_recovery_links.py",
             "test_password_change.py",
             "test_email_change.py",
             "test_account_management.py",

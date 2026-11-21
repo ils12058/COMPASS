@@ -313,7 +313,7 @@ for (const kind of ["permission", "network", "repeat-stepup"]) {
     role: "IT_ADMIN",
     capabilities: ["accounts.manage"],
   };
-  await check("IT Admin sees staged and completed status without changing email before verification", `/portal/accounts/${accountId}`, {
+  await check("IT Admin records an identity check and sends a link before the account changes", `/portal/accounts/${accountId}`, {
     overrides: {
       "/api/v1/auth/session": { user: adminUser, session: { id: "synthetic-admin-session", expires_at: "2099-01-01T00:00:00Z", is_current: true } },
       [`/api/v1/accounts/${accountId}`]: state.account,
@@ -323,41 +323,48 @@ for (const kind of ["permission", "network", "repeat-stepup"]) {
         await reply({ request: state.request });
         return true;
       }
-      if (pathname === `/api/v1/accounts/${accountId}/email-change` && method === "POST") {
+      if (pathname === `/api/v1/accounts/${accountId}/recovery-link` && method === "POST") {
         const body = JSON.parse(request.postData());
         state.confirmationPosts.push(body);
-        state.request = {
-          status: "pending",
-          request_id: requestId,
-          destination_email: body.new_email,
-          expires_at: "2099-01-01T00:00:00Z",
-          confirmed_at: null,
-        };
-        await reply({ request_id: requestId, challenge_id: challengeId, expires_at: state.request.expires_at });
+        await reply({ request_id: requestId, expires_at: "2099-01-01T00:00:00Z" }, 202);
         return true;
       }
       return false;
     },
   }, async (page, browser) => {
-    await page.getByRole("button", { name: "Change sign-in email", exact: true }).click();
+    await page.getByRole("button", { name: "Change email and send recovery link", exact: true }).click();
     await page.getByLabel("New email", { exact: true }).fill("admin-managed-new@example.test");
-    const staged = page.waitForResponse((response) => response.url().endsWith(`/api/v1/accounts/${accountId}/email-change`) && response.request().method() === "POST" && response.status() === 200);
-    await page.getByRole("button", { name: "Send verification", exact: true }).click();
-    await staged;
-    await shown(page.getByText("Verification pending", { exact: true }));
-    await shown(page.getByText("admin-managed-new@example.test", { exact: true }));
-    await shown(page.getByText("admin-managed-old@example.test", { exact: true }).first());
+    await page.getByLabel("Identity check", { exact: true }).selectOption("in_person_id");
+    await page.getByRole("button", { name: "Review recovery link", exact: true }).click();
+    const review = page.getByRole("alertdialog");
+    await shown(review);
+    await shown(review.getByText("Verified in person with a school or employee ID", { exact: false }));
+    const sent = page.waitForResponse((response) => response.url().endsWith(`/api/v1/accounts/${accountId}/recovery-link`) && response.request().method() === "POST" && response.status() === 202);
+    await review.getByRole("button", { name: "Send recovery link", exact: true }).click();
+    await sent;
+    await shown(review.getByRole("heading", { name: "Recovery link sent", exact: true }));
+    await shown(review.getByText("admin-managed-new@example.test", { exact: true }));
     assert.equal(state.confirmationPosts.length, 1);
     assert.equal(state.confirmationPosts[0].new_email, "admin-managed-new@example.test");
+    assert.equal(state.confirmationPosts[0].identity_check_basis, "in_person_id");
+    assert.equal(state.confirmationPosts[0].identity_check_reason, "");
+    assert.equal(state.confirmationPosts[0].expected_updated_at, state.account.updated_at);
     assert.equal("code" in state.confirmationPosts[0], false);
+    assert.equal("new_password" in state.confirmationPosts[0], false);
     assert.equal(browser.requests.some(({ pathname }) => pathname === "/api/v1/auth/email-change/confirm"), false);
+    await review.getByRole("button", { name: "Done", exact: true }).click();
+    await review.waitFor({ state: "hidden" });
+    await shown(page.getByText("admin-managed-old@example.test", { exact: true }).first());
+    assert.equal(state.account.email, "admin-managed-old@example.test");
+    await noHorizontalOverflow(page);
 
-    state.request = { ...state.request, status: "confirmed", confirmed_at: "2026-10-18T00:00:00Z" };
+    // Synthetic snapshot after the account holder completes the public link; backend atomicity
+    // and single-use completion are covered by test_account_recovery_links.py.
     state.account.email = "admin-managed-new@example.test";
     await settleFetches(page);
     await page.reload({ waitUntil: "domcontentloaded" });
-    await shown(page.getByText("Email verified", { exact: true }).first());
     await shown(page.getByText("admin-managed-new@example.test", { exact: true }).first());
+
   });
 }
 

@@ -366,6 +366,62 @@ class EmailChangeRequest(models.Model):
         return str(self.id)
 
 
+class IdentityCheckBasis(models.TextChoices):
+    IN_PERSON_ID = "in_person_id", "Verified in person with a school or employee ID"
+    OTHER = "other", "Other"
+
+
+class AccountRecoveryLink(models.Model):
+    """Single-use credential; plaintext exists only in the email dispatch memory."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="account_recovery_links"
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="issued_account_recovery_links",
+    )
+    token_digest = models.CharField(max_length=OPAQUE_DIGEST_LENGTH, unique=True, editable=False)
+    current_email_snapshot = models.EmailField(max_length=254)
+    password_snapshot_digest = models.CharField(max_length=OPAQUE_DIGEST_LENGTH, editable=False)
+    destination_email = models.EmailField(max_length=254)
+    email_change = models.BooleanField(default=False)
+    identity_check_basis = models.CharField(
+        max_length=24, choices=IdentityCheckBasis.choices, blank=True
+    )
+    identity_check_reason = models.CharField(max_length=240, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+    old_email_alert_sent_at = models.DateTimeField(null=True, blank=True)
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        indexes = [
+            models.Index(
+                fields=("user", "consumed_at", "invalidated_at"), name="auth_account_link_user_idx"
+            )
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=Q(consumed_at__isnull=True, invalidated_at__isnull=True),
+                name="auth_one_pending_account_link",
+            ),
+            models.CheckConstraint(
+                condition=Q(expires_at__gt=F("created_at")), name="auth_account_link_positive_ttl"
+            ),
+        ]
+
+    def __str__(self):
+        return str(self.id)
+
+
 __all__ = [
     "AuthSession",
     "EmailChangeRequest",

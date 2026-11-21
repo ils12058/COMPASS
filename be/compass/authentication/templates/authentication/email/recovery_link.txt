@@ -1,0 +1,13 @@
+{% extends "compass/email/security.txt" %}
+{% block content %}
+{% if email_change %}An IT Administrator recorded an identity check and requested a new sign-in email for your COMPASS account.
+Open this link to verify this email and choose a new password. Your sign-in email will change only when you finish.
+{% else %}A password link was requested for your COMPASS account.
+Open this link to choose a new password.
+{% endif %}
+{{ url }}
+
+This link can be used once and expires on {{ expiry }} ({{ zone }}).
+An existing authenticator is still required at sign-in. If you lost it, ask the ITSO for help.
+If you didn't expect this email, ignore it. Your account will not change unless you use the link.
+{% endblock %}

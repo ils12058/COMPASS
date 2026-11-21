@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from compass.common.email import RenderedEmail, render_email
+from compass.common.institutional_time import institution_timezone_name, to_institution_time
 
 SECURITY_CODE_SUBJECT = "Your COMPASS security code"
 EMAIL_CHANGED_SUBJECT = "COMPASS sign-in email changed"
@@ -37,3 +38,20 @@ __all__ = [
     "render_email_changed_alert",
     "render_security_code_email",
 ]
+
+
+def render_recovery_link_email(*, url, expires_at, email_change):
+    return render_email(
+        "Your COMPASS account recovery link",
+        "authentication/email/recovery_link",
+        {
+            "url": url,
+            "expiry": to_institution_time(expires_at).strftime("%B %d, %Y at %I:%M %p"),
+            "zone": institution_timezone_name(),
+            "email_change": email_change,
+        },
+    )
+
+
+def render_recovery_completion_email():
+    return render_email("COMPASS password updated", "authentication/email/recovery_completed")

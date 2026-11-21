@@ -3641,6 +3641,67 @@
         "title": "AssistedGraduateRequestPayload",
         "type": "object"
       },
+      "AssistedRecoveryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_updated_at": {
+            "format": "date-time",
+            "title": "Expected Updated At",
+            "type": "string"
+          },
+          "identity_check_basis": {
+            "$ref": "#/components/schemas/IdentityCheckCode"
+          },
+          "identity_check_reason": {
+            "default": "",
+            "maxLength": 240,
+            "title": "Identity Check Reason",
+            "type": "string"
+          },
+          "new_email": {
+            "title": "New Email",
+            "type": "string"
+          },
+          "turnstile_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnstile Token"
+          }
+        },
+        "required": [
+          "new_email",
+          "identity_check_basis",
+          "expected_updated_at"
+        ],
+        "title": "AssistedRecoveryRequest",
+        "type": "object"
+      },
+      "AssistedRecoveryResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "expires_at"
+        ],
+        "title": "AssistedRecoveryResponse",
+        "type": "object"
+      },
       "AttendanceBatchRequest": {
         "properties": {
           "records": {
@@ -27432,6 +27493,14 @@
         "title": "IdealAllowanceBandValue",
         "type": "string"
       },
+      "IdentityCheckCode": {
+        "enum": [
+          "in_person_id",
+          "other"
+        ],
+        "title": "IdentityCheckCode",
+        "type": "string"
+      },
       "IdentitySummaryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -31575,6 +31644,19 @@
         "title": "PasswordChangeResponse",
         "type": "object"
       },
+      "PasswordLinkRequestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "PasswordLinkRequestResponse",
+        "type": "object"
+      },
       "PeriodImportResponse": {
         "additionalProperties": false,
         "properties": {
@@ -32734,6 +32816,64 @@
           "artifact_available"
         ],
         "title": "RecordingWorkspaceState",
+        "type": "object"
+      },
+      "RecoveryLinkConfirmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 256,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "RecoveryLinkConfirmRequest",
+        "type": "object"
+      },
+      "RecoveryLinkVerifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 256,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "RecoveryLinkVerifyRequest",
+        "type": "object"
+      },
+      "RecoveryLinkVerifyResponse": {
+        "properties": {
+          "email_change": {
+            "title": "Email Change",
+            "type": "boolean"
+          },
+          "masked_email": {
+            "title": "Masked Email",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "masked_email",
+          "email_change"
+        ],
+        "title": "RecoveryLinkVerifyResponse",
         "type": "object"
       },
       "ReferralAcknowledgmentRequest": {
@@ -42531,6 +42671,125 @@
         ]
       }
     },
+    "/api/v1/accounts/{user_id}/recovery-link": {
+      "post": {
+        "description": "Requires account management and recent MFA. Records the staff identity check; the account holder completes recovery without signing in.",
+        "operationId": "accountsRequestRecoveryLink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistedRecoveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistedRecoveryResponse"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Change email and send an account recovery link",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/v1/accounts/{user_id}/role": {
       "put": {
         "operationId": "accountsChangeRole",
@@ -46708,6 +46967,172 @@
         ]
       }
     },
+    "/api/v1/auth/account-recovery/confirm": {
+      "post": {
+        "description": "Atomically consumes the link, verifies the destination email, and revokes all reusable sign-ins. Existing authenticators are preserved. No sign-in session is created.",
+        "operationId": "authConfirmRecoveryLink",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryLinkConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordAccessConfirmResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set a password using a recovery link",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/account-recovery/verify": {
+      "post": {
+        "description": "Does not consume the link. Invalid, expired, used, and changed-account links share one error.",
+        "operationId": "authVerifyRecoveryLink",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryLinkVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryLinkVerifyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Check an account recovery link",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/csrf": {
       "get": {
         "description": "Return the readable Django CSRF token and issue the CSRF cookie. The HttpOnly authentication cookie is not returned.",
@@ -47871,6 +48296,89 @@
           }
         },
         "summary": "Complete a login MFA challenge",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password-link/request": {
+      "post": {
+        "description": "Same response for active, disabled, and unknown accounts. Keeps email-request limits and Turnstile.",
+        "operationId": "authRequestPasswordLink",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordLinkRequestResponse"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Request an expiring password link",
         "tags": [
           "auth"
         ]
