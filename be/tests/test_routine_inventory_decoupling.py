@@ -434,6 +434,9 @@ def test_unbound_routine_keeps_counseling_context_and_encounter_lifecycle():
 @pytest.mark.django_db
 def test_service_inventory_prerequisite_stays_an_appointment_rule_only():
     admin, student, counselor, service, _ = setup_domain("service-rule")
+    from tests.test_appointments import create_placement
+
+    create_placement(student, counselor)
     service = update_service(
         service_id=service.pk,
         changes={"requires_current_inventory": True},

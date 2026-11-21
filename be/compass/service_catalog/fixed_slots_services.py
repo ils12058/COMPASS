@@ -11,6 +11,10 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.accounts.services import is_current_student
+from compass.appointments.counselor_access_services import (
+    lock_student_active_counselor_approval,
+    resolve_permitted_counselors_for_student,
+)
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.appointments.services import (
     AppointmentCurrentStudentRequired,
@@ -23,6 +27,7 @@ from compass.appointments.services import (
     _normalized_delivery_mode,
     _validate_booking_users,
     _validate_inventory_prerequisite,
+    _validate_student_permitted_provider,
 )
 from compass.audit.actions import (
     APPOINTMENT_CREATED,
@@ -489,12 +494,17 @@ def list_student_bookable_slots(
         return []
 
     now = timezone.now()
+    permitted = resolve_permitted_counselors_for_student(student, now=now)
+    if not permitted:
+        return []
+
     qs = (
         ServiceAppointmentSlot.objects.filter(
             service=service,
             is_published=True,
             withdrawn_at__isnull=True,
             starts_at__gt=now,
+            provider_id__in=permitted.keys(),
         )
         .filter(
             Q(current_appointment__isnull=True)
@@ -554,6 +564,7 @@ def book_fixed_slot(
     student: User,
     context: AuditContext,
     service_id: UUID | None = None,
+    actor: User | None = None,
     now: datetime | None = None,
 ) -> Appointment:
     """Book a published fixed-date appointment slot, creating a canonical COMPASS Appointment."""
@@ -561,15 +572,24 @@ def book_fixed_slot(
         raise AppointmentCurrentStudentRequired("Only current Students can book an Appointment.")
 
     current_time = now or timezone.now()
+    acting_user = actor or (context.actor if isinstance(context.actor, User) else student)
 
     with transaction.atomic():
         snapshot = ServiceAppointmentSlot.objects.filter(pk=slot_id).first()
         if snapshot is None or (service_id is not None and snapshot.service_id != service_id):
             raise SlotNotFoundError("The selected slot was not found.")
-        locked = _lock_users(student.pk, snapshot.provider_id)
+        locked = _lock_users(student.pk, snapshot.provider_id, acting_user.pk)
         locked_student = locked[student.pk]
         locked_provider = locked[snapshot.provider_id]
+        locked_actor = locked[acting_user.pk]
         _validate_booking_users(locked_student, locked_provider)
+        lock_student_active_counselor_approval(locked_student.pk)
+        _validate_student_permitted_provider(
+            student=locked_student,
+            provider=locked_provider,
+            actor=locked_actor,
+            now=current_time,
+        )
         service = Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
         if service is None:
             raise SlotNotFoundError("The selected slot was not found.")
@@ -659,7 +679,7 @@ def book_fixed_slot(
             starts_at=slot.starts_at,
             ends_at=slot.ends_at,
             cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
-            created_by=locked_student,
+            created_by=locked_actor,
         )
 
         ServiceAppointmentSlotBooking.objects.create(slot=slot, appointment=appointment)

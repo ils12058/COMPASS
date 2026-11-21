@@ -72,6 +72,7 @@ def book(
     starts_at: datetime,
     booked_at: datetime,
     mode: str = "IN_PERSON",
+    arranged_by: str | None = None,
 ) -> Appointment:
     service = counseling_service()
     slot = choose_slot(
@@ -82,6 +83,7 @@ def book(
         mode=mode,
         desired=starts_at,
         booked_at=booked_at,
+        actor_key=arranged_by,
     )
     appointment = create_student_appointment(
         student=session.user(student.key),
@@ -89,7 +91,8 @@ def book(
         provider_id=session.users[provider_key].pk,
         delivery_mode=mode,
         starts_at=slot.starts_at,
-        context=session.as_user(student.key),
+        context=session.as_user(arranged_by or student.key),
+        actor=session.user(arranged_by) if arranged_by else None,
         now=booked_at,
     )
     align_timestamps(appointment, created_at=booked_at, updated_at=booked_at)

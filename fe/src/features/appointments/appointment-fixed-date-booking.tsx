@@ -13,6 +13,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { ServiceFixedSlotsStudentPanel } from "@/features/services/service-fixed-slots-panel";
 import { useServicesGet, useServicesList } from "@/lib/api/generated/services/services";
 import { AppointmentsLocalNavigation, AppointmentsPageHeading, appointmentErrorMessage } from "./appointments-shared";
+import { StudentCounselorRequestSection } from "./counselor-request-section";
 
 export function AppointmentFixedDateBooking({ initialServiceId, initialSearch, initialPage }: { initialServiceId?: string; initialSearch?: string; initialPage?: string }) {
   const validInitialId = Boolean(initialServiceId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(initialServiceId));
@@ -34,6 +35,9 @@ export function AppointmentFixedDateBooking({ initialServiceId, initialSearch, i
     <AppointmentsLocalNavigation />
     <AppointmentsPageHeading title="Scheduled Appointment slots" />
     <Link href="/portal/appointments/book" className={pageBackLinkClass}>Back to booking choices</Link>
+    <div className="mt-5">
+      <StudentCounselorRequestSection mode="banner" />
+    </div>
     <Panel className="mt-5">
       <PanelSection title="Choose a Service" titleId="scheduled-slot-service-heading" data-guide-target="booking-service">
         {initialServiceId && !validInitialId ? <Notice role="alert">The Service link is invalid. Choose a Service below.</Notice> : null}

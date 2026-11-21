@@ -434,6 +434,7 @@ def graduating(session: SeedSession) -> None:
         HEAD_GUIDANCE.key,
         starts_at=t.future(6, 14),
         booked_at=t.past(2, 17, 5),
+        arranged_by=HEAD_GUIDANCE.key,
     )
 
 

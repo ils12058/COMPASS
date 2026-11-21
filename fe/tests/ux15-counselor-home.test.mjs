@@ -107,6 +107,7 @@ test("Head oversight links follow each existing workspace capability", () => {
     "/portal/availability",
     "/portal/services",
     "/portal/appointments/manage",
+    "/portal/appointments/counselor-requests",
   ]);
   assert.deepEqual(getHeadGuidanceHomeDestinations(counselorUser({ capabilities })), []);
 });

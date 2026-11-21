@@ -19,9 +19,11 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.appointments.counselor_access_models import StudentCounselorApproval
 from compass.appointments.models import Appointment, AppointmentReferenceCounter
 from compass.appointments.services import (
     AppointmentCancellationConflict,
+    AppointmentCounselorNotPermitted,
     AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentListOrdering,
@@ -182,14 +184,22 @@ def create_list_appointment(
 
 
 def create_placement(student: User, counselor: User):
-    campus = Campus.objects.create(code=f"C{Campus.objects.count() + 1}", name="Campus")
-    college = College.objects.create(
-        campus=campus,
-        code=f"COL{College.objects.count() + 1}",
-        name="College",
+    existing = (
+        CounselorResponsibility.objects.select_related("college")
+        .filter(counselor=counselor)
+        .first()
     )
+    if existing is not None:
+        college = existing.college
+    else:
+        campus = Campus.objects.create(code=f"C{Campus.objects.count() + 1}", name="Campus")
+        college = College.objects.create(
+            campus=campus,
+            code=f"COL{College.objects.count() + 1}",
+            name="College",
+        )
+        CounselorResponsibility.objects.create(college=college, counselor=counselor)
     StudentAcademicProfile.objects.create(student=student, current_college=college)
-    CounselorResponsibility.objects.create(college=college, counselor=counselor)
     return college
 
 
@@ -239,6 +249,7 @@ def test_booking_creates_scheduled_reservation_with_snapshot_reference_and_audit
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor, duration=60, cutoff=30)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     start = future_local_start()
 
     item = create_student_appointment(
@@ -459,6 +470,19 @@ def test_explicit_cross_scope_counselor_is_allowed_and_goa_is_not_student_select
     create_placement(student, default)
     start = future_local_start()
 
+    # ADR-120: a Counselor from another College is refused unless approved by the Head.
+    with pytest.raises(AppointmentCounselorNotPermitted):
+        create_student_appointment(
+            student=student,
+            service_id=service.pk,
+            provider_id=other.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=start,
+            context=context(student),
+            now=start - timedelta(days=1),
+        )
+
+    StudentCounselorApproval.objects.create(student=student, counselor=other, approved_by=default)
     item = create_student_appointment(
         student=student,
         service_id=service.pk,
@@ -493,6 +517,7 @@ def test_booking_rolls_back_domain_and_audit_when_mandatory_notification_persist
     provider = make_user("rollback-provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     start = future_local_start()
 
     def fail_notification(**_kwargs):
@@ -542,6 +567,7 @@ def test_full_interval_must_fit_base_availability():
         windows=[weekly(start=time(10), end=time(10, 30))],
         context=context(actor),
     )
+    create_placement(student, provider)
     start = future_local_start(hour=10)
 
     with pytest.raises(AppointmentTimeUnavailable):
@@ -573,6 +599,11 @@ def test_provider_and_student_overlaps_block_but_cancelled_rows_do_not():
             windows=[weekly()],
             context=context(actor),
         )
+    create_placement(student_a, provider_a)
+    create_placement(student_b, provider_a)
+    StudentCounselorApproval.objects.create(
+        student=student_a, counselor=provider_b, approved_by=provider_a
+    )
     start = future_local_start()
 
     first = create_student_appointment(
@@ -634,6 +665,8 @@ def test_service_duration_and_cutoff_are_booking_time_snapshots():
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor, duration=60, cutoff=30)
     configure_availability(actor, provider)
+    create_placement(student_a, provider)
+    create_placement(student_b, provider)
     start = future_local_start()
 
     first = create_student_appointment(
@@ -681,6 +714,7 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
     )
     service = active_service(actor, cutoff=30)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     start = future_local_start()
     item = create_student_appointment(
         student=student,
@@ -755,6 +789,7 @@ def test_exact_self_cancellation_cutoff_boundary_is_allowed():
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor, cutoff=30)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     start = future_local_start()
     item = create_student_appointment(
         student=student,
@@ -791,6 +826,7 @@ def test_reference_counter_uses_local_booking_year_and_rolls_back_with_failed_tr
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
+    create_placement(student, provider)
 
     booking_now = datetime(2026, 12, 31, 23, 30, tzinfo=ZoneInfo("Asia/Manila"))
     scheduled_start = datetime(2027, 1, 4, 10, 0, tzinfo=ZoneInfo("Asia/Manila"))
@@ -825,11 +861,23 @@ def test_eligible_counselors_are_cross_scope_bounded_and_default_is_marked():
         delivery_mode="IN_PERSON",
     )
     by_id = {row.user.pk: row for row in rows}
-    assert default.pk in by_id
-    assert other.pk in by_id
+    assert set(by_id) == {default.pk}
     assert by_id[default.pk].is_default
-    assert not by_id[other.pk].is_default
-    assert all(row.user.is_active and row.user.role.code == "COUNSELOR" for row in rows)
+    assert not by_id[default.pk].is_head_approved
+
+    # ADR-120: approving another Counselor adds them alongside the College default.
+    StudentCounselorApproval.objects.create(student=student, counselor=other, approved_by=default)
+    approved_rows = list_eligible_counselors(
+        student=student,
+        service_id=service.pk,
+        delivery_mode="IN_PERSON",
+    )
+    approved_by_id = {row.user.pk: row for row in approved_rows}
+    assert set(approved_by_id) == {default.pk, other.pk}
+    assert approved_by_id[default.pk].is_default
+    assert not approved_by_id[other.pk].is_default
+    assert approved_by_id[other.pk].is_head_approved
+    assert all(row.user.is_active and row.user.role.code == "COUNSELOR" for row in approved_rows)
 
 
 @pytest.mark.django_db
@@ -841,6 +889,7 @@ def test_student_booking_api_requires_idempotency_and_replays_same_success():
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     client = auth_client(student)
     start = future_local_start()
     payload = {
@@ -899,6 +948,7 @@ def test_booking_api_failed_validation_releases_idempotency_key_for_retry():
     student = make_user("student@example.edu", "STUDENT")
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor)
+    create_placement(student, provider)
     client = auth_client(student)
     start = future_local_start()
     payload = {
@@ -946,6 +996,7 @@ def test_self_provider_manager_views_and_cancel_authorization_are_resource_scope
     )
     service = active_service(actor)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     start = future_local_start()
     item = create_student_appointment(
         student=student,
@@ -1027,6 +1078,7 @@ def test_non_current_student_cannot_book_but_can_read_and_cancel_existing(status
     counselor = make_user(f"booking-counselor-{status.lower()}@example.edu", "COUNSELOR")
     service = active_service(admin)
     configure_availability(admin, counselor)
+    create_placement(student, counselor)
     start = future_local_start()
 
     existing = create_student_appointment(
@@ -1096,6 +1148,8 @@ def test_appointment_responses_expose_narrow_student_projection_consistently():
     )
     service = active_service(admin, code="PROJECTION_SERVICE")
     configure_availability(admin, provider)
+    create_placement(student, provider)
+    create_placement(student_without_id, provider)
     start = future_local_start()
 
     item = create_student_appointment(
@@ -1174,6 +1228,8 @@ def test_managed_appointment_search_is_student_aware_composable_and_scope_preser
     service = active_service(admin, code="SEARCH_SERVICE")
     configure_availability(admin, provider)
     configure_availability(admin, outside_provider)
+    create_placement(student, provider)
+    create_placement(outside_student, outside_provider)
     start = future_local_start()
 
     target = create_student_appointment(
@@ -1604,6 +1660,7 @@ def test_unexpected_booking_failure_releases_idempotency_reservation(monkeypatch
     provider = make_user("unexpected-provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
+    create_placement(student, provider)
     client = auth_client(student)
     client.raise_request_exception = False
     payload = json.dumps(

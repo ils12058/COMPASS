@@ -3,6 +3,9 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from compass.appointments import counselor_access_content
+from compass.appointments.counselor_access_content import CounselorBookingReasonUnavailable
+from compass.appointments.counselor_access_models import CounselorBookingRequest
 from compass.confidential_data import crypto
 from compass.counseling import case_closure_content, case_handoff_content
 from compass.counseling import handoff_content as content
@@ -62,24 +65,34 @@ class Command(BaseCommand):
         # The established command also owns case Handoff custody. Verify each envelope's
         # distinct binding before rewrapping, using update() only for ciphertext so submitted
         # immutability, timestamps, receipt and business/audit history stay intact.
-        for model, reader, _binder, label in (
+        for model, field_name, reader, _binder, label in (
             (
                 CounselingCaseClosure,
+                "content_ciphertext",
                 case_closure_content.read,
                 case_closure_content.binding,
                 "Case closure note",
             ),
             (
                 CounselingCaseHandoff,
+                "content_ciphertext",
                 case_handoff_content.read,
                 case_handoff_content.binding,
                 "Case handoff",
             ),
             (
                 CounselingCaseHandoffAddendum,
+                "content_ciphertext",
                 case_handoff_content.read_addendum,
                 case_handoff_content.addendum_binding,
                 "Case handoff addendum",
+            ),
+            (
+                CounselorBookingRequest,
+                "reason_ciphertext",
+                counselor_access_content.read_reason,
+                counselor_access_content.binding,
+                "Counselor booking request reason",
             ),
         ):
             seen = changed = unreadable = 0
@@ -87,8 +100,8 @@ class Command(BaseCommand):
             while True:
                 with transaction.atomic():
                     qs = model.objects.order_by("pk")
-                    if model is CounselingCaseClosure:
-                        qs = qs.filter(content_ciphertext__isnull=False)
+                    if model in {CounselingCaseClosure, CounselorBookingRequest}:
+                        qs = qs.filter(**{f"{field_name}__isnull": False})
                     if not dry_run:
                         qs = qs.select_for_update(of=("self",))
                     if last is not None:
@@ -98,19 +111,24 @@ class Command(BaseCommand):
                         seen += 1
                         try:
                             reader(item)
+                            ciphertext = getattr(item, field_name)
                             if not crypto.encrypted_with_primary_key(
-                                item.content_ciphertext, keyring=content.keyring()
+                                ciphertext, keyring=content.keyring()
                             ):
                                 replacement = crypto.reencrypt_with_primary_key(
-                                    item.content_ciphertext,
+                                    ciphertext,
                                     keyring=content.keyring(),
                                 )
                                 changed += 1
                                 if not dry_run:
                                     model.objects.filter(pk=item.pk).update(
-                                        content_ciphertext=replacement
+                                        **{field_name: replacement}
                                     )
-                        except (CaseContinuityError, ClosureContentUnavailable):
+                        except (
+                            CaseContinuityError,
+                            ClosureContentUnavailable,
+                            CounselorBookingReasonUnavailable,
+                        ):
                             unreadable += 1
                 if not batch:
                     break

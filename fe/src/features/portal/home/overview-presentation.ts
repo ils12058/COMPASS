@@ -107,6 +107,14 @@ export function getOverviewMetrics(
       summary.guidance.active_call_slip_count,
       callSlipAccess.hasWorkspace ? "/portal/call-slips?state=ACTIVE" : undefined,
     );
+    addMetric(
+      metrics,
+      "Different counselor requests",
+      summary.guidance.pending_counselor_requests_count,
+      getAppointmentAccess(user).canReviewCounselorRequests
+        ? "/portal/appointments/counselor-requests"
+        : undefined,
+    );
   }
 
   return metrics;

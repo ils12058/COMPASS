@@ -26,6 +26,7 @@ class OverviewGuidanceSummary(StrictSchema):
     good_moral_requested_count: int | None
     good_moral_ready_count: int | None
     active_call_slip_count: int | None
+    pending_counselor_requests_count: int | None = None
 
 
 class OverviewPlatformSummary(StrictSchema):

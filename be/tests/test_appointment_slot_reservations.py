@@ -11,6 +11,7 @@ from datetime import timedelta
 import pytest
 from django.test import override_settings
 
+from compass.appointments.counselor_access_models import StudentCounselorApproval
 from compass.appointments.services import (
     cancel_appointment,
     create_student_appointment,
@@ -18,6 +19,8 @@ from compass.appointments.services import (
     list_reschedule_slots,
 )
 from compass.availability.services import compute_base_availability
+from compass.organization.models import Campus, College, CounselorResponsibility
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_appointments import (
     active_service,
     configure_availability,
@@ -63,6 +66,14 @@ def scheduling():
     service = active_service(admin, duration=60)
     configure_availability(admin, provider)
     configure_availability(admin, other_provider)
+    campus = Campus.objects.create(code="SLOTS_RES_CAMP", name="Slots Campus")
+    college = College.objects.create(campus=campus, code="SLOTS_RES_COL", name="Slots College")
+    CounselorResponsibility.objects.create(college=college, counselor=provider)
+    for student in (student_a, student_b):
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
+        StudentCounselorApproval.objects.create(
+            student=student, counselor=other_provider, approved_by=provider
+        )
     start = future_local_start(hour=10)
     return {
         "admin": admin,

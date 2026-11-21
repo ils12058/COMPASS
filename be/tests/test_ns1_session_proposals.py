@@ -59,6 +59,9 @@ def ns(settings):
     w = transfer_world(settings, "ns1")
     configure_availability(w.admin, w.a)
     configure_availability(w.admin, w.b)
+    from tests.test_appointments import create_placement
+
+    create_placement(w.other, w.a)
     w.start = future_local_start(hour=10)
     return w
 

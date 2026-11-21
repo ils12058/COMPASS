@@ -486,6 +486,7 @@ def test_guidance_overview_preserves_counselor_goa_and_head_scope() -> None:
         "good_moral_requested_count": 1,
         "good_moral_ready_count": 0,
         "active_call_slip_count": 1,
+        "pending_counselor_requests_count": None,
     }
 
     goa_body = auth_client(goa).get("/api/v1/overview").json()["guidance"]
@@ -496,6 +497,7 @@ def test_guidance_overview_preserves_counselor_goa_and_head_scope() -> None:
         "good_moral_requested_count": 1,
         "good_moral_ready_count": 0,
         "active_call_slip_count": 1,
+        "pending_counselor_requests_count": None,
     }
 
     head_body = auth_client(head).get("/api/v1/overview").json()["guidance"]
@@ -503,6 +505,7 @@ def test_guidance_overview_preserves_counselor_goa_and_head_scope() -> None:
     assert head_body["upcoming_managed_appointments_count"] is None
     assert head_body["routine_evaluation_pending_count"] == 0
     assert head_body["active_call_slip_count"] == 2
+    assert head_body["pending_counselor_requests_count"] == 0
 
 
 @pytest.mark.django_db

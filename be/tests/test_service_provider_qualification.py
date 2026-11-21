@@ -9,8 +9,10 @@ import pytest
 from django.test import override_settings
 from django.utils import timezone
 
+from compass.appointments.counselor_access_models import StudentCounselorApproval
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.appointments.services import (
+    AppointmentCounselorNotPermitted,
     AppointmentDefaultProviderNotQualified,
     AppointmentNotSchedulable,
     create_student_appointment,
@@ -146,11 +148,13 @@ def test_booking_discovery_respects_coverage_default_and_cross_college_choice():
     for counselor in (tester, home):
         configure_availability(admin, counselor)
 
-    # Only the selected Counselor is a candidate; the College default is not forced in.
+    # ADR-120: only permitted Counselors who provide this Service are offered. Because home does
+    # not provide `testing` and tester is on another College without Head approval, none are
+    # offered—and booking tester directly is refused.
     eligible = list_eligible_counselors(
         student=student, service_id=testing.pk, delivery_mode="IN_PERSON"
     )
-    assert [(item.user, item.is_default) for item in eligible] == [(tester, False)]
+    assert eligible == ()
     general = counseling(online=False)
     defaults = {
         item.user.pk: item.is_default
@@ -158,7 +162,7 @@ def test_booking_discovery_respects_coverage_default_and_cross_college_choice():
             student=student, service_id=general.pk, delivery_mode="IN_PERSON"
         )
     }
-    assert defaults[home.pk] is True and defaults[tester.pk] is False
+    assert defaults == {home.pk: True}
 
     # The default Counselor does not provide this Service: fail, never substitute.
     starts_at = future_local_start()
@@ -180,7 +184,23 @@ def test_booking_discovery_respects_coverage_default_and_cross_college_choice():
             starts_at=starts_at,
             context=context(student),
         )
-    # A qualified Counselor from another College may be chosen explicitly.
+    with pytest.raises(AppointmentCounselorNotPermitted):
+        create_student_appointment(
+            student=student,
+            service_id=testing.pk,
+            provider_id=tester.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=starts_at,
+            context=context(student),
+        )
+    # Once the Head approves tester for this Student, tester is listed and bookable.
+    StudentCounselorApproval.objects.create(student=student, counselor=tester, approved_by=home)
+    eligible_approved = list_eligible_counselors(
+        student=student, service_id=testing.pk, delivery_mode="IN_PERSON"
+    )
+    assert [(item.user, item.is_default, item.is_head_approved) for item in eligible_approved] == [
+        (tester, False, True)
+    ]
     booked = create_student_appointment(
         student=student,
         service_id=testing.pk,
@@ -394,6 +414,7 @@ def test_removed_provider_keeps_existing_appointment_but_gets_no_new_work():
     removed = make_user("removed-counselor@example.edu", "COUNSELOR")
     kept = make_user("removed-kept@example.edu", "COUNSELOR")
     student = make_user("removed-student@example.edu", "STUDENT")
+    StudentAcademicProfile.objects.create(student=student, current_college=college("REM", kept))
     service = counseling(online=False)
     for counselor in (removed, kept):
         configure_availability(admin, counselor)

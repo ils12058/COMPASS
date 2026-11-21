@@ -140,6 +140,7 @@ def test_real_booking_delivers_one_link_per_recipient_without_duplicates(case):
     service_id = old_item.service_id
     old_item.delete()
     configure_availability(counselor, counselor)
+    create_placement(student, counselor)
     item = create_student_appointment(
         student=student,
         provider_id=counselor.pk,
