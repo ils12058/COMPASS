@@ -1348,7 +1348,7 @@ def inventory_values(
             for mode, frequency, fare in year.transportation
         ],
         "geographic_locations": [{**_CURRENT_LOCATION}],
-        "support_profile": dict(profile.support),
+        "support_profile": {"solo_parent_status": "NO", **profile.support},
     }
 
 

@@ -28,6 +28,7 @@ import {
   parentLifeOptions,
   pwdOptions,
   religionOptions,
+  soloParentOptions,
   transportationFrequencyOptions,
 } from "../src/features/inventory/inventory-presentation.ts";
 
@@ -77,6 +78,7 @@ const supportProfile = {
   indigenous_peoples_status: "NOT_MEMBER",
   mother_life_status: "LIVING",
   father_life_status: "LIVING",
+  solo_parent_status: "NO",
 };
 
 // Every blank on the F5 form, answered truthfully. Used as the baseline each rule test departs from.
@@ -191,6 +193,7 @@ test("the truthful replacements are accepted at submission", () => {
       indigenous_peoples_status: "NOT_MEMBER",
       mother_life_status: "LIVING",
       father_life_status: "UNKNOWN",
+      solo_parent_status: "NO",
     },
   });
   assert.deepEqual(getInventorySubmissionIssues(truthful, programIds), []);
@@ -210,6 +213,7 @@ test("the form never offers Prefer not to specify and keeps truthful unknown ans
     fourPsOptions,
     indigenousOptions,
     pwdOptions,
+    soloParentOptions,
   ]) {
     assert.ok(!options.some(([, label]) => label === "Prefer not to specify"));
   }

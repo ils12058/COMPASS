@@ -54,6 +54,11 @@ from compass.service_catalog.services import (
 )
 
 from .access import appointment_management_access_allowed, scope_managed_appointments
+from .counselor_access_services import (
+    is_head_booking_override,
+    lock_student_active_counselor_approval,
+    resolve_permitted_counselors_for_student,
+)
 from .models import (
     Appointment,
     AppointmentChangeEvent,
@@ -155,6 +160,10 @@ class AppointmentDefaultProviderNotQualified(AppointmentError):
     """The Student's default Counselor does not provide the Service; the caller must choose."""
 
 
+class AppointmentCounselorNotPermitted(AppointmentError):
+    """The Student is not permitted to book with the chosen Counselor (ADR-120)."""
+
+
 class AppointmentCancellationConflict(AppointmentError):
     pass
 
@@ -220,6 +229,7 @@ class AppointmentBookingServicePage:
 class EligibleCounselor:
     user: User
     is_default: bool
+    is_head_approved: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -564,8 +574,8 @@ def get_appointment_for_actor(*, appointment_id: UUID, actor: User) -> Appointme
     raise AppointmentNotFound("The requested Appointment was not found.")
 
 
-def _validate_booking_service(service: Service, provider: User, delivery_mode: str) -> None:
-    """Current Service rules for NEW booking (ADR-089); College scope is never consulted."""
+def _validate_booking_service_shape(service: Service, delivery_mode: str) -> None:
+    """Service-level eligibility checks for NEW booking (independent of provider choice)."""
 
     if not service.is_active:
         raise AppointmentNotSchedulable("The selected Service is inactive.")
@@ -575,6 +585,16 @@ def _validate_booking_service(service: Service, provider: User, delivery_mode: s
         raise AppointmentNotSchedulable("The selected Service has no schedulable duration.")
     if not service_supports_delivery_mode(service, delivery_mode):
         raise AppointmentNotSchedulable("The Service does not support the requested delivery mode.")
+
+
+def _validate_booking_service(service: Service, provider: User, delivery_mode: str) -> None:
+    """Current Service qualification rules for NEW booking (ADR-089).
+
+    Student-to-Counselor booking permission (College responsibility, active Counseling Case,
+    or Head approval) is enforced separately per ADR-120.
+    """
+
+    _validate_booking_service_shape(service, delivery_mode)
     if not service_counselor_eligible(service, provider):
         raise AppointmentNotSchedulable("The selected Counselor does not provide this Service.")
 
@@ -740,6 +760,25 @@ def _base_slot_windows(
         ) from exc
 
 
+def _validate_student_permitted_provider(
+    *,
+    student: User,
+    provider: User,
+    actor: User | None,
+    now: datetime,
+) -> None:
+    """Enforce ADR-120 permitted-Counselor booking scope; the Head may book any Counselor."""
+
+    if actor is not None and is_head_booking_override(actor, now=now):
+        return
+    permitted = resolve_permitted_counselors_for_student(student, now=now)
+    if provider.pk not in permitted:
+        raise AppointmentCounselorNotPermitted(
+            "You can book only with your College's Counselor or a Counselor approved by "
+            "the Head Guidance Counselor."
+        )
+
+
 def list_bookable_slots(
     *,
     student: User,
@@ -747,6 +786,7 @@ def list_bookable_slots(
     provider_id: UUID,
     delivery_mode: str,
     target_date: date,
+    actor: User | None = None,
     now: datetime | None = None,
 ) -> BookableSlotList:
     if not is_current_student(student):
@@ -764,7 +804,20 @@ def list_bookable_slots(
     service = Service.objects.filter(pk=service_id).first()
     if service is None:
         raise AppointmentNotSchedulable("The selected Service was not found.")
-    _validate_booking_service(service, provider, normalized_mode)
+    _validate_booking_service_shape(service, normalized_mode)
+    fresh_actor = (
+        User.objects.select_related("role").filter(pk=actor.pk).first()
+        if actor is not None
+        else None
+    )
+    _validate_student_permitted_provider(
+        student=student,
+        provider=provider,
+        actor=fresh_actor,
+        now=current,
+    )
+    if not service_counselor_eligible(service, provider):
+        raise AppointmentNotSchedulable("The selected Counselor does not provide this Service.")
     _validate_inventory_prerequisite(service, student)
     assert service.default_appointment_duration_minutes is not None
     duration = timedelta(minutes=service.default_appointment_duration_minutes)
@@ -976,6 +1029,7 @@ def create_student_appointment(
     delivery_mode: str,
     starts_at: datetime,
     context: AuditContext,
+    actor: User | None = None,
     now: datetime | None = None,
 ) -> Appointment:
     if not is_current_student(student):
@@ -988,11 +1042,13 @@ def create_student_appointment(
     if normalized_start <= current.astimezone(institution_zone()):
         raise AppointmentNotSchedulable("Appointments must start in the future.")
 
+    acting_user = actor or (context.actor if isinstance(context.actor, User) else student)
     initially_resolved_provider = _resolve_booking_provider(student, provider_id)
     with transaction.atomic():
-        locked = _lock_users(student.pk, initially_resolved_provider.pk)
+        locked = _lock_users(student.pk, initially_resolved_provider.pk, acting_user.pk)
         locked_student = locked[student.pk]
         locked_provider = locked[initially_resolved_provider.pk]
+        locked_actor = locked[acting_user.pk]
         _validate_booking_users(locked_student, locked_provider)
         if not is_current_student(locked_student):
             raise AppointmentCurrentStudentRequired(
@@ -1004,11 +1060,22 @@ def create_student_appointment(
         service = Service.objects.select_for_update().filter(pk=service_id).first()
         if service is None:
             raise AppointmentNotSchedulable("The selected Service was not found.")
+        _validate_booking_service_shape(service, normalized_mode)
+
+        lock_student_active_counselor_approval(locked_student.pk)
+        _validate_student_permitted_provider(
+            student=locked_student,
+            provider=locked_provider,
+            actor=locked_actor,
+            now=current,
+        )
+
         if provider_id is None and not service_counselor_eligible(service, locked_provider):
             raise AppointmentDefaultProviderNotQualified(
                 "Your default Counselor does not provide this Service. Choose a Counselor."
             )
-        _validate_booking_service(service, locked_provider, normalized_mode)
+        if not service_counselor_eligible(service, locked_provider):
+            raise AppointmentNotSchedulable("The selected Counselor does not provide this Service.")
         _validate_inventory_prerequisite(service, locked_student)
 
         ends_at = normalized_start + timedelta(minutes=service.default_appointment_duration_minutes)
@@ -1070,7 +1137,7 @@ def create_student_appointment(
             starts_at=normalized_start,
             ends_at=ends_at,
             cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
-            created_by=locked_student,
+            created_by=locked_actor,
         )
         record_event(
             context=context,
@@ -1920,17 +1987,24 @@ def list_eligible_counselors(
     if not service_supports_delivery_mode(service, normalized_mode):
         raise AppointmentNotSchedulable("The Service does not support the requested delivery mode.")
 
-    # Service qualification decides the candidates; College responsibility only marks the
-    # default, and only when that Counselor actually provides this Service (ADR-089, ADR-020).
-    default_resolution = resolve_default_counselor_for_student(student)
-    default_id = default_resolution.counselor.pk if default_resolution.counselor else None
+    # Student-permitted Counselors (College responsibility / Head fallback, active Counseling Case
+    # primary or active coverage, and Head-approved Counselor) intersect with current Service
+    # qualification (ADR-120, superseding ADR-089's unrestricted student choice).
+    permitted = resolve_permitted_counselors_for_student(student)
+    if not permitted:
+        return ()
     counselors = list(
-        service_eligible_counselors(service).order_by("last_name", "first_name", "id")[
-            :MAX_ELIGIBLE_COUNSELORS
-        ]
+        service_eligible_counselors(service)
+        .filter(pk__in=permitted.keys())
+        .order_by("last_name", "first_name", "id")[:MAX_ELIGIBLE_COUNSELORS]
     )
     return tuple(
-        EligibleCounselor(user=item, is_default=item.pk == default_id) for item in counselors
+        EligibleCounselor(
+            user=item,
+            is_default=permitted[item.pk].is_default,
+            is_head_approved=permitted[item.pk].is_head_approved,
+        )
+        for item in counselors
     )
 
 

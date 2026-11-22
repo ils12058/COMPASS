@@ -8,6 +8,7 @@ import {
   ContentPageHeading,
   PublicationStatusBadge,
 } from "@/features/content/content-shared";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { ResourceUnavailable } from "@/features/resources/resource-detail-page";
 import { shouldHideResourceData } from "@/features/resources/resource-errors";
 import { ResourceForm } from "@/features/resources/resource-form";
@@ -15,6 +16,8 @@ import { useResourcesGetManaged } from "@/lib/api/generated/resources/resources"
 import { ResourceStatusValue } from "@/lib/api/generated/model";
 
 export function ResourceEditPage({ resourceId }: { resourceId: string }) {
+  const { user } = usePortalSession();
+  const isGoa = user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const detail = useResourcesGetManaged(resourceId, { query: { retry: false } });
   const backHref = `/portal/resources/${resourceId}`;
 
@@ -25,6 +28,10 @@ export function ResourceEditPage({ resourceId }: { resourceId: string }) {
   }
 
   const item = detail.data.data;
+  const goaBlocked =
+    isGoa &&
+    (item.status === ResourceStatusValue.PUBLISHED ||
+      item.status === ResourceStatusValue.PENDING_APPROVAL);
 
   return (
     <section>
@@ -34,9 +41,15 @@ export function ResourceEditPage({ resourceId }: { resourceId: string }) {
         </div>
       </ContentPageHeading>
 
-      {item.status === ResourceStatusValue.ARCHIVED ? (
+      {item.status === ResourceStatusValue.ARCHIVED || goaBlocked ? (
         <div className="mt-6 space-y-4">
-          <ContentNotice tone="info">Archived Resources cannot be edited.</ContentNotice>
+          <ContentNotice tone="info">
+            {item.status === ResourceStatusValue.ARCHIVED
+              ? "Archived Resources cannot be edited."
+              : item.status === ResourceStatusValue.PENDING_APPROVAL
+                ? "This Resource is waiting for approval and cannot be edited until your supervising Counselor reviews or returns it."
+                : "A Guidance Office Assistant cannot edit a published Resource."}
+          </ContentNotice>
           <Link href={backHref} className="text-sm font-semibold text-brand underline">
             View the Resource
           </Link>

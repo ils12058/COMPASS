@@ -158,6 +158,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_appointment_action_projection.py",
             "test_appointment_management_scope.py",
             "test_appointment_slot_reservations.py",
+            "test_college_counselor_booking.py",
             "test_availability.py",
             "test_availability_reservation_neutrality.py",
             "test_cross_domain_lifecycle_reconciliation.py",
@@ -171,7 +172,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "work-queue": (
         "Read-only Guidance projection and source authorization/transition regressions.",
-        ("test_work_queue.py", "test_overview.py"),
+        ("test_work_queue.py", "test_overview.py", "test_goa_scope_approval.py"),
     ),
     "guidance-operations": (
         "Current aggregate authority and shared actionable source populations.",
@@ -300,6 +301,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_referral_call_slip_lifecycle.py",
             "test_call_slips.py",
             "test_call_slip_issuance_provenance.py",
+            "test_goa_scope_approval.py",
             "test_operational_students.py",
         ),
     ),
@@ -313,6 +315,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_inventory_form_req_1.py",
             "test_inventory_frontend_readiness.py",
             "test_inventory_profiling_normalization.py",
+            "test_solo_parent_indicator.py",
             "test_program_inventory_academic_context.py",
             "test_institutional_identity.py",
         ),
@@ -323,7 +326,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "student-support": (
         "Student Support profiles derived from the Inventory.",
-        ("test_student_support.py",),
+        ("test_student_support.py", "test_solo_parent_indicator.py"),
     ),
     "exit-interviews": (
         "Exit Interviews, opportunities, documents, and encryption.",
@@ -375,6 +378,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_student_profiling_report_coverage.py",
             "test_student_profiling_pdf.py",
             "test_student_profiling_xlsx.py",
+            "test_solo_parent_indicator.py",
             "test_graduate_tracer_graduation_classification.py",
             "test_graduate_tracer_reports.py",
             "test_graduate_tracer_xlsx.py",
@@ -448,6 +452,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_announcements_validation.py",
             "test_resources.py",
             "test_resources_validation.py",
+            "test_goa_scope_approval.py",
             "test_storage.py",
         ),
     ),

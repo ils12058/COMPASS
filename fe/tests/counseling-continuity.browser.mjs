@@ -177,7 +177,7 @@ await check("receiving-head-cannot-authorize-her-own-incoming-case", transferPat
   assert.equal(incomingHead.item.case.primary_counselor.id, head.id);
 });
 
-const blockedOffice = continuityFixture({ account: continuityAccount(office, "GUIDANCE_OFFICE_ASSISTANT") });
+const blockedOffice = continuityFixture({ account: { ...continuityAccount(office, "COUNSELOR"), designations: ["HEAD_GUIDANCE_COUNSELOR"] } });
 await check("office-lookup-hides-content-and-incoming-head-route-is-blocked", "/portal/counseling/continuity", { handler: blockedOffice.handler }, async page => {
   await shown(page.getByRole("link", { name: "Transfer case CASE-2026-000001", exact: true }));
   assert.doesNotMatch(await page.locator("main").innerText(), /Protected synthetic action/);
@@ -188,7 +188,7 @@ await check("office-lookup-hides-content-and-incoming-head-route-is-blocked", "/
   assert.doesNotMatch(await page.locator("main").innerText(), /Protected synthetic action/);
   assert.equal(await page.getByLabel("Plan for action 1", { exact: true }).locator("option").count(), 3);
 });
-const officePreparation = continuityFixture({ account: continuityAccount(office, "GUIDANCE_OFFICE_ASSISTANT") });
+const officePreparation = continuityFixture({ account: { ...continuityAccount(office, "COUNSELOR"), designations: ["HEAD_GUIDANCE_COUNSELOR"] } });
 await check("office-prepares-with-attributed-operational-reason", preparePath, { handler: officePreparation.handler }, async page => {
   await fillPreparation(page);
   await page.getByLabel("Why is the office preparing this?", { exact: true }).selectOption("OWNER_UNAVAILABLE");

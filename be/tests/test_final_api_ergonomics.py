@@ -459,6 +459,9 @@ def test_booking_slots_use_service_cadence_conflicts_statuses_and_boundaries():
     other_provider = make_user("slots-other-provider@example.edu", "COUNSELOR")
     service = make_service(admin, duration=60)
     configure(provider, admin)
+    from tests.test_appointments import create_placement
+
+    create_placement(student, provider)
     target = next_monday()
     now = target - timedelta(hours=1)
 
@@ -632,6 +635,9 @@ def test_booking_slots_respect_base_exceptions_and_duration_boundaries():
     provider = make_user("slot-exception-provider@example.edu", "COUNSELOR")
     service = make_service(admin, duration=60)
     configure(provider, admin)
+    from tests.test_appointments import create_placement
+
+    create_placement(student, provider)
     target = next_monday()
     now = target - timedelta(hours=1)
 

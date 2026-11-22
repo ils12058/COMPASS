@@ -44,6 +44,7 @@ _RECORD_ROUTES = {
     NotificationTargetType.FACULTY_REFERRAL: "faculty/referrals",
     NotificationTargetType.REFERRAL: "referrals",
     NotificationTargetType.APPOINTMENT: "appointments",
+    NotificationTargetType.COUNSELOR_BOOKING_REQUEST: "appointments/counselor-requests",
     NotificationTargetType.GROUP_SESSION: "group-sessions",
     NotificationTargetType.GOOD_MORAL: "good-moral",
     NotificationTargetType.CALL_SLIP: "call-slips",
@@ -130,6 +131,8 @@ def notification_email_route(target: NotificationEmailTarget) -> str | None:
         return "/portal/graduate-tracer"
     if kind == NotificationTargetType.INVENTORY:
         return "/portal/inventory/current"
+    if kind == NotificationTargetType.APPOINTMENT_BOOKING:
+        return "/portal/appointments/book"
     if kind == NotificationTargetType.FEEDBACK:
         return f"/portal/feedback?opportunity={identifier}" if identifier else "/portal/feedback"
     if kind == NotificationTargetType.GROUP_SESSION and identifier is None:

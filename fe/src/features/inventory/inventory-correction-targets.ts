@@ -264,6 +264,7 @@ export const inventoryCorrectionTargets = {
   "family.indigenous_peoples_status": answer(family, "Student support information", "Indigenous Peoples status", "inventory-indigenous-peoples"),
   "family.mother_life_status": answer(family, "Student support information", "Mother's life status", "inventory-mother-life-status"),
   "family.father_life_status": answer(family, "Student support information", "Father's life status", "inventory-father-life-status"),
+  "family.solo_parent_status": answer(family, "Student support information", "Solo parent status", "inventory-solo-parent"),
 
   "section.background": sectionTarget(background),
   "background.siblings": answer(background, "Siblings", "Siblings", "inventory-sibling-0-name", {

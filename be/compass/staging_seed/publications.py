@@ -16,6 +16,7 @@ from compass.announcements.services import (
     archive_announcement,
     create_announcement,
     publish_announcement,
+    submit_announcement_for_approval,
 )
 from compass.counseling.models import CounselingEncounter
 from compass.feedback.models import (
@@ -41,14 +42,19 @@ from compass.privacy_governance.models import (
     PrivacyNoticeRevisionStatus,
 )
 from compass.resources.models import Resource
-from compass.resources.services import archive_resource, create_resource, publish_resource
+from compass.resources.services import (
+    archive_resource,
+    create_resource,
+    publish_resource,
+    submit_resource_for_approval,
+)
 
 from .content import narratives, publication_data
 from .content.feedback_matching import matching_customer_feedback, matching_feedback
 from .content.publication_data import AnnouncementSpec, ResourceSpec
-from .staff import HEAD_GUIDANCE, IT_ADMIN
+from .staff import HEAD_GUIDANCE, IT_ADMIN, STAFF_SUPERVISION
 from .students import SECOND_YEAR
-from .support import SeedSession, StagingSeedError, align_timestamps
+from .support import SeedSession, StagingSeedError, align_timestamps, settle_notifications
 
 DRAFTED_BEFORE_PUBLISHING = timedelta(minutes=25)
 ARCHIVED_AFTER = timedelta(days=28)
@@ -97,10 +103,20 @@ def _seed_announcement(session: SeedSession, spec: AnnouncementSpec) -> None:
     )
     last_change = drafted_at
     if published_at is not None:
+        publisher_key = spec.author
+        if author.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+            submit_announcement_for_approval(
+                actor=session.user(spec.author),
+                announcement_id=item.pk,
+                context=session.as_user(spec.author),
+                now=drafted_at,
+            )
+            settle_notifications(source_id=item.pk, occurred_at=drafted_at)
+            publisher_key = dict(STAFF_SUPERVISION)[spec.author]
         publish_announcement(
-            actor=session.user(spec.author),
+            actor=session.user(publisher_key),
             announcement_id=item.pk,
-            context=session.as_user(spec.author),
+            context=session.as_user(publisher_key),
             now=published_at,
         )
         last_change = published_at
@@ -137,10 +153,20 @@ def _seed_resource(session: SeedSession, spec: ResourceSpec) -> None:
     )
     timestamps = {"created_at": drafted_at, "updated_at": drafted_at}
     if published_at is not None:
+        publisher_key = spec.author
+        if author.role.code == "GUIDANCE_OFFICE_ASSISTANT":
+            submit_resource_for_approval(
+                actor=session.user(spec.author),
+                resource_id=item.pk,
+                context=session.as_user(spec.author),
+                now=drafted_at,
+            )
+            settle_notifications(source_id=item.pk, occurred_at=drafted_at)
+            publisher_key = dict(STAFF_SUPERVISION)[spec.author]
         publish_resource(
-            actor=session.user(spec.author),
+            actor=session.user(publisher_key),
             resource_id=item.pk,
-            context=session.as_user(spec.author),
+            context=session.as_user(publisher_key),
         )
         timestamps.update(published_at=published_at, updated_at=published_at)
     if spec.state == "ARCHIVED":

@@ -592,6 +592,12 @@ def test_appointment_prerequisite_blocks_before_reference_then_allows_submitted_
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor, requires_inventory=True)
     configure_availability(actor, provider)
+    program = configure_program()
+    from compass.organization.models import CounselorResponsibility
+    from compass.student_academics.models import StudentAcademicProfile
+
+    CounselorResponsibility.objects.create(college=program.college, counselor=provider)
+    StudentAcademicProfile.objects.create(student=student, current_college=program.college)
     start = future_monday()
     client = auth_client(student)
     headers = csrf(client)
@@ -630,7 +636,7 @@ def test_appointment_prerequisite_blocks_before_reference_then_allows_submitted_
     assert AppointmentReferenceCounter.objects.count() == 0
     assert not AuditEvent.objects.filter(action="appointment.created").exists()
 
-    set_inventory_context(student)
+    set_inventory_context(student, program=program)
     submit_current_inventory(student=student, context=context(student))
     draft.refresh_from_db()
     assert draft.submitted_at is not None
@@ -655,6 +661,12 @@ def test_service_without_inventory_prerequisite_preserves_existing_booking_behav
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor, requires_inventory=False)
     configure_availability(actor, provider)
+    program = configure_program()
+    from compass.organization.models import CounselorResponsibility
+    from compass.student_academics.models import StudentAcademicProfile
+
+    CounselorResponsibility.objects.create(college=program.college, counselor=provider)
+    StudentAcademicProfile.objects.create(student=student, current_college=program.college)
     client = auth_client(student)
     start = future_monday()
 

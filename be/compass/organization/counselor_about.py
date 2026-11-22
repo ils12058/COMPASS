@@ -27,14 +27,12 @@ from compass.organization.models import College, CounselorResponsibility
 STUDENT_CAPABILITIES = frozenset(
     {"appointments.view_self", "appointments.manage_self", "guidance_messages.view_self"}
 )
-# Staff open About from Messages, Appointments, Counseling cases and continuity preparation.
+# Staff open About from Messages, Appointments and Counseling cases.
 STAFF_CAPABILITIES = frozenset(
     {
         "guidance_messages.view",
         "appointments.manage",
         "counseling.view_assigned",
-        "counseling.continuity.view",
-        "counseling.continuity.request",
     }
 )
 STAFF_ROLES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})

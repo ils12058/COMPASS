@@ -225,7 +225,7 @@ const answers = {
   languages_spoken_at_home: "Filipino", languages_most_fluent: "Filipino, English", religion_from_birth: "None",
   geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }],
   parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
-  support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
+  support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING", solo_parent_status: "NO" },
   family_members: [
     {
       kind: "FATHER", name: "Synthetic Father", date_of_birth: "1975-01-01", place_of_birth: "Synthetic City",

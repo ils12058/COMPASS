@@ -17,9 +17,18 @@ class CallSlipDestinationType(models.TextChoices):
 
 
 class CallSlipLifecycleState(models.TextChoices):
+    PENDING_APPROVAL = "PENDING_APPROVAL", "Waiting for approval"
+    RETURNED = "RETURNED", "Returned"
     ACTIVE = "ACTIVE", "Active"
     COMPLETED = "COMPLETED", "Completed"
     VOIDED = "VOIDED", "Voided"
+
+
+class CallSlipApprovalStatus(models.TextChoices):
+    PENDING_APPROVAL = "PENDING_APPROVAL", "Waiting for approval"
+    RETURNED = "RETURNED", "Returned"
+    ISSUED = "ISSUED", "Issued"
+    WITHDRAWN = "WITHDRAWN", "Withdrawn"
 
 
 class CallSlipIssuanceMode(models.TextChoices):
@@ -77,21 +86,52 @@ class CallSlip(models.Model):
         null=True,
         blank=True,
     )
+    approval_status = models.CharField(
+        max_length=24,
+        choices=CallSlipApprovalStatus.choices,
+        null=True,
+        blank=True,
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="approved_call_slips",
+        null=True,
+        blank=True,
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="returned_call_slips",
+        null=True,
+        blank=True,
+    )
+    returned_at = models.DateTimeField(null=True, blank=True)
+    return_note = models.TextField(max_length=1000, null=True, blank=True)
     creation_key_digest = models.CharField(max_length=64, unique=True, null=True, blank=True)
     creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @property
-    def void_notifies_student(self) -> bool:
-        """Live issuance notifies the Student; historical entry stays quiet throughout."""
+    def is_issued(self) -> bool:
+        return self.approval_status in {None, CallSlipApprovalStatus.ISSUED}
 
-        return self.issuance_mode == CallSlipIssuanceMode.LIVE
+    @property
+    def void_notifies_student(self) -> bool:
+        """Live issuance notifies the Student; historical or unissued entry stays quiet."""
+
+        return self.issuance_mode == CallSlipIssuanceMode.LIVE and self.is_issued
 
     @property
     def lifecycle_state(self) -> str:
         if self.voided_at is not None:
             return CallSlipLifecycleState.VOIDED
+        if self.approval_status == CallSlipApprovalStatus.PENDING_APPROVAL:
+            return CallSlipLifecycleState.PENDING_APPROVAL
+        if self.approval_status == CallSlipApprovalStatus.RETURNED:
+            return CallSlipLifecycleState.RETURNED
         if self.interview_ended_at is not None:
             return CallSlipLifecycleState.COMPLETED
         return CallSlipLifecycleState.ACTIVE

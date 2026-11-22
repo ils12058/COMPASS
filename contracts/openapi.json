@@ -1241,6 +1241,16 @@
             "title": "Is Pinned",
             "type": "boolean"
           },
+          "prepared_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "published_at": {
             "anyOf": [
               {
@@ -1263,8 +1273,47 @@
               }
             ]
           },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/AnnouncementStatusValue"
+          },
+          "submitted_for_approval_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted For Approval At"
           },
           "title": {
             "title": "Title",
@@ -1394,9 +1443,24 @@
         "title": "AnnouncementReaderResponse",
         "type": "object"
       },
+      "AnnouncementReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "AnnouncementReturnRequest",
+        "type": "object"
+      },
       "AnnouncementStatusValue": {
         "enum": [
           "DRAFT",
+          "PENDING_APPROVAL",
           "PUBLISHED",
           "ARCHIVED"
         ],
@@ -4542,6 +4606,8 @@
       },
       "CallSlipLifecycleStateValue": {
         "enum": [
+          "PENDING_APPROVAL",
+          "RETURNED",
           "ACTIVE",
           "COMPLETED",
           "VOIDED"
@@ -4601,6 +4667,48 @@
                 "type": "null"
               }
             ]
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_approve": {
+            "default": false,
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_resubmit": {
+            "default": false,
+            "title": "Can Resubmit",
+            "type": "boolean"
+          },
+          "can_return": {
+            "default": false,
+            "title": "Can Return",
+            "type": "boolean"
+          },
+          "can_withdraw": {
+            "default": false,
+            "title": "Can Withdraw",
+            "type": "boolean"
           },
           "counseling_case": {
             "anyOf": [
@@ -4682,6 +4790,33 @@
             "format": "date-time",
             "title": "Report At",
             "type": "string"
+          },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "state": {
             "$ref": "#/components/schemas/CallSlipLifecycleStateValue"
@@ -4861,6 +4996,82 @@
           "reference_code"
         ],
         "title": "CallSlipReferralSummary",
+        "type": "object"
+      },
+      "CallSlipResubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Year"
+          },
+          "destination_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallSlipDestinationTypeValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notify_student": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notify Student"
+          },
+          "other_destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Destination"
+          },
+          "report_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report At"
+          }
+        },
+        "title": "CallSlipResubmitRequest",
+        "type": "object"
+      },
+      "CallSlipReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "CallSlipReturnRequest",
         "type": "object"
       },
       "CallSlipStudentCollegeResponse": {
@@ -5125,6 +5336,18 @@
           "reason"
         ],
         "title": "CallSlipVoidRequest",
+        "type": "object"
+      },
+      "CallSlipWithdrawRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "CallSlipWithdrawRequest",
         "type": "object"
       },
       "CampusListResponse": {
@@ -9986,11 +10209,27 @@
         "title": "CategoryCount",
         "type": "object"
       },
+      "CivilStatusCategoryResponseValue": {
+        "description": "Read schema for civil status, preserving legacy submitted SOLO_PARENT records (ADR-121).",
+        "enum": [
+          "SINGLE",
+          "MARRIED",
+          "WIDOWED",
+          "SEPARATED",
+          "ANNULLED",
+          "OTHER",
+          "SOLO_PARENT"
+        ],
+        "title": "CivilStatusCategoryResponseValue",
+        "type": "string"
+      },
       "CivilStatusCategoryValue": {
         "enum": [
           "SINGLE",
           "MARRIED",
-          "SOLO_PARENT",
+          "WIDOWED",
+          "SEPARATED",
+          "ANNULLED",
           "OTHER"
         ],
         "title": "CivilStatusCategoryValue",
@@ -13676,6 +13915,26 @@
         "title": "CounselorAboutResponse",
         "type": "object"
       },
+      "CounselorActorSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "CounselorActorSummary",
+        "type": "object"
+      },
       "CounselorAssignmentRequest": {
         "additionalProperties": false,
         "properties": {
@@ -13690,6 +13949,45 @@
         ],
         "title": "CounselorAssignmentRequest",
         "type": "object"
+      },
+      "CounselorBookingRequestCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "preferred_counselor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Counselor Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "CounselorBookingRequestCreate",
+        "type": "object"
+      },
+      "CounselorBookingRequestState": {
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "DECLINED"
+        ],
+        "title": "CounselorBookingRequestState",
+        "type": "string"
       },
       "CounselorInventoryDetailResponse": {
         "additionalProperties": false,
@@ -13751,7 +14049,7 @@
           "civil_status_category": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+                "$ref": "#/components/schemas/CivilStatusCategoryResponseValue"
               },
               {
                 "type": "null"
@@ -14670,6 +14968,115 @@
           "filter_options"
         ],
         "title": "CounselorInventoryRosterPage",
+        "type": "object"
+      },
+      "CounselorOptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
+        ],
+        "title": "CounselorOptionResponse",
+        "type": "object"
+      },
+      "CounselorRequestDecisionAction": {
+        "enum": [
+          "APPROVE",
+          "DECLINE"
+        ],
+        "title": "CounselorRequestDecisionAction",
+        "type": "string"
+      },
+      "CounselorRequestStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "campus_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus Name"
+          },
+          "college_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College Name"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "institutional_id",
+          "display_name",
+          "college_name",
+          "campus_name"
+        ],
+        "title": "CounselorRequestStudentSummary",
         "type": "object"
       },
       "CounselorResponsibilityListResponse": {
@@ -16433,6 +16840,10 @@
             "title": "Is Default",
             "type": "boolean"
           },
+          "is_head_approved": {
+            "title": "Is Head Approved",
+            "type": "boolean"
+          },
           "profile_photo_updated_at": {
             "anyOf": [
               {
@@ -16462,7 +16873,8 @@
           "display_name",
           "profile_photo_url",
           "profile_photo_updated_at",
-          "is_default"
+          "is_default",
+          "is_head_approved"
         ],
         "title": "EligibleCounselorResponse",
         "type": "object"
@@ -27496,6 +27908,462 @@
         "title": "HandoffVersionInput",
         "type": "object"
       },
+      "HeadCounselorApprovalChangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor_id": {
+            "format": "uuid",
+            "title": "Counselor Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "counselor_id",
+          "expected_version"
+        ],
+        "title": "HeadCounselorApprovalChangeRequest",
+        "type": "object"
+      },
+      "HeadCounselorApprovalEndRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "HeadCounselorApprovalEndRequest",
+        "type": "object"
+      },
+      "HeadCounselorApprovalItem": {
+        "additionalProperties": false,
+        "properties": {
+          "approved_at": {
+            "format": "date-time",
+            "title": "Approved At",
+            "type": "string"
+          },
+          "approved_by": {
+            "$ref": "#/components/schemas/CounselorActorSummary"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/CounselorOptionResponse"
+          },
+          "counselor_is_active": {
+            "title": "Counselor Is Active",
+            "type": "boolean"
+          },
+          "default_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "ended_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorActorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source_request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Request Id"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselorRequestStudentSummary"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "default_counselor",
+          "counselor",
+          "counselor_is_active",
+          "source_request_id",
+          "approved_by",
+          "approved_at",
+          "ended_at",
+          "ended_by",
+          "version"
+        ],
+        "title": "HeadCounselorApprovalItem",
+        "type": "object"
+      },
+      "HeadCounselorApprovalPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "available_counselors": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorOptionResponse"
+            },
+            "title": "Available Counselors",
+            "type": "array"
+          },
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HeadCounselorApprovalItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next",
+          "available_counselors",
+          "can_manage"
+        ],
+        "title": "HeadCounselorApprovalPageResponse",
+        "type": "object"
+      },
+      "HeadCounselorRequestDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/CounselorRequestDecisionAction"
+          },
+          "approved_counselor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Counselor Id"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "action",
+          "expected_version"
+        ],
+        "title": "HeadCounselorRequestDecisionRequest",
+        "type": "object"
+      },
+      "HeadCounselorRequestDetailResponse": {
+        "additionalProperties": false,
+        "description": "Head-only detail projection; the only API surface that returns the confidential reason.",
+        "properties": {
+          "approved_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available_counselors": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorOptionResponse"
+            },
+            "title": "Available Counselors",
+            "type": "array"
+          },
+          "can_decide": {
+            "title": "Can Decide",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentActiveCounselorApprovalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorActorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_note": {
+            "title": "Decision Note",
+            "type": "string"
+          },
+          "default_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "preferred_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CounselorBookingRequestState"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselorRequestStudentSummary"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "default_counselor",
+          "preferred_counselor",
+          "approved_counselor",
+          "state",
+          "created_at",
+          "decided_at",
+          "version",
+          "reason",
+          "decision_note",
+          "decided_by",
+          "current_approval",
+          "available_counselors",
+          "can_decide"
+        ],
+        "title": "HeadCounselorRequestDetailResponse",
+        "type": "object"
+      },
+      "HeadCounselorRequestPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HeadCounselorRequestSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "HeadCounselorRequestPageResponse",
+        "type": "object"
+      },
+      "HeadCounselorRequestSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "approved_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "default_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "preferred_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/CounselorBookingRequestState"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselorRequestStudentSummary"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "default_counselor",
+          "preferred_counselor",
+          "approved_counselor",
+          "state",
+          "created_at",
+          "decided_at",
+          "version"
+        ],
+        "title": "HeadCounselorRequestSummary",
+        "type": "object"
+      },
       "HealthCheckResponse": {
         "additionalProperties": false,
         "properties": {
@@ -27840,6 +28708,7 @@
           "family.indigenous_peoples_status",
           "family.mother_life_status",
           "family.father_life_status",
+          "family.solo_parent_status",
           "section.background",
           "background.siblings",
           "background.friends_in_school",
@@ -28787,7 +29656,7 @@
           "civil_status_category": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CivilStatusCategoryValue"
+                "$ref": "#/components/schemas/CivilStatusCategoryResponseValue"
               },
               {
                 "type": "null"
@@ -31008,6 +31877,8 @@
           "COUNSELING_CASE",
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
+          "APPOINTMENT_BOOKING",
+          "COUNSELOR_BOOKING_REQUEST",
           "CALL_SLIP",
           "STUDENT_SESSION_SUMMARY",
           "E_COUNSELING",
@@ -31019,7 +31890,9 @@
           "INVENTORY",
           "ROUTINE_INTERVIEW",
           "FACULTY_REFERRAL",
-          "REFERRAL"
+          "REFERRAL",
+          "ANNOUNCEMENT",
+          "RESOURCE"
         ],
         "title": "NotificationTargetType",
         "type": "string"
@@ -31300,6 +32173,17 @@
               }
             ],
             "title": "Good Moral Requested Count"
+          },
+          "pending_counselor_requests_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Counselor Requests Count"
           },
           "routine_evaluation_pending_count": {
             "anyOf": [
@@ -34988,6 +35872,16 @@
             ],
             "title": "Original Filename"
           },
+          "prepared_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "published_at": {
             "anyOf": [
               {
@@ -35010,12 +35904,51 @@
               }
             ]
           },
+          "return_note": {
+            "default": "",
+            "title": "Return Note",
+            "type": "string"
+          },
+          "returned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returned At"
+          },
+          "returned_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "size_bytes": {
             "title": "Size Bytes",
             "type": "integer"
           },
           "status": {
             "$ref": "#/components/schemas/ResourceStatusValue"
+          },
+          "submitted_for_approval_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted For Approval At"
           },
           "title": {
             "title": "Title",
@@ -35153,9 +36086,24 @@
         "title": "ResourceReaderResponse",
         "type": "object"
       },
+      "ResourceReturnRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ResourceReturnRequest",
+        "type": "object"
+      },
       "ResourceStatusValue": {
         "enum": [
           "DRAFT",
+          "PENDING_APPROVAL",
           "PUBLISHED",
           "ARCHIVED"
         ],
@@ -38316,6 +39264,14 @@
         "title": "SignificantLearningValue",
         "type": "string"
       },
+      "SoloParentStatusValue": {
+        "enum": [
+          "YES",
+          "NO"
+        ],
+        "title": "SoloParentStatusValue",
+        "type": "string"
+      },
       "SourceContext": {
         "additionalProperties": false,
         "properties": {
@@ -38751,6 +39707,31 @@
         "title": "StudentActionsResponse",
         "type": "object"
       },
+      "StudentActiveCounselorApprovalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "approved_at": {
+            "format": "date-time",
+            "title": "Approved At",
+            "type": "string"
+          },
+          "counselor": {
+            "$ref": "#/components/schemas/CounselorOptionResponse"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "counselor",
+          "approved_at"
+        ],
+        "title": "StudentActiveCounselorApprovalResponse",
+        "type": "object"
+      },
       "StudentBookableSlotResponse": {
         "additionalProperties": false,
         "properties": {
@@ -38797,6 +39778,162 @@
           "ends_at"
         ],
         "title": "StudentBookableSlotResponse",
+        "type": "object"
+      },
+      "StudentCounselorRequestDecisionSummary": {
+        "additionalProperties": false,
+        "description": "Student-visible outcome of a decided request; never exposes confidential reason text.",
+        "properties": {
+          "approved_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "decision_note": {
+            "title": "Decision Note",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "preferred_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/CounselorBookingRequestState"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "preferred_counselor",
+          "approved_counselor",
+          "decision_note",
+          "decided_at"
+        ],
+        "title": "StudentCounselorRequestDecisionSummary",
+        "type": "object"
+      },
+      "StudentCounselorRequestStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "active_approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentActiveCounselorApprovalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "head_available": {
+            "title": "Head Available",
+            "type": "boolean"
+          },
+          "latest_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentCounselorRequestDecisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentCounselorRequestSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestable_counselors": {
+            "items": {
+              "$ref": "#/components/schemas/CounselorOptionResponse"
+            },
+            "title": "Requestable Counselors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "default_counselor",
+          "active_approval",
+          "pending_request",
+          "latest_decision",
+          "head_available",
+          "requestable_counselors"
+        ],
+        "title": "StudentCounselorRequestStateResponse",
+        "type": "object"
+      },
+      "StudentCounselorRequestSummary": {
+        "additionalProperties": false,
+        "description": "Student-visible request summary; never exposes confidential reason text.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "preferred_counselor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CounselorOptionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/CounselorBookingRequestState"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "preferred_counselor",
+          "created_at"
+        ],
+        "title": "StudentCounselorRequestSummary",
         "type": "object"
       },
       "StudentGroupSessionResponse": {
@@ -39129,6 +40266,9 @@
           },
           "sex": {
             "$ref": "#/components/schemas/DistributionSection"
+          },
+          "solo_parent_status": {
+            "$ref": "#/components/schemas/DistributionSection"
           }
         },
         "required": [
@@ -39136,6 +40276,7 @@
           "age",
           "civil_status",
           "physical_disadvantage",
+          "solo_parent_status",
           "current_religion",
           "mother_life_status",
           "father_life_status",
@@ -39765,6 +40906,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ParentLifeStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "solo_parent_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoloParentStatusValue"
               },
               {
                 "type": "null"
@@ -40554,13 +41705,17 @@
           "CASE_TRANSFER_AUTHORIZATION",
           "CASE_TRANSFER_ACCEPTANCE",
           "CASE_REASSIGNMENT_APPROVAL",
+          "COUNSELOR_BOOKING_REQUEST",
           "GUIDANCE_FOLLOW_UP",
           "GUIDANCE_MESSAGE_REPLY",
           "ROUTINE_EVALUATION",
           "GOOD_MORAL_PREPARATION",
           "GOOD_MORAL_ISSUANCE",
           "URGENT_REFERRAL",
-          "CALL_SLIP_DUE"
+          "CALL_SLIP_APPROVAL",
+          "CALL_SLIP_DUE",
+          "ANNOUNCEMENT_APPROVAL",
+          "RESOURCE_APPROVAL"
         ],
         "title": "WorkKind",
         "type": "string"
@@ -43707,6 +44862,9 @@
           "announcement_archived": {
             "loc": []
           },
+          "announcement_pending_approval": {
+            "loc": []
+          },
           "audience_invalid": {
             "loc": [
               "audience"
@@ -43760,10 +44918,26 @@
           "publication_requires_draft": {
             "loc": []
           },
+          "return_note_required": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_note_too_long": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_requires_pending_approval": {
+            "loc": []
+          },
           "status_invalid": {
             "loc": [
               "status"
             ]
+          },
+          "submission_requires_draft": {
+            "loc": []
           },
           "title_required": {
             "loc": [
@@ -44111,6 +45285,192 @@
           }
         ],
         "summary": "Announcements Publish",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/management/{announcement_id}/return": {
+      "post": {
+        "operationId": "announcementsReturnDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "announcement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Announcement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Announcements Return Draft",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/management/{announcement_id}/submit": {
+      "post": {
+        "operationId": "announcementsSubmitForApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "announcement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Announcement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Announcements Submit For Approval",
         "tags": [
           "announcements"
         ]
@@ -44503,6 +45863,138 @@
         ]
       }
     },
+    "/api/v1/appointments/booking/counselor-request": {
+      "get": {
+        "operationId": "appointmentsGetMyCounselorRequest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentCounselorRequestStateResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Get My Counselor Request",
+        "tags": [
+          "appointments"
+        ]
+      },
+      "post": {
+        "operationId": "appointmentsCreateCounselorRequest",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselorBookingRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentCounselorRequestSummary"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Create Counselor Request",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
     "/api/v1/appointments/booking/counselors": {
       "get": {
         "operationId": "appointmentsListEligibleCounselors",
@@ -44794,6 +46286,569 @@
           }
         ],
         "summary": "Appointments List Bookable Slots",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-approvals": {
+      "get": {
+        "operationId": "appointmentsListCounselorApprovals",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_ended",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Ended",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorApprovalPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments List Counselor Approvals",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-approvals/{approval_id}": {
+      "patch": {
+        "operationId": "appointmentsChangeCounselorApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadCounselorApprovalChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorApprovalItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Change Counselor Approval",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-approvals/{approval_id}/end": {
+      "post": {
+        "operationId": "appointmentsEndCounselorApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadCounselorApprovalEndRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorApprovalItem"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments End Counselor Approval",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-requests": {
+      "get": {
+        "operationId": "appointmentsListCounselorRequests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CounselorBookingRequestState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorRequestPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments List Counselor Requests",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-requests/{request_id}": {
+      "get": {
+        "operationId": "appointmentsGetCounselorRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorRequestDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Get Counselor Request",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/counselor-requests/{request_id}/decide": {
+      "post": {
+        "operationId": "appointmentsDecideCounselorRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadCounselorRequestDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadCounselorRequestDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Decide Counselor Request",
         "tags": [
           "appointments"
         ]
@@ -51484,6 +53539,94 @@
         ]
       }
     },
+    "/api/v1/call-slips/{call_slip_id}/approve": {
+      "post": {
+        "operationId": "callSlipsApprove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Approve",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
     "/api/v1/call-slips/{call_slip_id}/interview-ended": {
       "patch": {
         "operationId": "callSlipsRecordInterviewEnded",
@@ -51661,6 +53804,209 @@
         ]
       }
     },
+    "/api/v1/call-slips/{call_slip_id}/resubmit": {
+      "post": {
+        "operationId": "callSlipsResubmit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CallSlipResubmitRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Resubmit",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}/return": {
+      "post": {
+        "operationId": "callSlipsReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSlipReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Return",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
     "/api/v1/call-slips/{call_slip_id}/void": {
       "post": {
         "operationId": "callSlipsVoid",
@@ -51754,6 +54100,111 @@
           }
         ],
         "summary": "Call Slips Void",
+        "tags": [
+          "call-slips"
+        ]
+      }
+    },
+    "/api/v1/call-slips/{call_slip_id}/withdraw": {
+      "post": {
+        "operationId": "callSlipsWithdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_slip_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Slip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CallSlipWithdrawRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSlipOperationalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Call Slips Withdraw",
         "tags": [
           "call-slips"
         ]
@@ -84255,10 +86706,29 @@
           "resource_archived": {
             "loc": []
           },
+          "resource_pending_approval": {
+            "loc": []
+          },
+          "return_note_required": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_note_too_long": {
+            "loc": [
+              "note"
+            ]
+          },
+          "return_requires_pending_approval": {
+            "loc": []
+          },
           "status_invalid": {
             "loc": [
               "status"
             ]
+          },
+          "submission_requires_draft": {
+            "loc": []
           },
           "title_required": {
             "loc": [
@@ -84887,6 +87357,192 @@
           }
         ],
         "summary": "Resources Publish",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/management/{resource_id}/return": {
+      "post": {
+        "operationId": "resourcesReturnDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Resources Return Draft",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/management/{resource_id}/submit": {
+      "post": {
+        "operationId": "resourcesSubmitForApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceManagementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Resources Submit For Approval",
         "tags": [
           "resources"
         ]

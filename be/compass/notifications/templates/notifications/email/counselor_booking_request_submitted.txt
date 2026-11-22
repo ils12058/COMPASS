@@ -1,0 +1,5 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}A student asked for a different counselor.
+
+{% if action_url %}Review request: {{ action_url }}{% else %}Sign in to COMPASS to review the request.{% endif %}
+{% endblock %}

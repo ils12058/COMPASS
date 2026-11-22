@@ -13,6 +13,9 @@ class PushDecision(StrEnum):
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.REFERRAL_URGENT: (PushDecision.IN_APP_ONLY, ""),
+    # ADR-120: counselor-change requests stay off lock screens to avoid revealing student intent.
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GRADUATE_TRACER_REMINDER: (PushDecision.IN_APP_ONLY, ""),
     # Case continuity reviews stay in-app; push would reveal case activity on a lock screen.
     NotificationEvent.CASE_TRANSFER_REVIEW: (PushDecision.IN_APP_ONLY, ""),
@@ -32,8 +35,14 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
             NotificationEvent.FOLLOWUP_DUE_CHANGED,
         )
     },
+    NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.CALL_SLIP_RETURNED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.CALL_SLIP_ISSUED: (PushDecision.PUSH, "You have a new Call Slip."),
     NotificationEvent.CALL_SLIP_VOIDED: (PushDecision.PUSH, "You have a Call Slip update."),
+    NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.ANNOUNCEMENT_RETURNED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.RESOURCE_APPROVAL_REQUESTED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.RESOURCE_RETURNED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an Appointment update."),
     NotificationEvent.APPOINTMENT_REMINDER_24H: (
         PushDecision.PUSH,

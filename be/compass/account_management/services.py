@@ -32,6 +32,7 @@ from compass.accounts.policy import (
     ROLE_CODES,
     designation_role_compatible,
     faculty_capability_eligible,
+    goa_capability_eligible,
     missing_required_capabilities,
     required_capabilities,
 )
@@ -1241,6 +1242,13 @@ def set_capability_override(
         ):
             raise InvalidManagementInput(
                 "This Permission isn't available for the current Faculty Role."
+            )
+        if effect_value == UserCapabilityOverride.Effect.GRANT and not goa_capability_eligible(
+            target.role.code,
+            capability_code,
+        ):
+            raise InvalidManagementInput(
+                "This Permission isn't available for the Guidance Office Assistant Role."
             )
         if (
             capability_code == "organization.catalog.manage"

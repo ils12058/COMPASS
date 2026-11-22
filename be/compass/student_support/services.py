@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from compass.accounts.models import User
-from compass.inventory.models import CivilStatusCategory, PWDStatus, StudentInventory
+from compass.inventory.models import PWDStatus, StudentInventory
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.access_scope import (
     is_head_guidance,
@@ -17,6 +17,7 @@ from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
+    SoloParentStatus,
     StudentSupportProfile,
 )
 
@@ -85,9 +86,9 @@ def _indicator_rows(
     active: set[str] = set()
     if inventory.pwd_status == PWDStatus.PWD:
         active.add("PWD")
-    if inventory.civil_status_category == CivilStatusCategory.SOLO_PARENT:
-        active.add("SOLO_PARENT")
     if profile is not None:
+        if profile.solo_parent_status == SoloParentStatus.YES:
+            active.add("SOLO_PARENT")
         if profile.four_ps_status == FourPsStatus.BENEFICIARY:
             active.add("FOUR_PS_BENEFICIARY")
         if profile.indigenous_peoples_status == IndigenousPeoplesStatus.MEMBER:

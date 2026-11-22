@@ -344,6 +344,14 @@ EXPECTED_OPERATION_IDS = {
     "appointmentsListBookableSlots",
     "appointmentsListRescheduleSlots",
     "appointmentsListReassignmentCandidates",
+    "appointmentsGetMyCounselorRequest",
+    "appointmentsCreateCounselorRequest",
+    "appointmentsListCounselorRequests",
+    "appointmentsGetCounselorRequest",
+    "appointmentsDecideCounselorRequest",
+    "appointmentsListCounselorApprovals",
+    "appointmentsChangeCounselorApproval",
+    "appointmentsEndCounselorApproval",
     "counselingCreateEncounter",
     "counselingFinishAppointment",
     "counselingGetEncounterCreationOptions",
@@ -548,6 +556,10 @@ EXPECTED_OPERATION_IDS = {
     "callSlipsGetMy",
     "callSlipsRecordInterviewEnded",
     "callSlipsVoid",
+    "callSlipsApprove",
+    "callSlipsReturn",
+    "callSlipsResubmit",
+    "callSlipsWithdraw",
     "callSlipsListEligibleStudents",
     "callSlipsDownloadPdf",
     "callSlipsDownloadMyPdf",
@@ -565,6 +577,8 @@ EXPECTED_OPERATION_IDS = {
     "announcementsCreateDraft",
     "announcementsGetManaged",
     "announcementsUpdate",
+    "announcementsSubmitForApproval",
+    "announcementsReturnDraft",
     "announcementsPublish",
     "announcementsArchive",
     "announcementsListVisible",
@@ -578,6 +592,8 @@ EXPECTED_OPERATION_IDS = {
     "resourcesAttachDraftFile",
     "resourcesDownloadManagedFile",
     "resourcesRemoveDraftFile",
+    "resourcesSubmitForApproval",
+    "resourcesReturnDraft",
     "resourcesPublish",
     "resourcesArchive",
     "resourcesListVisible",
@@ -861,6 +877,7 @@ def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
             "good_moral_requested_count",
             "good_moral_ready_count",
             "active_call_slip_count",
+            "pending_counselor_requests_count",
         },
         "OverviewPlatformSummary": {
             "email_pending_count",
@@ -1436,11 +1453,13 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "ProgramListResponse",
         "InventoryProgramSummary",
         "CivilStatusCategoryValue",
+        "CivilStatusCategoryResponseValue",
         "CurrentReligionCategoryValue",
         "PWDStatusValue",
         "FourPsStatusValue",
         "IndigenousPeoplesStatusValue",
         "ParentLifeStatusValue",
+        "SoloParentStatusValue",
         "SupportProfilePayload",
         "StudentSupportContextResponse",
         "SupportIndicatorResponse",
@@ -1722,6 +1741,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "indigenous_peoples_status",
         "mother_life_status",
         "father_life_status",
+        "solo_parent_status",
     }
     transport = schemas["TransportationEntryPayload"]["properties"]
     assert "frequency_category" in transport
@@ -1863,7 +1883,26 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "submitted_inventory_count" in schemas["ProgramColumn"]["required"]
     assert {"program_id", "code", "college", "campus"} <= set(schemas["ProgramColumn"]["required"])
     assert "access_scope_note" in schemas["Methodology"]["required"]
+    assert schemas["CivilStatusCategoryValue"]["enum"] == [
+        "SINGLE",
+        "MARRIED",
+        "WIDOWED",
+        "SEPARATED",
+        "ANNULLED",
+        "OTHER",
+    ]
+    assert schemas["CivilStatusCategoryResponseValue"]["enum"] == [
+        "SINGLE",
+        "MARRIED",
+        "WIDOWED",
+        "SEPARATED",
+        "ANNULLED",
+        "OTHER",
+        "SOLO_PARENT",
+    ]
     assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD"]
+    assert schemas["SoloParentStatusValue"]["enum"] == ["YES", "NO"]
+    assert "solo_parent_status" in schemas["StudentProfilingSections"]["properties"]
     assert schemas["FourPsStatusValue"]["enum"] == [
         "BENEFICIARY",
         "NOT_BENEFICIARY",
@@ -3600,13 +3639,17 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         "CASE_TRANSFER_AUTHORIZATION",
         "CASE_TRANSFER_ACCEPTANCE",
         "CASE_REASSIGNMENT_APPROVAL",
+        "COUNSELOR_BOOKING_REQUEST",
         "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
         "GOOD_MORAL_PREPARATION",
         "GOOD_MORAL_ISSUANCE",
         "URGENT_REFERRAL",
+        "CALL_SLIP_APPROVAL",
         "CALL_SLIP_DUE",
+        "ANNOUNCEMENT_APPROVAL",
+        "RESOURCE_APPROVAL",
     ]
     assert schemas["WorkPriority"]["enum"] == ["TIME_SENSITIVE", "ACTION_REQUIRED"]
     assert schemas["WorkItem"]["additionalProperties"] is False
@@ -3909,3 +3952,24 @@ def test_csv_selection_contract_preserves_empty_selection_and_original_download_
         row = schemas[f"{prefix}RowResponse"]
         assert row["properties"]["values"]["items"]["type"] == "string"
         assert "values" in row["required"]
+
+
+def test_college_counselor_booking_contract_keeps_reason_head_detail_only():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert "is_head_approved" in schemas["EligibleCounselorResponse"]["properties"]
+    assert "reason_ciphertext" not in json.dumps(schema)
+    for name in (
+        "StudentCounselorRequestSummary",
+        "StudentCounselorRequestDecisionSummary",
+        "StudentCounselorRequestStateResponse",
+        "HeadCounselorRequestSummary",
+        "HeadCounselorApprovalItem",
+    ):
+        assert schemas[name]["additionalProperties"] is False
+        assert "reason" not in schemas[name]["properties"]
+    detail = schemas["HeadCounselorRequestDetailResponse"]
+    assert detail["additionalProperties"] is False
+    assert "reason" in detail["properties"]
+    assert "COUNSELOR_BOOKING_REQUEST" in schemas["NotificationTargetType"]["enum"]
+    assert "APPOINTMENT_BOOKING" in schemas["NotificationTargetType"]["enum"]

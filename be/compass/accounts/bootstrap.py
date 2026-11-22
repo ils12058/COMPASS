@@ -17,6 +17,7 @@ from compass.accounts.policy import (
     CAPABILITY_DEFINITIONS,
     DESIGNATION_CAPABILITY_GRANTS,
     DESIGNATION_DEFINITIONS,
+    GOA_FORBIDDEN_CAPABILITIES,
     ROLE_CAPABILITY_GRANTS,
     ROLE_DEFINITIONS,
 )
@@ -40,6 +41,7 @@ class IdentityPolicySyncResult:
     capabilities_created: int = 0
     capabilities_updated: int = 0
     role_grants_created: int = 0
+    role_grants_removed: int = 0
     designation_grants_created: int = 0
 
     @property
@@ -120,6 +122,12 @@ def sync_identity_policy() -> IdentityPolicySyncResult:
                 )
                 if created:
                     counts["role_grants_created"] += 1
+
+        removed_goa_grants, _ = RoleCapability.objects.filter(
+            role=roles["GUIDANCE_OFFICE_ASSISTANT"],
+            capability__code__in=GOA_FORBIDDEN_CAPABILITIES,
+        ).delete()
+        counts["role_grants_removed"] += removed_goa_grants
 
         for designation_code, capability_codes in DESIGNATION_CAPABILITY_GRANTS.items():
             for capability_code in capability_codes:

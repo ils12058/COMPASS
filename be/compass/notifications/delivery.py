@@ -179,7 +179,12 @@ def render_notification_email(
                 event_code
                 not in APPROVED_EMAIL_EVENTS
                 | FACULTY_REFERRAL_NOTICE_EVENTS
-                | {NotificationEvent.REFERRAL_URGENT}
+                | {
+                    NotificationEvent.REFERRAL_URGENT,
+                    NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED,
+                    NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED,
+                    NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+                }
                 or (
                     presentation.reason == EmailPresentationReason.LINK_AVAILABLE
                     and event_code in APPOINTMENT_EMAIL_EVENTS
@@ -190,6 +195,12 @@ def render_notification_email(
                 != (
                     NotificationTargetType.REFERRAL
                     if event_code == NotificationEvent.REFERRAL_URGENT
+                    else NotificationTargetType.COUNSELOR_BOOKING_REQUEST
+                    if event_code == NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED
+                    else NotificationTargetType.APPOINTMENT_BOOKING
+                    if event_code == NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED
+                    else NotificationTargetType.CALL_SLIP
+                    if event_code == NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED
                     else NotificationTargetType.GRADUATE_TRACER
                     if event_code == NotificationEvent.GRADUATE_TRACER_REMINDER
                     else NotificationTargetType.FACULTY_REFERRAL

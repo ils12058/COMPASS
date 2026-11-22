@@ -28,7 +28,7 @@ const inventoryRecord = {
   contact_number: "0917 000 0000",
   geographic_locations: [{ kind: "CURRENT", region_psgc_code: "050000000", city_municipality_psgc_code: "051603000" }],
   parent_statuses: ["MARRIED_ANNULLED_LEGALLY_SEPARATED"],
-  support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING" },
+  support_profile: { four_ps_status: "NOT_BENEFICIARY", indigenous_peoples_status: "NOT_MEMBER", mother_life_status: "LIVING", father_life_status: "LIVING", solo_parent_status: "NO" },
   family_members: [],
   living_arrangement: "OWN_HOUSE",
   pwd_status: "NON_PWD",

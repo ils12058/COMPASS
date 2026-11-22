@@ -186,11 +186,14 @@ def test_suppressed_external_notice_keeps_truthful_in_app_history(request, setti
     assert mail.outbox == []
 
 
-def test_catalog_has_forty_events_and_sixteen_disclosure_approved_link_candidates():
-    assert len(NotificationEvent) == 40
+def test_catalog_has_forty_eight_events_and_sixteen_disclosure_approved_link_candidates():
+    assert len(NotificationEvent) == 48
     assert len(APPROVED_EMAIL_EVENTS) == 16
-    # Urgent referrals use a content-free link, never an external-detail disclosure approval.
+    # Urgent referrals and counselor booking requests use content-free links, never
+    # an external-detail disclosure approval.
     assert NotificationEvent.REFERRAL_URGENT not in APPROVED_EMAIL_EVENTS
+    assert NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED not in APPROVED_EMAIL_EVENTS
+    assert NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED not in APPROVED_EMAIL_EVENTS
     assert push_body_for("unrecognized.event") is None
     assert notification_email_route(NotificationEmailTarget("APPOINTMENT", str(uuid4())))
 
@@ -198,7 +201,7 @@ def test_catalog_has_forty_events_and_sixteen_disclosure_approved_link_candidate
 def test_closed_email_routes_match_shared_frontend_contract():
     path = Path(__file__).resolve().parents[2] / "fe/tests/support/notification-route-contract.json"
     rows = json.loads(path.read_text())
-    assert len(rows) == 22
+    assert len(rows) == 26
     for row in rows:
         assert (
             notification_email_route(NotificationEmailTarget(row["target_type"], row["target_id"]))

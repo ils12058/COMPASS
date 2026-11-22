@@ -23,15 +23,17 @@ for(const reason of ['revocation','expiry','account switch','logout','hidden tab
 test('request cancellation rejects a response even in the current generation',()=>{const barrier=new CoverageGeneration(),controller=new AbortController();controller.abort();assert.throws(()=>barrier.assertCurrent(barrier.current(),controller.signal));});
 test('generation never reuses an invalidated response after a deliberate check',()=>{const barrier=new CoverageGeneration(),old=barrier.current();barrier.invalidate();barrier.invalidate();assert.throws(()=>barrier.assertCurrent(old));barrier.assertCurrent(barrier.current());});
 
-for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) {
- test(`${role} can enter coverage with metadata authority`, () => {
-  const access = getCounselingAccess({role, capabilities:['counseling.continuity.view']});
-  assert.equal(access.canViewCoverage, true);
-  assert.equal(access.hasWorkspace, true);
-  assert.equal(access.canViewAssigned, false);
-  assert.equal(access.canViewAssignedStudentSessionSummaries, false);
+test('COUNSELOR can enter coverage with metadata authority', () => {
+ const access = getCounselingAccess({role:'COUNSELOR', capabilities:['counseling.continuity.view']});
+ assert.equal(access.canViewCoverage, true);
+ assert.equal(access.hasWorkspace, true);
+ assert.equal(access.canViewAssigned, false);
+ assert.equal(access.canViewAssignedStudentSessionSummaries, false);
+});
+for (const role of ['GUIDANCE_OFFICE_ASSISTANT', 'IT_ADMIN']) {
+ test(`coverage metadata capability cannot give ${role} a workspace`, () => {
+  const access = getCounselingAccess({role, capabilities:['counseling.continuity.view', 'counseling.continuity.request']});
+  assert.equal(access.canViewCoverage, false);
+  assert.equal(access.hasWorkspace, false);
  });
 }
-test('coverage metadata capability cannot give an unsupported role a workspace', () => {
- assert.equal(getCounselingAccess({role:'IT_ADMIN', capabilities:['counseling.continuity.view']}).hasWorkspace, false);
-});

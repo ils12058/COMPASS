@@ -43,8 +43,10 @@ from .services import (
     CallSlipReferralConflict,
     CallSlipVoidConflict,
     InvalidCallSlipInput,
+    approve_call_slip,
     create_call_slip,
     create_call_slip_from_referral,
+    current_approver_for_call_slip,
     get_call_slip,
     get_my_call_slip,
     list_call_slips,
@@ -52,7 +54,10 @@ from .services import (
     list_my_call_slips,
     record_interview_ended,
     render_call_slip_pdf,
+    resubmit_call_slip,
+    return_call_slip,
     void_call_slip,
+    withdraw_call_slip,
 )
 
 router = Router(tags=["call-slips"])
@@ -81,6 +86,8 @@ class CallSlipDestinationTypeValue(StrEnum):
 
 
 class CallSlipLifecycleStateValue(StrEnum):
+    PENDING_APPROVAL = CallSlipLifecycleState.PENDING_APPROVAL
+    RETURNED = CallSlipLifecycleState.RETURNED
     ACTIVE = CallSlipLifecycleState.ACTIVE
     COMPLETED = CallSlipLifecycleState.COMPLETED
     VOIDED = CallSlipLifecycleState.VOIDED
@@ -124,6 +131,22 @@ class CallSlipInterviewEndedRequest(StrictSchema):
 
 class CallSlipVoidRequest(StrictSchema):
     reason: str
+
+
+class CallSlipReturnRequest(StrictSchema):
+    note: str
+
+
+class CallSlipResubmitRequest(StrictSchema):
+    course_year: str | None = None
+    destination_type: CallSlipDestinationTypeValue | None = None
+    other_destination: str | None = None
+    report_at: datetime | None = None
+    notify_student: bool | None = None
+
+
+class CallSlipWithdrawRequest(StrictSchema):
+    reason: str = ""
 
 
 class CallSlipPersonSummary(StrictSchema):
@@ -201,10 +224,19 @@ class CallSlipOperationalResponse(CallSlipStudentResponse):
     counseling_case: CallSlipCaseSummary | None = None
     appointment: CallSlipAppointmentSummary | None = None
     recorded_by: CallSlipPersonSummary | None
+    approved_by: CallSlipPersonSummary | None = None
+    approved_at: datetime | None = None
+    returned_by: CallSlipPersonSummary | None = None
+    returned_at: datetime | None = None
+    return_note: str = ""
     voided_by: CallSlipPersonSummary | None
     issuance_mode: CallSlipIssuanceModeValue
     void_notifies_student: bool
     void_reason: str
+    can_approve: bool = False
+    can_return: bool = False
+    can_resubmit: bool = False
+    can_withdraw: bool = False
     updated_at: datetime
 
 
@@ -383,10 +415,36 @@ def _operational_view(item, reader=None) -> dict[str, object]:
         counseling_case, appointment = _case_link(item, reader)
     except ObjectDoesNotExist:
         counseling_case, appointment = None, None
+
+    approver = current_approver_for_call_slip(item)
+    base = _student_view(item)
+    if approver.pk != item.issued_by_id:
+        base["issued_by"] = _person(approver)
+        base["issued_by_name_snapshot"] = approver.get_full_name()
+
+    reader_can_manage = bool(
+        reader is not None and reader.is_active and reader.has_capability("call_slips.manage")
+    )
+    is_pending = (
+        item.voided_at is None and item.lifecycle_state == CallSlipLifecycleState.PENDING_APPROVAL
+    )
+    is_returned = item.voided_at is None and item.lifecycle_state == CallSlipLifecycleState.RETURNED
+    is_supervising_approver = bool(
+        reader_can_manage
+        and reader.role.code == "COUNSELOR"
+        and item.recorded_by_id is not None
+        and approver.pk == reader.pk
+    )
+    is_preparing_goa = bool(
+        reader_can_manage
+        and reader.role.code == "GUIDANCE_OFFICE_ASSISTANT"
+        and item.recorded_by_id == reader.pk
+    )
+
     return {
         "counseling_case": counseling_case,
         "appointment": appointment,
-        **_student_view(item),
+        **base,
         "student_institutional_id": item.student.institutional_id,
         "referral": (
             {"id": item.referral_id, "reference_code": item.referral.reference_code}
@@ -394,10 +452,19 @@ def _operational_view(item, reader=None) -> dict[str, object]:
             else None
         ),
         "recorded_by": _person(item.recorded_by) if item.recorded_by_id else None,
+        "approved_by": _person(item.approved_by) if item.approved_by_id else None,
+        "approved_at": item.approved_at,
+        "returned_by": _person(item.returned_by) if item.returned_by_id else None,
+        "returned_at": item.returned_at,
+        "return_note": item.return_note or "",
         "voided_by": _person(item.voided_by) if item.voided_by_id else None,
         "issuance_mode": item.issuance_mode,
         "void_notifies_student": item.void_notifies_student,
         "void_reason": item.void_reason,
+        "can_approve": is_pending and is_supervising_approver,
+        "can_return": is_pending and is_supervising_approver,
+        "can_resubmit": (is_pending or is_returned) and is_preparing_goa,
+        "can_withdraw": (is_pending or is_returned) and is_preparing_goa,
         "updated_at": item.updated_at,
     }
 
@@ -648,7 +715,7 @@ def call_slips_create_from_referral(
         ) from None
     except CallSlipError as exc:
         _raise(exc)
-    return Status(201, _operational_view(item))
+    return Status(201, _operational_view(item, reader=request.auth_user))
 
 
 @router.get(
@@ -729,6 +796,101 @@ def call_slips_void(request, call_slip_id: UUID, payload: CallSlipVoidRequest):
             actor=request.auth_user,
             call_slip_id=call_slip_id,
             reason=payload.reason,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item, reader=request.auth_user)
+
+
+@router.post(
+    "/{call_slip_id}/approve",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsApprove",
+)
+def call_slips_approve(request, call_slip_id: UUID):
+    _require_operational(request, "call_slips.manage")
+    try:
+        item = approve_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item, reader=request.auth_user)
+
+
+@router.post(
+    "/{call_slip_id}/return",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsReturn",
+)
+def call_slips_return(request, call_slip_id: UUID, payload: CallSlipReturnRequest):
+    _require_operational(request, "call_slips.manage")
+    try:
+        item = return_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            note=payload.note,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item, reader=request.auth_user)
+
+
+@router.post(
+    "/{call_slip_id}/resubmit",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsResubmit",
+)
+def call_slips_resubmit(
+    request,
+    call_slip_id: UUID,
+    payload: CallSlipResubmitRequest | None = None,
+):
+    _require_operational(request, "call_slips.manage")
+    body = payload or CallSlipResubmitRequest()
+    try:
+        item = resubmit_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            course_year=body.course_year,
+            destination_type=(
+                body.destination_type.value if body.destination_type is not None else None
+            ),
+            other_destination=body.other_destination,
+            report_at=body.report_at,
+            notify_student=body.notify_student,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item, reader=request.auth_user)
+
+
+@router.post(
+    "/{call_slip_id}/withdraw",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsWithdraw",
+)
+def call_slips_withdraw(
+    request,
+    call_slip_id: UUID,
+    payload: CallSlipWithdrawRequest | None = None,
+):
+    _require_operational(request, "call_slips.manage")
+    body = payload or CallSlipWithdrawRequest()
+    try:
+        item = withdraw_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            reason=body.reason,
             context=_context(request),
         )
     except CallSlipError as exc:

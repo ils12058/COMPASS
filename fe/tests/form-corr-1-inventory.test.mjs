@@ -105,7 +105,7 @@ function backendCatalog() {
 
 test("the frontend map names exactly the backend catalog, in catalog order, keyed by enum value", () => {
   const backend = backendCatalog();
-  assert.equal(backend.length, 147);
+  assert.equal(backend.length, 148);
   assert.deepEqual([...codes].sort(), [...backend].sort(), "Every backend code has a frontend definition and nothing else does");
   assert.deepEqual([...inventoryCorrectionTargetOrder], backend, "Catalog order follows the backend enum");
   assert.ok(codes.every((code) => code.includes(".")), "Keys are the dotted enum values, not the generated object keys");
@@ -372,7 +372,7 @@ test("the chooser offers every catalog code, grouped by section, with nothing se
   const html = render(h(InventoryCorrectionTargetChooser, { value: [], onChange() {} }));
   assert.match(html, /<legend[^>]*>Answers to review \(optional\)<\/legend>/);
   assert.match(html, /Choose the parts of the form the Student should look at again\. They will see these with your instructions\./);
-  assert.equal([...html.matchAll(/type="checkbox"/g)].length, 147);
+  assert.equal([...html.matchAll(/type="checkbox"/g)].length, 148);
   assert.doesNotMatch(html, /checked=""/, "No target is selected by default");
   assert.doesNotMatch(html, /<details[^>]*open/, "Sections start collapsed");
   assert.equal([...html.matchAll(/<details/g)].length, 8);
@@ -393,7 +393,7 @@ test("the chooser lists the selection with Remove buttons and stops at 30", () =
   assert.match(full, /30 of 30 selected\. Remove one to choose another\./);
   assert.equal([...full.matchAll(/<input type="checkbox"[^>]*checked=""[^>]*>/g)].length, 30);
   const unchecked = [...full.matchAll(/<input type="checkbox"[^>]*>/g)].map((match) => match[0]).filter((tag) => !tag.includes('checked=""'));
-  assert.equal(unchecked.length, 117);
+  assert.equal(unchecked.length, 118);
   assert.ok(unchecked.every((tag) => tag.includes('disabled=""')), "Nothing more can be chosen at the limit");
   assert.ok(MAX_INVENTORY_CORRECTION_TARGETS === 30);
 });

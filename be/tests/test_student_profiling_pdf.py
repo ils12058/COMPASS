@@ -88,12 +88,18 @@ SECTION_CATEGORIES = {
     "civil_status": [
         ("SINGLE", "Single"),
         ("MARRIED", "Married"),
-        ("SOLO_PARENT", "Solo Parent"),
+        ("WIDOWED", "Widowed"),
+        ("SEPARATED", "Separated"),
+        ("ANNULLED", "Annulled"),
         ("OTHER", "Other"),
     ],
     "physical_disadvantage": [
         ("PWD", "PWD"),
         ("NON_PWD", "Non-PWD"),
+    ],
+    "solo_parent_status": [
+        ("YES", "Yes"),
+        ("NO", "No"),
     ],
     "current_religion": [
         ("ROMAN_CATHOLIC", "Roman Catholic"),
@@ -133,6 +139,7 @@ SECTION_LABELS = {
     "age": "Distribution of Students based on Age",
     "civil_status": "Distribution of Students based on Civil Status",
     "physical_disadvantage": "Distribution of Students based on PWD Status",
+    "solo_parent_status": "Distribution of Students based on Solo Parent Status",
     "current_religion": "Distribution of Students based on Current Religion",
     "mother_life_status": "Distribution of Students based on Mother Life Status",
     "father_life_status": "Distribution of Students based on Father Life Status",
@@ -606,9 +613,9 @@ def test_rendered_html_is_table_first_with_branding_overview_and_numbered_tables
 
     titles = [table["title"] for part in profile["parts"] for table in part["tables"]]
     assert titles[0] == "Distribution of Students by Sex"
-    assert len(titles) == len(SECTION_ORDER) == 13
+    assert len(titles) == len(SECTION_ORDER) == 14
     assert [table["number"] for part in profile["parts"] for table in part["tables"]] == [
-        f"Table {index}." for index in range(1, 14)
+        f"Table {index}." for index in range(1, 15)
     ]
     assert "(continued)" not in html
     assert "PROFILE POPULATION NOTE." in html
@@ -660,7 +667,15 @@ def test_overall_tables_print_canonical_counts_and_total_row():
     # Every controlled response prints, including zero rows.
     civil = profile["parts"][0]["tables"][2]
     civil_labels = [cell_texts(row)[0] for row in civil["rows"]]
-    assert civil_labels == ["Single", "Married", "Solo Parent", "Other", "Total"]
+    assert civil_labels == [
+        "Single",
+        "Married",
+        "Widowed",
+        "Separated",
+        "Annulled",
+        "Other",
+        "Total",
+    ]
 
     parent_status = next(
         table

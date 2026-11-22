@@ -31,6 +31,14 @@ NOTE = "Protected attempts and conclusion retained for the case owner."
 
 
 def record_closure(w):
+    if not hasattr(w, "office_head"):
+        w.office_head = make_user(
+            f"{w.case.reference_code.lower()}-office-head@example.edu", "COUNSELOR"
+        )
+        UserDesignation.objects.create(
+            user=w.office_head,
+            designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+        )
     w.closure = CounselingCaseClosure(
         case=w.case, closed_by=w.a, reason="STUDENT_DISCONTINUED", outcome="NOT_ASSESSED"
     )
@@ -68,7 +76,7 @@ def reopening_values(w, **changes):
 
 
 def prepare(w, actor=None, **changes):
-    actor = actor or w.goa
+    actor = actor or w.office_head
     return transfers.prepare_transfer(
         actor=actor,
         case_id=w.case.pk,
@@ -84,7 +92,7 @@ def submit(item, actor):
 
 
 def offered(w):
-    return decide(submit(prepare(w), w.goa), w.head, "authorize")
+    return decide(submit(prepare(w), w.office_head), w.head, "authorize")
 
 
 def test_office_prepares_minimal_closed_lookup_and_receiver_review_reopens_atomically(cw4):
@@ -93,10 +101,10 @@ def test_office_prepares_minimal_closed_lookup_and_receiver_review_reopens_atomi
         name: getattr(w.closure, name)
         for name in ("closed_by_id", "closed_at", "reason", "outcome", "content_ciphertext")
     }
-    lookup = projections.lookup_cases(actor=w.goa, status="CLOSED")
+    lookup = projections.lookup_cases(actor=w.office_head, status="CLOSED")
     assert [row["id"] for row in lookup["items"]] == [w.case.pk]
-    assert projections.lookup_cases(actor=w.goa)["items"] == []
-    package = projections.transfer_context(actor=w.goa, case_id=w.case.pk, purpose="REOPEN")
+    assert projections.lookup_cases(actor=w.office_head)["items"] == []
+    package = projections.transfer_context(actor=w.office_head, case_id=w.case.pk, purpose="REOPEN")
     assert package["purpose"] == "REOPEN" and package["office_prepared"]
     assert package["tasks"] == package["appointments"] == []
     assert package["case"]["status"] == "CLOSED"
@@ -110,10 +118,10 @@ def test_office_prepares_minimal_closed_lookup_and_receiver_review_reopens_atomi
     }
     item = prepare(w)
     assert item.purpose == "REOPEN" and item.handoff_required_at is None
-    projection = projections.transfer_detail(item, w.goa)
+    projection = projections.transfer_detail(item, w.office_head)
     assert projection["can_submit"] and not projection["handoff_required"]
     assert not projection["can_write_handoff"] and projection["handoff"] is None
-    item = submit(item, w.goa)
+    item = submit(item, w.office_head)
     assert item.state == "PREPARED" and item.independent_authorization
     with pytest.raises(CaseContinuityError):
         decide(item, w.b, "accept")
@@ -146,7 +154,7 @@ def test_office_prepares_minimal_closed_lookup_and_receiver_review_reopens_atomi
         get_case(actor=w.a, case_id=w.case.pk)
 
 
-@pytest.mark.parametrize("role", ["a", "b", "faculty", "student", "admin", "officer"])
+@pytest.mark.parametrize("role", ["a", "b", "goa", "faculty", "student", "admin", "officer"])
 def test_only_office_preparation_has_access_and_never_grants_case_read(cw4, role):
     w = cw4
     actor = getattr(w, role)
@@ -158,7 +166,7 @@ def test_only_office_preparation_has_access_and_never_grants_case_read(cw4, role
         with pytest.raises(CounselingCaseError):
             get_case(actor=actor, case_id=w.case.pk)
     with pytest.raises(CaseContinuityError):
-        projections.transfer_context(actor=w.goa, case_id=uuid4(), purpose="REOPEN")
+        projections.transfer_context(actor=w.office_head, case_id=uuid4(), purpose="REOPEN")
 
 
 def test_single_head_cannot_receive_an_office_prepared_reopening(cw4):
@@ -166,7 +174,7 @@ def test_single_head_cannot_receive_an_office_prepared_reopening(cw4):
     with pytest.raises(CaseContinuityError) as refused:
         prepare(w, receiving_counselor_id=w.head.pk)
     assert refused.value.code == "case_continuity_no_independent_approver"
-    package = projections.transfer_context(actor=w.goa, case_id=w.case.pk, purpose="REOPEN")
+    package = projections.transfer_context(actor=w.office_head, case_id=w.case.pk, purpose="REOPEN")
     head_option = next(
         row for row in package["receiver_options"] if row["person"]["id"] == w.head.pk
     )
@@ -180,7 +188,7 @@ def test_another_independent_head_keeps_the_existing_matrix(cw4):
     UserDesignation.objects.create(
         user=second, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
-    item = submit(prepare(w, receiving_counselor_id=w.head.pk), w.goa)
+    item = submit(prepare(w, receiving_counselor_id=w.head.pk), w.office_head)
     with pytest.raises(CaseContinuityError):
         decide(item, w.head, "authorize")
     item = decide(item, second, "authorize")
@@ -224,12 +232,12 @@ def test_transfer_purpose_cannot_switch_during_edit(cw4):
     item = prepare(w)
     with pytest.raises(CaseContinuityError) as refused:
         transfers.prepare_transfer(
-            actor=w.goa,
+            actor=w.office_head,
             case_id=w.case.pk,
             transfer_id=item.pk,
             expected_version=item.version,
             values=reopening_values(w, purpose=None),
-            context=context(w.goa),
+            context=context(w.office_head),
         )
     assert refused.value.code == "case_continuity_purpose_changed"
     item.refresh_from_db()
@@ -323,7 +331,8 @@ def test_after_closure_action_keeps_its_owner_and_remains_manageable_after_reope
 
 def test_http_closed_lookup_preparation_and_explicit_receiver_acceptance(cw4):
     w = cw4
-    office, head, receiver = auth_client(w.goa), auth_client(w.head), auth_client(w.b)
+    assert auth_client(w.goa).get(ROOT + "/office-cases?status=CLOSED").status_code == 403
+    office, head, receiver = auth_client(w.office_head), auth_client(w.head), auth_client(w.b)
     lookup = office.get(ROOT + "/office-cases?status=CLOSED").json()
     assert lookup["items"][0]["status"] == "CLOSED"
     reply = write(office, "post", f"{ROOT}/cases/{w.case.pk}/transfers", reopening_values(w))
@@ -345,7 +354,9 @@ def test_two_reopening_receivers_cannot_both_take_a_closed_case(settings):
     w = closed_world(settings, "cw4-transfer-race")
     third = make_user("cw4-transfer-third@example.edu", "COUNSELOR")
     first = offered(w)
-    second = decide(submit(prepare(w, receiving_counselor_id=third.pk), w.goa), w.head, "authorize")
+    second = decide(
+        submit(prepare(w, receiving_counselor_id=third.pk), w.office_head), w.head, "authorize"
+    )
 
     def attempt(item, receiver):
         return lambda: transfers.decide_transfer(

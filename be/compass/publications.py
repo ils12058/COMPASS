@@ -11,6 +11,10 @@ class PublicationStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED", "Archived"
 
 
+PENDING_APPROVAL_STATUS = "PENDING_APPROVAL"
+ALL_PUBLICATION_STATUSES = (*PublicationStatus.values, PENDING_APPROVAL_STATUS)
+
+
 class PublicationAudience(models.TextChoices):
     PUBLIC = "PUBLIC", "Public"
     ALL_AUTHENTICATED = "ALL_AUTHENTICATED", "All authenticated"
@@ -30,4 +34,10 @@ def eligible_audiences_for(user) -> tuple[str, ...]:
     return tuple(value.value for value in audiences)
 
 
-__all__ = ["PublicationAudience", "PublicationStatus", "eligible_audiences_for"]
+__all__ = [
+    "ALL_PUBLICATION_STATUSES",
+    "PENDING_APPROVAL_STATUS",
+    "PublicationAudience",
+    "PublicationStatus",
+    "eligible_audiences_for",
+]

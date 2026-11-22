@@ -46,6 +46,7 @@ from compass.reports.xlsx import (
     render_student_profiling_xlsx,
     student_profiling_xlsx_filename,
 )
+from compass.student_support.models import SoloParentStatus
 from tests.test_student_profiling_pdf import (
     auth_client,
     make_head,
@@ -62,6 +63,7 @@ EXPECTED_SHEETS = [
     "Age",
     "Civil Status",
     "PWD Status",
+    "Solo Parent Status",
     "Religion",
     "Mother Life",
     "Father Life",
@@ -321,7 +323,7 @@ def test_workbook_is_valid_deterministic_visible_and_formula_free(monkeypatch):
     workbook = workbook_from_report(monkeypatch, report)
 
     assert workbook.sheetnames == EXPECTED_SHEETS
-    assert len(workbook.worksheets) == 14
+    assert len(workbook.worksheets) == 15
     assert getattr(workbook, "vba_archive", None) is None
     assert all(worksheet.sheet_state == "visible" for worksheet in workbook.worksheets)
     assert_no_formulas_or_hyperlinks(workbook)
@@ -745,6 +747,11 @@ def test_pdf_and_xlsx_present_identical_canonical_numbers_from_one_frozen_report
             program=program,
             sex=sex,
             civil_status_category=civil_status,
+            solo_parent_status=(
+                SoloParentStatus.YES
+                if civil_status == CivilStatusCategory.SOLO_PARENT
+                else SoloParentStatus.NO
+            ),
             date_of_birth=date(2007, 1, 1 + index),
             with_location=True,
         )

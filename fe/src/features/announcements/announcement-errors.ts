@@ -18,7 +18,12 @@ const issueCopy: Record<string, string> = {
   status_invalid: "Choose an Announcement status.",
   pin_invalid: "Choose whether to pin this Announcement.",
   announcement_archived: "You can't edit an archived Announcement.",
+  announcement_pending_approval: "This Announcement is waiting for supervising Counselor approval.",
   publication_requires_draft: "You can publish only a draft Announcement.",
+  submission_requires_draft: "You can submit only a draft Announcement for approval.",
+  return_requires_pending_approval: "Only an Announcement waiting for approval can be returned for changes.",
+  return_note_required: "Enter a note explaining the needed changes.",
+  return_note_too_long: "Keep the return note to 1,000 characters or fewer.",
   announcement_already_archived: "This Announcement is already archived.",
 };
 

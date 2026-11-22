@@ -16,8 +16,26 @@ from compass.organization.models import AcademicYear, Program
 class CivilStatusCategory(models.TextChoices):
     SINGLE = "SINGLE", "Single"
     MARRIED = "MARRIED", "Married"
-    SOLO_PARENT = "SOLO_PARENT", "Solo Parent"
+    WIDOWED = "WIDOWED", "Widowed"
+    SEPARATED = "SEPARATED", "Separated"
+    ANNULLED = "ANNULLED", "Annulled"
     OTHER = "OTHER", "Other"
+    # Legacy value kept so historical submitted rows remain valid; never offered or accepted for
+    # new input (ADR-121).
+    SOLO_PARENT = "SOLO_PARENT", "Solo Parent"
+
+
+ACTIVE_CIVIL_STATUS_CATEGORIES: tuple[CivilStatusCategory, ...] = (
+    CivilStatusCategory.SINGLE,
+    CivilStatusCategory.MARRIED,
+    CivilStatusCategory.WIDOWED,
+    CivilStatusCategory.SEPARATED,
+    CivilStatusCategory.ANNULLED,
+    CivilStatusCategory.OTHER,
+)
+ACTIVE_CIVIL_STATUS_CHOICES: tuple[tuple[str, str], ...] = tuple(
+    (choice.value, choice.label) for choice in ACTIVE_CIVIL_STATUS_CATEGORIES
+)
 
 
 class CurrentReligionCategory(models.TextChoices):

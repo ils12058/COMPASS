@@ -15,6 +15,7 @@ export const publicationAudienceOrder: PublicationAudience[] = Object.values(Ann
 
 export const publicationStatusLabels: Record<PublicationStatus, string> = {
   [AnnouncementStatusValue.DRAFT]: "Draft",
+  [AnnouncementStatusValue.PENDING_APPROVAL]: "Waiting for approval",
   [AnnouncementStatusValue.PUBLISHED]: "Published",
   [AnnouncementStatusValue.ARCHIVED]: "Archived",
 };

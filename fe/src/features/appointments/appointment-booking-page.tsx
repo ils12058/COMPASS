@@ -55,6 +55,8 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { AppointmentDateCalendar } from "./appointment-date-calendar";
 import { AppointmentAvailableTimes } from "./appointment-available-times";
 import { BookingCounselorChoice } from "./booking-counselor-choice";
+import { StudentCounselorRequestSection } from "./counselor-request-section";
+import { counselorRelationshipLabel } from "./counselor-request-presentation";
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -354,7 +356,6 @@ function BookingWorkspace() {
 
       <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.webp" : undefined} />
 
-
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with
           the booking action. */}
       <Panel as="div">
@@ -461,7 +462,13 @@ function BookingWorkspace() {
                 <Button className="mt-3" variant="secondary" onClick={() => void counselors.refetch()}>Retry</Button>
               </div>
             ) : counselorItems.length === 0 ? (
-              <p className="text-sm text-muted">No Counselors are available for this Service and delivery mode.</p>
+              <div>
+                <p className="text-sm leading-6 text-muted">
+                  None of your available counselors provide this Service. To book with a different
+                  counselor, ask the Head Guidance Counselor.
+                </p>
+                <StudentCounselorRequestSection mode="inline" />
+              </div>
             ) : (
               <BookingCounselorChoice items={counselorItems} value={counselorId} onChange={changeCounselor} disabled={submitting} />
             )}
@@ -489,7 +496,7 @@ function BookingWorkspace() {
             <PanelSection title="5. Review Appointment" titleId="booking-review-heading" data-guide-target="booking-review">
               <dl className="grid max-w-3xl gap-x-8 gap-y-4 sm:grid-cols-2">
                 <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
-                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned Counselor" : ""}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{counselorRelationshipLabel(selectedCounselor) ? ` · ${counselorRelationshipLabel(selectedCounselor)}` : ""}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_appointment_duration_minutes} minutes</dd></div>
@@ -535,6 +542,10 @@ function BookingWorkspace() {
           </>
         ) : null}
       </Panel>
+
+      <div className="mt-5">
+        <StudentCounselorRequestSection mode="banner" />
+      </div>
 
       <BookingCompletion booked={booked} onDone={finishBooking} />
     </section>

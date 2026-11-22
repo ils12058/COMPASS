@@ -14,7 +14,7 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.publications import PublicationAudience, PublicationStatus
+from compass.publications import PENDING_APPROVAL_STATUS, PublicationAudience, PublicationStatus
 
 from .models import ResourceCategory, ResourceKind
 from .services import (
@@ -24,6 +24,7 @@ from .services import (
     ResourceError,
     ResourceManagementOrdering,
     ResourceNotFound,
+    ResourceNotPermitted,
     ResourceOrdering,
     ResourcePublicationConsequenceReviewRequired,
     ResourceStorageError,
@@ -41,6 +42,8 @@ from .services import (
     list_visible_resources,
     publish_resource,
     remove_draft_resource_file,
+    return_resource_draft,
+    submit_resource_for_approval,
     update_resource,
 )
 from .validation import VALIDATION_OPENAPI
@@ -62,6 +65,7 @@ class ResourceAudienceValue(StrEnum):
 
 class ResourceStatusValue(StrEnum):
     DRAFT = PublicationStatus.DRAFT
+    PENDING_APPROVAL = PENDING_APPROVAL_STATUS
     PUBLISHED = PublicationStatus.PUBLISHED
     ARCHIVED = PublicationStatus.ARCHIVED
 
@@ -116,6 +120,11 @@ class ResourceManagementResponse(StrictSchema):
     created_by: PersonSummary
     updated_by: PersonSummary
     published_by: PersonSummary | None
+    prepared_by: PersonSummary | None = None
+    submitted_for_approval_at: datetime | None = None
+    returned_by: PersonSummary | None = None
+    returned_at: datetime | None = None
+    return_note: str = ""
     created_at: datetime
     updated_at: datetime
 
@@ -164,6 +173,10 @@ class ResourceUpdateRequest(StrictSchema):
     acknowledge_publication_consequences: bool = False
 
 
+class ResourceReturnRequest(StrictSchema):
+    note: str
+
+
 def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
@@ -177,6 +190,8 @@ def _require_manager(request) -> None:
 def _raise(exc: ResourceError) -> NoReturn:
     if isinstance(exc, ResourceNotFound):
         raise APIError(404, "resource_not_found", str(exc)) from exc
+    if isinstance(exc, ResourceNotPermitted):
+        raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, ResourcePublicationConsequenceReviewRequired):
         raise APIError(
             409,
@@ -230,6 +245,11 @@ def _managed(item) -> ResourceManagementResponse:
         created_by=_person(item.created_by),
         updated_by=_person(item.updated_by),
         published_by=_person(item.published_by) if item.published_by_id else None,
+        prepared_by=_person(item.prepared_by) if item.prepared_by_id else _person(item.created_by),
+        submitted_for_approval_at=item.submitted_for_approval_at,
+        returned_by=_person(item.returned_by) if item.returned_by_id else None,
+        returned_at=item.returned_at,
+        return_note=item.return_note or "",
         created_at=item.created_at,
         updated_at=item.updated_at,
     )
@@ -426,6 +446,49 @@ def resources_publish(request, resource_id: UUID):
         item = publish_resource(
             actor=request.auth_user,
             resource_id=resource_id,
+            context=_context(request),
+        )
+    except ResourceError as exc:
+        _raise(exc)
+    return _managed(item)
+
+
+@router.post(
+    "/management/{resource_id}/submit",
+    response=response_with_errors(ResourceManagementResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="resourcesSubmitForApproval",
+)
+def resources_submit_for_approval(request, resource_id: UUID):
+    _require_manager(request)
+    try:
+        item = submit_resource_for_approval(
+            actor=request.auth_user,
+            resource_id=resource_id,
+            context=_context(request),
+        )
+    except ResourceError as exc:
+        _raise(exc)
+    return _managed(item)
+
+
+@router.post(
+    "/management/{resource_id}/return",
+    response=response_with_errors(ResourceManagementResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="resourcesReturnDraft",
+)
+def resources_return_draft(
+    request,
+    resource_id: UUID,
+    payload: ResourceReturnRequest,
+):
+    _require_manager(request)
+    try:
+        item = return_resource_draft(
+            actor=request.auth_user,
+            resource_id=resource_id,
+            note=payload.note,
             context=_context(request),
         )
     except ResourceError as exc:

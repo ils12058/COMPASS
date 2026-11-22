@@ -52,8 +52,15 @@
     "guidance_followups/migrations/0003_case_transfers.py",
     "guidance_followups/migrations/0004_case_coverage.py",
     "guidance_followups/migrations/0005_case_closure.py",
+    "inventory/migrations/0002_civil_status_categories.py",
     "referrals/migrations/0003_referral_timing.py",
     "organization/migrations/0003_campus_is_retired_college_is_retired_and_more.py",
-    "referrals/migrations/0004_referralurgencychange.py"
+    "referrals/migrations/0004_referralurgencychange.py",
+    "announcements/migrations/0002_announcement_prepared_by_announcement_return_note_and_more.py",
+    "appointments/migrations/0003_counselor_booking_access.py",
+    "call_slips/migrations/0002_callslip_approval_status_callslip_approved_at_and_more.py",
+    "resources/migrations/0002_resource_prepared_by_resource_return_note_and_more.py",
+    "student_support/migrations/0002_solo_parent_status.py",
+    "student_support/migrations/0003_backfill_solo_parent_status.py"
   ]
 }

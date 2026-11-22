@@ -20,7 +20,25 @@ ISSUES: dict[str, tuple[str, str]] = {
     "status_invalid": ("status", "Choose an Announcement status."),
     "pin_invalid": ("is_pinned", "Choose whether to pin this Announcement."),
     "announcement_archived": ("", "You can't edit an archived Announcement."),
-    "publication_requires_draft": ("", "You can publish only a draft Announcement."),
+    "announcement_pending_approval": (
+        "",
+        "This Announcement is waiting for approval and cannot be edited until it is "
+        "reviewed or returned.",
+    ),
+    "publication_requires_draft": (
+        "",
+        "You can publish only a draft or waiting Announcement.",
+    ),
+    "submission_requires_draft": (
+        "",
+        "You can submit only a draft Announcement for approval.",
+    ),
+    "return_requires_pending_approval": (
+        "",
+        "Only an Announcement waiting for approval can be returned for changes.",
+    ),
+    "return_note_required": ("note", "Enter a note explaining the needed changes."),
+    "return_note_too_long": ("note", "Keep the return note to 1,000 characters or fewer."),
     "announcement_already_archived": ("", "This Announcement is already archived."),
 }
 

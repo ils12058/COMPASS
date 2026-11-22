@@ -485,8 +485,12 @@ def test_failed_object_cleanup_is_logged_without_changing_the_database_outcome(c
 
 @pytest.mark.django_db
 def test_resource_api_hides_storage_key_and_goa_can_publish_without_head_approval():
+    from compass.organization.models import StaffSupervision
+
     sync_policy()
     staff = make_user("resource-api-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    supervisor = make_user("resource-api-supervisor@example.edu", "COUNSELOR")
+    StaffSupervision.objects.create(staff=staff, supervisor=supervisor)
     student = make_user("resource-api-student@example.edu", "STUDENT")
     client = auth_client(staff)
 
@@ -509,11 +513,27 @@ def test_resource_api_hides_storage_key_and_goa_can_publish_without_head_approva
     resource_id = response.json()["id"]
     assert "storage_key" not in response.json()
 
-    published = client.post(
+    direct_publish = client.post(
         f"/api/v1/resources/management/{resource_id}/publish",
         **csrf(client),
     )
+    assert direct_publish.status_code == 403
+
+    submitted = client.post(
+        f"/api/v1/resources/management/{resource_id}/submit",
+        **csrf(client),
+    )
+    assert submitted.status_code == 200
+    assert submitted.json()["status"] == "PENDING_APPROVAL"
+
+    supervisor_client = auth_client(supervisor)
+    published = supervisor_client.post(
+        f"/api/v1/resources/management/{resource_id}/publish",
+        **csrf(supervisor_client),
+    )
     assert published.status_code == 200
+    assert published.json()["published_by"]["id"] == str(supervisor.pk)
+    assert published.json()["prepared_by"]["id"] == str(staff.pk)
 
     reader = auth_client(student).get(f"/api/v1/resources/{resource_id}")
     assert reader.status_code == 200

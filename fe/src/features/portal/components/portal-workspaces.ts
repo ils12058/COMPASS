@@ -279,7 +279,7 @@ const navigationOrder = {
   },
   "GOA": {
     daily: ["work", "appointments", "messages", "good-moral", "call-slips", "referrals"],
-    more: ["follow-ups", "operations", "reminders", "group-sessions", "counseling", "exit-interviews", "announcements", "resources", "organization", "academic-years", "institutional-forms"],
+    more: ["follow-ups", "operations", "reminders", "group-sessions", "exit-interviews", "announcements", "resources", "organization", "academic-years", "institutional-forms"],
   },
   "IT Admin": {
     daily: ["accounts", "platform/health", "organization"],

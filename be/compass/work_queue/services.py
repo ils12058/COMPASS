@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.call_slips.work import due_call_slips
+from compass.announcements.services import pending_announcement_approvals
+from compass.appointments.counselor_access_services import pending_counselor_booking_requests
+from compass.call_slips.work import due_call_slips, pending_call_slip_approvals
 from compass.counseling.case_coverage_work import pending_coverage_work
 from compass.counseling.case_reassignment_services import pending_reassignment_work
 from compass.counseling.case_transfer_work import pending_transfer_work
@@ -13,6 +15,7 @@ from compass.good_moral.work import issuance_requests, preparation_requests
 from compass.guidance_followups.integration import followup_is_time_sensitive, pending_followups
 from compass.guidance_messages.work import reply_needed_threads
 from compass.referrals.urgency import pending_urgent_referrals
+from compass.resources.services import pending_resource_approvals
 from compass.routine_interviews.work import pending_evaluations
 
 from .schemas import (
@@ -40,6 +43,19 @@ def _item(kind, record, *, waiting=None, due=None, conversation=None, priority=N
         conversation_kind=conversation,
         due_at=due,
         waiting_since=waiting,
+    )
+
+
+def _content_approval_item(kind, record):
+    return WorkItem(
+        id=f"{kind.value.lower().replace('_', '-')}:{record.pk}",
+        kind=kind,
+        priority=WorkPriority.ACTION_REQUIRED,
+        source_id=record.pk,
+        student=WorkStudent(id=record.prepared_by_id, display_name=record.title),
+        conversation_kind=None,
+        due_at=None,
+        waiting_since=record.submitted_for_approval_at or record.updated_at,
     )
 
 
@@ -97,6 +113,7 @@ def list_work(*, actor, page=1, page_size=20):
         *pending_transfer_work(actor=actor, limit=limit, now=now),
         *pending_reassignment_work(actor=actor, limit=limit, now=now),
         *pending_coverage_work(actor=actor, limit=limit, now=now),
+        *pending_counselor_booking_requests(actor=actor, limit=limit, now=now),
         *(_followup_item(row, now) for row in pending_followups(actor=actor, limit=limit)),
         *(
             _item(
@@ -120,8 +137,26 @@ def list_work(*, actor, page=1, page_size=20):
             for row in issuance_requests(actor=actor, limit=limit)
         ),
         *(
+            _item(
+                WorkKind.CALL_SLIP_APPROVAL,
+                row,
+                waiting=row.updated_at,
+                due=row.report_at,
+                priority=WorkPriority.ACTION_REQUIRED,
+            )
+            for row in pending_call_slip_approvals(actor=actor, limit=limit)
+        ),
+        *(
             _item(WorkKind.CALL_SLIP_DUE, row, due=row.report_at)
             for row in due_call_slips(actor=actor, now=now, limit=limit)
+        ),
+        *(
+            _content_approval_item(WorkKind.ANNOUNCEMENT_APPROVAL, row)
+            for row in pending_announcement_approvals(actor=actor, limit=limit)
+        ),
+        *(
+            _content_approval_item(WorkKind.RESOURCE_APPROVAL, row)
+            for row in pending_resource_approvals(actor=actor, limit=limit)
         ),
     ]
     items.sort(key=_rank)

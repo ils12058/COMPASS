@@ -40,7 +40,7 @@ def current_actor(actor, capability="view", *, now=None):
     )
     if (
         actor is None
-        or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
+        or actor.role.code != "COUNSELOR"
         or not actor.has_capability("counseling.continuity." + capability, at=now or timezone.now())
     ):
         fail("access_denied", "Case continuity is unavailable to this account.", 403)

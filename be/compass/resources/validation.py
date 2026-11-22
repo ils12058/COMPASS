@@ -74,7 +74,25 @@ ISSUES: dict[str, tuple[str, str]] = {
         "file",
         "You can remove a file only from a draft File Resource.",
     ),
-    "publication_requires_draft": ("", "You can publish only a draft Resource."),
+    "publication_requires_draft": (
+        "",
+        "You can publish only a draft or waiting Resource.",
+    ),
+    "resource_pending_approval": (
+        "",
+        "This Resource is waiting for approval and cannot be edited until it is "
+        "reviewed or returned.",
+    ),
+    "submission_requires_draft": (
+        "",
+        "You can submit only a draft Resource for approval.",
+    ),
+    "return_requires_pending_approval": (
+        "",
+        "Only a Resource waiting for approval can be returned for changes.",
+    ),
+    "return_note_required": ("note", "Enter a note explaining the needed changes."),
+    "return_note_too_long": ("note", "Keep the return note to 1,000 characters or fewer."),
     "resource_already_archived": ("", "This Resource is already archived."),
     "download_file_missing": ("file", "This Resource has no attached file."),
     "ordering_invalid": ("ordering", "Choose a Resource order."),

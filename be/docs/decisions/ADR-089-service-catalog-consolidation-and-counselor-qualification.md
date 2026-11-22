@@ -9,6 +9,12 @@ Accepted. Refines the Service Catalog, scheduling, and provider parts of
 [ADR-060](ADR-060-canonical-counseling-service-bootstrap.md). The rest of those decisions stands,
 as do ADR-087 (Routine ↔ Encounter linking) and ADR-088 (optional Inventory provenance).
 
+Partially superseded for new Student bookings by
+[ADR-120](ADR-120-student-booking-college-counselor-and-head-approval.md): Student booking
+discovery and booking enforcement now restrict choices to permitted Counselors (College default or
+Head fallback, active Counseling Case primary/coverage Counselor, or Head-approved Counselor)
+intersected with Service qualification.
+
 ## Context
 
 The Service Catalog's configuration had drifted from what COMPASS enforces:

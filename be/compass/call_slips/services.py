@@ -14,9 +14,13 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.audit.actions import (
+    CALL_SLIP_APPROVED,
     CALL_SLIP_CREATED,
     CALL_SLIP_INTERVIEW_ENDED,
+    CALL_SLIP_RESUBMITTED,
+    CALL_SLIP_RETURNED,
     CALL_SLIP_VOIDED,
+    CALL_SLIP_WITHDRAWN,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -60,6 +64,7 @@ from compass.student_academics.reads import student_is_placed_in_colleges
 
 from .models import (
     CallSlip,
+    CallSlipApprovalStatus,
     CallSlipDestinationType,
     CallSlipIssuanceMode,
     CallSlipLifecycleState,
@@ -263,11 +268,31 @@ def _scope_queryset(queryset, actor: User):
     college_ids = _scope_college_ids(actor)
     if college_ids is None:
         return queryset
+    pending_supervision_q = Q(
+        voided_at__isnull=True,
+        approval_status__in=(
+            CallSlipApprovalStatus.PENDING_APPROVAL,
+            CallSlipApprovalStatus.RETURNED,
+        ),
+    ) & (
+        Q(recorded_by_id=actor.pk)
+        | Q(
+            recorded_by_id__in=StaffSupervision.objects.filter(
+                supervisor_id=actor.pk,
+                supervisor__is_active=True,
+                supervisor__role__code="COUNSELOR",
+            ).values("staff_id")
+        )
+    )
     if not college_ids:
-        return queryset.none()
+        return queryset.filter(pending_supervision_q | Q(approved_by_id=actor.pk))
     return queryset.filter(
-        existing_college_q("student__student_academic_profile__current_college__"),
-        student__student_academic_profile__current_college_id__in=college_ids,
+        (
+            existing_college_q("student__student_academic_profile__current_college__")
+            & Q(student__student_academic_profile__current_college_id__in=college_ids)
+        )
+        | pending_supervision_q
+        | Q(approved_by_id=actor.pk)
     )
 
 
@@ -277,6 +302,10 @@ def _queryset():
         "student__role",
         "issued_by",
         "issued_by__role",
+        "approved_by",
+        "approved_by__role",
+        "returned_by",
+        "returned_by__role",
         "form_revision",
         "form_revision__family",
         "recorded_by",
@@ -373,17 +402,41 @@ def _apply_date_filters(queryset, *, from_date: date | None, to_date: date | Non
     return queryset
 
 
+def _issued_q() -> Q:
+    return Q(approval_status__isnull=True) | Q(approval_status=CallSlipApprovalStatus.ISSUED)
+
+
 def _apply_state_filter(queryset, state: str | CallSlipLifecycleState | None):
     if state is None:
         return queryset
     normalized = state.value if isinstance(state, CallSlipLifecycleState) else str(state)
+    if normalized == CallSlipLifecycleState.PENDING_APPROVAL:
+        return queryset.filter(
+            voided_at__isnull=True,
+            approval_status=CallSlipApprovalStatus.PENDING_APPROVAL,
+        )
+    if normalized == CallSlipLifecycleState.RETURNED:
+        return queryset.filter(
+            voided_at__isnull=True,
+            approval_status=CallSlipApprovalStatus.RETURNED,
+        )
     if normalized == CallSlipLifecycleState.ACTIVE:
-        return queryset.filter(voided_at__isnull=True, interview_ended_at__isnull=True)
+        return queryset.filter(
+            _issued_q(),
+            voided_at__isnull=True,
+            interview_ended_at__isnull=True,
+        )
     if normalized == CallSlipLifecycleState.COMPLETED:
-        return queryset.filter(voided_at__isnull=True, interview_ended_at__isnull=False)
+        return queryset.filter(
+            _issued_q(),
+            voided_at__isnull=True,
+            interview_ended_at__isnull=False,
+        )
     if normalized == CallSlipLifecycleState.VOIDED:
         return queryset.filter(voided_at__isnull=False)
-    raise InvalidCallSlipInput("state must be ACTIVE, COMPLETED, or VOIDED.")
+    raise InvalidCallSlipInput(
+        "state must be PENDING_APPROVAL, RETURNED, ACTIVE, COMPLETED, or VOIDED."
+    )
 
 
 def _page(
@@ -573,6 +626,7 @@ def _create_new_call_slip_locked(
         )
 
     revision = _active_call_slip_revision()
+    requires_approval = actor.role.code == "GUIDANCE_OFFICE_ASSISTANT"
     try:
         with transaction.atomic():
             item = CallSlip.objects.create(
@@ -590,6 +644,9 @@ def _create_new_call_slip_locked(
                 issued_by_name_snapshot=issuer.get_full_name(),
                 form_revision=revision,
                 recorded_by=actor,
+                approval_status=(
+                    CallSlipApprovalStatus.PENDING_APPROVAL if requires_approval else None
+                ),
                 creation_key_digest=prepared.digest,
                 creation_request_fingerprint=prepared.fingerprint,
             )
@@ -615,7 +672,16 @@ def _create_new_call_slip_locked(
         target_id=item.pk,
         metadata=_safe_audit_metadata(item_for_audit),
     )
-    if notify_student:
+    if requires_approval:
+        create_notification_for_event(
+            recipient=issuer,
+            event=NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+            source_type=f"call_slip_approval:{item.updated_at.isoformat()}",
+            source_id=item.pk,
+            target_type="CALL_SLIP",
+            target_id=item.pk,
+        )
+    elif notify_student:
         create_notification_for_event(
             recipient=student,
             event=NotificationEvent.CALL_SLIP_ISSUED,
@@ -922,7 +988,22 @@ def list_call_slips(
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
     if issued_by_id is not None:
-        qs = qs.filter(issued_by_id=issued_by_id)
+        waiting_q = Q(
+            voided_at__isnull=True,
+            approval_status__in=(
+                CallSlipApprovalStatus.PENDING_APPROVAL,
+                CallSlipApprovalStatus.RETURNED,
+            ),
+        )
+        supervised_staff_ids = StaffSupervision.objects.filter(
+            supervisor_id=issued_by_id,
+            supervisor__is_active=True,
+            supervisor__role__code="COUNSELOR",
+        ).values("staff_id")
+        qs = qs.filter(
+            (~waiting_q & Q(issued_by_id=issued_by_id))
+            | (waiting_q & Q(recorded_by_id__in=supervised_staff_ids))
+        )
     if destination_type is not None:
         qs = qs.filter(destination_type=_normalize_destination_type(destination_type))
     if referral_id is not None:
@@ -943,12 +1024,20 @@ def list_call_slips(
                 | Q(referral__reference_code__icontains=term)
             )
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
-    return _page(
+    page_result = _page(
         qs,
         page=page,
         page_size=page_size,
         ordering=resolved,
         form_revisions=revisions,
+    )
+    return CallSlipPage(
+        items=tuple(_reconcile_waiting_supervisor(item) for item in page_result.items),
+        page=page_result.page,
+        page_size=page_result.page_size,
+        has_next=page_result.has_next,
+        form_revisions=page_result.form_revisions,
+        ordering=page_result.ordering,
     )
 
 
@@ -962,7 +1051,15 @@ def list_my_call_slips(
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> CallSlipPage:
     _validate_student_actor(actor)
-    qs = _queryset().filter(student_id=actor.pk)
+    if state is not None:
+        normalized = state.value if isinstance(state, CallSlipLifecycleState) else str(state)
+        if normalized not in {
+            CallSlipLifecycleState.ACTIVE,
+            CallSlipLifecycleState.COMPLETED,
+            CallSlipLifecycleState.VOIDED,
+        }:
+            raise InvalidCallSlipInput("state must be ACTIVE, COMPLETED, or VOIDED.")
+    qs = _queryset().filter(_issued_q(), student_id=actor.pk)
     qs = _apply_state_filter(qs, state)
     qs = _apply_date_filters(qs, from_date=from_date, to_date=to_date)
     # A Student's own list keeps the population default and offers no other order.
@@ -974,17 +1071,49 @@ def list_my_call_slips(
     )
 
 
+def current_approver_for_call_slip(item: CallSlip) -> User:
+    if (
+        item.voided_at is None
+        and item.approval_status
+        in {
+            CallSlipApprovalStatus.PENDING_APPROVAL,
+            CallSlipApprovalStatus.RETURNED,
+        }
+        and item.recorded_by_id is not None
+    ):
+        supervision = (
+            StaffSupervision.objects.select_related("supervisor", "supervisor__role")
+            .filter(
+                staff_id=item.recorded_by_id,
+                supervisor__is_active=True,
+                supervisor__role__code="COUNSELOR",
+            )
+            .first()
+        )
+        if supervision is not None:
+            return supervision.supervisor
+    return item.issued_by
+
+
+def _reconcile_waiting_supervisor(item: CallSlip) -> CallSlip:
+    approver = current_approver_for_call_slip(item)
+    if approver.pk != item.issued_by_id:
+        item.issued_by = approver
+        item.issued_by_name_snapshot = approver.get_full_name()
+    return item
+
+
 def get_call_slip(*, actor: User, call_slip_id: UUID) -> CallSlip:
     _validate_operational_actor(actor)
     item = _scope_queryset(_queryset(), actor).filter(pk=call_slip_id).first()
     if item is None:
         raise CallSlipNotFound("The requested Call Slip was not found.")
-    return item
+    return _reconcile_waiting_supervisor(item)
 
 
 def get_my_call_slip(*, actor: User, call_slip_id: UUID) -> CallSlip:
     _validate_student_actor(actor)
-    item = _queryset().filter(pk=call_slip_id, student_id=actor.pk).first()
+    item = _queryset().filter(_issued_q(), pk=call_slip_id, student_id=actor.pk).first()
     if item is None:
         raise CallSlipNotFound("The requested Call Slip was not found.")
     return item
@@ -995,6 +1124,11 @@ def build_call_slip_render_context(
     *,
     access_mode: str,
 ) -> dict[str, object]:
+    if not item.is_issued:
+        raise CallSlipDocumentUnavailable(
+            "This Call Slip cannot be printed until the supervising Counselor approves "
+            "and issues it."
+        )
     if item.form_revision.family.key != "call_slip" or not is_supported_form_revision(
         item.form_revision
     ):
@@ -1084,6 +1218,10 @@ def record_interview_ended(
             raise CallSlipNotFound("The requested Call Slip was not found.")
         if item.voided_at is not None:
             raise CallSlipVoidConflict("A voided Call Slip cannot record interview completion.")
+        if not item.is_issued:
+            raise CallSlipInterviewEndConflict(
+                "A Call Slip waiting for approval cannot record interview completion."
+            )
         if item.interview_ended_at is not None:
             if item.interview_ended_at == normalized:
                 return _queryset().get(pk=item.pk)
@@ -1128,6 +1266,10 @@ def void_call_slip(
             raise CallSlipNotFound("The requested Call Slip was not found.")
         if item.voided_at is not None:
             return _queryset().get(pk=item.pk)
+        if not item.is_issued:
+            raise CallSlipVoidConflict(
+                "A Call Slip that has not been issued cannot be voided. Withdraw it instead."
+            )
         if item.interview_ended_at is not None:
             raise CallSlipVoidConflict("A completed Call Slip is historical and cannot be voided.")
 
@@ -1156,3 +1298,379 @@ def void_call_slip(
                 target_id=item.pk,
             )
         return _queryset().get(pk=item.pk)
+
+
+def _require_current_supervising_counselor_locked(*, actor: User, item: CallSlip) -> User:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or not actor.has_capability("call_slips.manage")
+    ):
+        raise CallSlipNotPermitted("Only the supervising Counselor can review this Call Slip.")
+    locked_actor = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=actor.pk, is_active=True, role__code="COUNSELOR")
+        .first()
+    )
+    if locked_actor is None or not locked_actor.has_capability("call_slips.manage"):
+        raise CallSlipNotPermitted("Only the supervising Counselor can review this Call Slip.")
+    if item.recorded_by_id is None:
+        raise CallSlipNotPermitted(
+            "This Call Slip was not prepared by a Guidance Office Assistant."
+        )
+    supervision = (
+        StaffSupervision.objects.select_for_update()
+        .filter(staff_id=item.recorded_by_id, supervisor_id=locked_actor.pk)
+        .first()
+    )
+    if supervision is None:
+        raise CallSlipNotPermitted(
+            "Only the Guidance Office Assistant's current supervising Counselor can decide "
+            "this Call Slip."
+        )
+    return locked_actor
+
+
+def approve_call_slip(
+    *,
+    actor: User,
+    call_slip_id: UUID,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> CallSlip:
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidCallSlipInput("The approval time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
+        if item is None:
+            raise CallSlipNotFound("The requested Call Slip was not found.")
+        locked_actor = _require_current_supervising_counselor_locked(actor=actor, item=item)
+        if item.voided_at is not None:
+            raise CallSlipVoidConflict("A voided or withdrawn Call Slip cannot be approved.")
+        if item.is_issued:
+            if item.approved_by_id == locked_actor.pk:
+                return _queryset().get(pk=item.pk)
+            raise CallSlipCreationConflict("This Call Slip has already been issued.")
+        if item.approval_status != CallSlipApprovalStatus.PENDING_APPROVAL:
+            raise CallSlipCreationConflict(
+                "Only a Call Slip waiting for approval can be approved and issued."
+            )
+
+        item.approval_status = CallSlipApprovalStatus.ISSUED
+        item.issued_by = locked_actor
+        item.issued_by_name_snapshot = locked_actor.get_full_name()
+        item.approved_by = locked_actor
+        item.approved_at = current
+        item.return_note = None
+        item.save(
+            update_fields=[
+                "approval_status",
+                "issued_by",
+                "issued_by_name_snapshot",
+                "approved_by",
+                "approved_at",
+                "return_note",
+                "updated_at",
+            ]
+        )
+        item_for_audit = _queryset().get(pk=item.pk)
+        record_event(
+            context=context,
+            action=CALL_SLIP_APPROVED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="callslips.callslip",
+            target_id=item.pk,
+            metadata=_safe_audit_metadata(item_for_audit),
+        )
+        if item_for_audit.issuance_mode == CallSlipIssuanceMode.LIVE:
+            create_notification_for_event(
+                recipient=item_for_audit.student,
+                event=NotificationEvent.CALL_SLIP_ISSUED,
+                source_type="call_slip",
+                source_id=item.pk,
+                target_type="CALL_SLIP",
+                target_id=item.pk,
+            )
+        return item_for_audit
+
+
+def return_call_slip(
+    *,
+    actor: User,
+    call_slip_id: UUID,
+    note: str,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> CallSlip:
+    cleaned_note = _clean_required(note, "note", MAX_VOID_REASON_LENGTH)
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidCallSlipInput("The return time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
+        if item is None:
+            raise CallSlipNotFound("The requested Call Slip was not found.")
+        locked_actor = _require_current_supervising_counselor_locked(actor=actor, item=item)
+        if item.voided_at is not None:
+            raise CallSlipVoidConflict("A voided or withdrawn Call Slip cannot be returned.")
+        if item.approval_status != CallSlipApprovalStatus.PENDING_APPROVAL:
+            raise CallSlipCreationConflict(
+                "Only a Call Slip waiting for approval can be returned for changes."
+            )
+
+        item.approval_status = CallSlipApprovalStatus.RETURNED
+        item.issued_by = locked_actor
+        item.issued_by_name_snapshot = locked_actor.get_full_name()
+        item.returned_by = locked_actor
+        item.returned_at = current
+        item.return_note = cleaned_note
+        item.save(
+            update_fields=[
+                "approval_status",
+                "issued_by",
+                "issued_by_name_snapshot",
+                "returned_by",
+                "returned_at",
+                "return_note",
+                "updated_at",
+            ]
+        )
+        item_for_audit = _queryset().get(pk=item.pk)
+        record_event(
+            context=context,
+            action=CALL_SLIP_RETURNED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="callslips.callslip",
+            target_id=item.pk,
+            metadata=_safe_audit_metadata(item_for_audit),
+        )
+        if item_for_audit.recorded_by is not None and item_for_audit.recorded_by.is_active:
+            create_notification_for_event(
+                recipient=item_for_audit.recorded_by,
+                event=NotificationEvent.CALL_SLIP_RETURNED,
+                source_type=f"call_slip_returned:{current.isoformat()}",
+                source_id=item.pk,
+                target_type="CALL_SLIP",
+                target_id=item.pk,
+            )
+        return item_for_audit
+
+
+def resubmit_call_slip(
+    *,
+    actor: User,
+    call_slip_id: UUID,
+    course_year: str | None = None,
+    destination_type: str | CallSlipDestinationType | None = None,
+    other_destination: str | None = None,
+    report_at: datetime | None = None,
+    notify_student: bool | None = None,
+    context: AuditContext,
+    now: datetime | None = None,
+) -> CallSlip:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "GUIDANCE_OFFICE_ASSISTANT"
+        or not actor.has_capability("call_slips.manage")
+    ):
+        raise CallSlipNotPermitted(
+            "Only the Guidance Office Assistant who prepared this Call Slip can resubmit it."
+        )
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidCallSlipInput("The resubmission time must be timezone-aware.")
+
+    with transaction.atomic():
+        locked_actor = _lock_creation_actor(actor)
+        item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
+        if item is None:
+            raise CallSlipNotFound("The requested Call Slip was not found.")
+        if item.recorded_by_id != locked_actor.pk:
+            if not _student_in_scope(locked_actor, item.student_id):
+                raise CallSlipNotFound("The requested Call Slip was not found.")
+            raise CallSlipNotPermitted(
+                "Only the Guidance Office Assistant who prepared this Call Slip can edit "
+                "and resubmit it."
+            )
+        if item.voided_at is not None or item.approval_status not in {
+            CallSlipApprovalStatus.PENDING_APPROVAL,
+            CallSlipApprovalStatus.RETURNED,
+        }:
+            raise CallSlipCreationConflict(
+                "Only a waiting or returned Call Slip can be edited and resubmitted."
+            )
+        issuer = _resolve_issuer_locked(locked_actor)
+
+        course_snapshot = _clean_required(
+            course_year if course_year is not None else item.course_year_snapshot,
+            "course_year",
+            MAX_COURSE_YEAR_LENGTH,
+        )
+        eff_destination = (
+            destination_type if destination_type is not None else item.destination_type
+        )
+        eff_other = (
+            other_destination
+            if other_destination is not None
+            else (
+                ""
+                if eff_destination == CallSlipDestinationType.GUIDANCE_OFFICE
+                else item.other_destination
+            )
+        )
+        normalized_destination, cleaned_other = _normalize_destination(
+            eff_destination,
+            eff_other,
+        )
+        normalized_report_at = (
+            _normalize_report_at(report_at) if report_at is not None else item.report_at
+        )
+        eff_issuance_mode = (
+            (CallSlipIssuanceMode.LIVE if notify_student else CallSlipIssuanceMode.HISTORICAL)
+            if notify_student is not None
+            else item.issuance_mode
+        )
+
+        item.course_year_snapshot = course_snapshot
+        item.destination_type = normalized_destination
+        item.other_destination = cleaned_other
+        item.report_at = normalized_report_at
+        item.issuance_mode = eff_issuance_mode
+        item.issued_by = issuer
+        item.issued_by_name_snapshot = issuer.get_full_name()
+        item.approval_status = CallSlipApprovalStatus.PENDING_APPROVAL
+        item.return_note = None
+        item.save(
+            update_fields=[
+                "course_year_snapshot",
+                "destination_type",
+                "other_destination",
+                "report_at",
+                "issuance_mode",
+                "issued_by",
+                "issued_by_name_snapshot",
+                "approval_status",
+                "return_note",
+                "updated_at",
+            ]
+        )
+        item_for_audit = _queryset().get(pk=item.pk)
+        record_event(
+            context=context,
+            action=CALL_SLIP_RESUBMITTED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="callslips.callslip",
+            target_id=item.pk,
+            metadata=_safe_audit_metadata(item_for_audit),
+        )
+        create_notification_for_event(
+            recipient=issuer,
+            event=NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+            source_type=f"call_slip_approval:{item.updated_at.isoformat()}",
+            source_id=item.pk,
+            target_type="CALL_SLIP",
+            target_id=item.pk,
+        )
+        return item_for_audit
+
+
+def withdraw_call_slip(
+    *,
+    actor: User,
+    call_slip_id: UUID,
+    reason: str = "",
+    context: AuditContext,
+    now: datetime | None = None,
+) -> CallSlip:
+    if (
+        not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "GUIDANCE_OFFICE_ASSISTANT"
+        or not actor.has_capability("call_slips.manage")
+    ):
+        raise CallSlipNotPermitted(
+            "Only the Guidance Office Assistant who prepared this Call Slip can withdraw it."
+        )
+    cleaned_reason = (
+        _clean_optional(reason, "reason", MAX_VOID_REASON_LENGTH) or "Withdrawn before issuance."
+    )
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidCallSlipInput("The withdrawal time must be timezone-aware.")
+
+    with transaction.atomic():
+        item = CallSlip.objects.select_for_update().filter(pk=call_slip_id).first()
+        if item is None:
+            raise CallSlipNotFound("The requested Call Slip was not found.")
+        if item.recorded_by_id != actor.pk:
+            if not _student_in_scope(actor, item.student_id):
+                raise CallSlipNotFound("The requested Call Slip was not found.")
+            raise CallSlipNotPermitted(
+                "Only the Guidance Office Assistant who prepared this Call Slip can withdraw it."
+            )
+        if item.voided_at is not None:
+            return _queryset().get(pk=item.pk)
+        if item.approval_status not in {
+            CallSlipApprovalStatus.PENDING_APPROVAL,
+            CallSlipApprovalStatus.RETURNED,
+        }:
+            raise CallSlipVoidConflict("An issued Call Slip cannot be withdrawn. Void it instead.")
+
+        item.approval_status = CallSlipApprovalStatus.WITHDRAWN
+        item.voided_at = current
+        item.voided_by = actor
+        item.void_reason = cleaned_reason
+        item.save(
+            update_fields=[
+                "approval_status",
+                "voided_at",
+                "voided_by",
+                "void_reason",
+                "updated_at",
+            ]
+        )
+        record_event(
+            context=context,
+            action=CALL_SLIP_WITHDRAWN,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="callslips.callslip",
+            target_id=item.pk,
+            metadata={
+                "call_slip_id": str(item.pk),
+                "transition": "PENDING_APPROVAL -> VOIDED",
+            },
+        )
+        return _queryset().get(pk=item.pk)
+
+
+def reassign_waiting_call_slips_for_staff(*, staff: User, supervisor: User) -> None:
+    waiting = list(
+        CallSlip.objects.select_for_update().filter(
+            recorded_by_id=staff.pk,
+            voided_at__isnull=True,
+            approval_status__in=(
+                CallSlipApprovalStatus.PENDING_APPROVAL,
+                CallSlipApprovalStatus.RETURNED,
+            ),
+        )
+    )
+    for item in waiting:
+        if item.issued_by_id != supervisor.pk:
+            item.issued_by = supervisor
+            item.issued_by_name_snapshot = supervisor.get_full_name()
+            item.save(update_fields=["issued_by", "issued_by_name_snapshot", "updated_at"])
+        if item.approval_status == CallSlipApprovalStatus.PENDING_APPROVAL:
+            create_notification_for_event(
+                recipient=supervisor,
+                event=NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+                source_type=f"call_slip_approval:{item.updated_at.isoformat()}",
+                source_id=item.pk,
+                target_type="CALL_SLIP",
+                target_id=item.pk,
+            )

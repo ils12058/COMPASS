@@ -293,3 +293,11 @@ class AppointmentReminderBatch(models.Model):
                 fields=("actor", "request_key"), name="appt_rem_batch_replay_unique"
             ),
         ]
+
+
+from .counselor_access_models import (  # noqa: E402, F401
+    MAX_DECISION_NOTE_LENGTH,
+    CounselorBookingRequest,
+    CounselorBookingRequestState,
+    StudentCounselorApproval,
+)

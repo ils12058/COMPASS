@@ -105,11 +105,33 @@ def test_release_graph_is_refused_for_routine_deployment_even_with_a_digest_pin(
         guard.validate_operations([(migration, False)])
 
 
-@pytest.mark.parametrize("relative", ADDITIVE_FILES, ids=lambda name: Path(name).stem)
+ROUTINE_ADDITIVE_FILES = [
+    relative
+    for relative in ADDITIVE_FILES
+    if f"{Path(relative).parent.parent.name}/{Path(relative).stem}" not in guard.REVIEWED_MIGRATIONS
+]
+REVIEWED_ADDITIVE_FILES = [
+    relative
+    for relative in ADDITIVE_FILES
+    if f"{Path(relative).parent.parent.name}/{Path(relative).stem}" in guard.REVIEWED_MIGRATIONS
+]
+
+
+@pytest.mark.parametrize("relative", ROUTINE_ADDITIVE_FILES, ids=lambda name: Path(name).stem)
 def test_registered_additive_migrations_pass_routine_deployment_without_a_review_pin(relative):
     _path, migration = load_migration(relative)
     assert f"{migration.app_label}/{migration.name}" not in guard.REVIEWED_MIGRATIONS
     guard.validate_operations([(migration, False)])
+
+
+@pytest.mark.parametrize("relative", REVIEWED_ADDITIVE_FILES, ids=lambda name: Path(name).stem)
+def test_reviewed_additive_migrations_require_their_exact_source_digest_pin(relative, monkeypatch):
+    _path, migration = load_migration(relative)
+    key = f"{migration.app_label}/{migration.name}"
+    guard.validate_operations([(migration, False)])
+    monkeypatch.delitem(guard.REVIEWED_MIGRATIONS, key)
+    with pytest.raises(guard.Refused, match="coordinated procedure"):
+        guard.validate_operations([(migration, False)])
 
 
 def test_future_reviewed_migration_source_digest_must_match(monkeypatch):

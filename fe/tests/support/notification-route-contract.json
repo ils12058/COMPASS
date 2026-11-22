@@ -20,6 +20,26 @@
     "route": null
   },
   {
+    "target_type": "APPOINTMENT_BOOKING",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/appointments/book"
+  },
+  {
+    "target_type": "APPOINTMENT_BOOKING",
+    "target_id": null,
+    "route": "/portal/appointments/book"
+  },
+  {
+    "target_type": "COUNSELOR_BOOKING_REQUEST",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/appointments/counselor-requests/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "COUNSELOR_BOOKING_REQUEST",
+    "target_id": null,
+    "route": null
+  },
+  {
     "target_type": "CALL_SLIP",
     "target_id": "12345678-1234-4234-8234-123456789abc",
     "route": "/portal/call-slips/12345678-1234-4234-8234-123456789abc"

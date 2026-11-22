@@ -32,6 +32,8 @@ class NotificationTargetType(StrEnum):
     COUNSELING_CASE = "COUNSELING_CASE"
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
+    APPOINTMENT_BOOKING = "APPOINTMENT_BOOKING"
+    COUNSELOR_BOOKING_REQUEST = "COUNSELOR_BOOKING_REQUEST"
     CALL_SLIP = "CALL_SLIP"
     STUDENT_SESSION_SUMMARY = "STUDENT_SESSION_SUMMARY"
     E_COUNSELING = "E_COUNSELING"
@@ -44,6 +46,8 @@ class NotificationTargetType(StrEnum):
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
     FACULTY_REFERRAL = "FACULTY_REFERRAL"
     REFERRAL = "REFERRAL"
+    ANNOUNCEMENT = "ANNOUNCEMENT"
+    RESOURCE = "RESOURCE"
 
 
 class NotificationEvent(StrEnum):
@@ -59,7 +63,13 @@ class NotificationEvent(StrEnum):
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
     FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
     FOLLOWUP_DUE_CHANGED = "guidance_followup.due_changed"
+    CALL_SLIP_APPROVAL_REQUESTED = "call_slip.approval_requested"
+    CALL_SLIP_RETURNED = "call_slip.returned"
     CALL_SLIP_ISSUED = "call_slip.issued"
+    ANNOUNCEMENT_APPROVAL_REQUESTED = "announcement.approval_requested"
+    ANNOUNCEMENT_RETURNED = "announcement.returned"
+    RESOURCE_APPROVAL_REQUESTED = "resource.approval_requested"
+    RESOURCE_RETURNED = "resource.returned"
     APPOINTMENT_SCHEDULED = "appointment.scheduled"
     APPOINTMENT_CANCELLED = "appointment.cancelled"
     APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
@@ -67,6 +77,8 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_REMINDER_24H = "appointment.reminder_24h"
     APPOINTMENT_REMINDER_3H = "appointment.reminder_3h"
     APPOINTMENT_REMINDER_MANUAL = "appointment.reminder_manual"
+    COUNSELOR_BOOKING_REQUEST_SUBMITTED = "appointment.counselor_request.submitted"
+    COUNSELOR_BOOKING_REQUEST_DECIDED = "appointment.counselor_request.decided"
     GROUP_SESSION_REGISTERED = "group_session.registered"
     GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
     GROUP_SESSION_CANCELLED = "group_session.cancelled"
@@ -121,6 +133,28 @@ _EVENT_CATALOG = {
         message="An urgent referral needs attention",
         email_subject="An urgent referral needs attention",
         email_template="referral_urgent",
+    ),
+    # ADR-120: strictly content-free. Never includes student name, counselor name, or reason.
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED: NotificationEventDefinition(
+        event=NotificationEvent.COUNSELOR_BOOKING_REQUEST_SUBMITTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Different counselor requested",
+        message="A student asked for a different counselor. Sign in to review the request.",
+        email_subject="A student asked for a different counselor",
+        email_template="counselor_booking_request_submitted",
+    ),
+    NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED: NotificationEventDefinition(
+        event=NotificationEvent.COUNSELOR_BOOKING_REQUEST_DECIDED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Counselor request updated",
+        message=(
+            "The Head Guidance Counselor updated your counselor request. "
+            "Sign in to check your available counselors."
+        ),
+        email_subject="COMPASS Counselor request update",
+        email_template="counselor_booking_request_decided",
     ),
     # NS-1 D4: content-free. No case, purpose, Counselor note or time appears in the notice.
     NotificationEvent.SESSION_PROPOSAL_RECEIVED: NotificationEventDefinition(
@@ -222,6 +256,24 @@ _EVENT_CATALOG = {
             NotificationEvent.FOLLOWUP_DUE_CHANGED,
         )
     },
+    NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.CALL_SLIP_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Call Slip waiting for approval",
+        message="A Call Slip is waiting for your approval.",
+        email_subject="A Call Slip is waiting for your approval",
+        email_template="call_slip_approval_requested",
+    ),
+    NotificationEvent.CALL_SLIP_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.CALL_SLIP_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Call Slip returned",
+        message="Your supervising Counselor returned a Call Slip for changes.",
+        email_subject="",
+        email_template="",
+    ),
     NotificationEvent.CALL_SLIP_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_ISSUED,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
@@ -230,6 +282,42 @@ _EVENT_CATALOG = {
         message="You have a new Call Slip. Open COMPASS to review it.",
         email_subject="New COMPASS Call Slip",
         email_template="call_slip_issued",
+    ),
+    NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.ANNOUNCEMENT_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Announcement waiting for approval",
+        message="An Announcement draft is waiting for your approval to publish.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.ANNOUNCEMENT_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.ANNOUNCEMENT_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Announcement returned",
+        message="Your supervising Counselor returned an Announcement draft for changes.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.RESOURCE_APPROVAL_REQUESTED: NotificationEventDefinition(
+        event=NotificationEvent.RESOURCE_APPROVAL_REQUESTED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Resource waiting for approval",
+        message="A Resource draft is waiting for your approval to publish.",
+        email_subject="",
+        email_template="",
+    ),
+    NotificationEvent.RESOURCE_RETURNED: NotificationEventDefinition(
+        event=NotificationEvent.RESOURCE_RETURNED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_IN_APP_ONLY,
+        title="Resource returned",
+        message="Your supervising Counselor returned a Resource draft for changes.",
+        email_subject="",
+        email_template="",
     ),
     NotificationEvent.APPOINTMENT_SCHEDULED: NotificationEventDefinition(
         event=NotificationEvent.APPOINTMENT_SCHEDULED,

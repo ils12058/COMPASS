@@ -74,7 +74,7 @@ for (const [name,user,path] of [
   ['head', profiles.Head, '/portal/academic-years'],
   ['alumni', profiles.Alumni, '/portal/appointments/my'],
   ['it-admin', profiles['IT Admin'], '/portal/availability/office'],
-  ['goa', profiles.GOA, '/portal/counseling/coverage'],
+  ['goa', profiles.GOA, '/portal/announcements'],
 ]) {
   await h.check(`${name}-active-secondary-route`, path, navigationWorld(user).options(), async page=>{
     const nav=navFor(page); await h.shown(nav);

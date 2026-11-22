@@ -12,6 +12,7 @@ from compass.api.v1.constants import API_VERSION
 from compass.api.v1.health import router as health_router
 from compass.api.v1.metadata import SystemMetadataResponse, system_metadata
 from compass.appointments.api import router as appointments_router
+from compass.appointments.counselor_access_api import router as counselor_access_router
 from compass.assessment_records.api import router as assessment_records_router
 from compass.authentication.api import router as authentication_router
 from compass.authentication.recovery_api import router as recovery_router
@@ -267,6 +268,7 @@ api.add_router("/student-academics", student_academics_router)
 api.add_router("/services", service_catalog_router)
 api.add_router("/group-sessions", group_sessions_router)
 api.add_router("/availability", availability_router)
+api.add_router("/appointments", counselor_access_router)
 api.add_router("/appointments", appointments_router)
 api.add_router("/counseling", counseling_router)
 api.add_router("/counseling/cases", counseling_case_router)

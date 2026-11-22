@@ -59,6 +59,7 @@ from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
     ParentLifeStatus,
+    SoloParentStatus,
     StudentSupportProfile,
 )
 
@@ -80,6 +81,7 @@ from .correction_targets import (
 )
 from .errors import InvalidInventoryInput, InventoryError
 from .models import (
+    ACTIVE_CIVIL_STATUS_CATEGORIES,
     AnnualIncomeStatus,
     CivilStatusCategory,
     CourseChoiceReason,
@@ -389,7 +391,10 @@ SUPPORT_FIELDS = (
     "indigenous_peoples_status",
     "mother_life_status",
     "father_life_status",
+    "solo_parent_status",
 )
+
+_ACTIVE_CIVIL_STATUS_VALUES = frozenset(choice.value for choice in ACTIVE_CIVIL_STATUS_CATEGORIES)
 
 
 QUERYABLE_SCALAR_FIELDS = tuple(
@@ -606,6 +611,12 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
     civil = normalized.get("civil_status_category")
     if civil is not None:
         civil = str(civil)
+        if civil == CivilStatusCategory.SOLO_PARENT:
+            raise InvalidInventoryInput(
+                "Solo Parent is no longer a civil status option. Choose your civil status."
+            )
+        if civil not in _ACTIVE_CIVIL_STATUS_VALUES:
+            raise InvalidInventoryInput("Choose a valid civil status.")
         normalized["civil_status_category"] = civil
         if civil == CivilStatusCategory.OTHER:
             if not str(normalized.get("civil_status", "")).strip():
@@ -701,6 +712,7 @@ def _normalize_support_profile(values: object) -> dict[str, object]:
         "indigenous_peoples_status": IndigenousPeoplesStatus,
         "mother_life_status": ParentLifeStatus,
         "father_life_status": ParentLifeStatus,
+        "solo_parent_status": SoloParentStatus,
     }
     for field, choice_class in choices.items():
         value = normalized.get(field)
@@ -1077,7 +1089,10 @@ def _submission_requirements(
         "Add your birth order among siblings.",
         content.birth_order_among_siblings,
     )
-    require_choice("civil_status_category", "Choose your civil status.", item.civil_status_category)
+    if _missing_choice(item.civil_status_category) or (
+        item.civil_status_category == CivilStatusCategory.SOLO_PARENT
+    ):
+        requirements.append(("civil_status_category", "Choose your civil status."))
     require_text("current_address", "Add your current address.", content.current_address)
     require_text("permanent_address", "Add your permanent address.", content.permanent_address)
     require_text("contact_number", "Add your contact number.", content.contact_number)
@@ -1160,6 +1175,11 @@ def _submission_requirements(
         "support_profile.father_life_status",
         "Choose whether your father is living, deceased, or unknown.",
         profile.father_life_status,
+    )
+    require_choice(
+        "support_profile.solo_parent_status",
+        "Answer whether you are a solo parent.",
+        profile.solo_parent_status,
     )
 
     parents = {row.kind: row for row in item.family_members.all()}
@@ -1510,6 +1530,8 @@ def _validate_submission(
     ]
     if unmet:
         raise InvalidInventoryInput(unmet[0])
+    if _missing_choice(item.civil_status_category):
+        raise InvalidInventoryInput("Choose your civil status.")
 
     return root_values
 

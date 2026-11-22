@@ -169,7 +169,7 @@ async function transferDecision(page, action) {
   await completed.getByRole("button", { name: "Done", exact: true }).click();
   await page.waitForFunction(() => document.activeElement?.id === "transfer-review-heading");
 }
-const officeReopen = reopeningTransfer(continuityAccount(office, "GUIDANCE_OFFICE_ASSISTANT"));
+const officeReopen = reopeningTransfer({ ...continuityAccount(office, "COUNSELOR"), designations: ["HEAD_GUIDANCE_COUNSELOR"] });
 await check("office-prepares-closed-case-reopening-with-independent-head-rule", "/portal/counseling/continuity?status=CLOSED", { handler: officeReopen.handler }, async page => {
   await page.getByRole("link", { name: /Transfer to reopen/ }).click();
   await shown(page.getByRole("heading", { name: "Transfer to reopen case", exact: true }));

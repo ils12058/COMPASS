@@ -91,6 +91,11 @@ APPOINTMENT_COMPLETED = "appointment.completed"
 APPOINTMENT_NO_SHOW = "appointment.no_show"
 APPOINTMENT_REMINDER_ISSUED = "appointment.reminder.issued"
 APPOINTMENT_REMINDERS_BULK = "appointment.reminders.bulk"
+APPOINTMENT_COUNSELOR_REQUEST_CREATED = "appointment.counselor_request.created"
+APPOINTMENT_COUNSELOR_REQUEST_APPROVED = "appointment.counselor_request.approved"
+APPOINTMENT_COUNSELOR_REQUEST_DECLINED = "appointment.counselor_request.declined"
+APPOINTMENT_COUNSELOR_APPROVAL_CHANGED = "appointment.counselor_approval.changed"
+APPOINTMENT_COUNSELOR_APPROVAL_ENDED = "appointment.counselor_approval.ended"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 STUDENT_SESSION_SUMMARY_PUBLISHED = "counseling.student_session_summary.published"
@@ -306,6 +311,11 @@ __all__ = [
     "APPOINTMENT_NO_SHOW",
     "APPOINTMENT_REMINDER_ISSUED",
     "APPOINTMENT_REMINDERS_BULK",
+    "APPOINTMENT_COUNSELOR_REQUEST_CREATED",
+    "APPOINTMENT_COUNSELOR_REQUEST_APPROVED",
+    "APPOINTMENT_COUNSELOR_REQUEST_DECLINED",
+    "APPOINTMENT_COUNSELOR_APPROVAL_CHANGED",
+    "APPOINTMENT_COUNSELOR_APPROVAL_ENDED",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
     "STUDENT_SESSION_SUMMARY_PUBLISHED",
@@ -461,3 +471,13 @@ CASE_HANDOFF_ADDENDUM_ADDED = "counseling.case_handoff.addendum_added"
 CASE_HANDOFF_UNAVAILABLE_RECORDED = "counseling.case_handoff.unavailable_recorded"
 
 REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"
+
+# ADR-122 supervising-Counselor approval for GOA Call Slips and published content.
+CALL_SLIP_APPROVED = "call_slip.approved"
+CALL_SLIP_RETURNED = "call_slip.returned"
+CALL_SLIP_RESUBMITTED = "call_slip.resubmitted"
+CALL_SLIP_WITHDRAWN = "call_slip.withdrawn"
+ANNOUNCEMENT_SUBMITTED_FOR_APPROVAL = "announcement.submitted_for_approval"
+ANNOUNCEMENT_RETURNED = "announcement.returned"
+RESOURCE_SUBMITTED_FOR_APPROVAL = "resource.submitted_for_approval"
+RESOURCE_RETURNED = "resource.returned"

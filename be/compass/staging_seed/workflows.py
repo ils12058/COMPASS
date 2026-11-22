@@ -15,8 +15,9 @@ from compass.appointments.services import (
     complete_appointment,
     create_student_appointment,
 )
-from compass.call_slips.models import CallSlip
+from compass.call_slips.models import CallSlip, CallSlipApprovalStatus
 from compass.call_slips.services import (
+    approve_call_slip,
     create_call_slip_from_referral,
     record_interview_ended,
 )
@@ -48,6 +49,7 @@ from compass.service_catalog.models import Service
 from .content import narratives
 from .identities import StudentSpec
 from .slots import choose_slot
+from .staff import STAFF_SUPERVISION
 from .support import (
     SeedSession,
     align_timestamps,
@@ -72,6 +74,7 @@ def book(
     starts_at: datetime,
     booked_at: datetime,
     mode: str = "IN_PERSON",
+    arranged_by: str | None = None,
 ) -> Appointment:
     service = counseling_service()
     slot = choose_slot(
@@ -82,6 +85,7 @@ def book(
         mode=mode,
         desired=starts_at,
         booked_at=booked_at,
+        actor_key=arranged_by,
     )
     appointment = create_student_appointment(
         student=session.user(student.key),
@@ -89,7 +93,8 @@ def book(
         provider_id=session.users[provider_key].pk,
         delivery_mode=mode,
         starts_at=slot.starts_at,
-        context=session.as_user(student.key),
+        context=session.as_user(arranged_by or student.key),
+        actor=session.user(arranged_by) if arranged_by else None,
         now=booked_at,
     )
     align_timestamps(appointment, created_at=booked_at, updated_at=booked_at)
@@ -330,6 +335,14 @@ def call_slip_for_referral(
         ),
         context=session.as_user(actor_key),
     )
+    if item.approval_status == CallSlipApprovalStatus.PENDING_APPROVAL:
+        supervisor_key = dict(STAFF_SUPERVISION)[actor_key]
+        item = approve_call_slip(
+            actor=session.user(supervisor_key),
+            call_slip_id=item.pk,
+            context=session.as_user(supervisor_key),
+            now=issued_at or session.started_at,
+        )
     action = ReferralAction.objects.get(
         referral=referral, action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT
     )

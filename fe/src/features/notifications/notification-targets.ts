@@ -63,6 +63,18 @@ export function notificationDestination(
     // reloads the Appointment within the recipient's current access.
     return { href: "/portal/appointments/" + notification.target_id, label: "Open Appointment" };
   }
+  if (
+    notification.target_type === NotificationTargetType.COUNSELOR_BOOKING_REQUEST &&
+    notification.target_id
+  ) {
+    return {
+      href: "/portal/appointments/counselor-requests/" + notification.target_id,
+      label: "Review counselor request",
+    };
+  }
+  if (notification.target_type === NotificationTargetType.APPOINTMENT_BOOKING) {
+    return { href: "/portal/appointments/book", label: "Open Appointment booking" };
+  }
   if (notification.target_type === NotificationTargetType.REFERRAL && notification.target_id) {
     return { href: "/portal/referrals/" + notification.target_id, label: "Open urgent referral" };
   }
@@ -71,6 +83,12 @@ export function notificationDestination(
   }
   if (notification.target_type === NotificationTargetType.CALL_SLIP && notification.target_id) {
     return { href: "/portal/call-slips/" + notification.target_id, label: "Open Call Slip" };
+  }
+  if (notification.target_type === NotificationTargetType.ANNOUNCEMENT && notification.target_id) {
+    return { href: "/portal/announcements/" + notification.target_id, label: "Open Announcement" };
+  }
+  if (notification.target_type === NotificationTargetType.RESOURCE && notification.target_id) {
+    return { href: "/portal/resources/" + notification.target_id, label: "Open Resource" };
   }
   if (notification.target_type === NotificationTargetType.GOOD_MORAL && notification.target_id) {
     return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral Certificate request" };
