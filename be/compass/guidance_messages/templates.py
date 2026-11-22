@@ -22,6 +22,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.api import same_timestamp_version
 
 from . import content, policy
 from .errors import (
@@ -161,9 +162,7 @@ def _locked(template_id):
 
 
 def _same_version(saved: datetime, expected: datetime) -> bool:
-    if timezone.is_naive(expected):
-        return False
-    return saved == expected
+    return same_timestamp_version(saved, expected)
 
 
 @transaction.atomic

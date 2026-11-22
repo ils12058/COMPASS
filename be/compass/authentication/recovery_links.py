@@ -35,6 +35,7 @@ from compass.authentication.sessions import (
     generate_opaque_token,
     require_recent_mfa,
 )
+from compass.common.api import same_timestamp_version
 from compass.integrations.mail import Mailer
 from compass.notifications.email_links import validated_portal_origin
 
@@ -233,7 +234,7 @@ def request_assisted_recovery(
         target = users.get(target_id)
         if target is None or not target.is_active:
             raise RecoveryLinkInvalid(LINK_INVALID_MESSAGE)
-        if target.updated_at != expected_updated_at:
+        if not same_timestamp_version(target.updated_at, expected_updated_at):
             raise RecoveryLinkConflict("This account changed. Review its latest details.")
         if destination == target.email:
             raise RecoveryLinkInputInvalid("Choose a different email address.")

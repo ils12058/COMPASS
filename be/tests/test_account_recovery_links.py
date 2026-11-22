@@ -528,3 +528,31 @@ def test_two_concurrent_submissions_consume_link_only_once(setup):
         == 1
     )
     assert len(setup[2]) == 1
+
+
+def test_assisted_recovery_accepts_millisecond_truncated_updated_at_from_account_get(setup):
+    target = user()
+    actor = user("admin@example.edu", role="IT_ADMIN")
+    precise_updated_at = target.updated_at.replace(microsecond=123456)
+    User.objects.filter(pk=target.pk).update(updated_at=precise_updated_at)
+    client, _session = client_for(actor)
+
+    detail = client.get(f"/api/v1/accounts/{target.pk}")
+    assert detail.status_code == 200
+    api_updated_at = detail.json()["updated_at"]
+    assert api_updated_at.endswith(".123Z")
+
+    response, *_ = assisted(
+        target=target, actor=actor, client=client, expected_updated_at=api_updated_at
+    )
+    assert response.status_code == 202, response.json()
+
+    # A later millisecond still triggers an optimistic-concurrency conflict.
+    User.objects.filter(pk=target.pk).update(
+        updated_at=precise_updated_at + timedelta(milliseconds=1)
+    )
+    stale, *_ = assisted(
+        target=target, actor=actor, client=client, expected_updated_at=api_updated_at
+    )
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "account_recovery_conflict"

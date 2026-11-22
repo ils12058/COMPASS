@@ -17,6 +17,7 @@ from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.api import same_timestamp_version
 from compass.common.institutional_time import institution_today
 
 from .models import (
@@ -356,9 +357,7 @@ def create_revision(*, notice_id: UUID, actor: User, context: AuditContext, **va
 def _same_saved_version(saved: datetime, expected: datetime) -> bool:
     """Compare at the millisecond precision API responses carry ``updated_at`` with."""
 
-    return saved.replace(microsecond=saved.microsecond // 1000 * 1000) == expected.replace(
-        microsecond=expected.microsecond // 1000 * 1000
-    )
+    return same_timestamp_version(saved, expected)
 
 
 def update_revision(

@@ -442,3 +442,33 @@ def test_service_version_cannot_be_omitted_or_null(world):
         templates.update_template(
             actor=world.counselor, template_id=template.pk, body="x", expected_updated_at=None
         )
+
+
+def test_patch_accepts_millisecond_truncated_updated_at_from_templates_get(world):
+    template = create(world)
+    precise_updated_at = template.updated_at.replace(microsecond=123456)
+    GuidanceMessageTemplate.objects.filter(pk=template.pk).update(updated_at=precise_updated_at)
+    client = auth_client(world.counselor)
+
+    listed = client.get(BASE + "/templates")
+    assert listed.status_code == 200
+    api_updated_at = listed.json()["items"][0]["updated_at"]
+    assert api_updated_at.endswith(".123Z")
+
+    updated = patch(
+        client,
+        f"/templates/{template.pk}",
+        {"body": "Edited using API timestamp", "expected_updated_at": api_updated_at},
+    )
+    assert updated.status_code == 200, updated.json()
+    assert updated.json()["body"] == "Edited using API timestamp"
+
+    GuidanceMessageTemplate.objects.filter(pk=template.pk).update(
+        updated_at=precise_updated_at + timedelta(milliseconds=1)
+    )
+    stale = patch(
+        client,
+        f"/templates/{template.pk}",
+        {"body": "Stale edit", "expected_updated_at": api_updated_at},
+    )
+    assert stale.status_code == 409
