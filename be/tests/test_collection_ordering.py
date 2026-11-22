@@ -696,7 +696,7 @@ def _published_resource(admin, title: str, *, display_order: int, published_at):
 
 def test_curated_feeds_keep_editorial_order_and_offer_explicit_alternatives():
     sync_policy()
-    admin = person("feed-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    admin = person("feed-staff@example.edu", "COUNSELOR")
     now = timezone.now()
     old_pinned = _published_announcement(
         admin, "Beta pinned", pinned=True, published_at=now - timedelta(days=9)
