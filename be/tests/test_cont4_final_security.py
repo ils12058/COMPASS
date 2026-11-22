@@ -216,13 +216,16 @@ def test_rotation_corrupt_batch_preserves_evidence_and_resumes(workflow_case, se
                 batch_size=1,
                 stdout=output,
             )
-        # The shared Handoff keyring also protects CW-3b case handoffs and CW-4 closure notes;
-        # none exist in this fixture, so each reports an empty scan in the same run.
+        # The shared Handoff keyring also protects CW-3b case handoffs, CW-4 closure notes, and
+        # counselor booking request reasons; none exist in this fixture, so each reports an empty
+        # scan in the same run.
         assert output.getvalue() == (
             f"Handoff encryption: scanned=2; rewrap=1; unreadable=1; dry_run={dry_run}\n"
             f"Case closure note encryption: scanned=0; rewrap=0; unreadable=0; dry_run={dry_run}\n"
             f"Case handoff encryption: scanned=0; rewrap=0; unreadable=0; dry_run={dry_run}\n"
             "Case handoff addendum encryption: scanned=0; rewrap=0; unreadable=0; "
+            f"dry_run={dry_run}\n"
+            "Counselor booking request reason encryption: scanned=0; rewrap=0; unreadable=0; "
             f"dry_run={dry_run}\n"
         )
         after = {r["id"]: r for r in Handoff.objects.values()}
@@ -248,4 +251,6 @@ def test_rotation_corrupt_batch_preserves_evidence_and_resumes(workflow_case, se
         "Case closure note encryption: scanned=0; rewrap=0; unreadable=0; dry_run=False\n"
         "Case handoff encryption: scanned=0; rewrap=0; unreadable=0; dry_run=False\n"
         "Case handoff addendum encryption: scanned=0; rewrap=0; unreadable=0; dry_run=False\n"
+        "Counselor booking request reason encryption: scanned=0; rewrap=0; unreadable=0; "
+        "dry_run=False\n"
     )

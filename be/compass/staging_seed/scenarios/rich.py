@@ -23,7 +23,7 @@ from compass.appointments.services import (
 )
 from compass.call_slips.services import (
     create_call_slip,
-    void_call_slip,
+    withdraw_call_slip,
 )
 from compass.feedback.models import FeedbackOpportunitySourceType
 from compass.good_moral.models import GoodMoralRequest
@@ -159,7 +159,7 @@ def academic_adjustment(session: SeedSession) -> None:
         context=session.as_user(GOA_A.key),
     )
     void_at = t.past(11, 14, 40)
-    void_call_slip(
+    withdraw_call_slip(
         actor=session.user(GOA_A.key),
         call_slip_id=slip.pk,
         reason=narratives.VOIDED_CALL_SLIP_REASON,
@@ -167,6 +167,7 @@ def academic_adjustment(session: SeedSession) -> None:
         now=void_at,
     )
     align_timestamps(slip, created_at=t.past(11, 10, 15), updated_at=void_at)
+    settle_notifications(source_id=slip.pk, occurred_at=t.past(11, 10, 15))
     session.record("Call Slips", created=True)
 
     wf.complete(session, COUNSELOR_A.key, first, at=t.past(10, 9, 58))

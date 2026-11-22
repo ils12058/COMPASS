@@ -356,9 +356,6 @@ function BookingWorkspace() {
 
       <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.webp" : undefined} />
 
-      <StudentCounselorRequestSection mode="banner" />
-
-
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with
           the booking action. */}
       <Panel as="div">
@@ -545,6 +542,10 @@ function BookingWorkspace() {
           </>
         ) : null}
       </Panel>
+
+      <div className="mt-5">
+        <StudentCounselorRequestSection mode="banner" />
+      </div>
 
       <BookingCompletion booked={booked} onDone={finishBooking} />
     </section>

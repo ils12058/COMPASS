@@ -108,17 +108,24 @@ export function ResourceLifecycleActions({
     setOpen(action);
   }
 
+  const primaryAction =
+    isDraft && isGoa
+      ? { action: "submit" as const, label: "Submit for approval" }
+      : (isDraft || isPendingApproval) && !isGoa
+        ? {
+            action: "publish" as const,
+            label: isPendingApproval ? "Approve and publish" : "Publish Resource",
+          }
+        : null;
+
   return (
     <>
-      {isDraft && isGoa ? (
-        <PageAction icon={Send} label="Submit for approval" disabled={publishBlocked} onClick={() => openDialog("submit")} />
-      ) : null}
-      {(isDraft || isPendingApproval) && !isGoa ? (
+      {primaryAction ? (
         <PageAction
           icon={Send}
-          label={isPendingApproval ? "Approve and publish" : "Publish Resource"}
+          label={primaryAction.label}
           disabled={publishBlocked}
-          onClick={() => openDialog("publish")}
+          onClick={() => openDialog(primaryAction.action)}
         />
       ) : null}
       {isPendingApproval && !isGoa ? (

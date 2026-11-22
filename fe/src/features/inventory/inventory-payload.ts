@@ -44,17 +44,14 @@ export function toInventoryPayload(inventory: InventoryResponse): InventoryPaylo
   } = inventory;
   // These fields belong to the response envelope, not the writable payload.
   void [id, academic_year, current_college, status, program, form_revision, submitted_at, first_submitted_at, last_submitted_at, correction_pending, latest_correction];
-  const civilStatusCategory =
-    payload.civil_status_category === CivilStatusCategoryResponseValue.SOLO_PARENT
-      ? null
-      : payload.civil_status_category;
-  return {
-    ...payload,
-    civil_status_category: civilStatusCategory,
-    ...(payload.civil_status_category === CivilStatusCategoryResponseValue.SOLO_PARENT
-      ? { civil_status: "" }
-      : {}),
-  };
+  if (payload.civil_status_category === CivilStatusCategoryResponseValue.SOLO_PARENT) {
+    return {
+      ...payload,
+      civil_status_category: null,
+      civil_status: "",
+    };
+  }
+  return payload as InventoryPayload;
 }
 
 export function normalizeInventoryPayload(payload: InventoryPayload): InventoryPayload {

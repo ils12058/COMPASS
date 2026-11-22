@@ -15,8 +15,9 @@ from compass.appointments.services import (
     complete_appointment,
     create_student_appointment,
 )
-from compass.call_slips.models import CallSlip
+from compass.call_slips.models import CallSlip, CallSlipApprovalStatus
 from compass.call_slips.services import (
+    approve_call_slip,
     create_call_slip_from_referral,
     record_interview_ended,
 )
@@ -48,6 +49,7 @@ from compass.service_catalog.models import Service
 from .content import narratives
 from .identities import StudentSpec
 from .slots import choose_slot
+from .staff import STAFF_SUPERVISION
 from .support import (
     SeedSession,
     align_timestamps,
@@ -333,6 +335,14 @@ def call_slip_for_referral(
         ),
         context=session.as_user(actor_key),
     )
+    if item.approval_status == CallSlipApprovalStatus.PENDING_APPROVAL:
+        supervisor_key = dict(STAFF_SUPERVISION)[actor_key]
+        item = approve_call_slip(
+            actor=session.user(supervisor_key),
+            call_slip_id=item.pk,
+            context=session.as_user(supervisor_key),
+            now=issued_at or session.started_at,
+        )
     action = ReferralAction.objects.get(
         referral=referral, action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT
     )

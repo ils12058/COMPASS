@@ -15,6 +15,7 @@ from django.utils.safestring import mark_safe
 
 from compass.accounts.models import Capability, User, UserCapabilityOverride
 from compass.appointments.email_presentation import (
+    APPOINTMENT_EMAIL_EVENTS,
     AppointmentEmailDetail,
     AppointmentEmailField,
     appointment_email_schedule,
@@ -37,7 +38,7 @@ from tests.test_appointments import (
     sync_policy,
 )
 
-EVENTS = tuple(event for event in NotificationEvent if event.value.startswith("appointment."))
+EVENTS = tuple(event for event in NotificationEvent if event in APPOINTMENT_EMAIL_EVENTS)
 POLICY = "operational_v1"
 
 

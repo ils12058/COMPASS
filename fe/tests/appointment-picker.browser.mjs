@@ -167,7 +167,7 @@ for (const counselorMode of ['error', 'pending', 'empty']) {
   await h.check(`counselor ${counselorMode}`, path, w.options, async page => {
     await page.getByRole('button', { name: /^Counseling/ }).click();
     await page.getByRole('radio', { name: 'In person', exact: true }).check();
-    if (counselorMode === 'empty') await h.shown(page.getByText('No Counselors are available for this Service and delivery mode.'));
+    if (counselorMode === 'empty') await h.shown(page.getByText('None of your available counselors provide this Service. To book with a different counselor, ask the Head Guidance Counselor.'));
     else if (counselorMode === 'error') {
       await h.shown(page.getByText("Couldn't load Counselors. Try again."));
       w.state.counselorMode = 'ok';
