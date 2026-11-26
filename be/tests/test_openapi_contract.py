@@ -31,7 +31,9 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "can_view_submissions",
             "valid_until",
         },
-        "FacultyConfirmedStudent": {"display_name"},
+        "FacultyConfirmedAcademicUnit": {"code", "name"},
+        "FacultyConfirmedStudent": {"display_name", "college", "program", "year_level"},
+        "FacultyReferralSubmissionStudent": {"display_name"},
         "FacultyReferralSubmitRequest": {
             "confirmation",
             "course_year_block",

@@ -19,9 +19,11 @@ import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./share
 import { SubmissionFacts } from "./records";
 import { useFacultySubmission } from "./use-submission";
 import { UrgencyCheckbox, UrgentBadge } from "@/features/referrals/referral-urgency";
+import { detectCourseYearBlockMismatch, formatAcademicUnit } from "@/features/referrals/student-verification";
 import { TimingEditor } from "@/features/referral-timing/timing-editor";
 import { TimingWindows } from "@/features/referral-timing/timing-readout";
 import { timingWindowsRequest } from "@/features/referral-timing/timing-draft";
+import { yearLevelLabel } from "@/lib/year-level";
 
 function ReviewHeading() {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -40,6 +42,12 @@ function FacultySubmitContent() {
   const flow = useFacultySubmission({ available, onPolicyChange: () => { void availability.refetch(); } });
   const submit = (event: FormEvent) => { event.preventDefault(); flow.review(); };
   const checkedStudent = flow.confirmed?.student;
+  const studentCollege = formatAcademicUnit(checkedStudent?.college);
+  const studentProgram = formatAcademicUnit(checkedStudent?.program);
+  const studentYearLevel = checkedStudent?.year_level !== null && checkedStudent?.year_level !== undefined
+    ? yearLevelLabel(checkedStudent.year_level)
+    : null;
+  const mismatch = flow.reviewing ? detectCourseYearBlockMismatch(flow.course, checkedStudent, { action: "submit" }) : null;
   return <section className={pageSheetWidth} aria-labelledby="faculty-submit-heading">
     <PageHeader title={flow.result ? "Referral submitted" : "Submit Referral"} headingId="faculty-submit-heading" actions={<TaskGuideAction />} />
     {flow.result ? <>
@@ -54,10 +62,16 @@ function FacultySubmitContent() {
       {flow.expired && checkedStudent ? <Notice role="status" className="mb-4">The Student confirmation has expired. Confirm the Student again before a new submission. An uncertain submission can still be retried with its original information.</Notice> : null}
       {flow.reviewing ? <Panel data-guide-target="faculty-review" className="[overflow-wrap:anywhere]">
         <PanelBody><ReviewHeading /><p className="mt-2 text-sm text-muted">Review the Student and reason before submitting.</p></PanelBody>
-        <PanelSection title="Student" titleId="faculty-review-student"><p className="text-sm font-medium [overflow-wrap:anywhere]">{checkedStudent?.display_name}</p></PanelSection>
+        <PanelSection title="Student" titleId="faculty-review-student"><dl className="space-y-3 text-sm">
+          <div><dt className="font-semibold text-muted">Name</dt><dd className="mt-1 font-medium [overflow-wrap:anywhere]">{checkedStudent?.display_name}</dd></div>
+          {studentCollege ? <div><dt className="font-semibold text-muted">College</dt><dd className="mt-1 [overflow-wrap:anywhere]">{studentCollege}</dd></div> : null}
+          {studentProgram ? <div><dt className="font-semibold text-muted">Program</dt><dd className="mt-1 [overflow-wrap:anywhere]">{studentProgram}</dd></div> : null}
+          {studentYearLevel ? <div><dt className="font-semibold text-muted">Year level</dt><dd className="mt-1">{studentYearLevel}</dd></div> : null}
+        </dl></PanelSection>
         {flow.urgent ? <PanelBody><UrgentBadge urgent /></PanelBody> : null}
         <PanelSection title="Referral information" titleId="faculty-review-information"><dl className="space-y-4 text-sm">
           <div><dt className="font-semibold text-muted">Course/Year/Block</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.course}</dd></div>
+          {mismatch ? <Notice tone="warning" role="status" title="Check Course/Year/Block">{mismatch.message}</Notice> : null}
           <div><dt className="font-semibold text-muted">Referral reason</dt><dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{flow.reason}</dd></div>
         </dl></PanelSection>
         <PanelSection title="When can Guidance reach or meet the student?" titleId="faculty-review-timing">
@@ -79,7 +93,15 @@ function FacultySubmitContent() {
                 {flow.errors.identifier ? <p id="faculty-id-error" role="alert" className="mt-1 text-sm text-danger">{flow.errors.identifier}</p> : null}
               </div>
               <Button type="button" variant="secondary" onClick={() => void flow.confirmStudent()} disabled={flow.pending || !available || !!flow.cooldown}>{flow.confirming ? "Confirming…" : checkedStudent ? "Confirm Student again" : "Confirm Student"}</Button>
-              {checkedStudent ? <div role="status" className="text-sm"><p className="font-semibold [overflow-wrap:anywhere]">{checkedStudent.display_name}</p><p className="mt-1 text-muted">{flow.expired ? "Confirmation expired." : `Confirmation expires ${formatInstitutionalDateTime(flow.confirmed?.expires_at)} · Philippine Time.`}</p></div> : null}
+              {checkedStudent ? <div role="status" className="space-y-2 rounded-sm border border-border bg-surface-subtle px-3 py-2.5 text-sm">
+                <p className="font-semibold [overflow-wrap:anywhere]">{checkedStudent.display_name}</p>
+                {studentCollege || studentProgram || studentYearLevel ? <dl className="space-y-1 text-sm">
+                  {studentCollege ? <div className="flex flex-wrap gap-x-2"><dt className="font-semibold text-muted">College:</dt><dd className="[overflow-wrap:anywhere]">{studentCollege}</dd></div> : null}
+                  {studentProgram ? <div className="flex flex-wrap gap-x-2"><dt className="font-semibold text-muted">Program:</dt><dd className="[overflow-wrap:anywhere]">{studentProgram}</dd></div> : null}
+                  {studentYearLevel ? <div className="flex flex-wrap gap-x-2"><dt className="font-semibold text-muted">Year level:</dt><dd>{studentYearLevel}</dd></div> : null}
+                </dl> : null}
+                <p className="text-muted">{flow.expired ? "Confirmation expired." : `Confirmation expires ${formatInstitutionalDateTime(flow.confirmed?.expires_at)} · Philippine Time.`}</p>
+              </div> : null}
             </div>
           </PanelSection>
           <PanelSection data-guide-target="faculty-information" title="2. Referral information" titleId="faculty-information-heading">

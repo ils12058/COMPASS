@@ -80,8 +80,14 @@ def test_availability_api_requires_real_faculty_session_and_projects_only_safe_f
 def test_cross_college_submission_encrypted_and_server_provenance(world):
     confirmation = confirm(world)
     assert confirmation["confirmed"]
-    assert confirmation["student"] == {"display_name": world.student.get_full_name()}
+    assert confirmation["student"] == {
+        "display_name": world.student.get_full_name(),
+        "college": {"code": world.ccms.code, "name": world.ccms.name},
+        "program": None,
+        "year_level": None,
+    }
     result, created = submit(world, confirmation["confirmation"])
+    assert result["student"] == {"display_name": world.student.get_full_name()}
     assert created and result["state"] == "SUBMITTED"
     row = Referral.objects.get(pk=result["id"])
     assert row.submitted_by_id == world.faculty.pk
@@ -806,3 +812,121 @@ def test_advisory_availability_is_read_only_and_session_bounded(world):
     assert result["valid_until"] == world.issued.session.expires_at
     assert not Referral.objects.exists() and not world.limiter.counts
     assert list(AuditEvent.objects.values_list("id", flat=True)) == before
+
+
+def test_confirm_student_returns_minimum_necessary_academic_context_only(world):
+    from compass.institutional_forms.models import FormRevision
+    from compass.inventory.models import StudentInventory
+    from compass.organization.models import AcademicYear, Program
+    from compass.student_academics.models import AcademicTerm, StudentAcademicPeriodRecord
+    from tests.inventory_encryption_helpers import create_inventory_row
+
+    current_year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    program = Program.objects.create(
+        college=world.ccms,
+        code="BSIS",
+        name="Bachelor of Science in Information Systems",
+    )
+    revision = FormRevision.objects.get(family__key="individual_inventory", status="ACTIVE")
+    create_inventory_row(
+        StudentInventory,
+        student=world.student,
+        academic_year=current_year,
+        form_revision=revision,
+        program=program,
+        year_level=3,
+        submitted_at=timezone.now(),
+    )
+    StudentAcademicPeriodRecord.objects.create(
+        student=world.student,
+        academic_year=current_year,
+        term=AcademicTerm.SECOND_SEMESTER,
+        college=world.ccms,
+        year_level=4,
+    )
+
+    client = Client()
+    client.cookies["compass_session"] = world.issued.token
+    response = client.post(
+        "/api/v1/faculty/referrals/student-confirmation",
+        json.dumps({"institutional_id": world.student.institutional_id}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["confirmed"] is True
+    assert body["student"] == {
+        "display_name": world.student.get_full_name(),
+        "college": {"code": "CCMS", "name": "Synthetic CCMS"},
+        "program": {"code": "BSIS", "name": "Bachelor of Science in Information Systems"},
+        "year_level": 4,
+    }
+    assert set(body["student"]) == {"display_name", "college", "program", "year_level"}
+    assert set(body["student"]).isdisjoint(
+        {"id", "email", "institutional_id", "date_of_birth", "contact_number", "phone"}
+    )
+
+
+def test_confirm_student_ignores_drafts_other_college_programs_and_stale_year_levels(world):
+    from compass.institutional_forms.models import FormRevision
+    from compass.inventory.models import StudentInventory
+    from compass.organization.models import AcademicYear, Program
+    from tests.inventory_encryption_helpers import create_inventory_row
+
+    prior_year = AcademicYear.objects.create(label="2025-2026", is_current=False)
+    current_year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    ccms_program = Program.objects.create(
+        college=world.ccms,
+        code="BSIS",
+        name="Bachelor of Science in Information Systems",
+    )
+    cas_program = Program.objects.create(
+        college=world.cas,
+        code="BSPSYCH",
+        name="Bachelor of Science in Psychology",
+    )
+    revision = FormRevision.objects.get(family__key="individual_inventory", status="ACTIVE")
+
+    # Draft inventory in current year must never be exposed.
+    draft = create_inventory_row(
+        StudentInventory,
+        student=world.student,
+        academic_year=current_year,
+        form_revision=revision,
+        program=ccms_program,
+        year_level=3,
+        submitted_at=None,
+    )
+    result = confirm(world)
+    assert result["student"]["program"] is None
+    assert result["student"]["year_level"] is None
+
+    # Submitted inventory from a different college must be ignored.
+    create_inventory_row(
+        StudentInventory,
+        student=world.student,
+        academic_year=prior_year,
+        form_revision=revision,
+        program=cas_program,
+        year_level=2,
+        submitted_at=timezone.now(),
+    )
+    result = confirm(world)
+    assert result["student"]["program"] is None
+    assert result["student"]["year_level"] is None
+
+    # Prior-year submitted inventory in the current college gives Program, not a stale year level.
+    StudentInventory.objects.filter(student=world.student, academic_year=prior_year).update(
+        program=ccms_program
+    )
+    result = confirm(world)
+    assert result["student"]["program"] == {
+        "code": "BSIS",
+        "name": "Bachelor of Science in Information Systems",
+    }
+    assert result["student"]["year_level"] is None
+
+    # Submitting the current-year inventory gives the current year level when no period exists.
+    StudentInventory.objects.filter(pk=draft.pk).update(submitted_at=timezone.now())
+    result = confirm(world)
+    assert result["student"]["year_level"] == 3

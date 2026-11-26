@@ -11,7 +11,14 @@ const source = `/api/v1/referrals/${id}`;
 const path = `/portal/referrals/${id}`;
 const tab = process.platform === "darwin" && process.env.COMPASS_UI_BROWSER === "webkit" ? "Alt+Tab" : "Tab";
 const account = { ...user(), capabilities: [...user().capabilities, "referrals.view", "referrals.manage", "call_slips.view", "call_slips.manage"] };
-const student = { id: "c5000000-0000-4000-8000-000000000011", display_name: "Synthetic timing Student", institutional_id: "CW5-SYNTHETIC" };
+const student = {
+  id: "c5000000-0000-4000-8000-000000000011",
+  display_name: "Synthetic timing Student",
+  institutional_id: "CW5-SYNTHETIC",
+  college: { id: "c5000000-0000-4000-8000-000000000021", code: "CCMS", name: "College of Computing and Multimedia Studies" },
+  program: { id: "c5000000-0000-4000-8000-000000000022", code: "BSIS", name: "Bachelor of Science in Information Systems" },
+  year_level: 4,
+};
 const reported = reportedTimingFixture();
 const ref = {
   id, reference_code: "REF-2026-000005", submission_channel: "GCO_RECORDED", submitted_at: null,
@@ -65,7 +72,10 @@ function fixture(options = {}) {
     if (pathname === "/api/v1/call-slips") { await reply({ items: [], page: 1, page_size: 20, has_next: false }); return true; }
     if (pathname === "/api/v1/referrals") {
       if (method === "POST") {
-        const body = request.postDataJSON(); state.writes.push(body);
+        const body = request.postDataJSON();
+        state.writes.push(body);
+        state.createCalls = [...(state.createCalls ?? []), { key: request.headers()["idempotency-key"], body: request.postData() }];
+        if (state.createUncertain && state.createCalls.length === 1) { await route.abort("failed"); return true; }
         state.reported = reportedTimingFixture({ ...body.scheduling_statement, windows: body.scheduling_statement.windows.map(window => ({ ...window, expired: false })), submission_channel: "GCO_RECORDED", author_name: "Synthetic recorder" });
         await reply({ ...ref, timing_status: state.reported.answer_kind }, 201); return true;
       }
@@ -240,8 +250,8 @@ for (const known of [false, true]) {
     await page.getByLabel("Reason for Referral", { exact: true }).fill("Synthetic reason");
     await page.getByLabel("Referrer name", { exact: true }).fill("Synthetic paper referrer");
     await page.getByLabel("Date referred", { exact: true }).fill(manilaDay());
-    const recordButton = page.getByRole("button", { name: "Record Referral", exact: true });
-    await recordButton.focus(); await page.keyboard.press("Enter");
+    const reviewButton = page.getByRole("button", { name: "Review Referral", exact: true });
+    await reviewButton.focus(); await page.keyboard.press("Enter");
     await page.waitForFunction(() => document.activeElement?.id === "gco-timing-answer_kind");
     assert.equal(f.state.writes.length, 0, "A UI answer is required even though the API remains optional");
     await page.getByRole("radio", { name: known ? "Known times" : "Unknown / needs confirmation", exact: true }).check();
@@ -251,11 +261,42 @@ for (const known of [false, true]) {
       await page.getByLabel("Start time · Philippine Time", { exact: true }).fill("09:00");
       await page.getByLabel("End time · Philippine Time", { exact: true }).fill("10:00");
     }
-    await recordButton.focus(); await page.keyboard.press("Enter");
+    await reviewButton.focus(); await page.keyboard.press("Enter");
+    await shown(page.getByRole("heading", { name: "Review Referral", exact: true }));
+    await shown(page.getByText("CW5-SYNTHETIC", { exact: true }));
+    await shown(page.getByText("CCMS — College of Computing and Multimedia Studies", { exact: true }));
+    await shown(page.getByText("BSIS — Bachelor of Science in Information Systems", { exact: true }));
+    await shown(page.getByText("4th Year", { exact: true }));
+    await shown(page.getByText("Synthetic paper referrer", { exact: true }));
+    await page.getByRole("button", { name: "Edit Referral details", exact: true }).click();
+    assert.equal(await page.getByLabel("Reason for Referral", { exact: true }).inputValue(), "Synthetic reason");
+    await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Review Referral", exact: true }));
+    await page.getByRole("button", { name: "Record Referral", exact: true }).click();
     await shown(page.getByRole("heading", { name: "Reported by the referrer", exact: true }));
     assert.equal(f.state.writes.length, 1);
     assert.equal(f.state.writes[0].scheduling_statement.answer_kind, known ? "KNOWN" : "UNKNOWN");
     await shown(page.getByText(/Reported by the referrer, recorded by Synthetic recorder on/));
   });
 }
+const staffUncertain = fixture({ createUncertain: true });
+await check("gco-create-uncertain-retry-same-key", "/portal/referrals/new", { handler: staffUncertain.handler }, async page => {
+  await page.getByRole("radio", { name: /Synthetic timing Student/ }).check();
+  await page.getByLabel("Course / Year / Block", { exact: true }).fill("BSIS 4A");
+  await page.getByLabel("Reason for Referral", { exact: true }).fill("Synthetic uncertain retry reason");
+  await page.getByLabel("Referrer name", { exact: true }).fill("Synthetic paper referrer");
+  await page.getByLabel("Date referred", { exact: true }).fill(manilaDay());
+  await page.getByRole("radio", { name: "Unknown / needs confirmation", exact: true }).check();
+  await page.getByRole("button", { name: "Review Referral", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Review Referral", exact: true }));
+  await page.getByRole("button", { name: "Record Referral", exact: true }).click();
+  await shown(page.getByRole("button", { name: "Retry same submission", exact: true }));
+  assert.equal(await page.getByRole("button", { name: "Edit Referral details", exact: true }).isDisabled(), true);
+  assert.equal(staffUncertain.state.createCalls.length, 1);
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Reported by the referrer", exact: true }));
+  assert.equal(staffUncertain.state.createCalls.length, 2);
+  assert.equal(staffUncertain.state.createCalls[0].key, staffUncertain.state.createCalls[1].key);
+  assert.equal(staffUncertain.state.createCalls[0].body, staffUncertain.state.createCalls[1].body);
+});
 await finish();

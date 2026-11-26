@@ -33,6 +33,7 @@ from .confidential_content import (
     read_referral_action_remarks,
     read_referral_confidential_content,
 )
+from .faculty_placement import StudentAcademicSummary, resolve_students_academic_summaries
 from .models import ReferralActionType, ReferralSubmissionChannel
 from .services import (
     DEFAULT_PAGE_SIZE,
@@ -151,6 +152,12 @@ class ReferralStudentCollegeResponse(StrictSchema):
     name: str
 
 
+class ReferralStudentProgramResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
 class ReferralStudentOptionResponse(StrictSchema):
     id: UUID
     institutional_id: str | None
@@ -158,6 +165,8 @@ class ReferralStudentOptionResponse(StrictSchema):
     profile_photo_url: str | None
     profile_photo_updated_at: datetime | None
     college: ReferralStudentCollegeResponse | None
+    program: ReferralStudentProgramResponse | None = None
+    year_level: int | None = None
 
 
 class ReferralStudentOptionPage(StrictSchema):
@@ -357,7 +366,7 @@ def _summary(item, *, content=None) -> dict[str, object]:
     }
 
 
-def _student_option(item) -> dict[str, object]:
+def _student_option(item, summary: StudentAcademicSummary | None = None) -> dict[str, object]:
     return {
         "id": item.id,
         "institutional_id": item.institutional_id,
@@ -373,6 +382,19 @@ def _student_option(item) -> dict[str, object]:
             if item.college is not None
             else None
         ),
+        "program": (
+            {
+                "id": summary.program_id,
+                "code": summary.program_code,
+                "name": summary.program_name,
+            }
+            if summary is not None
+            and summary.program_id is not None
+            and summary.program_code is not None
+            and summary.program_name is not None
+            else None
+        ),
+        "year_level": summary.year_level if summary is not None else None,
     }
 
 
@@ -535,8 +557,11 @@ def referrals_list_eligible_students(
         )
     except ReferralError as exc:
         _raise(exc)
+    summaries = resolve_students_academic_summaries(
+        {item.id: item.college.id if item.college is not None else None for item in result.items}
+    )
     return {
-        "items": [_student_option(item) for item in result.items],
+        "items": [_student_option(item, summaries.get(item.id)) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,

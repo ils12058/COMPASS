@@ -39,7 +39,19 @@ class FacultyStudentConfirmationRequest(StrictSchema):
     institutional_id: str = Field(min_length=1, max_length=64)
 
 
+class FacultyConfirmedAcademicUnit(StrictSchema):
+    code: str
+    name: str
+
+
 class FacultyConfirmedStudent(StrictSchema):
+    display_name: str
+    college: FacultyConfirmedAcademicUnit | None
+    program: FacultyConfirmedAcademicUnit | None
+    year_level: int | None
+
+
+class FacultyReferralSubmissionStudent(StrictSchema):
     display_name: str
 
 
@@ -63,7 +75,7 @@ class FacultyReferralSubmissionResponse(StrictSchema):
     reference_code: str
     submitted_at: datetime
     state: FacultyReferralSubmissionState
-    student: FacultyConfirmedStudent
+    student: FacultyReferralSubmissionStudent
     received_at: datetime | None
     closed_at: datetime | None
     is_urgent: bool = False
