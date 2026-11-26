@@ -1025,3 +1025,53 @@ def test_saved_legacy_referral_slip_identity_survives_sync_and_reprint():
     )
     assert "CNSC-OP-GTA-01F9" in text
     assert "Revision: 1" in text
+
+
+@pytest.mark.django_db
+def test_eligible_students_includes_program_and_year_level_matching_current_college():
+    from compass.inventory.models import StudentInventory
+    from compass.organization.models import AcademicYear, Program
+    from compass.student_academics.models import AcademicTerm, StudentAcademicPeriodRecord
+    from tests.inventory_encryption_helpers import create_inventory_row
+
+    sync_policy()
+    counselor_a, _, _, student_a, _, _ = setup_scope()
+    college_a = College.objects.get(code="A")
+    current_year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    program = Program.objects.create(
+        college=college_a,
+        code="BSIS",
+        name="Bachelor of Science in Information Systems",
+    )
+    revision = FormRevision.objects.get(family__key="individual_inventory", status="ACTIVE")
+    create_inventory_row(
+        StudentInventory,
+        student=student_a,
+        academic_year=current_year,
+        form_revision=revision,
+        program=program,
+        year_level=2,
+        submitted_at=timezone.now(),
+    )
+    StudentAcademicPeriodRecord.objects.create(
+        student=student_a,
+        academic_year=current_year,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college=college_a,
+        year_level=3,
+    )
+
+    response = auth_client(counselor_a).get("/api/v1/referrals/students")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 1
+    item = items[0]
+    assert item["id"] == str(student_a.pk)
+    assert item["college"] == {"id": str(college_a.pk), "code": "A", "name": "College A"}
+    assert item["program"] == {
+        "id": str(program.pk),
+        "code": "BSIS",
+        "name": "Bachelor of Science in Information Systems",
+    }
+    assert item["year_level"] == 3
+    assert "email" not in item

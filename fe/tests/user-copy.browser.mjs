@@ -41,10 +41,15 @@ for (const width of [320, 1440]) {
         await page.getByLabel('Referrer name', { exact: true }).fill('Synthetic Referrer');
         await page.getByLabel('Date referred', { exact: true }).fill('2026-10-01');
         await page.getByRole('radio', { name: 'Unknown / needs confirmation', exact: true }).check();
+        const review = page.getByRole('button', { name: 'Review Referral', exact: true });
+        await review.focus();
+        await page.keyboard.press('Enter');
+        await shown(page.getByRole('heading', { name: 'Review Referral', exact: true }));
         const submit = page.getByRole('button', { name: 'Record Referral', exact: true });
         await submit.focus();
         await page.keyboard.press('Enter');
         await oneAlert(page, 'Some Referral details need attention.');
+        await page.getByRole('button', { name: 'Edit Referral details', exact: true }).click();
         assert.equal(await page.getByLabel('Reason for Referral', { exact: true }).inputValue(), 'Synthetic source wording');
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/referrals').length, 1);
     });

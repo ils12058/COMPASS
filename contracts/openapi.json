@@ -18914,16 +18914,69 @@
         "title": "FacultyCollegeChoiceResponse",
         "type": "object"
       },
-      "FacultyConfirmedStudent": {
+      "FacultyConfirmedAcademicUnit": {
         "additionalProperties": false,
         "properties": {
-          "display_name": {
-            "title": "Display Name",
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
             "type": "string"
           }
         },
         "required": [
-          "display_name"
+          "code",
+          "name"
+        ],
+        "title": "FacultyConfirmedAcademicUnit",
+        "type": "object"
+      },
+      "FacultyConfirmedStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyConfirmedAcademicUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyConfirmedAcademicUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "display_name",
+          "college",
+          "program",
+          "year_level"
         ],
         "title": "FacultyConfirmedStudent",
         "type": "object"
@@ -19020,7 +19073,7 @@
             "$ref": "#/components/schemas/FacultyReferralSubmissionState"
           },
           "student": {
-            "$ref": "#/components/schemas/FacultyConfirmedStudent"
+            "$ref": "#/components/schemas/FacultyReferralSubmissionStudent"
           },
           "submitted_at": {
             "format": "date-time",
@@ -19125,7 +19178,7 @@
             "$ref": "#/components/schemas/FacultyReferralSubmissionState"
           },
           "student": {
-            "$ref": "#/components/schemas/FacultyConfirmedStudent"
+            "$ref": "#/components/schemas/FacultyReferralSubmissionStudent"
           },
           "submitted_at": {
             "format": "date-time",
@@ -19161,6 +19214,20 @@
         ],
         "title": "FacultyReferralSubmissionState",
         "type": "string"
+      },
+      "FacultyReferralSubmissionStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "FacultyReferralSubmissionStudent",
+        "type": "object"
       },
       "FacultyReferralSubmitRequest": {
         "additionalProperties": false,
@@ -34827,6 +34894,27 @@
               }
             ],
             "title": "Profile Photo Url"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralStudentProgramResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
           }
         },
         "required": [
@@ -34838,6 +34926,31 @@
           "college"
         ],
         "title": "ReferralStudentOptionResponse",
+        "type": "object"
+      },
+      "ReferralStudentProgramResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ReferralStudentProgramResponse",
         "type": "object"
       },
       "ReferralSubmissionChannel": {

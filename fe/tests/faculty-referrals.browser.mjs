@@ -30,7 +30,7 @@ function fixture(options = {}) {
       if (state.confirmError) {
         await route.fulfill({ status: state.confirmError, contentType: "application/json", headers: { "Retry-After": "2" }, body: JSON.stringify({ error: { code: state.confirmError === 429 ? "faculty_referral_rate_limited" : "faculty_referral_confirmation_unavailable", message: "Synthetic denial" } }) }); return true;
       }
-      await reply(state.negative ? { confirmed: false, student: null, confirmation: null, expires_at: null } : { confirmed: true, student: record.student, confirmation: `synthetic-component-memory-${state.confirmations}`, expires_at: new Date(Date.now() + (state.expiring && state.confirmations === 1 ? 1300 : 300000)).toISOString() }); return true;
+      await reply(state.negative ? { confirmed: false, student: null, confirmation: null, expires_at: null } : { confirmed: true, student: state.confirmedStudent ?? { ...record.student, college: { code: "CCMS", name: "College of Computing and Multimedia Studies" }, program: { code: "BSIS", name: "Bachelor of Science in Information Systems" }, year_level: 3 }, confirmation: `synthetic-component-memory-${state.confirmations}`, expires_at: new Date(Date.now() + (state.expiring && state.confirmations === 1 ? 1300 : 300000)).toISOString() }); return true;
     }
     if (pathname === api && method === "POST") {
       state.submissions++;
@@ -431,5 +431,27 @@ await check("own-historical-statement-is-read-only-and-keeps-expired-windows", `
   assert.equal(await page.getByRole("heading", { name: "Verified availability", exact: true }).count(), 0);
   assert.equal(await page.getByRole("radio").count(), 0);
   assert.equal(observed.requests.some(request => request.pathname.startsWith("/api/v1/referrals")), false);
+});
+
+const mismatchFixture = fixture();
+await check("confirmed-placement-and-nonblocking-mismatch-warning", root + "/new", { handler: mismatchFixture.handler }, async page => {
+  await page.getByLabel("Student institutional ID", { exact: true }).fill("SYNTHETIC-EXACT-ID");
+  await page.getByRole("button", { name: "Confirm Student", exact: true }).click();
+  await shown(page.getByText(longName, { exact: true }));
+  await shown(page.getByText("CCMS — College of Computing and Multimedia Studies", { exact: true }));
+  await shown(page.getByText("BSIS — Bachelor of Science in Information Systems", { exact: true }));
+  await shown(page.getByText("3rd Year", { exact: true }));
+  await page.getByLabel("Course/Year/Block", { exact: true }).fill("BSIT 2A");
+  await page.getByLabel("Referral reason", { exact: true }).fill("Synthetic concern with mismatched course");
+  await page.getByRole("radio", { name: "Unknown / needs confirmation", exact: true }).check();
+  await review(page);
+  await shown(page.getByText("CCMS — College of Computing and Multimedia Studies", { exact: true }));
+  await shown(page.getByText("BSIS — Bachelor of Science in Information Systems", { exact: true }));
+  await shown(page.getByText("3rd Year", { exact: true }));
+  await shown(page.getByText("Check Course/Year/Block", { exact: true }));
+  await shown(page.getByText(/differs from the Student's recorded Program/));
+  await page.getByRole("button", { name: "Submit Referral", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Referral submitted", exact: true }));
+  assert.equal(mismatchFixture.calls.length, 1);
 });
 await finish();

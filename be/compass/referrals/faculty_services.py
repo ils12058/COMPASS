@@ -19,7 +19,10 @@ from compass.institutional_forms.models import FormRevision
 from compass.organization.integrity import catalog_dependent_write
 from compass.referrals import faculty_rules as rules
 from compass.referrals.administrative_state import administrative_state
-from compass.referrals.faculty_placement import resolve_student_placement
+from compass.referrals.faculty_placement import (
+    resolve_student_placement,
+    resolve_students_academic_summaries,
+)
 from compass.referrals.faculty_rules import (
     FacultyReferralError,
 )
@@ -205,9 +208,25 @@ def confirm_student(*, actor, actor_session, institutional_id, ip_address):
     )
     if placement is None or not rules.active_colleges().filter(pk=placement.college_id).exists():
         return {"confirmed": False, "student": None, "confirmation": None, "expires_at": None}
+    summary = resolve_students_academic_summaries({student.pk: placement.college_id})[student.pk]
     return {
         "confirmed": True,
-        "student": {"display_name": student.get_full_name()},
+        "student": {
+            "display_name": student.get_full_name(),
+            "college": {
+                "code": placement.college_code,
+                "name": placement.college_name,
+            },
+            "program": (
+                {
+                    "code": summary.program_code,
+                    "name": summary.program_name,
+                }
+                if summary.program_code is not None and summary.program_name is not None
+                else None
+            ),
+            "year_level": summary.year_level,
+        },
         "confirmation": _ticket(actor, home, student, placement, now),
         "expires_at": now + timedelta(seconds=rules.CONFIRMATION_MAX_AGE),
     }
