@@ -238,7 +238,12 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     confirmation = confirm(world)
     assert set(confirmation) == {"confirmed", "student", "confirmation", "expires_at"}
     assert confirmation["confirmed"] is True
-    assert confirmation["student"] == {"display_name": world.student.get_full_name()}
+    assert confirmation["student"] == {
+        "display_name": world.student.get_full_name(),
+        "college": {"code": world.ccms.code, "name": world.ccms.name},
+        "program": None,
+        "year_level": None,
+    }
     assert confirmation["confirmation"]
 
     result, created = submit(world, confirmation["confirmation"])
